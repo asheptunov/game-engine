@@ -2,13 +2,18 @@ package scenes.textureeditor;
 
 import logging.LogManager;
 import logging.Logger;
-import scenes.Scene;
 import rendering.CloneableRaster;
+import rendering.Color;
+import rendering.FileSystemRasterRepository;
 import rendering.Painter;
+import rendering.Printer;
 import rendering.Raster;
 import rendering.RasterFactory;
 import rendering.RasterPainter;
+import rendering.RasterPrinter;
+import rendering.RasterRepository;
 import rendering.Renderer;
+import scenes.Scene;
 import ui.FilteringInputBuffer;
 import ui.TextInputBuffer;
 
@@ -20,13 +25,9 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -47,10 +48,14 @@ public class TextureEditor implements
     private static final Logger  LOG                = LogManager.instance().getThis();
     private static final State   DEFAULT_STATE      = State.BRUSH;
     private static final int     HISTORY_SIZE       = 100;
-    private static final Pattern COLOR_PATTERN      = Pattern.compile("^(0x|0X|)([0-9a-fA-F]{1,6})$");
-    private static final Pattern COLOR_CHAR_PATTERN = Pattern.compile("[0-9a-fA-FxX]+");
+    private static final Pattern COLOR_PATTERN      = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{1,6})$"
+            .formatted(Arrays.stream(Color.values())
+                    .map(Color::getCmdName)
+                    .collect(Collectors.joining("|"))));
+    private static final Pattern COLOR_CHAR_PATTERN = Pattern.compile("[0-9a-zA-Z]+");
     private static final Pattern DIR_PATTERN        = Pattern.compile("[a-zA-Z0-9-_/]+");
     private static final Pattern TX_PATTERN         = Pattern.compile("[a-zA-Z0-9-_]+\\.tx");
+    // todo resize command
     private static final Pattern CMD_PATTERN        = Pattern
             .compile("^status$|^(cd|ls)( (%s))?$|^(load|save)( (%s))?$|^(touch|rm) (%s)$"
                     .formatted(DIR_PATTERN.pattern(), TX_PATTERN.pattern(), TX_PATTERN.pattern()));
@@ -68,17 +73,19 @@ public class TextureEditor implements
         COMMAND_ENTRY
     }
 
-    private final Raster                   display;
-    private final Painter                  displayPainter;
-    private       CloneableRaster          texture;
-    private final History<CloneableRaster> history;
-    private       State                    state           = DEFAULT_STATE;
+    private final RasterRepository         repo;
     private       Path                     dirName         = Path.of("assets/fonts/test/");
     private       Path                     filename        = Path.of("a.tx");
+    private       CloneableRaster          texture;
+    private final Raster                   display;
+    private final Painter                  displayPainter;
+    private final Printer                  displayPrinter;
+    private final History<CloneableRaster> history;
+    private       State                    state           = DEFAULT_STATE;
     private final Clock                    clock;
     private       Selection                selection;
     private       Coordinates              boxStart;
-    private       int                      color           = 0;
+    private       int                      color           = Color.WHITE.getRgbValue();
     private final TextInputBuffer          colorInputBuf   = new FilteringInputBuffer("color input",
             COLOR_PATTERN,
             COLOR_CHAR_PATTERN,
@@ -111,10 +118,18 @@ public class TextureEditor implements
             buf -> resetState()  // retain buffer on escape; give user a chance to continue later
     );
 
-    public TextureEditor(Raster display, Raster texture, Clock clock) {
+    public TextureEditor(Raster display, Clock clock, int width, int height) {
+        this.repo = new FileSystemRasterRepository(clock);
+        this.texture = RasterFactory.cloneable(RasterFactory.create(width, height));
         this.display = display;
         this.displayPainter = new RasterPainter(display);
-        this.texture = RasterFactory.cloneable(texture);
+        this.displayPrinter = RasterPrinter.builder()
+                .raster(display)
+                .repository(repo)
+                .clock(clock)
+                .fontPath("assets/fonts/test")
+                .fontDimensions(16, 16)
+                .build();
         this.history = new CircularBufferHistoryImpl<>(this.texture.clone(), HISTORY_SIZE);
         this.clock = clock;
     }
@@ -209,15 +224,11 @@ public class TextureEditor implements
                 selection = new BoxSelection(x, y);
                 boxStart = new Coordinates(x, y);
             }
-            case LASSO_SELECT -> {
-                throw new UnsupportedOperationException("start lasso select");
-            }
+            case LASSO_SELECT -> throw new UnsupportedOperationException("start lasso select");
             case BRUSH -> {
                 // selection acts as a mask
                 switch (selection) {
-                    case null -> {
-                        texture.setPixel(x, y, color);
-                    }
+                    case null -> texture.setPixel(x, y, color);
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
                             texture.setPixel(x, y, color);
@@ -275,9 +286,7 @@ public class TextureEditor implements
                 LOG.info("Finished box selection from [%d, %d] at [%d, %d]", boxStart.x, boxStart.y, x, y);
                 boxStart = null;
             }
-            case LASSO_SELECT -> {
-                throw new UnsupportedOperationException("terminate lasso select");
-            }
+            case LASSO_SELECT -> throw new UnsupportedOperationException("terminate lasso select");
             case BRUSH -> saveToHistory();
         }
     }
@@ -304,15 +313,11 @@ public class TextureEditor implements
                 box.update(boxStart.x, boxStart.y, x, y);
                 LOG.debug("Updating box selection to %s", box);
             }
-            case LASSO_SELECT -> {
-                throw new UnsupportedOperationException("update lasso selection");
-            }
+            case LASSO_SELECT -> throw new UnsupportedOperationException("update lasso selection");
             case BRUSH -> {
                 LOG.debug("Painting pixel [%d, %d]", x, y);
                 switch (selection) {
-                    case null -> {
-                        texture.setPixel(x, y, color);
-                    }
+                    case null -> texture.setPixel(x, y, color);
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
                             texture.setPixel(x, y, color);
@@ -378,6 +383,9 @@ public class TextureEditor implements
         // todo zoom / pan
         renderTexture();
         renderSelection();
+        if (state == State.COMMAND_ENTRY) {
+            renderConsole();
+        }
     }
 
     private void renderTexture() {
@@ -412,6 +420,10 @@ public class TextureEditor implements
             }
             default -> throw new UnsupportedOperationException(selection.getClass().getName());
         }
+    }
+
+    private void renderConsole() {
+        displayPrinter.print(commandInputBuf.get(), 0, display.height() - 16, 16);
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -536,126 +548,138 @@ public class TextureEditor implements
     }
 
     private void saveToFile() {
-        var start = clock.instant();
-        var dir = dirName.toFile();
-        var file = dirName.resolve(filename).toFile();
-        if (dir.exists()) {
-            if (!dir.isDirectory()) {
-                LOG.error("Failed to save; %s is a file, not a directory", dir);
-                return;
-            }
-        } else {
-            if (!dir.mkdirs()) {
-                LOG.error("Failed to make dirs for path %s", dir);
-                return;
-            }
-        }
-        if (file.exists()) {
-            if (file.isDirectory()) {
-                LOG.error("Failed to save; %s is a directory, not a file", file);
-                return;
-            }
-        } else {
-            try {
-                if (!file.createNewFile()) {
-                    LOG.error("Failed to create file %s", file);
-                    return;
-                }
-            } catch (IOException e) {
-                LOG.error(e, "Failed to create file %s", file);
-                return;
-            }
-        }
-        try (var fos = new FileOutputStream(file)) {
-            // width - BE int32
-            fos.write(intToBytes(texture.width()));
-            // height - BE int32
-            fos.write(intToBytes(texture.height()));
-            // pixel data - BE int24 array
-            fos.write(pixelsToBytes(texture.pixels()));
-        } catch (FileNotFoundException e) {
-            LOG.error(e, "Could not find file after creating it: %s", file);
-            return;
-        } catch (IOException e) {
-            LOG.error(e, "Could not close file %s", file);
-            return;
-        }
-        var end = clock.instant();
-        LOG.info("Saved to %s in %s", file, Duration.between(start, end));
+        repo.save(dirName.resolve(filename), texture);
+//        var start = clock.instant();
+//        var dir = dirName.toFile();
+//        var file = dirName.resolve(filename).toFile();
+//        if (dir.exists()) {
+//            if (!dir.isDirectory()) {
+//                LOG.error("Failed to save; %s is a file, not a directory", dir);
+//                return;
+//            }
+//        } else {
+//            if (!dir.mkdirs()) {
+//                LOG.error("Failed to make dirs for path: %s", dir);
+//                return;
+//            }
+//        }
+//        if (file.exists()) {
+//            if (file.isDirectory()) {
+//                LOG.error("Failed to save; path is a directory, not a file: %s", file);
+//                return;
+//            }
+//        } else {
+//            try {
+//                if (!file.createNewFile()) {
+//                    LOG.error("Failed to create file: %s", file);
+//                    return;
+//                }
+//            } catch (IOException e) {
+//                LOG.error(e, "Failed to create file: %s", file);
+//                return;
+//            }
+//        }
+//        try (var fos = new FileOutputStream(file)) {
+//            writeTexture(texture, fos);
+//        } catch (FileNotFoundException e) {
+//            LOG.error(e, "Could not find file after creating it: %s", file);
+//            return;
+//        } catch (IOException e) {
+//            LOG.error(e, "Could not close file: %s", file);
+//            return;
+//        }
+//        var end = clock.instant();
+//        LOG.info("Saved to %s in %s", file, Duration.between(start, end));
     }
 
-    private byte[] intToBytes(int i) {
-        // big-endian
-        return new byte[]{
-                (byte) ((i & 0xff000000) >> 24),
-                (byte) ((i & 0xff0000) >> 16),
-                (byte) ((i & 0xff00) >> 8),
-                (byte) (i & 0xff)};
-    }
+//    private void writeTexture(Raster raster, FileOutputStream fos) throws IOException {
+//        // width - BE int32
+//        fos.write(intToBytes(raster.width()));
+//        // height - BE int32
+//        fos.write(intToBytes(raster.height()));
+//        // pixel data - BE int24 array
+//        fos.write(pixelsToBytes(raster.pixels()));
+//    }
 
-    private int intFromBytes(byte[] b) {
-        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
-    }
-
-    private byte[] pixelsToBytes(int[] pixels) {
-        var res = new byte[pixels.length];
-        for (int i = 0; i < pixels.length; ++i) {
-            res[i] = (byte) pixels[i];
-        }
-        return res;
-    }
-
-    private int[] pixelsFromBytes(byte[] pixels) {
-        var res = new int[pixels.length];
-        for (int i = 0; i < pixels.length; ++i) {
-            res[i] = pixels[i];
-        }
-        return res;
-    }
+//    private byte[] intToBytes(int i) {
+//        // big-endian
+//        return new byte[]{
+//                (byte) ((i & 0xff000000) >> 24),
+//                (byte) ((i & 0xff0000) >> 16),
+//                (byte) ((i & 0xff00) >> 8),
+//                (byte) (i & 0xff)};
+//    }
+//
+//    private int intFromBytes(byte[] b) {
+//        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
+//    }
+//
+//    private byte[] pixelsToBytes(int[] pixels) {
+//        var res = new byte[pixels.length];
+//        for (int i = 0; i < pixels.length; ++i) {
+//            res[i] = (byte) pixels[i];
+//        }
+//        return res;
+//    }
+//
+//    private int[] pixelsFromBytes(byte[] pixels) {
+//        var res = new int[pixels.length];
+//        for (int i = 0; i < pixels.length; ++i) {
+//            res[i] = pixels[i];
+//        }
+//        return res;
+//    }
 
     private void loadFromFile() {
-        var start = clock.instant();
-        var file = dirName.resolve(filename).toFile();
-        if (file.exists()) {
-            if (file.isDirectory()) {
-                LOG.error("Failed to load from file; %s is a directory, not a file", file);
-                return;
-            }
-        } else {
-            LOG.error("Failed to load from file; %s does not exist", file);
-            return;
-        }
-        try (var fis = new FileInputStream(file)) {
-            var intBuf = new byte[4];
-            // width - BE int32
-            if (4 != fis.read(intBuf)) {
-                LOG.error("Error reading texture width from file %s (unexpected end of buffer)", file);
-                return;
-            }
-            int width = intFromBytes(intBuf);
-            // height - BE int32
-            if (4 != fis.read(intBuf)) {
-                LOG.error("Error reading texture height from file %s (unexpected end of buffer)", file);
-                return;
-            }
-            int height = intFromBytes(intBuf);
-            // pixel data - BE int24 array
-            var pxBuf = new byte[width * height * 3];
-            if (width * height * 3 != fis.read(pxBuf)) {
-                LOG.error("Error reading texture pixel data from file %s (unexpected end of buffer)", file);
-                return;
-            }
-            int[] pixels = pixelsFromBytes(pxBuf);
-            texture = RasterFactory.cloneable(RasterFactory.create(width, height, pixels));
-        } catch (FileNotFoundException e) {
-            LOG.error(e, "Could not find file after creating it: %s", file);
-            return;
-        } catch (IOException e) {
-            LOG.error(e, "Could not close file %s", file);
-            return;
-        }
-        var end = clock.instant();
-        LOG.info("Loaded from %s in %s", file, Duration.between(start, end));
+        repo.load(dirName.resolve(filename))
+                .mapLeft(RasterFactory::cloneable)
+                .ifLeft(raster -> this.texture = raster);
+        saveToHistory();
+
+//        var start = clock.instant();
+//        var file = dirName.resolve(filename).toFile();
+//        if (file.exists()) {
+//            if (file.isDirectory()) {
+//                LOG.error("Failed to load from file; %s is a directory, not a file", file);
+//                return;
+//            }
+//        } else {
+//            LOG.error("Failed to load from file; %s does not exist", file);
+//            return;
+//        }
+//        try (var fis = new FileInputStream(file)) {
+//            var intBuf = new byte[4];
+//            // width - BE int32
+//            if (4 != fis.read(intBuf)) {
+//                LOG.error("Error reading texture width from file %s (unexpected end of buffer)", file);
+//                return;
+//            }
+//            int width = intFromBytes(intBuf);
+//            // height - BE int32
+//            if (4 != fis.read(intBuf)) {
+//                LOG.error("Error reading texture height from file %s (unexpected end of buffer)", file);
+//                return;
+//            }
+//            int height = intFromBytes(intBuf);
+//            // pixel data - BE int24 array
+//            var pxBuf = new byte[width * height * 3];
+//            if (width * height * 3 != fis.read(pxBuf)) {
+//                LOG.error("Error reading texture pixel data from file %s (unexpected end of buffer)", file);
+//                return;
+//            }
+//            int[] pixels = pixelsFromBytes(pxBuf);
+//            texture = RasterFactory.cloneable(RasterFactory.create(width, height, pixels));
+//            saveToHistory();
+//        } catch (FileNotFoundException e) {
+//            LOG.error(e, "Could not find file after creating it: %s", file);
+//            return;
+//        } catch (IOException e) {
+//            LOG.error(e, "Could not close file %s", file);
+//            return;
+//        }
+//        var end = clock.instant();
+//        LOG.info("Loaded from %s in %s", file, Duration.between(start, end));
+//    }
     }
 
     private void saveToHistory() {
@@ -758,8 +782,10 @@ public class TextureEditor implements
     }
 
     private void setColor(Matcher matcher) {
-        var match = matcher.group(2);
-        color = Integer.parseInt(match, 16);
+        this.color = Optional.of(matcher.group("cmd"))
+                .flatMap(Color::fromCmdName)
+                .map(Color::getRgbValue)
+                .orElseGet(() -> Integer.parseInt(matcher.group("hex"), 16));
         LOG.info("Setting color to 0x%x", color);
         resetState();
     }
@@ -768,8 +794,10 @@ public class TextureEditor implements
         var command = matcher.group();
         // todo actually implement these with on-screen stuff
         if (command.startsWith("status")) {
-            LOG.info("Working dir: %s, open file: %s, width: %d, height: %s, color: 0x%x",
-                    dirName, filename, texture.width(), texture.height(), color);
+            LOG.info("Working dir: %s, open file: %s, width: %d, height: %s, color: 0x%x%s",
+                    dirName, filename,
+                    texture.width(), texture.height(),
+                    color, Color.fromRgbValue(color).map(c -> " (" + c.getCmdName() + ")").orElse(""));
         } else if (command.startsWith("cd") || command.startsWith("ls")) {
             var root = Path.of(".");
             var targetDirName = Optional.ofNullable(matcher.group(3))
@@ -850,38 +878,50 @@ public class TextureEditor implements
         } else if (command.startsWith("touch ")
                 || command.startsWith("rm ")) {
             var targetFilename = Path.of(matcher.group(8));
-            var targetFile = this.dirName.resolve(targetFilename).toFile();
+            targetFilename = this.dirName.resolve(targetFilename);
+//            var targetFile = this.dirName.resolve(targetFilename).toFile();
             switch (matcher.group(7)) {
                 case "touch" -> {
-                    if (targetFile.exists()) {
-                        LOG.error("Target already exists: %s", targetFilename);
-                        return;
-                    }
-                    try {
-                        if (!targetFile.createNewFile()) {
-                            LOG.error("Failed to create %s", targetFilename);
-                            return;
-                        }
-                    } catch (IOException e) {
-                        LOG.error(e, "Failed to create %s", targetFilename);
-                        return;
-                    }
-                    LOG.info("Created %s", targetFilename);
+                    repo.create(targetFilename, RasterFactory.create(texture.width(), texture.height()));
+//                    var start = clock.instant();
+//                    if (targetFile.exists()) {
+//                        LOG.error("Target already exists: %s", targetFilename);
+//                        return;
+//                    }
+//                    try {
+//                        if (!targetFile.createNewFile()) {
+//                            LOG.error("Failed to create %s", targetFilename);
+//                            return;
+//                        }
+//                    } catch (IOException e) {
+//                        LOG.error(e, "Failed to create %s", targetFilename);
+//                        return;
+//                    }
+//                    try (var fos = new FileOutputStream(targetFile)) {
+//                        writeTexture(RasterFactory.create(texture.width(), texture.height()), fos);
+//                    } catch (FileNotFoundException e) {
+//                        LOG.error(e, "Could not find file after creating it: %s", targetFilename);
+//                    } catch (IOException e) {
+//                        LOG.error(e, "Could not close file: %s", targetFilename);
+//                    }
+//                    var end = clock.instant();
+//                    LOG.info("Created %s in %s", targetFilename, Duration.between(start, end));
                 }
                 case "rm" -> {
-                    if (!targetFile.exists()) {
-                        LOG.error("Target does not exist: %s", targetFilename);
-                        return;
-                    }
-                    if (!targetFile.isFile()) {
-                        LOG.error("Target is not a file: %s", targetFilename);
-                        return;
-                    }
-                    if (!targetFile.delete()) {
-                        LOG.error("Failed to delete %s", targetFilename);
-                        return;
-                    }
-                    LOG.info("Deleted %s", targetFilename);
+                    repo.delete(targetFilename);
+//                    if (!targetFile.exists()) {
+//                        LOG.error("Target does not exist: %s", targetFilename);
+//                        return;
+//                    }
+//                    if (!targetFile.isFile()) {
+//                        LOG.error("Target is not a file: %s", targetFilename);
+//                        return;
+//                    }
+//                    if (!targetFile.delete()) {
+//                        LOG.error("Failed to delete %s", targetFilename);
+//                        return;
+//                    }
+//                    LOG.info("Deleted %s", targetFilename);
                 }
             }
         } else {

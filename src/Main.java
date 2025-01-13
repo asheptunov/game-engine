@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
     private static final Logger LOG        = LogManager.instance().getThis();
-    private static final int    WIDTH      = 400;
-    private static final int    HEIGHT     = WIDTH;
+    private static final int    WIDTH      = 800;
+    private static final int    HEIGHT     = 800;
     private static final int    FRAME_RATE = 60;
 
     private static final AtomicReference<Scene> SCENE = new AtomicReference<>();
@@ -28,15 +28,8 @@ public class Main {
     public static void main(String[] args) throws InterruptedException {
         LOG.info("Width %d, height %d, frame rate %d hz", WIDTH, HEIGHT, FRAME_RATE);
         var displayRaster = RasterFactory.create(WIDTH, HEIGHT);
-        var textureRaster = RasterFactory.create(64, 64);
-        for (int r = 0; r < textureRaster.height(); ++r) {
-            for (int c = 0; c < textureRaster.width(); ++c) {
-//                textureRaster.setPixel(c, r, (int) (Math.random() * 0xffffff));
-                textureRaster.setPixel(c, r, 0xffffff);
-            }
-        }
         var clock = Clock.systemUTC();
-        var textureEditor = new TextureEditor(displayRaster, textureRaster, clock);
+        var textureEditor = new TextureEditor(displayRaster, clock, 16, 16);
         SCENE.set(textureEditor);
         var switchingListener = SceneAwareProxyBuilder.create()
                 .withInterfaces(KeyListener.class, MouseListener.class, MouseWheelListener.class, MouseMotionListener.class)

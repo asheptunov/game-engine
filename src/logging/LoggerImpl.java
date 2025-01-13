@@ -95,7 +95,6 @@ public class LoggerImpl implements Logger {
         if (level.ordinal() < min.ordinal()) {
             return this;
         }
-        log(level, fmt, args);
         var os = new ByteArrayOutputStream();
         var ps = new PrintStream(os);
         ex.printStackTrace(ps);
@@ -111,7 +110,11 @@ public class LoggerImpl implements Logger {
                 .trim()
                 .replace("\n", stackTraceNewline)
                 .replace("\r", stackTraceCarriageReturn);
-        level.ps.println(str);
+        var extArgs = Arrays.copyOf(args, args.length + 2);
+        extArgs[extArgs.length - 2] = stackTraceNewline;
+        extArgs[extArgs.length - 1] = str;
+        log(level, fmt + "%s%s", extArgs);
+//        level.ps.println(str);
         return this;
     }
 

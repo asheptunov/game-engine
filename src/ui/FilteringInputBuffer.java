@@ -42,6 +42,11 @@ public class FilteringInputBuffer implements TextInputBuffer {
     }
 
     @Override
+    public String get() {
+        return buf.toString();
+    }
+
+    @Override
     public void accept(KeyEvent keystroke) {
         switch (keystroke.getModifiersEx()) {
             case KeyEvent.CTRL_DOWN_MASK, KeyEvent.META_DOWN_MASK -> {
