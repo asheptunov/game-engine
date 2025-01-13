@@ -1,0 +1,7 @@
+root=DEBUG
+timing.PeriodicExecutor=INFO
+rendering.AwtViewer=INFO
+rendering.CompositeRenderer=INFO
+rendering.GradientRenderer=INFO
+scenes.textureeditor.TextureEditor=INFO
+ui.FilteringInputBuffer=INFO
