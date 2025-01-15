@@ -11,5 +11,5 @@ public interface RasterRepository {
 
     Either<Raster, Exception> load(Path path);
 
-    void save(Path path, Raster raster);
+    Either<Void, Exception> save(Path path, Raster raster);
 }

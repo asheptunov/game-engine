@@ -82,7 +82,7 @@ public class RasterPainter implements Painter {
 
     @Override
     public void drawImg(int x, int y, Raster imgRaster) {
-        int i = 3*(y * raster.width() + x);
+        int i = 3 * (y * raster.width() + x);
         int imgI = 0;
         var pixels = raster.pixels();
         var imgPixels = imgRaster.pixels();

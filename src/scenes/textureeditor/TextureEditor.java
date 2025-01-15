@@ -2,6 +2,7 @@ package scenes.textureeditor;
 
 import logging.LogManager;
 import logging.Logger;
+import misc.monads.Either;
 import rendering.CloneableRaster;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
@@ -74,7 +75,7 @@ public class TextureEditor implements
     }
 
     private final RasterRepository         repo;
-    private       Path                     dirName         = Path.of("assets/fonts/test/");
+    private       Path                     dirName         = Path.of("assets/fonts/test/standard");
     private       Path                     filename        = Path.of("a.tx");
     private       CloneableRaster          texture;
     private final Raster                   display;
@@ -423,7 +424,7 @@ public class TextureEditor implements
     }
 
     private void renderConsole() {
-        displayPrinter.print(commandInputBuf.get(), 0, display.height() - 16, 16);
+        displayPrinter.print(commandInputBuf.get(), 0, display.height() - 32, 32);
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -513,8 +514,8 @@ public class TextureEditor implements
                 }
             }
             case KeyEvent.VK_F1 -> toggleHelp();
-            case KeyEvent.VK_F5 -> saveToFile();
-            case KeyEvent.VK_F9 -> loadFromFile();
+            case KeyEvent.VK_F5 -> saveToFile(this.filename);
+            case KeyEvent.VK_F9 -> loadFromFile(this.filename);
             case KeyEvent.VK_Z -> {
                 switch (e.getModifiersEx()) {
                     case KeyEvent.CTRL_DOWN_MASK -> undo();
@@ -547,139 +548,17 @@ public class TextureEditor implements
         // todo actually implement this
     }
 
-    private void saveToFile() {
-        repo.save(dirName.resolve(filename), texture);
-//        var start = clock.instant();
-//        var dir = dirName.toFile();
-//        var file = dirName.resolve(filename).toFile();
-//        if (dir.exists()) {
-//            if (!dir.isDirectory()) {
-//                LOG.error("Failed to save; %s is a file, not a directory", dir);
-//                return;
-//            }
-//        } else {
-//            if (!dir.mkdirs()) {
-//                LOG.error("Failed to make dirs for path: %s", dir);
-//                return;
-//            }
-//        }
-//        if (file.exists()) {
-//            if (file.isDirectory()) {
-//                LOG.error("Failed to save; path is a directory, not a file: %s", file);
-//                return;
-//            }
-//        } else {
-//            try {
-//                if (!file.createNewFile()) {
-//                    LOG.error("Failed to create file: %s", file);
-//                    return;
-//                }
-//            } catch (IOException e) {
-//                LOG.error(e, "Failed to create file: %s", file);
-//                return;
-//            }
-//        }
-//        try (var fos = new FileOutputStream(file)) {
-//            writeTexture(texture, fos);
-//        } catch (FileNotFoundException e) {
-//            LOG.error(e, "Could not find file after creating it: %s", file);
-//            return;
-//        } catch (IOException e) {
-//            LOG.error(e, "Could not close file: %s", file);
-//            return;
-//        }
-//        var end = clock.instant();
-//        LOG.info("Saved to %s in %s", file, Duration.between(start, end));
+    private Either<Void, Exception> saveToFile(Path filename) {
+        return repo.save(dirName.resolve(filename), texture);
     }
 
-//    private void writeTexture(Raster raster, FileOutputStream fos) throws IOException {
-//        // width - BE int32
-//        fos.write(intToBytes(raster.width()));
-//        // height - BE int32
-//        fos.write(intToBytes(raster.height()));
-//        // pixel data - BE int24 array
-//        fos.write(pixelsToBytes(raster.pixels()));
-//    }
-
-//    private byte[] intToBytes(int i) {
-//        // big-endian
-//        return new byte[]{
-//                (byte) ((i & 0xff000000) >> 24),
-//                (byte) ((i & 0xff0000) >> 16),
-//                (byte) ((i & 0xff00) >> 8),
-//                (byte) (i & 0xff)};
-//    }
-//
-//    private int intFromBytes(byte[] b) {
-//        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
-//    }
-//
-//    private byte[] pixelsToBytes(int[] pixels) {
-//        var res = new byte[pixels.length];
-//        for (int i = 0; i < pixels.length; ++i) {
-//            res[i] = (byte) pixels[i];
-//        }
-//        return res;
-//    }
-//
-//    private int[] pixelsFromBytes(byte[] pixels) {
-//        var res = new int[pixels.length];
-//        for (int i = 0; i < pixels.length; ++i) {
-//            res[i] = pixels[i];
-//        }
-//        return res;
-//    }
-
-    private void loadFromFile() {
-        repo.load(dirName.resolve(filename))
+    private Either<CloneableRaster, Exception> loadFromFile(Path filename) {
+        return repo.load(dirName.resolve(filename))
                 .mapLeft(RasterFactory::cloneable)
-                .ifLeft(raster -> this.texture = raster);
-        saveToHistory();
-
-//        var start = clock.instant();
-//        var file = dirName.resolve(filename).toFile();
-//        if (file.exists()) {
-//            if (file.isDirectory()) {
-//                LOG.error("Failed to load from file; %s is a directory, not a file", file);
-//                return;
-//            }
-//        } else {
-//            LOG.error("Failed to load from file; %s does not exist", file);
-//            return;
-//        }
-//        try (var fis = new FileInputStream(file)) {
-//            var intBuf = new byte[4];
-//            // width - BE int32
-//            if (4 != fis.read(intBuf)) {
-//                LOG.error("Error reading texture width from file %s (unexpected end of buffer)", file);
-//                return;
-//            }
-//            int width = intFromBytes(intBuf);
-//            // height - BE int32
-//            if (4 != fis.read(intBuf)) {
-//                LOG.error("Error reading texture height from file %s (unexpected end of buffer)", file);
-//                return;
-//            }
-//            int height = intFromBytes(intBuf);
-//            // pixel data - BE int24 array
-//            var pxBuf = new byte[width * height * 3];
-//            if (width * height * 3 != fis.read(pxBuf)) {
-//                LOG.error("Error reading texture pixel data from file %s (unexpected end of buffer)", file);
-//                return;
-//            }
-//            int[] pixels = pixelsFromBytes(pxBuf);
-//            texture = RasterFactory.cloneable(RasterFactory.create(width, height, pixels));
-//            saveToHistory();
-//        } catch (FileNotFoundException e) {
-//            LOG.error(e, "Could not find file after creating it: %s", file);
-//            return;
-//        } catch (IOException e) {
-//            LOG.error(e, "Could not close file %s", file);
-//            return;
-//        }
-//        var end = clock.instant();
-//        LOG.info("Loaded from %s in %s", file, Duration.between(start, end));
-//    }
+                .ifLeft(raster -> {
+                    this.texture = raster;
+                    saveToHistory();
+                });
     }
 
     private void saveToHistory() {
@@ -782,7 +661,7 @@ public class TextureEditor implements
     }
 
     private void setColor(Matcher matcher) {
-        this.color = Optional.of(matcher.group("cmd"))
+        this.color = Optional.ofNullable(matcher.group("cmd"))
                 .flatMap(Color::fromCmdName)
                 .map(Color::getRgbValue)
                 .orElseGet(() -> Integer.parseInt(matcher.group("hex"), 16));
@@ -867,62 +746,29 @@ public class TextureEditor implements
             var targetFilename = Optional.ofNullable(matcher.group(6))
                     .map(Path::of)
                     .orElse(this.filename);
-            if (!this.filename.equals(targetFilename)) {
-                LOG.info("Set active file to %s", targetFilename);
-                this.filename = targetFilename;
-            }
             switch (matcher.group(4)) {
-                case "load" -> loadFromFile();
-                case "save" -> saveToFile();
+                case "load" -> loadFromFile(targetFilename)
+                        .ifLeft($ -> {
+                            if (!this.filename.equals(targetFilename)) {
+                                LOG.info("Set active file to %s", targetFilename);
+                                this.filename = targetFilename;
+                            }
+                        });
+                case "save" -> saveToFile(targetFilename)
+                        .ifLeft($ -> {
+                            if (!this.filename.equals(targetFilename)) {
+                                LOG.info("Set active file to %s", targetFilename);
+                                this.filename = targetFilename;
+                            }
+                        });
             }
         } else if (command.startsWith("touch ")
                 || command.startsWith("rm ")) {
             var targetFilename = Path.of(matcher.group(8));
             targetFilename = this.dirName.resolve(targetFilename);
-//            var targetFile = this.dirName.resolve(targetFilename).toFile();
             switch (matcher.group(7)) {
-                case "touch" -> {
-                    repo.create(targetFilename, RasterFactory.create(texture.width(), texture.height()));
-//                    var start = clock.instant();
-//                    if (targetFile.exists()) {
-//                        LOG.error("Target already exists: %s", targetFilename);
-//                        return;
-//                    }
-//                    try {
-//                        if (!targetFile.createNewFile()) {
-//                            LOG.error("Failed to create %s", targetFilename);
-//                            return;
-//                        }
-//                    } catch (IOException e) {
-//                        LOG.error(e, "Failed to create %s", targetFilename);
-//                        return;
-//                    }
-//                    try (var fos = new FileOutputStream(targetFile)) {
-//                        writeTexture(RasterFactory.create(texture.width(), texture.height()), fos);
-//                    } catch (FileNotFoundException e) {
-//                        LOG.error(e, "Could not find file after creating it: %s", targetFilename);
-//                    } catch (IOException e) {
-//                        LOG.error(e, "Could not close file: %s", targetFilename);
-//                    }
-//                    var end = clock.instant();
-//                    LOG.info("Created %s in %s", targetFilename, Duration.between(start, end));
-                }
-                case "rm" -> {
-                    repo.delete(targetFilename);
-//                    if (!targetFile.exists()) {
-//                        LOG.error("Target does not exist: %s", targetFilename);
-//                        return;
-//                    }
-//                    if (!targetFile.isFile()) {
-//                        LOG.error("Target is not a file: %s", targetFilename);
-//                        return;
-//                    }
-//                    if (!targetFile.delete()) {
-//                        LOG.error("Failed to delete %s", targetFilename);
-//                        return;
-//                    }
-//                    LOG.info("Deleted %s", targetFilename);
-                }
+                case "touch" -> repo.create(targetFilename, RasterFactory.create(texture.width(), texture.height()));
+                case "rm" -> repo.delete(targetFilename);
             }
         } else {
             throw new UnsupportedOperationException(command);

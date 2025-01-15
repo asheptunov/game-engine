@@ -103,48 +103,42 @@ public class FileSystemRasterRepository implements RasterRepository {
     }
 
     @Override
-    public void save(Path filename, Raster raster) {
+    public Either<Void, Exception> save(Path filename, Raster raster) {
         var start = clock.instant();
         var file = filename.toFile();
         var dir = file.getParentFile();
         if (dir.exists()) {
             if (!dir.isDirectory()) {
-                LOG.error("Failed to save; %s is a file, not a directory", dir);
-                return;
+                return fail("Failed to save; %s is a file, not a directory", dir);
             }
         } else {
             if (!dir.mkdirs()) {
-                LOG.error("Failed to make dirs for path: %s", dir);
-                return;
+                return fail("Failed to make dirs for path: %s", dir);
             }
         }
         if (file.exists()) {
             if (file.isDirectory()) {
-                LOG.error("Failed to save; path is a directory, not a file: %s", file);
-                return;
+                return fail("Failed to save; path is a directory, not a file: %s", file);
             }
         } else {
             try {
                 if (!file.createNewFile()) {
-                    LOG.error("Failed to create file: %s", file);
-                    return;
+                    return fail("Failed to create file: %s", file);
                 }
             } catch (IOException e) {
-                LOG.error(e, "Failed to create file: %s", file);
-                return;
+                return fail(e, "Failed to create file: %s", file);
             }
         }
         try (var fos = new FileOutputStream(file)) {
             writeRaster(raster, fos);
         } catch (FileNotFoundException e) {
-            LOG.error(e, "Could not find file after creating it: %s", file);
-            return;
+            return fail(e, "Could not find file after creating it: %s", file);
         } catch (IOException e) {
-            LOG.error(e, "Could not close file: %s", file);
-            return;
+            return fail(e, "Could not close file: %s", file);
         }
         var end = clock.instant();
         LOG.info("Saved to %s in %s", file, Duration.between(start, end));
+        return Either.left(null);
     }
 
     private void writeRaster(Raster raster, FileOutputStream fos) throws IOException {

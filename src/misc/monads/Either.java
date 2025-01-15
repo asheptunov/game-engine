@@ -44,16 +44,18 @@ public class Either<L, R> {
         return right;
     }
 
-    public void ifLeft(Consumer<L> consumer) {
+    public Either<L, R> ifLeft(Consumer<L> consumer) {
         if (isLeft) {
             consumer.accept(left);
         }
+        return this;
     }
 
-    public void ifRight(Consumer<R> consumer) {
+    public Either<L, R> ifRight(Consumer<R> consumer) {
         if (!isLeft) {
             consumer.accept(right);
         }
+        return this;
     }
 
     public <LL> Either<LL, R> mapLeft(Function<L, LL> mapper) {
