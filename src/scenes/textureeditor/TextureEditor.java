@@ -2,7 +2,7 @@ package scenes.textureeditor;
 
 import logging.LogManager;
 import logging.Logger;
-import misc.monads.Either;
+import misc.monads.Result;
 import rendering.CloneableRaster;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
@@ -32,8 +32,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -60,7 +58,7 @@ public class TextureEditor implements
     private static final Pattern CMD_PATTERN        = Pattern
             .compile("^status$|^(cd|ls)( (%s))?$|^(load|save)( (%s))?$|^(touch|rm) (%s)$"
                     .formatted(DIR_PATTERN.pattern(), TX_PATTERN.pattern(), TX_PATTERN.pattern()));
-    private static final Pattern CMD_CHAR_PATTERN   = Pattern.compile("[a-zA-Z0_/. ]+");
+    private static final Pattern CMD_CHAR_PATTERN   = Pattern.compile("[ -~]+");
     private static final BiFunction<Integer, Double, Integer>
                                  SELECTION_PATTERN  = (i, d) -> (i / 8) % 2 == 0 ? 0 : 0xffffff;
 
@@ -76,7 +74,7 @@ public class TextureEditor implements
 
     private final RasterRepository         repo;
     private       Path                     dirName         = Path.of("assets/fonts/test/standard");
-    private       Path                     filename        = Path.of("a.tx");
+    private       Path                     filename        = Path.of("");
     private       CloneableRaster          texture;
     private final Raster                   display;
     private final Painter                  displayPainter;
@@ -137,12 +135,20 @@ public class TextureEditor implements
 
     @Override
     public void keyTyped(KeyEvent e) {
-        logEvent("typed", e);
+        LOG.trace("Handling %s", e);
+        switch (state) {
+            case COLOR_ENTRY:
+                colorInputBuf.accept(e);
+                break;
+            case COMMAND_ENTRY:
+                commandInputBuf.accept(e);
+                break;
+        }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        logEvent("pressed", e);
+        LOG.trace("Handling %s", e);
         switch (state) {
             case PIXEL_SELECT:
             case LASSO_SELECT:
@@ -175,39 +181,17 @@ public class TextureEditor implements
 
     @Override
     public void keyReleased(KeyEvent e) {
-        logEvent("released", e);
-    }
-
-    private static final Map<Integer, String> KEY_MOD_STRINGS = new LinkedHashMap<>() {
-        {
-            put(KeyEvent.CTRL_DOWN_MASK, "CTRL");
-            put(KeyEvent.SHIFT_DOWN_MASK, "SHIFT");
-            put(KeyEvent.ALT_DOWN_MASK, "ALT");
-            put(KeyEvent.META_DOWN_MASK, "META");
-            put(KeyEvent.ALT_GRAPH_DOWN_MASK, "ALT_GR");
-            put(KeyEvent.BUTTON1_DOWN_MASK, "MB1");
-            put(KeyEvent.BUTTON2_DOWN_MASK, "MB2");
-            put(KeyEvent.BUTTON3_DOWN_MASK, "MB3");
-        }
-    };
-
-    private void logEvent(String type, KeyEvent e) {
-        var modStr = KEY_MOD_STRINGS.entrySet().stream()
-                .filter(entry -> (e.getModifiersEx() & entry.getKey()) != 0)
-                .map(Map.Entry::getValue)
-                .collect(Collectors.joining(" + "));
-        LOG.debug("Handling key %s (code=%d, char=%c, modifiers=%s)",
-                type, e.getKeyCode(), (char) e.getKeyCode(), modStr.isEmpty() ? "none" : modStr);
+        LOG.trace("Handling %s", e);
     }
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        logEvent("clicked", e);
+        LOG.trace("Handling %s", e);
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        logEvent("pressed", e);
+        LOG.trace("Handling %s", e);
         if (e.getButton() != MouseEvent.BUTTON1) {
             return;
         }
@@ -273,7 +257,7 @@ public class TextureEditor implements
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        logEvent("released", e);
+        LOG.trace("Handling %s", e);
         if (e.getButton() != MouseEvent.BUTTON1) {
             return;
         }
@@ -294,17 +278,17 @@ public class TextureEditor implements
 
     @Override
     public void mouseEntered(MouseEvent e) {
-        logEvent("entered", e);
+        LOG.trace("Handling %s", e);
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
-        logEvent("exited", e);
+        LOG.trace("Handling %s", e);
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        logEvent("dragged", e);
+        LOG.trace("Handling %s", e);
         var c = normalize(e);
         int x = c.x;
         int y = c.y;
@@ -341,46 +325,18 @@ public class TextureEditor implements
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        logEvent("moved", e);
-    }
-
-    private static final Map<Integer, String> MOUSE_MOD_STRINGS = new LinkedHashMap<>() {
-        {
-            put(MouseEvent.CTRL_DOWN_MASK, "CTRL");
-            put(MouseEvent.SHIFT_DOWN_MASK, "SHIFT");
-            put(MouseEvent.ALT_DOWN_MASK, "ALT");
-            put(MouseEvent.META_DOWN_MASK, "META");
-            put(MouseEvent.ALT_GRAPH_DOWN_MASK, "ALT_GR");
-            put(MouseEvent.BUTTON1_DOWN_MASK, "MB1");
-            put(MouseEvent.BUTTON2_DOWN_MASK, "MB2");
-            put(MouseEvent.BUTTON3_DOWN_MASK, "MB3");
-        }
-    };
-
-    private void logEvent(String type, MouseEvent e) {
-        var c = normalize(e);
-        var buttonStr = switch (e.getButton()) {
-            case MouseEvent.NOBUTTON -> "none";
-            case MouseEvent.BUTTON1 -> "MB1";
-            case MouseEvent.BUTTON2 -> "MB2";
-            case MouseEvent.BUTTON3 -> "MB3";
-            default -> "unknown (code=" + e.getButton() + ")";
-        };
-        var modStr = MOUSE_MOD_STRINGS.entrySet().stream()
-                .filter(entry -> (e.getModifiersEx() & entry.getKey()) != 0)
-                .map(Map.Entry::getValue)
-                .collect(Collectors.joining(" + "));
-        LOG.debug("Handling mouse %s (raw=%s, tx=%s, button=%s, modifiers=%s)",
-                type, new Coordinates(e.getX(), e.getY()), c, buttonStr, modStr.isEmpty() ? "none" : modStr);
+        LOG.trace("Handling %s", e);
     }
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
+        LOG.trace("Handling %s", e);
         // todo zoom / pan
     }
 
     @Override
     public void render() {
+        LOG.trace("Rendering");
         // todo zoom / pan
         renderTexture();
         renderSelection();
@@ -548,14 +504,14 @@ public class TextureEditor implements
         // todo actually implement this
     }
 
-    private Either<Void, Exception> saveToFile(Path filename) {
+    private Result<Void, Exception> saveToFile(Path filename) {
         return repo.save(dirName.resolve(filename), texture);
     }
 
-    private Either<CloneableRaster, Exception> loadFromFile(Path filename) {
+    private Result<CloneableRaster, Exception> loadFromFile(Path filename) {
         return repo.load(dirName.resolve(filename))
-                .mapLeft(RasterFactory::cloneable)
-                .ifLeft(raster -> {
+                .mapSuccess(RasterFactory::cloneable)
+                .ifSuccess(raster -> {
                     this.texture = raster;
                     saveToHistory();
                 });
@@ -748,14 +704,14 @@ public class TextureEditor implements
                     .orElse(this.filename);
             switch (matcher.group(4)) {
                 case "load" -> loadFromFile(targetFilename)
-                        .ifLeft($ -> {
+                        .ifSuccess($ -> {
                             if (!this.filename.equals(targetFilename)) {
                                 LOG.info("Set active file to %s", targetFilename);
                                 this.filename = targetFilename;
                             }
                         });
                 case "save" -> saveToFile(targetFilename)
-                        .ifLeft($ -> {
+                        .ifSuccess($ -> {
                             if (!this.filename.equals(targetFilename)) {
                                 LOG.info("Set active file to %s", targetFilename);
                                 this.filename = targetFilename;

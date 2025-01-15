@@ -2,7 +2,7 @@ package rendering;
 
 import logging.LogManager;
 import logging.Logger;
-import misc.monads.Either;
+import misc.monads.Result;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -68,7 +68,7 @@ public class FileSystemRasterRepository implements RasterRepository {
     }
 
     @Override
-    public Either<Raster, Exception> load(Path filename) {
+    public Result<Raster, Exception> load(Path filename) {
         var start = clock.instant();
         var file = filename.toFile();
         if (file.exists()) {
@@ -78,7 +78,7 @@ public class FileSystemRasterRepository implements RasterRepository {
         } else {
             return fail("Failed to load from file; %s does not exist", file);
         }
-        Either<Raster, Exception> res;
+        Result<Raster, Exception> res;
         try (var fis = new FileInputStream(file)) {
             res = readRaster(fis, filename);
         } catch (FileNotFoundException e) {
@@ -86,7 +86,7 @@ public class FileSystemRasterRepository implements RasterRepository {
         } catch (IOException e) {
             res = fail(e, "Could not close file %s", filename);
         }
-        if (res.isRight()) {
+        if (res.isFailure()) {
             return res;
         }
         var end = clock.instant();
@@ -94,16 +94,16 @@ public class FileSystemRasterRepository implements RasterRepository {
         return res;
     }
 
-    private <T> Either<T, Exception> fail(Exception e, String fmt, Object... args) {
-        return Either.right(new RuntimeException(fmt.formatted(args), e));
+    private <T> Result<T, Exception> fail(Exception e, String fmt, Object... args) {
+        return Result.failure(new RuntimeException(fmt.formatted(args), e));
     }
 
-    private <T> Either<T, Exception> fail(String fmt, Object... args) {
-        return Either.right(new RuntimeException(fmt.formatted(args)));
+    private <T> Result<T, Exception> fail(String fmt, Object... args) {
+        return Result.failure(new RuntimeException(fmt.formatted(args)));
     }
 
     @Override
-    public Either<Void, Exception> save(Path filename, Raster raster) {
+    public Result<Void, Exception> save(Path filename, Raster raster) {
         var start = clock.instant();
         var file = filename.toFile();
         var dir = file.getParentFile();
@@ -138,7 +138,7 @@ public class FileSystemRasterRepository implements RasterRepository {
         }
         var end = clock.instant();
         LOG.info("Saved to %s in %s", file, Duration.between(start, end));
-        return Either.left(null);
+        return Result.success(null);
     }
 
     private void writeRaster(Raster raster, FileOutputStream fos) throws IOException {
@@ -150,7 +150,7 @@ public class FileSystemRasterRepository implements RasterRepository {
         fos.write(pixelsToBytes(raster.pixels()));
     }
 
-    private Either<Raster, Exception> readRaster(FileInputStream fis, Path filename) {
+    private Result<Raster, Exception> readRaster(FileInputStream fis, Path filename) {
         var intBuf = new byte[4];
         try {
             // width - BE int32
@@ -169,9 +169,9 @@ public class FileSystemRasterRepository implements RasterRepository {
                 return fail("Error reading texture pixel data from file %s (unexpected end of buffer)", filename);
             }
             int[] pixels = pixelsFromBytes(pxBuf);
-            return Either.left(RasterFactory.create(width, height, pixels));
+            return Result.success(RasterFactory.create(width, height, pixels));
         } catch (IOException ex) {
-            return Either.right(ex);
+            return Result.failure(ex);
         }
     }
 

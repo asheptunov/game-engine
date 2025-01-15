@@ -48,75 +48,67 @@ public class FilteringInputBuffer implements TextInputBuffer {
 
     @Override
     public void accept(KeyEvent keystroke) {
-        switch (keystroke.getModifiersEx()) {
-            case KeyEvent.CTRL_DOWN_MASK, KeyEvent.META_DOWN_MASK -> {
-                switch (keystroke.getKeyCode()) {
-                    case KeyEvent.VK_C -> {
-                        var str = buf.toString();
-                        var sel = new StringSelection(str);
-                        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
-                        LOG.info("Copied %s buffer to clipboard: [%s]", name, str);
-                    }
-                    case KeyEvent.VK_X -> {
-                        var str = buf.toString();
-                        var sel = new StringSelection(str);
-                        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
-                        fastClear();
-                        LOG.info("Cut %s buffer to clipboard: [%s]", name, str);
-                    }
-                    case KeyEvent.VK_V -> {
-                        var contents = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(this);
-                        if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-                            try (var r = DataFlavor.stringFlavor.getReaderForText(contents)) {
-                                try (var br = new BufferedReader(r)) {
-                                    var str = br.lines().collect(Collectors.joining("\n"));
-                                    if (inputAcceptList.matcher(str).find()) {
-                                        set(str);
-                                        LOG.info("Pasted %s buffer from clipboard: [%s]", name, str);
+        switch (keystroke.getID()) {
+            case KeyEvent.KEY_TYPED: {
+                fastAppend(keystroke.getKeyChar());
+            }
+            case KeyEvent.KEY_PRESSED: {
+                switch (keystroke.getModifiersEx()) {
+                    case KeyEvent.CTRL_DOWN_MASK, KeyEvent.META_DOWN_MASK -> {
+                        switch (keystroke.getKeyCode()) {
+                            case KeyEvent.VK_C -> {
+                                var str = buf.toString();
+                                var sel = new StringSelection(str);
+                                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+                                LOG.info("Copied %s buffer to clipboard: [%s]", name, str);
+                            }
+                            case KeyEvent.VK_X -> {
+                                var str = buf.toString();
+                                var sel = new StringSelection(str);
+                                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+                                fastClear();
+                                LOG.info("Cut %s buffer to clipboard: [%s]", name, str);
+                            }
+                            case KeyEvent.VK_V -> {
+                                var contents = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(this);
+                                if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                                    try (var r = DataFlavor.stringFlavor.getReaderForText(contents)) {
+                                        try (var br = new BufferedReader(r)) {
+                                            var str = br.lines().collect(Collectors.joining("\n"));
+                                            if (inputAcceptList.matcher(str).find()) {
+                                                set(str);
+                                                LOG.info("Pasted %s buffer from clipboard: [%s]", name, str);
+                                            }
+                                        }
+                                    } catch (UnsupportedFlavorException | IOException ex) {
+                                        LOG.error(ex, "Failed to paste %s input from clipboard", name);
                                     }
                                 }
-                            } catch (UnsupportedFlavorException | IOException ex) {
-                                LOG.error(ex, "Failed to paste %s input from clipboard", name);
                             }
+                            case KeyEvent.VK_BACK_SPACE -> fastClear();
                         }
                     }
-                    case KeyEvent.VK_BACK_SPACE -> fastClear();
-                }
-            }
-            case 0 -> {
-                switch (keystroke.getKeyCode()) {
-                    case KeyEvent.VK_ESCAPE -> escapeCallback.accept(this);
-                    case KeyEvent.VK_ENTER -> {
-                        var input = buf.toString().strip();
-                        var matcher = inputAcceptList.matcher(input);
-                        if (!matcher.find()) {
-                            LOG.warn("Input doesn't match %s regex %s: [%s]",
-                                    name, inputAcceptList.pattern(), input);
-                            rejectCallback.accept(this, buf.toString());
-                            return;
+                    case 0 -> {
+                        switch (keystroke.getKeyCode()) {
+                            case KeyEvent.VK_ESCAPE -> escapeCallback.accept(this);
+                            case KeyEvent.VK_ENTER -> {
+                                var input = buf.toString().strip();
+                                var matcher = inputAcceptList.matcher(input);
+                                if (!matcher.find()) {
+                                    LOG.warn("Input doesn't match %s regex %s: [%s]",
+                                            name, inputAcceptList.pattern(), input);
+                                    rejectCallback.accept(this, buf.toString());
+                                    return;
+                                }
+                                LOG.info("Input matches %s regex %s: [%s]", name, inputAcceptList.pattern(), input);
+                                acceptCallback.accept(this, matcher);
+                            }
+                            case KeyEvent.VK_BACK_SPACE -> fastDeleteLast();
                         }
-                        LOG.info("Input matches %s regex %s: [%s]", name, inputAcceptList.pattern(), input);
-                        acceptCallback.accept(this, matcher);
                     }
-                    case KeyEvent.VK_BACK_SPACE -> fastDeleteLast();
-                    default -> fastAppend(getActualChar(keystroke));
                 }
             }
-            case KeyEvent.SHIFT_DOWN_MASK -> fastAppend(getActualChar(keystroke));
         }
-    }
-
-    private char getActualChar(KeyEvent keystroke) {
-        char c = (char) keystroke.getKeyCode();
-        // CAPS SHIFT UPPER
-        // 0    0     0
-        // 0    1     1
-        // 1    0     1
-        // 1    1     0
-        boolean shift = keystroke.isShiftDown();
-        boolean caps = Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_CAPS_LOCK);
-        boolean upper = shift ^ caps;
-        return upper ? Character.toUpperCase(c) : Character.toLowerCase(c);
     }
 
     @Override

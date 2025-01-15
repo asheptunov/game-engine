@@ -1,6 +1,6 @@
 package rendering;
 
-import misc.monads.Either;
+import misc.monads.Result;
 
 import java.nio.file.Path;
 
@@ -9,7 +9,7 @@ public interface RasterRepository {
 
     void delete(Path path);
 
-    Either<Raster, Exception> load(Path path);
+    Result<Raster, Exception> load(Path path);
 
-    Either<Void, Exception> save(Path path, Raster raster);
+    Result<Void, Exception> save(Path path, Raster raster);
 }

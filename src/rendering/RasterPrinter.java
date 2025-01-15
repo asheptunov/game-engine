@@ -8,7 +8,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Optional;
 
 public class RasterPrinter implements Printer {
     private static final Logger                 LOG         = LogManager.instance().getThis();
@@ -21,6 +21,7 @@ public class RasterPrinter implements Printer {
         for (char c = '0'; c <= '9'; ++c) {
             FONT_FS_MAP.put(c, Character.toString(c));
         }
+        FONT_FS_MAP.put('\0', "nil");
         FONT_FS_MAP.put('.', "dot");
         FONT_FS_MAP.put('/', "slash");
         FONT_FS_MAP.put(' ', "space");
@@ -32,11 +33,13 @@ public class RasterPrinter implements Printer {
     private final Painter                painter;
     // TODO bezier fonts
     private final Map<Character, Raster> font;
+    private final Raster                 nil;
     private final int                    spacing;
 
-    private RasterPrinter(Raster raster, Map<Character, Raster> font, int spacing) {
+    private RasterPrinter(Raster raster, Map<Character, Raster> font, Raster nil, int spacing) {
         this.painter = new RasterPainter(raster);
         this.font = font;
+        this.nil = nil;
         this.spacing = spacing;
     }
 
@@ -109,7 +112,7 @@ public class RasterPrinter implements Printer {
                 throw new IllegalArgumentException("dimensions");
             }
             var font = loadFont();
-            return new RasterPrinter(raster, font, spacing);
+            return new RasterPrinter(raster, font, font.get('\0'), spacing);
         }
 
         private Map<Character, Raster> loadFont() {
@@ -122,37 +125,26 @@ public class RasterPrinter implements Printer {
             if (!fontDir.isDirectory()) {
                 throw new IllegalArgumentException("Font path is not a directory: " + fontPath);
             }
-            var nil = RasterFactory.create(baseWidth, baseHeight);
             FONT_FS_MAP.forEach((c, filename) -> {
                 var assetPath = fontPath.resolve("standard").resolve(filename);
                 var loadResult = repository.load(assetPath);
-                var replace = new AtomicBoolean(false);
-                loadResult.ifRight(ex -> {
-                    LOG.warn(ex, "Failed to read asset file for char '%c': %s", c, filename);
-                    replace.set(true);
-                });
-                loadResult.ifLeft(asset -> {
-                    if (asset.width() != baseWidth) {
-                        LOG.error("Font has incorrect width %d for char '%c' (baseWidth=%d)",
-                                asset.width(), c, baseWidth);
-                        replace.set(true);
-                    }
-                    if (asset.height() != baseHeight) {
-                        LOG.error("Font has incorrect height %d for char '%c' (baseHeight=%d)",
-                                asset.height(), c, baseHeight);
-                        replace.set(true);
-                    }
-                });
-                Raster asset;
-                if (replace.get()) {
-                    LOG.warn("Replacing asset for '%c' with nil asset", c);
-                    asset = nil;
-                } else {
-                    LOG.debug("Loaded asset for '%c' from %s", c, filename);
-                    asset = loadResult.getLeft();
-                }
-                res.put(c, asset);
+                loadResult
+                        .ifFailure(ex -> LOG.warn(ex, "Failed to read asset file for char '%c': %s", c, filename))
+                        .mapFailure(Exception::getMessage)
+                        .filter(asset -> asset.width() == baseWidth,
+                                asset -> "Font has incorrect width %d for char '%c' (baseWidth=%d)".formatted(
+                                        asset.width(), c, baseWidth))
+                        .filter(asset -> asset.height() == baseHeight,
+                                asset -> "Font has incorrect height %d for char '%c' (baseHeight=%d)".formatted(
+                                        asset.height(), c, baseHeight))
+                        .ifFailure(LOG::warn)
+                        .ifSuccess(asset -> {
+                            LOG.debug("Loaded asset for '%c' from %s", c, filename);
+                            res.put(c, asset);
+                        });
             });
+            // nil must be loadable (to render missing textures), but can be overridden
+            res.putIfAbsent('\0', RasterFactory.create(baseWidth, baseHeight));
             var end = clock.instant();
             LOG.info("Loaded font %s in %s", fontPath, Duration.between(start, end));
             return res;
@@ -161,10 +153,7 @@ public class RasterPrinter implements Printer {
 
     @Override
     public void print(char c, int x, int y, int size) {
-        if (!font.containsKey(c)) {
-            throw new IllegalArgumentException("No assets for char '" + c + "'");
-        }
-        var asset = font.get(c);
+        var asset = Optional.ofNullable(font.get(c)).orElse(nil);
         var scaled = RasterFactory.scalable(asset).scale(size, size);
         painter.drawImg(x, y, scaled);
     }
