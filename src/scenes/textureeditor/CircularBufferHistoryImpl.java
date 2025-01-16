@@ -1,5 +1,7 @@
 package scenes.textureeditor;
 
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Optional;
 
 public class CircularBufferHistoryImpl<T> implements History<T> {
@@ -47,5 +49,31 @@ public class CircularBufferHistoryImpl<T> implements History<T> {
         ++cur;
         cur %= buf.length;
         return Optional.of(buf[cur]);
+    }
+
+    @Override
+    public Collection<T> getPast() {
+        var res = new LinkedList<T>();
+        int i = oldest;
+        while (i <= cur) {
+            // newest -> oldest iteration order
+            res.addFirst(buf[i]);
+            ++i;
+            i %= buf.length;
+        }
+        return res;
+    }
+
+    @Override
+    public Collection<T> getFuture() {
+        var res = new LinkedList<T>();
+        int i = cur + 1;
+        while (i <= newest) {
+            // newest -> oldest iteration order
+            res.addFirst(buf[i]);
+            ++i;
+            i %= buf.length;
+        }
+        return res;
     }
 }

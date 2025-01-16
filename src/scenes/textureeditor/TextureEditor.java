@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -39,31 +38,48 @@ import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static misc.spliterators.ChunkedSpliterator.chunk;
+import java.util.stream.Stream;
 
 // not thread safe. stateful. evil. thriving.
 public class TextureEditor implements
         Scene,
         Renderer,
         KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
-    private static final Logger  LOG                = LogManager.instance().getThis();
-    private static final State   DEFAULT_STATE      = State.BRUSH;
-    private static final int     HISTORY_SIZE       = 100;
-    private static final Pattern COLOR_PATTERN      = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{1,6})$"
+    private static final Logger  LOG                  = LogManager.instance().getThis();
+    private static final State   DEFAULT_STATE        = State.BRUSH;
+    private static final int     RASTER_HISTORY_SIZE  = 100;
+    private static final int     COMMAND_HISTORY_SIZE = 500;
+    private static final Pattern COLOR_PATTERN        = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{1,6})$"
             .formatted(Arrays.stream(Color.values())
                     .map(Color::getCmdName)
                     .collect(Collectors.joining("|"))));
-    private static final Pattern COLOR_CHAR_PATTERN = Pattern.compile("[0-9a-zA-Z]+");
-    private static final Pattern DIR_PATTERN        = Pattern.compile("[a-zA-Z0-9-_/]+");
-    private static final Pattern TX_PATTERN         = Pattern.compile("[a-zA-Z0-9-_]+\\.tx");
+    private static final Pattern COLOR_CHAR_PATTERN   = Pattern.compile("[0-9a-zA-Z]+");
+    private static final Pattern DIR_PATTERN          = Pattern.compile("[a-zA-Z0-9-_/]+");
+    private static final Pattern TX_PATTERN           = Pattern.compile("[a-zA-Z0-9-_]+\\.tx");
     // todo resize command
-    private static final Pattern CMD_PATTERN        = Pattern
+    private static final Pattern CMD_PATTERN          = Pattern
             .compile("^\\/?status$|^\\/?(cd|ls)( (%s))?$|^\\/?(load|save)( (%s))?$|^\\/?(touch|rm) (%s)$"
                     .formatted(DIR_PATTERN.pattern(), TX_PATTERN.pattern(), TX_PATTERN.pattern()));
-    private static final Pattern CMD_CHAR_PATTERN   = Pattern.compile("[ -~]+");
+    private static final Pattern CMD_CHAR_PATTERN     = Pattern.compile("[ -~]+");
     private static final BiFunction<Integer, Double, Integer>
-                                 SELECTION_PATTERN  = (i, d) -> (i / 8) % 2 == 0 ? 0 : 0xffffff;
+                                 SELECTION_PATTERN    = (i, d) -> (i / 8) % 2 == 0 ? 0 : 0xffffff;
+
+    private final RasterRepository         repo;
+    private       Path                     dirName  = Path.of("assets/fonts/test/standard");
+    private       Path                     filename = Path.of("");
+    private       CloneableRaster          texture;
+    private final Raster                   display;
+    private final Painter                  displayPainter;
+    private final Printer                  displayPrinter;
+    private final History<CloneableRaster> rasterHistory;
+    private final History<String>          commandHistory;
+    private       State                    state    = DEFAULT_STATE;
+    private final Clock                    clock;
+    private       Selection                selection;
+    private       Coordinates              boxStart;
+    private       int                      color    = Color.WHITE.getRgbValue();
+    private final TextInputBuffer          colorInputBuf;
+    private final TextInputBuffer          commandInputBuf;
 
     private enum State {
         PIXEL_SELECT,
@@ -74,51 +90,6 @@ public class TextureEditor implements
         COLOR_ENTRY,
         COMMAND_ENTRY
     }
-
-    private final RasterRepository         repo;
-    private       Path                     dirName         = Path.of("assets/fonts/test/standard");
-    private       Path                     filename        = Path.of("");
-    private       CloneableRaster          texture;
-    private final Raster                   display;
-    private final Painter                  displayPainter;
-    private final Printer                  displayPrinter;
-    private final History<CloneableRaster> history;
-    private       State                    state           = DEFAULT_STATE;
-    private final Clock                    clock;
-    private       Selection                selection;
-    private       Coordinates              boxStart;
-    private       int                      color           = Color.WHITE.getRgbValue();
-    private final TextInputBuffer          colorInputBuf   = new FilteringInputBuffer("color input",
-            COLOR_PATTERN,
-            COLOR_CHAR_PATTERN,
-            (buf, str) -> {
-                LOG.error("Invalid color code: %s", str);
-                // retain buffer on failure; give user a chance to correct it
-            },
-            (buf, matcher) -> {
-                setColor(matcher);
-                buf.clear();  // retain buffer on success; speed up editing later
-            },
-            buf -> {
-                resetState();
-                buf.set("0x%s".formatted(color));  // reset to active color on escape
-            }
-    ) {{
-        set("0x%s".formatted(color));
-    }};
-    private final TextInputBuffer          commandInputBuf = new FilteringInputBuffer("command line",
-            CMD_PATTERN,
-            CMD_CHAR_PATTERN,
-            (buf, str) -> {
-                LOG.error("Invalid command: %s", str);
-                buf.clear(); // clear buffer on failure, like in a standard terminal
-            },
-            (buf, matcher) -> {
-                parseCommand(matcher);
-                buf.clear();  // clear buffer on success, like in a standard terminal
-            },
-            buf -> resetState()  // retain buffer on escape; give user a chance to continue later
-    );
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
         this.repo = new FileSystemRasterRepository(clock);
@@ -132,8 +103,42 @@ public class TextureEditor implements
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16, 16)
                 .build();
-        this.history = new CircularBufferHistoryImpl<>(this.texture.clone(), HISTORY_SIZE);
+        this.rasterHistory = new CircularBufferHistoryImpl<>(this.texture.clone(), RASTER_HISTORY_SIZE);
+        this.commandHistory = new CircularBufferHistoryImpl<>("", COMMAND_HISTORY_SIZE);
         this.clock = clock;
+        this.colorInputBuf = new FilteringInputBuffer("color input",
+                COLOR_PATTERN,
+                COLOR_CHAR_PATTERN,
+                (buf, str) -> {
+                    LOG.error("Invalid color code: %s", str);
+                    // retain buffer on failure; give user a chance to correct it
+                },
+                (buf, matcher) -> {
+                    setColor(matcher);
+                    buf.clear();  // retain buffer on success; speed up editing later
+                },
+                buf -> {
+                    resetState();
+                    buf.set("0x%s".formatted(color));  // reset to active color on escape
+                }
+        ) {{
+            set("0x%s".formatted(color));
+        }};
+        this.commandInputBuf = new FilteringInputBuffer("command line",
+                CMD_PATTERN,
+                CMD_CHAR_PATTERN,
+                (buf, str) -> {
+                    commandHistory.record(str);
+                    LOG.error("Invalid command: %s", str);
+                    buf.clear(); // clear buffer on failure, like in a standard terminal
+                },
+                (buf, matcher) -> {
+                    commandHistory.record(matcher.group());
+                    parseCommand(matcher);
+                    buf.clear();  // clear buffer on success, like in a standard terminal
+                },
+                buf -> resetState()  // retain buffer on escape; give user a chance to continue later
+        );
     }
 
     @Override
@@ -385,19 +390,59 @@ public class TextureEditor implements
     private void renderConsole() {
         int fontSize = 24;
         int maxLineWidth = this.display.width() / fontSize;
-        var buffer = commandInputBuf.get();
-        var lines = chunk(buffer.chars().boxed().iterator(), maxLineWidth, ArrayList::new)
-                .stream()
-                .map(line -> line.stream()
-                        .map(i -> (Character) (char) (int) i)
-                        .collect(StringBuilder::new, (sb, c) -> sb.append((char) c), StringBuilder::append)
-                        .toString())
-                .toList();
-        int i = 0;
+
+        // newest -> oldest
+        var lines = Stream.concat(Stream.of(commandInputBuf.get()), commandHistory.getPast().stream()).toList();
+        int x = 0;
+        int y = display.height() - fontSize;
         for (var line : lines) {
-            displayPrinter.print(line, 0, display.height() - ((lines.size() - i) * fontSize), fontSize);
-            i++;
+            var linesWithoutNewlines = line.split("\n", -1);  // apply newlines
+            for (var lineWithoutNewlines : linesWithoutNewlines) {
+                var lineWithoutCarriageReturns = renderCarriageReturns(lineWithoutNewlines);
+                var chars = lineWithoutCarriageReturns.toCharArray();
+                int n = chars.length;
+                if (n == 0) {  // empty line (edge case)
+                    y -= fontSize;
+                    continue;
+                }
+                int rem = n % maxLineWidth;
+                var sb = new StringBuilder();
+                for (int i = n - rem; i < n; ++i) {  // print trailing line
+                    sb.append(chars[i]);
+                }
+                if (!sb.isEmpty()) {
+                    displayPrinter.print(sb.toString(), x, y, fontSize);
+                    y -= fontSize;
+                    sb.setLength(0);
+                }
+                for (int i = n - rem - maxLineWidth; i >= 0; i -= maxLineWidth) {  // print wrapped lines in reverse
+                    for (int j = i; j < i + maxLineWidth; ++j) {
+                        sb.append(chars[j]);
+                    }
+                    displayPrinter.print(sb.toString(), x, y, fontSize);
+                    y -= fontSize;
+                    sb.setLength(0);
+                }
+            }
         }
+    }
+
+    private String renderCarriageReturns(String lineWithoutNewlines) {
+        var sb = new StringBuilder();
+        int i = 0;
+        for (char c : lineWithoutNewlines.toCharArray()) {  // render carriage returns
+            if (c == '\r') {
+                i = 0;
+            } else {
+                if (i == sb.length()) {
+                    sb.append(c);
+                } else {
+                    sb.setCharAt(i, c);
+                }
+                ++i;
+            }
+        }
+        return sb.toString();
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -535,11 +580,11 @@ public class TextureEditor implements
     }
 
     private void saveToHistory() {
-        history.record(texture.clone());
+        rasterHistory.record(texture.clone());
     }
 
     private void undo() {
-        var prev = history.goBack();
+        var prev = rasterHistory.goBack();
         if (prev.isPresent()) {
             texture = prev.get().clone();
             LOG.info("Undid last action");
@@ -549,7 +594,7 @@ public class TextureEditor implements
     }
 
     private void redo() {
-        var next = history.goForward();
+        var next = rasterHistory.goForward();
         if (next.isPresent()) {
             texture = next.get().clone();
             LOG.info("Redid last undone action");
