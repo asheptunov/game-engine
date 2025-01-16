@@ -81,23 +81,29 @@ public class RasterPainter implements Painter {
     }
 
     @Override
-    public void drawImg(int x, int y, Raster imgRaster) {
-        int i = 3 * (y * raster.width() + x);
-        int imgI = 0;
-        var pixels = raster.pixels();
+    public void drawImg(final int x, final int y, Raster imgRaster) {
+        int imgMinX = x < 0 ? -x : 0;
+        int imgMinY = y < 0 ? -y : 0;
+        int imgMaxX = imgRaster.width() - Math.max(0, x + imgRaster.width() - this.raster.width());
+        int imgMaxY = imgRaster.height() - Math.max(0, y + imgRaster.height() - this.raster.height());
+        int imgVisibleWidth = imgMaxX - imgMinX;
+        int myStride = 3 * (this.raster.width() - imgVisibleWidth);
+        int imgStride = 3 * (imgRaster.width() - imgVisibleWidth);
+        int myI = 3 * (Math.max(0, y) * this.raster.width() + Math.max(0, x));
+        int imgI = 3 * (imgMinY * imgRaster.width() + imgMinX);
+        var pixels = this.raster.pixels();
         var imgPixels = imgRaster.pixels();
-        for (int imgR = 0; imgR < imgRaster.height(); ++imgR) {
-            for (int imgC = 0; imgC < imgRaster.width(); ++imgC) {
-                pixels[i++] = imgPixels[imgI++];
-                pixels[i++] = imgPixels[imgI++];
-                pixels[i++] = imgPixels[imgI++];
+        for (int imgY = imgMinY; imgY < imgMaxY; ++imgY) {
+            for (int imgX = imgMinX; imgX < imgMaxX; ++imgX) {
+                if (imgRaster.width() == 30 && imgI >imgPixels.length) {
+                    throw new RuntimeException();
+                }
+                pixels[myI++] = imgPixels[imgI++];
+                pixels[myI++] = imgPixels[imgI++];
+                pixels[myI++] = imgPixels[imgI++];
             }
-            i -= imgRaster.width();
-            i -= imgRaster.width();
-            i -= imgRaster.width();
-            i += raster.width();
-            i += raster.width();
-            i += raster.width();
+            myI += myStride;
+            imgI += imgStride;
         }
     }
 

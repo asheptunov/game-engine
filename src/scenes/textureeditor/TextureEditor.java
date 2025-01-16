@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -38,6 +39,8 @@ import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static misc.spliterators.ChunkedSpliterator.chunk;
 
 // not thread safe. stateful. evil. thriving.
 public class TextureEditor implements
@@ -56,7 +59,7 @@ public class TextureEditor implements
     private static final Pattern TX_PATTERN         = Pattern.compile("[a-zA-Z0-9-_]+\\.tx");
     // todo resize command
     private static final Pattern CMD_PATTERN        = Pattern
-            .compile("^status$|^(cd|ls)( (%s))?$|^(load|save)( (%s))?$|^(touch|rm) (%s)$"
+            .compile("^\\/?status$|^\\/?(cd|ls)( (%s))?$|^\\/?(load|save)( (%s))?$|^\\/?(touch|rm) (%s)$"
                     .formatted(DIR_PATTERN.pattern(), TX_PATTERN.pattern(), TX_PATTERN.pattern()));
     private static final Pattern CMD_CHAR_PATTERN   = Pattern.compile("[ -~]+");
     private static final BiFunction<Integer, Double, Integer>
@@ -380,7 +383,21 @@ public class TextureEditor implements
     }
 
     private void renderConsole() {
-        displayPrinter.print(commandInputBuf.get(), 0, display.height() - 32, 32);
+        int fontSize = 24;
+        int maxLineWidth = this.display.width() / fontSize;
+        var buffer = commandInputBuf.get();
+        var lines = chunk(buffer.chars().boxed().iterator(), maxLineWidth, ArrayList::new)
+                .stream()
+                .map(line -> line.stream()
+                        .map(i -> (Character) (char) (int) i)
+                        .collect(StringBuilder::new, (sb, c) -> sb.append((char) c), StringBuilder::append)
+                        .toString())
+                .toList();
+        int i = 0;
+        for (var line : lines) {
+            displayPrinter.print(line, 0, display.height() - ((lines.size() - i) * fontSize), fontSize);
+            i++;
+        }
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -627,6 +644,9 @@ public class TextureEditor implements
 
     private void parseCommand(Matcher matcher) {
         var command = matcher.group();
+        if (command.startsWith("/")) {
+            command = command.substring(1);
+        }
         // todo actually implement these with on-screen stuff
         if (command.startsWith("status")) {
             LOG.info("Working dir: %s, open file: %s, width: %d, height: %s, color: 0x%x%s",

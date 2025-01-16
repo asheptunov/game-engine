@@ -12,23 +12,49 @@ import java.util.Optional;
 
 public class RasterPrinter implements Printer {
     private static final Logger                 LOG         = LogManager.instance().getThis();
-    private static final Map<Character, String> FONT_FS_MAP = new HashMap<>();
-
-    static {
+    private static final Map<Character, String> FONT_FS_MAP = new HashMap<>() {{
         for (char c = 'a'; c <= 'z'; ++c) {
-            FONT_FS_MAP.put(c, Character.toString(c));
+            put(c, Character.toString(c));
         }
         for (char c = '0'; c <= '9'; ++c) {
-            FONT_FS_MAP.put(c, Character.toString(c));
+            put(c, Character.toString(c));
         }
-        FONT_FS_MAP.put('\0', "nil");
-        FONT_FS_MAP.put('.', "dot");
-        FONT_FS_MAP.put('/', "slash");
-        FONT_FS_MAP.put(' ', "space");
-        FONT_FS_MAP.put('-', "hyphen");
-        FONT_FS_MAP.put('_', "underscore");
-        FONT_FS_MAP.forEach((c, filename) -> FONT_FS_MAP.put(c, filename + ".tx"));
-    }
+        put('\0', "nil");
+        put(' ', "space");
+        put('!', "bang");
+        put('"', "quotation");
+        put('#', "hash");
+        put('$', "dollar");
+        put('%', "percent");
+        put('&', "ampersand");
+        put('\'', "apostrophe");
+        put('(', "left_paren");
+        put(')', "right_paren");
+        put('*', "star");
+        put('+', "plus");
+        put(',', "comma");
+        put('-', "hyphen");
+        put('.', "dot");
+        put('/', "slash");
+        put(':', "colon");
+        put(';', "semicolon");
+        put('<', "less_than");
+        put('=', "equal");
+        put('>', "greater_than");
+        put('?', "question");
+        put('@', "at");
+        put('[', "left_square_bracket");
+        put('\\', "backslash");
+        put(']', "right_square_bracket");
+        put('^', "caret");
+        put('_', "underscore");
+        put('`', "grave");
+        put('{', "left_curly_brace");
+        put('|', "pipe");
+        put('}', "right_curly_brace");
+        put('~', "tilde");
+        forEach((c, filename) -> put(c, filename + ".tx"));
+    }};
 
     private final Painter                painter;
     // TODO bezier fonts
