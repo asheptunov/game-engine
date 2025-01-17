@@ -95,9 +95,6 @@ public class RasterPainter implements Painter {
         var imgPixels = imgRaster.pixels();
         for (int imgY = imgMinY; imgY < imgMaxY; ++imgY) {
             for (int imgX = imgMinX; imgX < imgMaxX; ++imgX) {
-                if (imgRaster.width() == 30 && imgI >imgPixels.length) {
-                    throw new RuntimeException();
-                }
                 pixels[myI++] = imgPixels[imgI++];
                 pixels[myI++] = imgPixels[imgI++];
                 pixels[myI++] = imgPixels[imgI++];
