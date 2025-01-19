@@ -9,8 +9,8 @@ public class PixelRaster implements ScalableRaster, CloneableRaster {
         this(other.width(), other.height(), other.pixels());
     }
 
-    PixelRaster(int width, int height) {
-        this(width, height, new int[width * height * 3]);
+    PixelRaster(int width, int height, int channels) {
+        this(width, height, new int[width * height * channels]);
     }
 
     PixelRaster(int width, int height, int[] pixels) {

@@ -4,6 +4,7 @@ import rendering.AwtViewer;
 import rendering.CompositeRenderer;
 import rendering.RasterFactory;
 import rendering.Renderer;
+import rendering.StaticRenderer;
 import scenes.Scene;
 import scenes.SceneAwareProxyBuilder;
 import scenes.textureeditor.TextureEditor;
@@ -43,7 +44,8 @@ public class Main {
                 .build();
         var renderer = new CompositeRenderer(List.of(
 //                new GradientRenderer(displayRaster, 0x0fbf2d, 0x980ecf),
-                switchingRenderer,
+                new StaticRenderer(0x32a852ff, displayRaster),
+//                switchingRenderer,
                 new AwtViewer(displayRaster, switchingListener)
         ));
         new PeriodicExecutor(FRAME_RATE, clock, renderer::render).execute();

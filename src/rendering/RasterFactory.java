@@ -3,8 +3,8 @@ package rendering;
 public final class RasterFactory {
     private RasterFactory() {}
 
-    public static Raster create(int width, int height) {
-        return new PixelRaster(width, height);
+    public static Raster create(int width, int height, int channels) {
+        return new PixelRaster(width, height, channels);
     }
 
     public static Raster create(int width, int height, int[] pixels) {
