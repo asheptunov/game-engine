@@ -80,6 +80,7 @@ public class RasterPrinter implements Printer {
         private Path             fontPath;
         private Integer          baseWidth;
         private Integer          baseHeight;
+        private RasterFilter     filter  = RasterFilter.NO_OP;
         private int              spacing = 0;
 
         private Builder() {}
@@ -113,6 +114,11 @@ public class RasterPrinter implements Printer {
             }
             this.baseWidth = baseWidth;
             this.baseHeight = baseHeight;
+            return this;
+        }
+
+        public Builder filter(RasterFilter filter) {
+            this.filter = filter;
             return this;
         }
 
@@ -170,9 +176,9 @@ public class RasterPrinter implements Printer {
                         });
             });
             // nil must be loadable (to render missing textures), but can be overridden
-            res.putIfAbsent('\0', RasterFactory.create(baseWidth, baseHeight));
-            var end = clock.instant();
-            LOG.info("Loaded font %s in %s", fontPath, Duration.between(start, end));
+            res.putIfAbsent('\0', new PixelRaster(baseWidth, baseHeight, (x, y) -> Color.BLACK.getArgb()));
+            res.replaceAll((k, v) -> filter.apply(v));
+            LOG.info("Loaded font %s in %s", fontPath, Duration.between(start, clock.instant()));
             return res;
         }
     }
@@ -180,7 +186,7 @@ public class RasterPrinter implements Printer {
     @Override
     public void print(char c, int x, int y, int size) {
         var asset = Optional.ofNullable(font.get(c)).orElse(nil);
-        var scaled = RasterFactory.scalable(asset).scale(size, size);
+        var scaled = asset.scale(size, size);
         painter.drawImg(x, y, scaled);
     }
 

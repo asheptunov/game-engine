@@ -5,3 +5,6 @@ out/
 
 ### Mac OS ###
 .DS_Store
+
+### JRE ###
+hs_err_pid*.log

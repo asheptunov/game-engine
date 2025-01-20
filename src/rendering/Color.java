@@ -14,31 +14,43 @@ public enum Color {
     BLUE("blue", 0xff);
 
     private final String cmdName;
-    private final int    rgbValue;
+    private final int    rgb;
 
-    Color(String cmdName, int rgbValue) {
+    Color(String cmdName, int rgb) {
         this.cmdName = cmdName;
-        this.rgbValue = rgbValue;
+        this.rgb = rgb;
     }
 
     private static final Map<String, Color>  CMD_NAME_INDEX  = Arrays.stream(Color.values())
             .collect(Collectors.toMap(Color::getCmdName, c -> c));
     private static final Map<Integer, Color> RGB_VALUE_INDEX = Arrays.stream(Color.values())
-            .collect(Collectors.toMap(Color::getRgbValue, c -> c));
+            .collect(Collectors.toMap(Color::getRgb, c -> c));
 
     public static Optional<Color> fromCmdName(String cmdName) {
         return Optional.of(CMD_NAME_INDEX.get(cmdName.toLowerCase(Locale.ROOT)));
     }
 
-    public static Optional<Color> fromRgbValue(int rgbValue) {
-        return Optional.of(RGB_VALUE_INDEX.get(rgbValue));
+    public static Optional<Color> fromRgb(int rgb) {
+        return Optional.of(RGB_VALUE_INDEX.get(rgb));
     }
 
     public String getCmdName() {
         return cmdName;
     }
 
-    public int getRgbValue() {
-        return rgbValue;
+    public int getRgb() {
+        return rgb;
+    }
+
+    public int getArgb() {
+        return getArgbAtOpacity((byte) 0xff);
+    }
+
+    public int getArgbAtOpacity(double alpha) {
+        return getArgbAtOpacity((byte) Math.max(0, Math.min(1, alpha * 0xff)));
+    }
+
+    public int getArgbAtOpacity(byte alpha) {
+        return (alpha << 24) | (rgb & 0xffffff);
     }
 }

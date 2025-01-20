@@ -5,8 +5,19 @@ public interface Raster {
 
     int height();
 
-    // should this return a native AWT INT_RGB raster? makes everything simpler but annoying if you need to convert
-    int[] pixels();
+    int[] rgb();
 
-    void setPixel(int x, int y, int color);
+    byte[] alpha();
+
+    byte[] red();
+
+    byte[] green();
+
+    byte[] blue();
+
+    void setPixel(int x, int y, int argb);
+
+    Raster scale(int width, int height);
+
+    Raster clone();
 }

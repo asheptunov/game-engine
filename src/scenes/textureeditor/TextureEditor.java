@@ -3,13 +3,13 @@ package scenes.textureeditor;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
-import rendering.CloneableRaster;
+import rendering.ChromaKey;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
 import rendering.Painter;
+import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Raster;
-import rendering.RasterFactory;
 import rendering.RasterPainter;
 import rendering.RasterPrinter;
 import rendering.RasterRepository;
@@ -49,7 +49,7 @@ public class TextureEditor implements
     private static final State   DEFAULT_STATE        = State.BRUSH;
     private static final int     RASTER_HISTORY_SIZE  = 100;
     private static final int     COMMAND_HISTORY_SIZE = 500;
-    private static final Pattern COLOR_PATTERN        = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{1,6})$"
+    private static final Pattern COLOR_PATTERN        = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{6})$"
             .formatted(Arrays.stream(Color.values())
                     .map(Color::getCmdName)
                     .collect(Collectors.joining("|"))));
@@ -64,22 +64,22 @@ public class TextureEditor implements
     private static final BiFunction<Integer, Double, Integer>
                                  SELECTION_PATTERN    = (i, d) -> (i / 8) % 2 == 0 ? 0 : 0xffffff;
 
-    private final RasterRepository         repo;
-    private       Path                     dirName  = Path.of("assets/fonts/test/standard");
-    private       Path                     filename = Path.of("");
-    private       CloneableRaster          texture;
-    private final Raster                   display;
-    private final Painter                  displayPainter;
-    private final Printer                  displayPrinter;
-    private final History<CloneableRaster> rasterHistory;
-    private final History<String>          commandHistory;
-    private       State                    state    = DEFAULT_STATE;
-    private final Clock                    clock;
-    private       Selection                selection;
-    private       Coordinates              boxStart;
-    private       int                      color    = Color.WHITE.getRgbValue();
-    private final TextInputBuffer          colorInputBuf;
-    private final TextInputBuffer          commandInputBuf;
+    private final RasterRepository repo;
+    private       Path             dirName  = Path.of("assets/fonts/test/standard");
+    private       Path             filename = Path.of("");
+    private       Raster           texture;
+    private final Raster           display;
+    private final Painter          displayPainter;
+    private final Printer          displayPrinter;
+    private final History<Raster>  rasterHistory;
+    private final History<String>  commandHistory;
+    private       State            state    = DEFAULT_STATE;
+    private final Clock            clock;
+    private       Selection        selection;
+    private       Coordinates      boxStart;
+    private       int              color    = Color.WHITE.getArgb();
+    private final TextInputBuffer  colorInputBuf;
+    private final TextInputBuffer  commandInputBuf;
 
     private enum State {
         PIXEL_SELECT,
@@ -93,7 +93,7 @@ public class TextureEditor implements
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
         this.repo = new FileSystemRasterRepository(clock);
-        this.texture = RasterFactory.cloneable(RasterFactory.create(width, height));
+        this.texture = new PixelRaster(width, height, (x, y) -> Color.BLACK.getArgb());
         this.display = display;
         this.displayPainter = new RasterPainter(display);
         this.displayPrinter = RasterPrinter.builder()
@@ -102,6 +102,7 @@ public class TextureEditor implements
                 .clock(clock)
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16, 16)
+                .filter(new ChromaKey(Color.BLACK.getRgb()))
                 .build();
         this.rasterHistory = new CircularBufferHistoryImpl<>(this.texture.clone(), RASTER_HISTORY_SIZE);
         this.commandHistory = new CircularBufferHistoryImpl<>("", COMMAND_HISTORY_SIZE);
@@ -354,7 +355,7 @@ public class TextureEditor implements
     }
 
     private void renderTexture() {
-        var scaledTexture = RasterFactory.scalable(texture).scale(display.width(), display.height());
+        var scaledTexture = texture.scale(display.width(), display.height());
         displayPainter.drawImg(0, 0, scaledTexture);
     }
 
@@ -570,9 +571,8 @@ public class TextureEditor implements
         return repo.save(dirName.resolve(filename), texture);
     }
 
-    private Result<CloneableRaster, Exception> loadFromFile(Path filename) {
+    private Result<Raster, Exception> loadFromFile(Path filename) {
         return repo.load(dirName.resolve(filename))
-                .mapSuccess(RasterFactory::cloneable)
                 .ifSuccess(raster -> {
                     this.texture = raster;
                     saveToHistory();
@@ -681,8 +681,8 @@ public class TextureEditor implements
     private void setColor(Matcher matcher) {
         this.color = Optional.ofNullable(matcher.group("cmd"))
                 .flatMap(Color::fromCmdName)
-                .map(Color::getRgbValue)
-                .orElseGet(() -> Integer.parseInt(matcher.group("hex"), 16));
+                .map(Color::getArgb)
+                .orElseGet(() -> 0xff000000 | (Integer.parseInt(matcher.group("hex"), 16) & 0xffffff));
         LOG.info("Setting color to 0x%x", color);
         resetState();
     }
@@ -697,7 +697,7 @@ public class TextureEditor implements
             LOG.info("Working dir: %s, open file: %s, width: %d, height: %s, color: 0x%x%s",
                     dirName, filename,
                     texture.width(), texture.height(),
-                    color, Color.fromRgbValue(color).map(c -> " (" + c.getCmdName() + ")").orElse(""));
+                    color, Color.fromRgb(color).map(c -> " (" + c.getCmdName() + ")").orElse(""));
         } else if (command.startsWith("cd") || command.startsWith("ls")) {
             var root = Path.of(".");
             var targetDirName = Optional.ofNullable(matcher.group(3))
@@ -788,7 +788,8 @@ public class TextureEditor implements
             var targetFilename = Path.of(matcher.group(8));
             targetFilename = this.dirName.resolve(targetFilename);
             switch (matcher.group(7)) {
-                case "touch" -> repo.create(targetFilename, RasterFactory.create(texture.width(), texture.height()));
+                case "touch" -> repo.create(targetFilename,
+                        new PixelRaster(texture.width(), texture.height(), (x, y) -> Color.BLACK.getArgb()));
                 case "rm" -> repo.delete(targetFilename);
             }
         } else {

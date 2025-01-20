@@ -1,93 +1,127 @@
 package rendering;
 
-public class PixelRaster implements ScalableRaster, CloneableRaster {
-    private final int   width;
-    private final int   height;
-    private final int[] pixels;
+import java.util.function.BiFunction;
 
-    PixelRaster(Raster other) {
-        this(other.width(), other.height(), other.pixels());
+public class PixelRaster implements Raster {
+    private final int    w;
+    private final int    h;
+    private final byte[] a;
+    private final byte[] r;
+    private final byte[] g;
+    private final byte[] b;
+
+    public PixelRaster(Raster other) {
+        this(other.width(), other.height(), other.alpha(), other.red(), other.green(), other.blue());
     }
 
-    PixelRaster(int width, int height) {
-        this(width, height, new int[width * height * 3]);
+    public PixelRaster(int width, int height, BiFunction<Integer, Integer, Integer> color) {
+        this(width, height, initBytes(width, height, color));
     }
 
-    PixelRaster(int width, int height, int[] pixels) {
-        this.width = width;
-        this.height = height;
-        this.pixels = pixels;
+    public PixelRaster(int width, int height, byte[][] bytes) {
+        this(width, height, bytes[0], bytes[1], bytes[2], bytes[3]);
+    }
+
+    public PixelRaster(int width, int height, byte[] alpha, byte[] red, byte[] green, byte[] blue) {
+        this.w = width;
+        this.h = height;
+        this.a = alpha;
+        this.r = red;
+        this.g = green;
+        this.b = blue;
     }
 
     @Override
     public int width() {
-        return width;
+        return w;
     }
 
     @Override
     public int height() {
-        return height;
+        return h;
     }
 
     @Override
-    public int[] pixels() {
-        return pixels;
-    }
-
-    @Override
-    public void setPixel(int x, int y, int color) {
-//        boundsCheckPixel(x, y);
-        setPixelFast(x, y, width, color);
-    }
-
-    // TODO add this back later but with a decorator
-//    private void boundsCheckPixel(int x, int y) {
-//        if (x < 0 || x > this.width) {
-//            throw new IndexOutOfBoundsException(x);
-//        }
-//        if (y < 0 || y > this.height) {
-//            throw new IndexOutOfBoundsException(y);
-//        }
-//    }
-
-    private void setPixelFast(int x, int y, int width, int color) {
-        int i = 3 * (y * width + x);
-        pixels[i] = (color & 0xff0000) >> 16;
-        pixels[i + 1] = (color & 0xff00) >> 8;
-        pixels[i + 2] = color & 0xff;
-    }
-
-    @Override
-    public PixelRaster scale(int toWidth, int toHeight) {
-        if (toWidth < 1 || toHeight < 1) {
-            throw new IllegalArgumentException();
-        }
-        double xFactor = 1. * toWidth / width;
-        double yFactor = 1. * toHeight / height;
-        var res = new PixelRaster(toWidth, toHeight);
-        var to = res.pixels;
-        // TODO there are faster but less accurate ways of doing this (get rid of the mul / div)
-        // TODO this is linear sampling. can also use alternatives (e.g. averaging) to get smoother results.
-        for (int toR = 0; toR < toHeight; ++toR) {
-            for (int toC = 0; toC < toWidth; ++toC) {
-                // "from" indexes into raster being scaled ("this")
-                int fromR = (int) (toR / yFactor);
-                int fromC = (int) (toC / xFactor);
-                int fromI = 3 * (fromR * width + fromC);
-                // "to" indexes into target raster
-                int toI = 3 * (toR * toWidth + toC);
-                to[toI++] = pixels[fromI++];
-                to[toI++] = pixels[fromI++];
-                to[toI] = pixels[fromI];
-            }
+    public int[] rgb() {
+        int n = w * h;
+        var res = new int[n * 3];
+        int resI = 0;
+        for (int i = 0; i < n; ++i) {
+            var alpha = ((int) a[i] & 0xff) / 255.;
+            res[resI++] = (byte) (alpha * r[i]);
+            res[resI++] = (byte) (alpha * g[i]);
+            res[resI++] = (byte) (alpha * b[i]);
         }
         return res;
     }
 
     @Override
+    public byte[] alpha() {
+        return a;
+    }
+
+    @Override
+    public byte[] red() {
+        return r;
+    }
+
+    @Override
+    public byte[] green() {
+        return g;
+    }
+
+    @Override
+    public byte[] blue() {
+        return b;
+    }
+
+    @Override
+    public void setPixel(int x, int y, int color) {
+        int i = y * w + x;
+        a[i] = (byte) (color >> 24);
+        r[i] = (byte) (color >> 16);
+        g[i] = (byte) (color >> 8);
+        b[i] = (byte) color;
+    }
+
+    @Override
+    public PixelRaster scale(int w, int h) {
+        if (w < 1 || h < 1) {
+            throw new IllegalArgumentException();
+        }
+        double xScale = 1. * this.w / w;
+        double yScale = 1. * this.h / h;
+        return new PixelRaster(w, h, (x, y) -> {
+            int i = ((int) (yScale * y) * this.w) + (int) (xScale * x);
+            return (((int) a[i] & 0xff) << 24) | (((int) r[i] & 0xff) << 16) | (((int) g[i] & 0xff) << 8) | ((int) b[i] & 0xff);
+        });
+    }
+
+    @Override
     public PixelRaster clone() {
-        var pixelsClone = new int[pixels.length];
-        System.arraycopy(pixels, 0, pixelsClone, 0, pixels.length);
-        return new PixelRaster(width, height, pixelsClone);
+        return new PixelRaster(w, h, cloneBytes(a), cloneBytes(r), cloneBytes(g), cloneBytes(b));
+    }
+
+    private static byte[][] initBytes(int width, int height, BiFunction<Integer, Integer, Integer> color) {
+        var res = new byte[4][width * height];
+        int i = 0;
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                int c = color.apply(x, y);
+                res[0][i] = (byte) (c >> 24);  // alpha
+                res[1][i] = (byte) (c >> 16);  // red
+                res[2][i] = (byte) (c >> 8);  // green
+                res[3][i] = (byte) c;  // blue
+                ++i;
+            }
+        }
+        return res;
+    }
+
+    private static byte[] cloneBytes(byte[] bytes) {
+        int n = bytes.length;
+        var res = new byte[n];
+        System.arraycopy(bytes, 0, res, 0, n);
+        return res;
     }
 }

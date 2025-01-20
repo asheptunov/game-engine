@@ -142,12 +142,24 @@ public class FileSystemRasterRepository implements RasterRepository {
     }
 
     private void writeRaster(Raster raster, FileOutputStream fos) throws IOException {
-        // width - BE int32
-        fos.write(intToBytes(raster.width()));
-        // height - BE int32
-        fos.write(intToBytes(raster.height()));
+        int w = raster.width();
+        int h = raster.height();
+        fos.write(intToBytes(w));  // width - BE int32
+        fos.write(intToBytes(h));  // height - BE int32
         // pixel data - BE int24 array
-        fos.write(pixelsToBytes(raster.pixels()));
+        int n = w * h;
+        var buf = new byte[n * 3];
+        var r = raster.red();
+        var g = raster.green();
+        var b = raster.blue();
+        int bufI = 0;
+        for (int i = 0; i < n; ++i) {
+            var alpha = 1. * raster.alpha()[i] / 0xff;
+            buf[bufI++] = (byte) (alpha * r[i]);
+            buf[bufI++] = (byte) (alpha * g[i]);
+            buf[bufI++] = (byte) (alpha * b[i]);
+        }
+        fos.write(buf);
     }
 
     private Result<Raster, Exception> readRaster(FileInputStream fis, Path filename) {
@@ -157,19 +169,30 @@ public class FileSystemRasterRepository implements RasterRepository {
             if (4 != fis.read(intBuf)) {
                 return fail("Error reading texture width from file %s (unexpected end of buffer)", filename);
             }
-            int width = intFromBytes(intBuf);
+            int w = intFromBytes(intBuf);
             // height - BE int32
             if (4 != fis.read(intBuf)) {
                 return fail("Error reading texture height from file %s (unexpected end of buffer)", filename);
             }
-            int height = intFromBytes(intBuf);
+            int h = intFromBytes(intBuf);
             // pixel data - BE int24 array
-            var pxBuf = new byte[width * height * 3];
-            if (width * height * 3 != fis.read(pxBuf)) {
+            int n = w * h;
+            var buf = new byte[n * 3];
+            if (buf.length != fis.read(buf)) {
                 return fail("Error reading texture pixel data from file %s (unexpected end of buffer)", filename);
             }
-            int[] pixels = pixelsFromBytes(pxBuf);
-            return Result.success(RasterFactory.create(width, height, pixels));
+            var a = new byte[n];
+            var r = new byte[n];
+            var g = new byte[n];
+            var b = new byte[n];
+            int px = 0;
+            for (int i = 0; i < n; ++i) {
+                a[i] = (byte) 0xff;
+                r[i] = buf[px++];
+                g[i] = buf[px++];
+                b[i] = buf[px++];
+            }
+            return Result.success(new PixelRaster(w, h, a, r, g, b));
         } catch (IOException ex) {
             return Result.failure(ex);
         }
@@ -188,19 +211,4 @@ public class FileSystemRasterRepository implements RasterRepository {
         return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     }
 
-    private byte[] pixelsToBytes(int[] pixels) {
-        var res = new byte[pixels.length];
-        for (int i = 0; i < pixels.length; ++i) {
-            res[i] = (byte) pixels[i];
-        }
-        return res;
-    }
-
-    private int[] pixelsFromBytes(byte[] pixels) {
-        var res = new int[pixels.length];
-        for (int i = 0; i < pixels.length; ++i) {
-            res[i] = pixels[i];
-        }
-        return res;
-    }
 }

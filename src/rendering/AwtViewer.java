@@ -44,7 +44,7 @@ public class AwtViewer implements Renderer {
             LOG.debug("Render attempt %d...", i);
             do {
                 var g = bs.getDrawGraphics();
-                image.getRaster().setPixels(0, 0, raster.width(), raster.height(), raster.pixels());
+                image.getRaster().setPixels(0, 0, raster.width(), raster.height(), raster.rgb());
                 g.drawImage(image, 0, 0, null);
                 g.dispose();
             } while (bs.contentsRestored());

@@ -87,17 +87,35 @@ public class RasterPainter implements Painter {
         int imgMaxX = imgRaster.width() - Math.max(0, x + imgRaster.width() - this.raster.width());
         int imgMaxY = imgRaster.height() - Math.max(0, y + imgRaster.height() - this.raster.height());
         int imgVisibleWidth = imgMaxX - imgMinX;
-        int myStride = 3 * (this.raster.width() - imgVisibleWidth);
-        int imgStride = 3 * (imgRaster.width() - imgVisibleWidth);
-        int myI = 3 * (Math.max(0, y) * this.raster.width() + Math.max(0, x));
-        int imgI = 3 * (imgMinY * imgRaster.width() + imgMinX);
-        var pixels = this.raster.pixels();
-        var imgPixels = imgRaster.pixels();
+        int myStride = this.raster.width() - imgVisibleWidth;
+        int imgStride = imgRaster.width() - imgVisibleWidth;
+        int myI = Math.max(0, y) * this.raster.width() + Math.max(0, x);
+        int imgI = imgMinY * imgRaster.width() + imgMinX;
+        var myA = raster.alpha();
+        var myR = raster.red();
+        var myG = raster.green();
+        var myB = raster.blue();
+        var imgA = imgRaster.alpha();
+        var imgR = imgRaster.red();
+        var imgG = imgRaster.green();
+        var imgB = imgRaster.blue();
         for (int imgY = imgMinY; imgY < imgMaxY; ++imgY) {
             for (int imgX = imgMinX; imgX < imgMaxX; ++imgX) {
-                pixels[myI++] = imgPixels[imgI++];
-                pixels[myI++] = imgPixels[imgI++];
-                pixels[myI++] = imgPixels[imgI++];
+                var myAlpha = ((int) myA[myI] & 0xff) / 255.;
+                var imgAlpha = ((int) imgA[imgI] & 0xff) / 255.;
+                var imgAlphaComplement = 1 - imgAlpha;
+                var myRed = ((int) myR[myI] & 0xff) / 255.;
+                var imgRed = ((int) imgR[imgI] & 0xff) / 255.;
+                var myGreen = ((int) myG[myI] & 0xff) / 255.;
+                var imgGreen = ((int) imgG[imgI] & 0xff) / 255.;
+                var myBlue = ((int) myB[myI] & 0xff) / 255.;
+                var imgBlue = ((int) imgB[imgI] & 0xff) / 255.;
+                myA[myI] = (byte) (255. * (imgAlpha + myAlpha * imgAlphaComplement));
+                myR[myI] = (byte) (255. * (imgRed * imgAlpha + myRed * myAlpha * imgAlphaComplement));
+                myG[myI] = (byte) (255. * (imgGreen * imgAlpha + myGreen * myAlpha * imgAlphaComplement));
+                myB[myI] = (byte) (255. * (imgBlue * imgAlpha + myBlue * myAlpha * imgAlphaComplement));
+                ++myI;
+                ++imgI;
             }
             myI += myStride;
             imgI += imgStride;
