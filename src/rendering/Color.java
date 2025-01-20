@@ -41,4 +41,16 @@ public enum Color {
     public int getRgbValue() {
         return rgbValue;
     }
+
+    public int getArgbValue() {
+        return getArgbAtOpacity(0xff);
+    }
+
+    public int getArgbAtOpacity(byte opacity) {
+        return (getRgbValue() << 8) | 0xff;
+    }
+
+    public int getArgbAtOpacity(double opacity) {
+        return getArgbAtOpacity((byte) (Math.max(0, Math.min(1, opacity)) * 0xff));
+    }
 }

@@ -1,31 +1,37 @@
 package rendering;
 
 public final class RasterFactory {
-    private RasterFactory() {}
+    private final int channels;
 
-    public static Raster create(int width, int height, int channels) {
-        return new PixelRaster(width, height, channels);
+    // todo flyweight this
+    public RasterFactory(int channels) {
+        this.channels = channels;
     }
 
-    public static Raster create(int width, int height, int[] pixels) {
-        return new PixelRaster(width, height, pixels);
-    }
-
-    public static ScalableRaster scalable(Raster raster) {
-        return raster instanceof ScalableRaster sr ? sr : scalable(raster, InterpolationType.LINEAR);
-    }
-
-    public enum InterpolationType {
-        LINEAR
-    }
-
-    public static ScalableRaster scalable(Raster raster, InterpolationType type) {
-        return switch (type) {
-            case LINEAR -> new PixelRaster(raster);  // pixelRaster uses linear interpolation by default
+    public Raster create(int width, int height) {
+        return switch (channels) {
+            case 3 -> new RgbPixelRaster(width, height, this);
+            case 4 -> new ArgbPixelRaster(width, height, this);
+            default -> throw new IllegalArgumentException();
         };
     }
 
-    public static CloneableRaster cloneable(Raster raster) {
-        return raster instanceof CloneableRaster cr ? cr : new PixelRaster(raster);
+    public Raster create(int width, int height, int[] pixels) {
+        if (width * height * channels != pixels.length) {
+            throw new IllegalArgumentException();
+        }
+        return switch (channels) {
+            case 3 -> new RgbPixelRaster(width, height, pixels, this);
+            case 4 -> new ArgbPixelRaster(width, height, pixels, this);
+            default -> throw new IllegalArgumentException();
+        };
+    }
+
+    public ScalableRaster scalable(Raster raster) {
+        return (ScalableRaster) raster;
+    }
+
+    public CloneableRaster cloneable(Raster raster) {
+        return (CloneableRaster) raster;
     }
 }

@@ -15,10 +15,12 @@ import java.time.Duration;
 public class FileSystemRasterRepository implements RasterRepository {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final Clock clock;
+    private final Clock         clock;
+    private final RasterFactory rasterFactory;
 
-    public FileSystemRasterRepository(Clock clock) {
+    public FileSystemRasterRepository(Clock clock, RasterFactory rasterFactory) {
         this.clock = clock;
+        this.rasterFactory = rasterFactory;
     }
 
     @Override
@@ -147,7 +149,12 @@ public class FileSystemRasterRepository implements RasterRepository {
         // height - BE int32
         fos.write(intToBytes(raster.height()));
         // pixel data - BE int24 array
-        fos.write(pixelsToBytes(raster.pixels()));
+        int[] pixels = raster.pixels();
+        var res = new byte[pixels.length];
+        for (int i = 0; i < pixels.length; ++i) {
+            res[i] = (byte) pixels[i];
+        }
+        fos.write(res);
     }
 
     private Result<Raster, Exception> readRaster(FileInputStream fis, Path filename) {
@@ -164,12 +171,16 @@ public class FileSystemRasterRepository implements RasterRepository {
             }
             int height = intFromBytes(intBuf);
             // pixel data - BE int24 array
-            var pxBuf = new byte[width * height * 3];
-            if (width * height * 3 != fis.read(pxBuf)) {
+            var res = rasterFactory.create(width, height);
+            var pixels = res.pixels();
+            var bytes = new byte[pixels.length];
+            if (bytes.length != fis.read(bytes)) {
                 return fail("Error reading texture pixel data from file %s (unexpected end of buffer)", filename);
             }
-            int[] pixels = pixelsFromBytes(pxBuf);
-            return Result.success(RasterFactory.create(width, height, pixels));
+            for (int i = 0; i < pixels.length; ++i) {
+                pixels[i] = bytes[i];
+            }
+            return Result.success(rasterFactory.create(width, height, pixels));
         } catch (IOException ex) {
             return Result.failure(ex);
         }
@@ -186,21 +197,5 @@ public class FileSystemRasterRepository implements RasterRepository {
 
     private int intFromBytes(byte[] b) {
         return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
-    }
-
-    private byte[] pixelsToBytes(int[] pixels) {
-        var res = new byte[pixels.length];
-        for (int i = 0; i < pixels.length; ++i) {
-            res[i] = (byte) pixels[i];
-        }
-        return res;
-    }
-
-    private int[] pixelsFromBytes(byte[] pixels) {
-        var res = new int[pixels.length];
-        for (int i = 0; i < pixels.length; ++i) {
-            res[i] = pixels[i];
-        }
-        return res;
     }
 }

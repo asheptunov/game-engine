@@ -3,28 +3,12 @@ package scenes.textureeditor;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
-import rendering.CloneableRaster;
-import rendering.Color;
-import rendering.FileSystemRasterRepository;
-import rendering.Painter;
-import rendering.Printer;
-import rendering.Raster;
-import rendering.RasterFactory;
-import rendering.RasterPainter;
-import rendering.RasterPrinter;
-import rendering.RasterRepository;
-import rendering.Renderer;
+import rendering.*;
 import scenes.Scene;
 import ui.FilteringInputBuffer;
 import ui.TextInputBuffer;
 
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -65,6 +49,7 @@ public class TextureEditor implements
                                  SELECTION_PATTERN    = (i, d) -> (i / 8) % 2 == 0 ? 0 : 0xffffff;
 
     private final RasterRepository         repo;
+    private final RasterFactory            rasterFactory;
     private       Path                     dirName  = Path.of("assets/fonts/test/standard");
     private       Path                     filename = Path.of("");
     private       CloneableRaster          texture;
@@ -77,7 +62,7 @@ public class TextureEditor implements
     private final Clock                    clock;
     private       Selection                selection;
     private       Coordinates              boxStart;
-    private       int                      color    = Color.WHITE.getRgbValue();
+    private       int                      color    = Color.RED.getArgbValue();
     private final TextInputBuffer          colorInputBuf;
     private final TextInputBuffer          commandInputBuf;
 
@@ -92,17 +77,22 @@ public class TextureEditor implements
     }
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
-        this.repo = new FileSystemRasterRepository(clock);
-        this.texture = RasterFactory.cloneable(RasterFactory.create(width, height));
+        this.repo = new FileSystemRasterRepository(clock, new RasterFactory(4));
+        this.rasterFactory = display.factory();
+        this.texture = rasterFactory.cloneable(rasterFactory.create(width, height));
         this.display = display;
-        this.displayPainter = new RasterPainter(display);
-        this.displayPrinter = RasterPrinter.builder()
-                .raster(display)
-                .repository(repo)
-                .clock(clock)
-                .fontPath("assets/fonts/test")
-                .fontDimensions(16, 16)
-                .build();
+        this.displayPainter = switch (display) {
+            case RgbPixelRaster rgb -> new RgbRasterPainter(rgb);
+            case ArgbPixelRaster argb -> new ArgbRasterPainter(argb);
+            default -> throw new IllegalArgumentException(display.getClass().getName());
+        };
+        var font = new ConvertingLoader(
+                ArgbRgbConverter.INSTANCE.reversed(),
+                new RepoBasedFontLoader(clock,
+                        new FileSystemRasterRepository(clock, new RasterFactory(3)),
+                        Path.of("assets/fonts/test/standard")))
+                .load();
+        this.displayPrinter = new RasterPrinter(display, font, 0);
         this.rasterHistory = new CircularBufferHistoryImpl<>(this.texture.clone(), RASTER_HISTORY_SIZE);
         this.commandHistory = new CircularBufferHistoryImpl<>("", COMMAND_HISTORY_SIZE);
         this.clock = clock;
@@ -354,7 +344,15 @@ public class TextureEditor implements
     }
 
     private void renderTexture() {
-        var scaledTexture = RasterFactory.scalable(texture).scale(display.width(), display.height());
+        var background = rasterFactory.create(display.width(), display.height());
+        int backgroundColor = Color.WHITE.getArgbValue();
+        for (int y = 0; y < background.height(); ++y) {
+            for (int x = 0; x < background.width(); ++x) {
+                background.setPixel(x, y, backgroundColor);
+            }
+        }
+        displayPainter.drawImg(0, 0, background);
+        var scaledTexture = rasterFactory.scalable(texture).scale(display.width(), display.height());
         displayPainter.drawImg(0, 0, scaledTexture);
     }
 
@@ -567,16 +565,18 @@ public class TextureEditor implements
     }
 
     private Result<Void, Exception> saveToFile(Path filename) {
-        return repo.save(dirName.resolve(filename), texture);
+        return repo.save(dirName.resolve(filename), ArgbRgbConverter.INSTANCE.forward(texture));
     }
 
     private Result<CloneableRaster, Exception> loadFromFile(Path filename) {
         return repo.load(dirName.resolve(filename))
-                .mapSuccess(RasterFactory::cloneable)
+                .mapSuccess(rasterFactory::cloneable)
                 .ifSuccess(raster -> {
                     this.texture = raster;
                     saveToHistory();
-                });
+                })
+                .mapSuccess(ArgbRgbConverter.INSTANCE::backward)
+                .mapSuccess(rasterFactory::cloneable);
     }
 
     private void saveToHistory() {
@@ -681,7 +681,7 @@ public class TextureEditor implements
     private void setColor(Matcher matcher) {
         this.color = Optional.ofNullable(matcher.group("cmd"))
                 .flatMap(Color::fromCmdName)
-                .map(Color::getRgbValue)
+                .map(Color::getArgbValue)
                 .orElseGet(() -> Integer.parseInt(matcher.group("hex"), 16));
         LOG.info("Setting color to 0x%x", color);
         resetState();
@@ -788,7 +788,7 @@ public class TextureEditor implements
             var targetFilename = Path.of(matcher.group(8));
             targetFilename = this.dirName.resolve(targetFilename);
             switch (matcher.group(7)) {
-                case "touch" -> repo.create(targetFilename, RasterFactory.create(texture.width(), texture.height()));
+                case "touch" -> repo.create(targetFilename, rasterFactory.create(texture.width(), texture.height()));
                 case "rm" -> repo.delete(targetFilename);
             }
         } else {

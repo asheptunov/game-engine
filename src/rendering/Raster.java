@@ -9,4 +9,6 @@ public interface Raster {
     int[] pixels();
 
     void setPixel(int x, int y, int color);
+
+    RasterFactory factory();
 }

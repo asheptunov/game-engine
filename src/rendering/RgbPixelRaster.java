@@ -1,22 +1,24 @@
 package rendering;
 
-public class PixelRaster implements ScalableRaster, CloneableRaster {
-    private final int   width;
-    private final int   height;
-    private final int[] pixels;
+public class RgbPixelRaster implements ScalableRaster, CloneableRaster {
+    private final int           width;
+    private final int           height;
+    private final int[]         pixels;
+    private final RasterFactory factory;
 
-    PixelRaster(Raster other) {
-        this(other.width(), other.height(), other.pixels());
+    RgbPixelRaster(RgbPixelRaster other) {
+        this(other.width, other.height, other.pixels, other.factory);
     }
 
-    PixelRaster(int width, int height, int channels) {
-        this(width, height, new int[width * height * channels]);
+    RgbPixelRaster(int width, int height, RasterFactory factory) {
+        this(width, height, new int[width * height * 3], factory);
     }
 
-    PixelRaster(int width, int height, int[] pixels) {
+    RgbPixelRaster(int width, int height, int[] pixels, RasterFactory factory) {
         this.width = width;
         this.height = height;
         this.pixels = pixels;
+        this.factory = factory;
     }
 
     @Override
@@ -36,21 +38,6 @@ public class PixelRaster implements ScalableRaster, CloneableRaster {
 
     @Override
     public void setPixel(int x, int y, int color) {
-//        boundsCheckPixel(x, y);
-        setPixelFast(x, y, width, color);
-    }
-
-    // TODO add this back later but with a decorator
-//    private void boundsCheckPixel(int x, int y) {
-//        if (x < 0 || x > this.width) {
-//            throw new IndexOutOfBoundsException(x);
-//        }
-//        if (y < 0 || y > this.height) {
-//            throw new IndexOutOfBoundsException(y);
-//        }
-//    }
-
-    private void setPixelFast(int x, int y, int width, int color) {
         int i = 3 * (y * width + x);
         pixels[i] = (color & 0xff0000) >> 16;
         pixels[i + 1] = (color & 0xff00) >> 8;
@@ -58,13 +45,15 @@ public class PixelRaster implements ScalableRaster, CloneableRaster {
     }
 
     @Override
-    public PixelRaster scale(int toWidth, int toHeight) {
-        if (toWidth < 1 || toHeight < 1) {
-            throw new IllegalArgumentException();
-        }
+    public RasterFactory factory() {
+        return factory;
+    }
+
+    @Override
+    public RgbPixelRaster scale(int toWidth, int toHeight) {
         double xFactor = 1. * toWidth / width;
         double yFactor = 1. * toHeight / height;
-        var res = new PixelRaster(toWidth, toHeight);
+        var res = new RgbPixelRaster(toWidth, toHeight, factory);
         var to = res.pixels;
         // TODO there are faster but less accurate ways of doing this (get rid of the mul / div)
         // TODO this is linear sampling. can also use alternatives (e.g. averaging) to get smoother results.
@@ -85,9 +74,9 @@ public class PixelRaster implements ScalableRaster, CloneableRaster {
     }
 
     @Override
-    public PixelRaster clone() {
+    public RgbPixelRaster clone() {
         var pixelsClone = new int[pixels.length];
         System.arraycopy(pixels, 0, pixelsClone, 0, pixels.length);
-        return new PixelRaster(width, height, pixelsClone);
+        return new RgbPixelRaster(width, height, pixelsClone, factory);
     }
 }

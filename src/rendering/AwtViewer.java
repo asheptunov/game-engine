@@ -3,7 +3,7 @@ package rendering;
 import logging.LogManager;
 import logging.Logger;
 
-import javax.swing.JFrame;
+import javax.swing.*;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;

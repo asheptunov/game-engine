@@ -4,7 +4,6 @@ import rendering.AwtViewer;
 import rendering.CompositeRenderer;
 import rendering.RasterFactory;
 import rendering.Renderer;
-import rendering.StaticRenderer;
 import scenes.Scene;
 import scenes.SceneAwareProxyBuilder;
 import scenes.textureeditor.TextureEditor;
@@ -28,7 +27,7 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
         LOG.info("Width %d, height %d, frame rate %d hz", WIDTH, HEIGHT, FRAME_RATE);
-        var displayRaster = RasterFactory.create(WIDTH, HEIGHT);
+        var displayRaster = new RasterFactory(4).create(WIDTH, HEIGHT);
         var clock = Clock.systemUTC();
         var textureEditor = new TextureEditor(displayRaster, clock, 16, 16);
         SCENE.set(textureEditor);
@@ -44,8 +43,8 @@ public class Main {
                 .build();
         var renderer = new CompositeRenderer(List.of(
 //                new GradientRenderer(displayRaster, 0x0fbf2d, 0x980ecf),
-                new StaticRenderer(0x32a852ff, displayRaster),
-//                switchingRenderer,
+//                new StaticRenderer(0x32a852ff, displayRaster),
+                switchingRenderer,
                 new AwtViewer(displayRaster, switchingListener)
         ));
         new PeriodicExecutor(FRAME_RATE, clock, renderer::render).execute();
