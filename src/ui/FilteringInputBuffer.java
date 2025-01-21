@@ -46,6 +46,14 @@ public class FilteringInputBuffer implements TextInputBuffer {
         return buf.toString();
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    @Override
+    public Matcher matcher() {
+        var matcher = inputAcceptList.matcher(buf.toString().strip());
+        matcher.find();
+        return matcher;
+    }
+
     @Override
     public void accept(KeyEvent keystroke) {
         switch (keystroke.getID()) {
@@ -92,15 +100,14 @@ public class FilteringInputBuffer implements TextInputBuffer {
                         switch (keystroke.getKeyCode()) {
                             case KeyEvent.VK_ESCAPE -> escapeCallback.accept(this);
                             case KeyEvent.VK_ENTER -> {
-                                var input = buf.toString().strip();
-                                var matcher = inputAcceptList.matcher(input);
-                                if (!matcher.find()) {
+                                var matcher = matcher();
+                                if (!matcher.hasMatch()) {
                                     LOG.warn("Input doesn't match %s regex %s: [%s]",
-                                            name, inputAcceptList.pattern(), input);
+                                            name, inputAcceptList.pattern(), buf);
                                     rejectCallback.accept(this, buf.toString());
                                     return;
                                 }
-                                LOG.info("Input matches %s regex %s: [%s]", name, inputAcceptList.pattern(), input);
+                                LOG.info("Input matches %s regex %s: [%s]", name, inputAcceptList.pattern(), buf);
                                 acceptCallback.accept(this, matcher);
                             }
                             case KeyEvent.VK_BACK_SPACE -> fastDeleteLast();

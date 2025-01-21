@@ -10,17 +10,17 @@ public class RasterPainter implements Painter {
     }
 
     @Override
-    public void drawPoint(int x, int y, int color) {
+    public void drawPoint(int x, int y, Color color) {
         raster.setPixel(x, y, color);
     }
 
     @Override
-    public void drawLine(int x1, int y1, int x2, int y2, int color) {
-        drawLine(x1, y1, x2, y2, (i, d) -> color);
+    public void drawLine(int x1, int y1, int x2, int y2, Color color) {
+        drawLine(x1, y1, x2, y2, (_, _) -> color);
     }
 
     @Override
-    public void drawLine(int x1, int y1, int x2, int y2, BiFunction<Integer, Double, Integer> pattern) {
+    public void drawLine(int x1, int y1, int x2, int y2, BiFunction<Integer, Double, Color> pattern) {
         int rise = Math.abs(y2 - y1);
         int run = Math.abs(x2 - x1);
         if (rise == 0 && run == 0) {
@@ -48,7 +48,7 @@ public class RasterPainter implements Painter {
             // maybe amortize by periodically recomputing basis with pythagorean, if accuracy is bad for long runs.
             for (int y = startY; y < endY; ++y) {
                 // rounding might be more accurate, but maybe slower
-                int color = pattern.apply(n++, progress);
+                var color = pattern.apply(n++, progress);
                 raster.setPixel((int) x, y, color);
                 x += slope;
                 progress += progressionRate;
@@ -72,7 +72,7 @@ public class RasterPainter implements Painter {
             double progress = 0.;
             int n = 0;
             for (int x = startX; x < endX; ++x) {
-                int color = pattern.apply(n++, progress);
+                var color = pattern.apply(n++, progress);
                 raster.setPixel(x, (int) y, color);
                 y += slope;
                 progress += progressionRate;
@@ -123,7 +123,7 @@ public class RasterPainter implements Painter {
     }
 
     @Override
-    public void drawTri(int x1, int y1, int x2, int y2, int x3, int y3, int edgeColor, int fillColor) {
+    public void drawTri(int x1, int y1, int x2, int y2, int x3, int y3, Color edgeColor, Color fillColor) {
         throw new UnsupportedOperationException();
     }
 }

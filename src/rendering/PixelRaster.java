@@ -14,7 +14,7 @@ public class PixelRaster implements Raster {
         this(other.width(), other.height(), other.alpha(), other.red(), other.green(), other.blue());
     }
 
-    public PixelRaster(int width, int height, BiFunction<Integer, Integer, Integer> color) {
+    public PixelRaster(int width, int height, BiFunction<Integer, Integer, Color> color) {
         this(width, height, initBytes(width, height, color));
     }
 
@@ -76,12 +76,13 @@ public class PixelRaster implements Raster {
     }
 
     @Override
-    public void setPixel(int x, int y, int color) {
+    public void setPixel(int x, int y, Color color) {
         int i = y * w + x;
-        a[i] = (byte) (color >> 24);
-        r[i] = (byte) (color >> 16);
-        g[i] = (byte) (color >> 8);
-        b[i] = (byte) color;
+        int c = color.argbInt32();
+        a[i] = (byte) (c >> 24);
+        r[i] = (byte) (c >> 16);
+        g[i] = (byte) (c >> 8);
+        b[i] = (byte) c;
     }
 
     @Override
@@ -93,7 +94,7 @@ public class PixelRaster implements Raster {
         double yScale = 1. * this.h / h;
         return new PixelRaster(w, h, (x, y) -> {
             int i = ((int) (yScale * y) * this.w) + (int) (xScale * x);
-            return (((int) a[i] & 0xff) << 24) | (((int) r[i] & 0xff) << 16) | (((int) g[i] & 0xff) << 8) | ((int) b[i] & 0xff);
+            return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
         });
     }
 
@@ -102,12 +103,12 @@ public class PixelRaster implements Raster {
         return new PixelRaster(w, h, cloneBytes(a), cloneBytes(r), cloneBytes(g), cloneBytes(b));
     }
 
-    private static byte[][] initBytes(int width, int height, BiFunction<Integer, Integer, Integer> color) {
+    private static byte[][] initBytes(int width, int height, BiFunction<Integer, Integer, Color> color) {
         var res = new byte[4][width * height];
         int i = 0;
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
-                int c = color.apply(x, y);
+                int c = color.apply(x, y).argbInt32();
                 res[0][i] = (byte) (c >> 24);  // alpha
                 res[1][i] = (byte) (c >> 16);  // red
                 res[2][i] = (byte) (c >> 8);  // green

@@ -8,7 +8,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class RasterPrinter implements Printer {
     private static final Logger                 LOG         = LogManager.instance().getThis();
@@ -56,17 +55,13 @@ public class RasterPrinter implements Printer {
         forEach((c, filename) -> put(c, filename + ".tx"));
     }};
 
-    private final Painter                painter;
+    private final Painter painter;
     // TODO bezier fonts
-    private final Map<Character, Raster> font;
-    private final Raster                 nil;
-    private final int                    spacing;
+    private final Font    font;
 
-    private RasterPrinter(Raster raster, Map<Character, Raster> font, Raster nil, int spacing) {
+    private RasterPrinter(Raster raster, Font font) {
         this.painter = new RasterPainter(raster);
         this.font = font;
-        this.nil = nil;
-        this.spacing = spacing;
     }
 
     public static Builder builder() {
@@ -78,10 +73,8 @@ public class RasterPrinter implements Printer {
         private RasterRepository repository;
         private Clock            clock;
         private Path             fontPath;
-        private Integer          baseWidth;
-        private Integer          baseHeight;
-        private RasterFilter     filter  = RasterFilter.NO_OP;
-        private int              spacing = 0;
+        private Integer          size;
+        private RasterFilter     filter = RasterFilter.NO_OP;
 
         private Builder() {}
 
@@ -105,25 +98,16 @@ public class RasterPrinter implements Printer {
             return this;
         }
 
-        public Builder fontDimensions(int baseWidth, int baseHeight) {
-            if (baseWidth < 1) {
-                throw new IllegalArgumentException("Font base width must be a positive integer");
+        public Builder fontDimensions(int size) {
+            if (size < 1) {
+                throw new IllegalArgumentException("Font size must be a positive integer");
             }
-            if (baseHeight < 1) {
-                throw new IllegalArgumentException("Font base height must be a positive integer");
-            }
-            this.baseWidth = baseWidth;
-            this.baseHeight = baseHeight;
+            this.size = size;
             return this;
         }
 
         public Builder filter(RasterFilter filter) {
             this.filter = filter;
-            return this;
-        }
-
-        public Builder spacing(int spacing) {
-            this.spacing = spacing;
             return this;
         }
 
@@ -140,11 +124,12 @@ public class RasterPrinter implements Printer {
             if (fontPath == null) {
                 throw new IllegalArgumentException("fontPath");
             }
-            if (baseWidth == null || baseHeight == null) {
-                throw new IllegalArgumentException("dimensions");
+            if (size == null) {
+                throw new IllegalArgumentException("size");
             }
             var font = loadFont();
-            return new RasterPrinter(raster, font, font.get('\0'), spacing);
+            var nil = font.get('\0');
+            return new RasterPrinter(raster, new InMemoryFont(font, nil.width()));
         }
 
         private Map<Character, Raster> loadFont() {
@@ -163,12 +148,12 @@ public class RasterPrinter implements Printer {
                 loadResult
                         .ifFailure(ex -> LOG.warn(ex, "Failed to read asset file for char '%c': %s", c, filename))
                         .mapFailure(Exception::getMessage)
-                        .filter(asset -> asset.width() == baseWidth,
+                        .filter(asset -> asset.width() == size,
                                 asset -> "Font has incorrect width %d for char '%c' (baseWidth=%d)".formatted(
-                                        asset.width(), c, baseWidth))
-                        .filter(asset -> asset.height() == baseHeight,
+                                        asset.width(), c, size))
+                        .filter(asset -> asset.height() == size,
                                 asset -> "Font has incorrect height %d for char '%c' (baseHeight=%d)".formatted(
-                                        asset.height(), c, baseHeight))
+                                        asset.height(), c, size))
                         .ifFailure(LOG::warn)
                         .ifSuccess(asset -> {
                             LOG.debug("Loaded asset for '%c' from %s", c, filename);
@@ -176,27 +161,48 @@ public class RasterPrinter implements Printer {
                         });
             });
             // nil must be loadable (to render missing textures), but can be overridden
-            res.putIfAbsent('\0', new PixelRaster(baseWidth, baseHeight, (x, y) -> Color.BLACK.getArgb()));
-            res.replaceAll((k, v) -> filter.apply(v));
+            res.putIfAbsent('\0', new PixelRaster(size, size, (_, _) -> rendering.Color.BLACK));
+            res.replaceAll((_, v) -> filter.apply(v));
             LOG.info("Loaded font %s in %s", fontPath, Duration.between(start, clock.instant()));
             return res;
         }
     }
 
     @Override
-    public void print(char c, int x, int y, int size) {
-        var asset = Optional.ofNullable(font.get(c)).orElse(nil);
+    public void print(char c, int x, int y, Style... styles) {
+        var color = rendering.Color.WHITE;
+        int size = font.size();
+        for (Style style : styles) {
+            switch (style) {
+                case Color cl -> color = cl.color();
+                case Size sz -> size = sz.size();
+                case Spacing _ -> {}
+            }
+        }
+        var asset = font.getChar(c);
+        if (color != rendering.Color.WHITE) {
+            asset = ColorMap.of(rendering.Color.WHITE, color).apply(asset);
+        }
         var scaled = asset.scale(size, size);
         painter.drawImg(x, y, scaled);
     }
 
     @Override
-    public void print(String str, int x, int y, int size) {
+    public void print(String str, int x, int y, Style... styles) {
         if (str.isEmpty()) {
             return;
         }
+        int size = font.size();
+        int spacing = 0;
+        for (Style style : styles) {
+            switch (style) {
+                case Size sz -> size = sz.size();
+                case Spacing sp -> spacing = sp.spacing();
+                case Color _ -> {}
+            }
+        }
         for (char c : str.toCharArray()) {
-            print(Character.toLowerCase(c), x, y, size);
+            print(Character.toLowerCase(c), x, y, styles);
             x += size + spacing;
         }
     }

@@ -1,10 +1,20 @@
 package rendering;
 
-public class ChromaKey implements RasterFilter {
-    private final int color;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
-    public ChromaKey(int color) {
-        this.color = color & 0x00ffffff;  // filter only based on chroma, not alpha
+public class ChromaKey implements RasterFilter {
+    private static final Map<Color, ChromaKey> FLYWEIGHT = Collections.synchronizedMap(new HashMap<>());
+
+    private final Color color;
+
+    private ChromaKey(Color color) {
+        this.color = color;
+    }
+
+    public static ChromaKey of(Color color) {
+        return FLYWEIGHT.computeIfAbsent(color, _ -> new ChromaKey(color));
     }
 
     @Override
@@ -15,10 +25,8 @@ public class ChromaKey implements RasterFilter {
         var g = res.green();
         var b = res.blue();
         for (int i = 0; i < res.width() * res.height(); ++i) {
-            if (color == ((((int) r[i] & 0xff) << 16) | (((int) g[i] & 0xff) << 8) | ((int) b[i] & 0xff))) {
+            if (r[i] == color.red() && g[i] == color.green() && b[i] == color.blue()) {
                 a[i] = 0;
-            } else {
-                a[i] = (byte)90;
             }
         }
         return res;

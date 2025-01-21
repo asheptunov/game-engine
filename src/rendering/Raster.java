@@ -15,7 +15,7 @@ public interface Raster {
 
     byte[] blue();
 
-    void setPixel(int x, int y, int argb);
+    void setPixel(int x, int y, Color color);
 
     Raster scale(int width, int height);
 

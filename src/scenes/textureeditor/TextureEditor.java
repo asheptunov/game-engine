@@ -5,6 +5,7 @@ import logging.Logger;
 import misc.monads.Result;
 import rendering.ChromaKey;
 import rendering.Color;
+import rendering.ColorPicker;
 import rendering.FileSystemRasterRepository;
 import rendering.Painter;
 import rendering.PixelRaster;
@@ -37,7 +38,6 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 // not thread safe. stateful. evil. thriving.
@@ -49,10 +49,9 @@ public class TextureEditor implements
     private static final State   DEFAULT_STATE        = State.BRUSH;
     private static final int     RASTER_HISTORY_SIZE  = 100;
     private static final int     COMMAND_HISTORY_SIZE = 500;
+    private static final int     FONT_SIZE            = 24;
     private static final Pattern COLOR_PATTERN        = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{6})$"
-            .formatted(Arrays.stream(Color.values())
-                    .map(Color::getCmdName)
-                    .collect(Collectors.joining("|"))));
+            .formatted(String.join("|", Color.NamedColor.names())));
     private static final Pattern COLOR_CHAR_PATTERN   = Pattern.compile("[0-9a-zA-Z]+");
     private static final Pattern DIR_PATTERN          = Pattern.compile("[a-zA-Z0-9-_/]+");
     private static final Pattern TX_PATTERN           = Pattern.compile("[a-zA-Z0-9-_]+\\.tx");
@@ -61,8 +60,8 @@ public class TextureEditor implements
             .compile("^\\/?status$|^\\/?(cd|ls)( (%s))?$|^\\/?(load|save)( (%s))?$|^\\/?(touch|rm) (%s)$"
                     .formatted(DIR_PATTERN.pattern(), TX_PATTERN.pattern(), TX_PATTERN.pattern()));
     private static final Pattern CMD_CHAR_PATTERN     = Pattern.compile("[ -~]+");
-    private static final BiFunction<Integer, Double, Integer>
-                                 SELECTION_PATTERN    = (i, d) -> (i / 8) % 2 == 0 ? 0 : 0xffffff;
+    private static final BiFunction<Integer, Double, Color>
+                                 SELECTION_PATTERN    = (i, _) -> (i / 8) % 2 == 0 ? Color.BLACK : Color.WHITE;
 
     private final RasterRepository repo;
     private       Path             dirName  = Path.of("assets/fonts/test/standard");
@@ -77,7 +76,7 @@ public class TextureEditor implements
     private final Clock            clock;
     private       Selection        selection;
     private       Coordinates      boxStart;
-    private       int              color    = Color.WHITE.getArgb();
+    private final ColorPicker      colorPicker;
     private final TextInputBuffer  colorInputBuf;
     private final TextInputBuffer  commandInputBuf;
 
@@ -87,13 +86,13 @@ public class TextureEditor implements
         LASSO_SELECT,
         BRUSH,
         FILL,
-        COLOR_ENTRY,
+        COLOR_PICKER,
         COMMAND_ENTRY
     }
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
         this.repo = new FileSystemRasterRepository(clock);
-        this.texture = new PixelRaster(width, height, (x, y) -> Color.BLACK.getArgb());
+        this.texture = new PixelRaster(width, height, (_, _) -> Color.BLACK);
         this.display = display;
         this.displayPainter = new RasterPainter(display);
         this.displayPrinter = RasterPrinter.builder()
@@ -101,29 +100,32 @@ public class TextureEditor implements
                 .repository(repo)
                 .clock(clock)
                 .fontPath("assets/fonts/test")
-                .fontDimensions(16, 16)
-                .filter(new ChromaKey(Color.BLACK.getRgb()))
+                .fontDimensions(16)
+                .filter(ChromaKey.of(Color.BLACK))
                 .build();
         this.rasterHistory = new CircularBufferHistoryImpl<>(this.texture.clone(), RASTER_HISTORY_SIZE);
         this.commandHistory = new CircularBufferHistoryImpl<>("", COMMAND_HISTORY_SIZE);
         this.clock = clock;
+        this.colorPicker = new ColorPicker(display, Color.WHITE);
         this.colorInputBuf = new FilteringInputBuffer("color input",
                 COLOR_PATTERN,
                 COLOR_CHAR_PATTERN,
-                (buf, str) -> {
+                (_, str) -> {
                     LOG.error("Invalid color code: %s", str);
                     // retain buffer on failure; give user a chance to correct it
                 },
                 (buf, matcher) -> {
-                    setColor(matcher);
+                    colorPicker.set(getColor(matcher).orElseThrow());
+                    LOG.info("Setting color to %s", colorPicker.get());
+                    resetState();
                     buf.clear();  // retain buffer on success; speed up editing later
                 },
                 buf -> {
                     resetState();
-                    buf.set("0x%s".formatted(color));  // reset to active color on escape
+                    buf.set("0x%s".formatted(colorPicker.get().rgbInt24()));  // reset to active color on escape
                 }
         ) {{
-            set("0x%s".formatted(color));
+            set("0x%s".formatted(colorPicker.get().rgbInt24()));
         }};
         this.commandInputBuf = new FilteringInputBuffer("command line",
                 CMD_PATTERN,
@@ -138,7 +140,7 @@ public class TextureEditor implements
                     parseCommand(matcher);
                     buf.clear();  // clear buffer on success, like in a standard terminal
                 },
-                buf -> resetState()  // retain buffer on escape; give user a chance to continue later
+                _ -> resetState()  // retain buffer on escape; give user a chance to continue later
         );
     }
 
@@ -146,7 +148,7 @@ public class TextureEditor implements
     public void keyTyped(KeyEvent e) {
         LOG.trace("Handling %s", e);
         switch (state) {
-            case COLOR_ENTRY:
+            case COLOR_PICKER:
                 colorInputBuf.accept(e);
                 break;
             case COMMAND_ENTRY:
@@ -171,15 +173,15 @@ public class TextureEditor implements
                     case KeyEvent.VK_R -> State.BRUSH;
                     case KeyEvent.VK_T -> State.FILL;
                     case KeyEvent.VK_C -> {
-                        colorInputBuf.set("0x%x".formatted(color));
-                        yield State.COLOR_ENTRY;
+                        colorInputBuf.set("0x%x".formatted(colorPicker.get().rgbInt24()));
+                        yield State.COLOR_PICKER;
                     }
                     case KeyEvent.VK_SLASH -> State.COMMAND_ENTRY;
                     default -> this.state;
                 });
                 handleGlobalActions(e);
                 break;
-            case COLOR_ENTRY:
+            case COLOR_PICKER:
                 colorInputBuf.accept(e);
                 break;
             case COMMAND_ENTRY:
@@ -211,7 +213,7 @@ public class TextureEditor implements
         switch (state) {
             case PIXEL_SELECT -> {
                 LOG.info("Selected pixel %s", c);
-                selection = new TextureEditor.PixelSelection(c);
+                selection = new PixelSelection(c);
             }
             case BOX_SELECT -> {
                 LOG.info("Started box selection at %s", c);
@@ -222,20 +224,20 @@ public class TextureEditor implements
             case BRUSH -> {
                 // selection acts as a mask
                 switch (selection) {
-                    case null -> texture.setPixel(x, y, color);
+                    case null -> texture.setPixel(x, y, colorPicker.get());
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
-                            texture.setPixel(x, y, color);
+                            texture.setPixel(x, y, colorPicker.get());
                         }
                     }
                     case BoxSelection box -> {
                         if (box.contains(x, y)) {
-                            texture.setPixel(x, y, color);
+                            texture.setPixel(x, y, colorPicker.get());
                         }
                     }
                     case LassoSelection lasso -> {
                         if (lasso.contains(c)) {
-                            texture.setPixel(x, y, color);
+                            texture.setPixel(x, y, colorPicker.get());
                         }
                     }
                 }
@@ -244,23 +246,24 @@ public class TextureEditor implements
                 // selection acts as an invert toggle
                 switch (selection) {
                     case null -> {
-                        fillEverything(color);
+                        fillEverything(colorPicker.get());
                         saveToHistory();
                     }
                     case PixelSelection px -> {
-                        fillPixel(px, color, !px.is(x, y));
+                        fillPixel(px, colorPicker.get(), !px.is(x, y));
                         saveToHistory();
                     }
                     case BoxSelection box -> {
-                        fillBox(box, color, !box.contains(x, y));
+                        fillBox(box, colorPicker.get(), !box.contains(x, y));
                         saveToHistory();
                     }
                     case LassoSelection lasso -> {
-                        fillLasso(lasso, color, !lasso.contains(c));
+                        fillLasso(lasso, colorPicker.get(), !lasso.contains(c));
                         saveToHistory();
                     }
                 }
             }
+            case COLOR_PICKER -> colorPicker.accept(e);
         }
     }
 
@@ -282,6 +285,7 @@ public class TextureEditor implements
             }
             case LASSO_SELECT -> throw new UnsupportedOperationException("terminate lasso select");
             case BRUSH -> saveToHistory();
+            case COLOR_PICKER -> colorPicker.accept(e);
         }
     }
 
@@ -311,24 +315,25 @@ public class TextureEditor implements
             case BRUSH -> {
                 LOG.debug("Painting pixel [%d, %d]", x, y);
                 switch (selection) {
-                    case null -> texture.setPixel(x, y, color);
+                    case null -> texture.setPixel(x, y, colorPicker.get());
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
-                            texture.setPixel(x, y, color);
+                            texture.setPixel(x, y, colorPicker.get());
                         }
                     }
                     case BoxSelection box -> {
                         if (box.contains(x, y)) {
-                            texture.setPixel(x, y, color);
+                            texture.setPixel(x, y, colorPicker.get());
                         }
                     }
                     case LassoSelection lasso -> {
                         if (lasso.contains(c)) {
-                            texture.setPixel(x, y, color);
+                            texture.setPixel(x, y, colorPicker.get());
                         }
                     }
                 }
             }
+            case COLOR_PICKER -> colorPicker.accept(e);
         }
     }
 
@@ -349,6 +354,10 @@ public class TextureEditor implements
         // todo zoom / pan
         renderTexture();
         renderSelection();
+        if (state == State.COLOR_PICKER) {
+            colorPicker.render();
+            renderColorBuffer();
+        }
         if (state == State.COMMAND_ENTRY) {
             renderConsole();
         }
@@ -389,13 +398,12 @@ public class TextureEditor implements
     }
 
     private void renderConsole() {
-        int fontSize = 24;
-        int maxLineWidth = this.display.width() / fontSize;
+        int maxLineWidth = this.display.width() / FONT_SIZE;
 
         // newest -> oldest
         var lines = Stream.concat(Stream.of(commandInputBuf.get()), commandHistory.getPast().stream()).toList();
         int x = 0;
-        int y = display.height() - fontSize;
+        int y = display.height() - FONT_SIZE;
         for (var line : lines) {
             var linesWithoutNewlines = line.split("\n", -1);  // apply newlines
             for (var lineWithoutNewlines : linesWithoutNewlines) {
@@ -403,7 +411,7 @@ public class TextureEditor implements
                 var chars = lineWithoutCarriageReturns.toCharArray();
                 int n = chars.length;
                 if (n == 0) {  // empty line (edge case)
-                    y -= fontSize;
+                    y -= FONT_SIZE;
                     continue;
                 }
                 int rem = n % maxLineWidth;
@@ -412,16 +420,16 @@ public class TextureEditor implements
                     sb.append(chars[i]);
                 }
                 if (!sb.isEmpty()) {
-                    displayPrinter.print(sb.toString(), x, y, fontSize);
-                    y -= fontSize;
+                    displayPrinter.print(sb.toString(), x, y, Printer.Size.of(FONT_SIZE));
+                    y -= FONT_SIZE;
                     sb.setLength(0);
                 }
                 for (int i = n - rem - maxLineWidth; i >= 0; i -= maxLineWidth) {  // print wrapped lines in reverse
                     for (int j = i; j < i + maxLineWidth; ++j) {
                         sb.append(chars[j]);
                     }
-                    displayPrinter.print(sb.toString(), x, y, fontSize);
-                    y -= fontSize;
+                    displayPrinter.print(sb.toString(), x, y, Printer.Size.of(FONT_SIZE));
+                    y -= FONT_SIZE;
                     sb.setLength(0);
                 }
             }
@@ -444,6 +452,12 @@ public class TextureEditor implements
             }
         }
         return sb.toString();
+    }
+
+    private void renderColorBuffer() {
+        int y = display.height() - FONT_SIZE;
+        var color = getColor(colorInputBuf.matcher()).orElse(Color.WHITE);
+        displayPrinter.print(colorInputBuf.get(), 0, y, Printer.Size.of(FONT_SIZE), Printer.Color.of(color));
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -603,7 +617,7 @@ public class TextureEditor implements
         }
     }
 
-    private void fillEverything(int color) {
+    private void fillEverything(Color color) {
         LOG.info("Filling everything with color 0x%s", color);
         for (int r = 0; r < texture.height(); ++r) {
             for (int c = 0; c < texture.width(); ++c) {
@@ -612,8 +626,8 @@ public class TextureEditor implements
         }
     }
 
-    private void fillPixel(PixelSelection px, int color, boolean inverse) {
-        LOG.info("Filling %s pixel %s with color 0x%x", inverse ? "everything outside" : "only", px, color);
+    private void fillPixel(PixelSelection px, Color color, boolean inverse) {
+        LOG.info("Filling %s pixel %s with color %s", inverse ? "everything outside" : "only", px, color);
         if (inverse) {
             for (int r = 0; r < texture.height(); ++r) {
                 for (int c = 0; c < texture.width(); ++c) {
@@ -627,8 +641,8 @@ public class TextureEditor implements
         }
     }
 
-    private void fillBox(BoxSelection box, int color, boolean inverse) {
-        LOG.info("Filling everything %s box %s with color 0x%x", inverse ? "outside" : "inside", box, color);
+    private void fillBox(BoxSelection box, Color color, boolean inverse) {
+        LOG.info("Filling everything %s box %s with color %s", inverse ? "outside" : "inside", box, color);
         int l = box.tl.x;
         int r = box.br.x;
         int t = box.tl.y;
@@ -661,8 +675,8 @@ public class TextureEditor implements
         }
     }
 
-    private void fillLasso(LassoSelection lasso, int color, boolean inverse) {
-        LOG.info("Filling everything %s lasso %s with color 0x%x", inverse ? "outside" : "inside", lasso, color);
+    private void fillLasso(LassoSelection lasso, Color color, boolean inverse) {
+        LOG.info("Filling everything %s lasso %s with color %s", inverse ? "outside" : "inside", lasso, color);
         if (inverse) {
             for (int r = 0; r < texture.height(); ++r) {
                 for (int c = 0; c < texture.width(); ++c) {
@@ -678,13 +692,12 @@ public class TextureEditor implements
         }
     }
 
-    private void setColor(Matcher matcher) {
-        this.color = Optional.ofNullable(matcher.group("cmd"))
-                .flatMap(Color::fromCmdName)
-                .map(Color::getArgb)
-                .orElseGet(() -> 0xff000000 | (Integer.parseInt(matcher.group("hex"), 16) & 0xffffff));
-        LOG.info("Setting color to 0x%x", color);
-        resetState();
+    private Optional<Color> getColor(Matcher matcher) {
+        return !matcher.hasMatch()
+                ? Optional.empty()
+                : Optional.of(Optional.ofNullable(matcher.group("cmd"))
+                .<Color>flatMap(Color.NamedColor::of)
+                .orElseGet(() -> Color.RgbInt24Color.of(Integer.parseInt(matcher.group("hex"), 16))));
     }
 
     private void parseCommand(Matcher matcher) {
@@ -694,10 +707,8 @@ public class TextureEditor implements
         }
         // todo actually implement these with on-screen stuff
         if (command.startsWith("status")) {
-            LOG.info("Working dir: %s, open file: %s, width: %d, height: %s, color: 0x%x%s",
-                    dirName, filename,
-                    texture.width(), texture.height(),
-                    color, Color.fromRgb(color).map(c -> " (" + c.getCmdName() + ")").orElse(""));
+            LOG.info("Working dir: %s, open file: %s, width: %d, height: %s, color: %s",
+                    dirName, filename, texture.width(), texture.height(), colorPicker);
         } else if (command.startsWith("cd") || command.startsWith("ls")) {
             var root = Path.of(".");
             var targetDirName = Optional.ofNullable(matcher.group(3))
@@ -769,14 +780,14 @@ public class TextureEditor implements
                     .orElse(this.filename);
             switch (matcher.group(4)) {
                 case "load" -> loadFromFile(targetFilename)
-                        .ifSuccess($ -> {
+                        .ifSuccess(_ -> {
                             if (!this.filename.equals(targetFilename)) {
                                 LOG.info("Set active file to %s", targetFilename);
                                 this.filename = targetFilename;
                             }
                         });
                 case "save" -> saveToFile(targetFilename)
-                        .ifSuccess($ -> {
+                        .ifSuccess(_ -> {
                             if (!this.filename.equals(targetFilename)) {
                                 LOG.info("Set active file to %s", targetFilename);
                                 this.filename = targetFilename;
@@ -789,7 +800,7 @@ public class TextureEditor implements
             targetFilename = this.dirName.resolve(targetFilename);
             switch (matcher.group(7)) {
                 case "touch" -> repo.create(targetFilename,
-                        new PixelRaster(texture.width(), texture.height(), (x, y) -> Color.BLACK.getArgb()));
+                        new PixelRaster(texture.width(), texture.height(), (_, _) -> Color.BLACK));
                 case "rm" -> repo.delete(targetFilename);
             }
         } else {
