@@ -25,6 +25,7 @@ public class FilteringInputBuffer implements TextInputBuffer {
     private final Pattern                                   charAcceptList;
     private final BiConsumer<FilteringInputBuffer, String>  rejectCallback;
     private final BiConsumer<FilteringInputBuffer, Matcher> acceptCallback;
+    private final BiConsumer<FilteringInputBuffer, Matcher> entryCallback;
     private final Consumer<FilteringInputBuffer>            escapeCallback;
 
     public FilteringInputBuffer(String name,
@@ -32,12 +33,14 @@ public class FilteringInputBuffer implements TextInputBuffer {
                                 Pattern charAcceptList,
                                 BiConsumer<FilteringInputBuffer, String> rejectCallback,
                                 BiConsumer<FilteringInputBuffer, Matcher> acceptCallback,
+                                BiConsumer<FilteringInputBuffer, Matcher> entryCallback,
                                 Consumer<FilteringInputBuffer> escapeCallback) {
         this.name = name;
         this.inputAcceptList = inputAcceptList;
         this.charAcceptList = charAcceptList;
-        this.acceptCallback = acceptCallback;
         this.rejectCallback = rejectCallback;
+        this.acceptCallback = acceptCallback;
+        this.entryCallback = entryCallback;
         this.escapeCallback = escapeCallback;
     }
 
@@ -59,6 +62,7 @@ public class FilteringInputBuffer implements TextInputBuffer {
         switch (keystroke.getID()) {
             case KeyEvent.KEY_TYPED: {
                 fastAppend(keystroke.getKeyChar());
+                entryCallback.accept(this, matcher());
             }
             case KeyEvent.KEY_PRESSED: {
                 switch (keystroke.getModifiersEx()) {
@@ -75,6 +79,7 @@ public class FilteringInputBuffer implements TextInputBuffer {
                                 var sel = new StringSelection(str);
                                 Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
                                 fastClear();
+                                entryCallback.accept(this, matcher());
                                 LOG.info("Cut %s buffer to clipboard: [%s]", name, str);
                             }
                             case KeyEvent.VK_V -> {
@@ -85,6 +90,7 @@ public class FilteringInputBuffer implements TextInputBuffer {
                                             var str = br.lines().collect(Collectors.joining("\n"));
                                             if (inputAcceptList.matcher(str).find()) {
                                                 set(str);
+                                                entryCallback.accept(this, matcher());
                                                 LOG.info("Pasted %s buffer from clipboard: [%s]", name, str);
                                             }
                                         }
@@ -93,7 +99,10 @@ public class FilteringInputBuffer implements TextInputBuffer {
                                     }
                                 }
                             }
-                            case KeyEvent.VK_BACK_SPACE -> fastClear();
+                            case KeyEvent.VK_BACK_SPACE -> {
+                                fastClear();
+                                entryCallback.accept(this, matcher());
+                            }
                         }
                     }
                     case 0 -> {
@@ -110,7 +119,10 @@ public class FilteringInputBuffer implements TextInputBuffer {
                                 LOG.info("Input matches %s regex %s: [%s]", name, inputAcceptList.pattern(), buf);
                                 acceptCallback.accept(this, matcher);
                             }
-                            case KeyEvent.VK_BACK_SPACE -> fastDeleteLast();
+                            case KeyEvent.VK_BACK_SPACE -> {
+                                fastDeleteLast();
+                                entryCallback.accept(this, matcher());
+                            }
                         }
                     }
                 }

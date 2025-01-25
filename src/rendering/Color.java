@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 import static rendering.Color.ArgbInt32Color;
 import static rendering.Color.NamedColor;
@@ -58,6 +59,7 @@ public sealed interface Color permits NamedColor, RgbInt24Color, ArgbInt32Color 
 
     final class NamedColor implements Color {
         private static final Map<String, NamedColor> NAME_INDEX = Collections.synchronizedMap(new HashMap<>());
+        private static final Random                  RANDOM     = new Random();
 
         private final Color color;
 
@@ -75,6 +77,10 @@ public sealed interface Color permits NamedColor, RgbInt24Color, ArgbInt32Color 
 
         public static Optional<NamedColor> of(String name) {
             return Optional.ofNullable(NAME_INDEX.get(name));
+        }
+
+        public static NamedColor random() {
+            return of(names().stream().skip(RANDOM.nextInt(names().size())).findFirst().orElseThrow()).orElseThrow();
         }
 
         @Override
@@ -129,6 +135,8 @@ public sealed interface Color permits NamedColor, RgbInt24Color, ArgbInt32Color 
     }
 
     final class RgbInt24Color implements Color {
+        private static final Random RANDOM = new Random();
+
         private final int rgb;
 
         private RgbInt24Color(int rgb) {
@@ -143,6 +151,10 @@ public sealed interface Color permits NamedColor, RgbInt24Color, ArgbInt32Color 
             return of(((int) red & 0xff) << 16
                     | ((int) green & 0xff) << 8
                     | (int) blue & 0xff);
+        }
+
+        public static RgbInt24Color random() {
+            return new RgbInt24Color(RANDOM.nextInt(0x1000000));
         }
 
         @Override
@@ -197,6 +209,8 @@ public sealed interface Color permits NamedColor, RgbInt24Color, ArgbInt32Color 
     }
 
     final class ArgbInt32Color implements Color {
+        private static final Random RANDOM = new Random();
+
         private final int argb;
 
         private ArgbInt32Color(int argb) {
@@ -212,6 +226,10 @@ public sealed interface Color permits NamedColor, RgbInt24Color, ArgbInt32Color 
                     | ((int) red & 0xff) << 16
                     | ((int) green & 0xff) << 8
                     | (int) blue & 0xff);
+        }
+
+        public static ArgbInt32Color random() {
+            return of(RANDOM.nextInt());
         }
 
         @Override

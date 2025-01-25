@@ -50,9 +50,6 @@ public class TextureEditor implements
     private static final int     RASTER_HISTORY_SIZE  = 100;
     private static final int     COMMAND_HISTORY_SIZE = 500;
     private static final int     FONT_SIZE            = 24;
-    private static final Pattern COLOR_PATTERN        = Pattern.compile("^(?<cmd>%s)$|^(0x|0X|)(?<hex>[0-9a-fA-F]{6})$"
-            .formatted(String.join("|", Color.NamedColor.names())));
-    private static final Pattern COLOR_CHAR_PATTERN   = Pattern.compile("[0-9a-zA-Z]+");
     private static final Pattern DIR_PATTERN          = Pattern.compile("[a-zA-Z0-9-_/]+");
     private static final Pattern TX_PATTERN           = Pattern.compile("[a-zA-Z0-9-_]+\\.tx");
     // todo resize command
@@ -77,7 +74,6 @@ public class TextureEditor implements
     private       Selection        selection;
     private       Coordinates      boxStart;
     private final ColorPicker      colorPicker;
-    private final TextInputBuffer  colorInputBuf;
     private final TextInputBuffer  commandInputBuf;
 
     private enum State {
@@ -106,27 +102,7 @@ public class TextureEditor implements
         this.rasterHistory = new CircularBufferHistoryImpl<>(this.texture.clone(), RASTER_HISTORY_SIZE);
         this.commandHistory = new CircularBufferHistoryImpl<>("", COMMAND_HISTORY_SIZE);
         this.clock = clock;
-        this.colorPicker = new ColorPicker(display, Color.WHITE);
-        this.colorInputBuf = new FilteringInputBuffer("color input",
-                COLOR_PATTERN,
-                COLOR_CHAR_PATTERN,
-                (_, str) -> {
-                    LOG.error("Invalid color code: %s", str);
-                    // retain buffer on failure; give user a chance to correct it
-                },
-                (buf, matcher) -> {
-                    colorPicker.set(getColor(matcher).orElseThrow());
-                    LOG.info("Setting color to %s", colorPicker.get());
-                    resetState();
-                    buf.clear();  // retain buffer on success; speed up editing later
-                },
-                buf -> {
-                    resetState();
-                    buf.set("0x%s".formatted(colorPicker.get().rgbInt24()));  // reset to active color on escape
-                }
-        ) {{
-            set("0x%s".formatted(colorPicker.get().rgbInt24()));
-        }};
+        this.colorPicker = new ColorPicker(display, displayPainter, displayPrinter, Color.WHITE, FONT_SIZE, this::resetState);
         this.commandInputBuf = new FilteringInputBuffer("command line",
                 CMD_PATTERN,
                 CMD_CHAR_PATTERN,
@@ -140,6 +116,7 @@ public class TextureEditor implements
                     parseCommand(matcher);
                     buf.clear();  // clear buffer on success, like in a standard terminal
                 },
+                (_, _) -> {},
                 _ -> resetState()  // retain buffer on escape; give user a chance to continue later
         );
     }
@@ -149,7 +126,7 @@ public class TextureEditor implements
         LOG.trace("Handling %s", e);
         switch (state) {
             case COLOR_PICKER:
-                colorInputBuf.accept(e);
+                colorPicker.accept(e);
                 break;
             case COMMAND_ENTRY:
                 commandInputBuf.accept(e);
@@ -172,17 +149,14 @@ public class TextureEditor implements
                     case KeyEvent.VK_E -> State.LASSO_SELECT;
                     case KeyEvent.VK_R -> State.BRUSH;
                     case KeyEvent.VK_T -> State.FILL;
-                    case KeyEvent.VK_C -> {
-                        colorInputBuf.set("0x%x".formatted(colorPicker.get().rgbInt24()));
-                        yield State.COLOR_PICKER;
-                    }
+                    case KeyEvent.VK_C -> State.COLOR_PICKER;
                     case KeyEvent.VK_SLASH -> State.COMMAND_ENTRY;
                     default -> this.state;
                 });
                 handleGlobalActions(e);
                 break;
             case COLOR_PICKER:
-                colorInputBuf.accept(e);
+                colorPicker.accept(e);
                 break;
             case COMMAND_ENTRY:
                 commandInputBuf.accept(e);
@@ -356,7 +330,6 @@ public class TextureEditor implements
         renderSelection();
         if (state == State.COLOR_PICKER) {
             colorPicker.render();
-            renderColorBuffer();
         }
         if (state == State.COMMAND_ENTRY) {
             renderConsole();
@@ -452,12 +425,6 @@ public class TextureEditor implements
             }
         }
         return sb.toString();
-    }
-
-    private void renderColorBuffer() {
-        int y = display.height() - FONT_SIZE;
-        var color = getColor(colorInputBuf.matcher()).orElse(Color.WHITE);
-        displayPrinter.print(colorInputBuf.get(), 0, y, Printer.Size.of(FONT_SIZE), Printer.Color.of(color));
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -574,7 +541,7 @@ public class TextureEditor implements
                 .info("e: %s", State.LASSO_SELECT)
                 .info("r: %s", State.BRUSH)
                 .info("t: %s", State.FILL)
-                .info("c: input color (current input buffer: [%s])", colorInputBuf.toString())
+                .info("c: open color picker")
                 .info("/: command entry")
                 .info("CTRL+z: undo")
                 .info("CTRL+SHIFT+z: redo");
@@ -692,13 +659,6 @@ public class TextureEditor implements
         }
     }
 
-    private Optional<Color> getColor(Matcher matcher) {
-        return !matcher.hasMatch()
-                ? Optional.empty()
-                : Optional.of(Optional.ofNullable(matcher.group("cmd"))
-                .<Color>flatMap(Color.NamedColor::of)
-                .orElseGet(() -> Color.RgbInt24Color.of(Integer.parseInt(matcher.group("hex"), 16))));
-    }
 
     private void parseCommand(Matcher matcher) {
         var command = matcher.group();

@@ -49,7 +49,9 @@ public class RasterPainter implements Painter {
             for (int y = startY; y < endY; ++y) {
                 // rounding might be more accurate, but maybe slower
                 var color = pattern.apply(n++, progress);
-                raster.setPixel((int) x, y, color);
+                if (x >= 0 && x < raster.width() && y >= 0 && y < raster.height()) {
+                    raster.setPixel((int) x, y, color);
+                }
                 x += slope;
                 progress += progressionRate;
             }
@@ -73,7 +75,9 @@ public class RasterPainter implements Painter {
             int n = 0;
             for (int x = startX; x < endX; ++x) {
                 var color = pattern.apply(n++, progress);
-                raster.setPixel(x, (int) y, color);
+                if (x >= 0 && x < raster.width() && y >= 0 && y < raster.height()) {
+                    raster.setPixel(x, (int) y, color);
+                }
                 y += slope;
                 progress += progressionRate;
             }
