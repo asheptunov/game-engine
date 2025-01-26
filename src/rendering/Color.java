@@ -15,16 +15,6 @@ import static rendering.Color.NamedColor;
 import static rendering.Color.RgbInt24Color;
 
 public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, RgbInt24Color {
-    AnsiColor NONE    = new AnsiColor(0, new RgbInt24Color(0x0).withAlpha(0));
-    AnsiColor BLACK   = new AnsiColor(30, new NamedColor("black", new RgbInt24Color(0x0)));
-    AnsiColor WHITE   = new AnsiColor(37, new NamedColor("white", new RgbInt24Color(0xffffff)));
-    AnsiColor RED     = new AnsiColor(31, new NamedColor("red", new RgbInt24Color(0xff0000)));
-    AnsiColor YELLOW  = new AnsiColor(33, new NamedColor("yellow", new RgbInt24Color(0xffff00)));
-    AnsiColor GREEN   = new AnsiColor(32, new NamedColor("green", new RgbInt24Color(0xff00)));
-    AnsiColor CYAN    = new AnsiColor(36, new NamedColor("cyan", new RgbInt24Color(0x00ffff)));
-    AnsiColor BLUE    = new AnsiColor(34, new NamedColor("blue", new RgbInt24Color(0xff)));
-    AnsiColor MAGENTA = new AnsiColor(35, new NamedColor("magenta", new RgbInt24Color(0xff00ff)));
-
     int rgbInt24();
 
     int argbInt32();
@@ -64,6 +54,16 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
     final class AnsiColor implements Color {
         private static final Map<Integer, AnsiColor> CODE_INDEX = Collections.synchronizedMap(new HashMap<>());
 
+        public static final AnsiColor NONE    = new AnsiColor(0, NamedColor.WHITE.withAlpha(0));
+        public static final AnsiColor BLACK   = new AnsiColor(30, NamedColor.BLACK);
+        public static final AnsiColor RED     = new AnsiColor(31, NamedColor.RED);
+        public static final AnsiColor GREEN   = new AnsiColor(32, NamedColor.GREEN);
+        public static final AnsiColor YELLOW  = new AnsiColor(33, NamedColor.YELLOW);
+        public static final AnsiColor BLUE    = new AnsiColor(34, NamedColor.BLUE);
+        public static final AnsiColor MAGENTA = new AnsiColor(35, NamedColor.MAGENTA);
+        public static final AnsiColor CYAN    = new AnsiColor(36, NamedColor.CYAN);
+        public static final AnsiColor WHITE   = new AnsiColor(37, NamedColor.WHITE);
+
         private final Color color;
         private final int   code;
 
@@ -78,6 +78,16 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         public static Optional<AnsiColor> of(int code) {
             return Optional.ofNullable(CODE_INDEX.get(code));
+        }
+
+        public static String formatted(Color color) {
+            if (color instanceof AnsiColor ansi) {
+                return ansi.formatted();
+            }
+            return "\\033[38;2;%d;%d;%dm".formatted(
+                    (int) color.red() & 0xff,
+                    (int) color.green() & 0xff,
+                    (int) color.blue() & 0xff);
         }
 
         public static String formatted(AnsiColor... colors) {
@@ -149,6 +159,15 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
     final class NamedColor implements Color {
         private static final Map<String, NamedColor> NAME_INDEX = Collections.synchronizedMap(new HashMap<>());
         private static final Random                  RANDOM     = new Random();
+
+        public static final NamedColor BLACK   = new NamedColor("black", new RgbInt24Color(0x0));
+        public static final NamedColor WHITE   = new NamedColor("white", new RgbInt24Color(0xffffff));
+        public static final NamedColor RED     = new NamedColor("red", new RgbInt24Color(0xff0000));
+        public static final NamedColor YELLOW  = new NamedColor("yellow", new RgbInt24Color(0xffff00));
+        public static final NamedColor GREEN   = new NamedColor("green", new RgbInt24Color(0xff00));
+        public static final NamedColor CYAN    = new NamedColor("cyan", new RgbInt24Color(0x00ffff));
+        public static final NamedColor BLUE    = new NamedColor("blue", new RgbInt24Color(0xff));
+        public static final NamedColor MAGENTA = new NamedColor("magenta", new RgbInt24Color(0xff00ff));
 
         private final String name;
         private final Color  color;

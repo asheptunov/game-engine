@@ -20,6 +20,9 @@ import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static rendering.Color.NamedColor;
+import static rendering.Color.RgbInt24Color;
+
 public class ColorPicker implements Renderer {
     private static final Logger LOG = LogManager.instance().getThis();
 
@@ -79,7 +82,7 @@ public class ColorPicker implements Renderer {
 
     public void set(Color color) {
         if (color.blue() == color.green() && color.green() == color.red()) {  // all shades of gray, from white to black
-            this.hue = Color.RED;  // arbitrary
+            this.hue = NamedColor.RED;  // arbitrary
             this.shade = color;
             return;
         }
@@ -173,7 +176,7 @@ public class ColorPicker implements Renderer {
         byte hueMin = 0;
         byte hueMed = (byte) (no_white_med * 255);
         byte hueMax = (byte) 0xff;
-        this.hue = Color.RgbInt24Color.of(
+        this.hue = RgbInt24Color.of(
                 'r' == argMin ? hueMin : 'r' == argMed ? hueMed : hueMax,
                 'g' == argMin ? hueMin : 'g' == argMed ? hueMed : hueMax,
                 'b' == argMin ? hueMin : 'b' == argMed ? hueMed : hueMax
@@ -211,7 +214,7 @@ public class ColorPicker implements Renderer {
                                             var matcher = HEX_CODE_PATTERN.matcher(str);
                                             if (matcher.find()) {
                                                 var hex = matcher.group("hex");
-                                                this.set(Color.RgbInt24Color.of(Integer.parseInt(hex, 16)));
+                                                this.set(RgbInt24Color.of(Integer.parseInt(hex, 16)));
                                                 LOG.info("Pasted color from clipboard: [%s]", str);
                                             }
                                         }
@@ -305,7 +308,7 @@ public class ColorPicker implements Renderer {
         painter.drawImg(hueSliderX + hueX - 5, hueSliderY, new PixelRaster(10, hueSliderHeight,
                 (col, row)
                         -> (col == 0 || row == 0 || col == 9 || row == hueSliderHeight - 1)  // white border
-                        ? Color.WHITE : Color.WHITE.withAlpha(0)));
+                        ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0)));
     }
 
     private void renderShadePicker() {
@@ -315,11 +318,11 @@ public class ColorPicker implements Renderer {
         painter.drawImg(shadePickerX + shadeX - 5, shadePickerY + shadeY - 5, new PixelRaster(10, 10,
                 (col, row)
                         -> (col == 0 || row == 0 || col == 9 || row == 9)  // white border
-                        ? Color.WHITE : Color.WHITE.withAlpha(0)));
+                        ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0)));
     }
 
     @SuppressWarnings("DuplicateBranchesInSwitch")
-    private Color.RgbInt24Color getColorOnHueSlider(float col) {
+    private RgbInt24Color getColorOnHueSlider(float col) {
         // https://www.desmos.com/calculator/wfwjzctarh
         float fraction = col / hueSliderWidth;
         float red = switch (fraction) {
@@ -341,21 +344,21 @@ public class ColorPicker implements Renderer {
             case float v when v < FIVE_SIXTHS -> 1;
             default -> -6 * (fraction - 1);
         };
-        return Color.RgbInt24Color.of((byte) (red * 255), (byte) (green * 255), (byte) (blue * 255));
+        return RgbInt24Color.of((byte) (red * 255), (byte) (green * 255), (byte) (blue * 255));
     }
 
     private Color getColorOnShadePicker(float col, float row) {
         var whiteFraction = 1f - col / shadePickerWidth;
         var blackFraction = 1f - row / shadePickerHeight;
-        return blend(blackFraction, Color.BLACK,
-                blend(whiteFraction, Color.WHITE, hue));
+        return blend(blackFraction, NamedColor.BLACK,
+                blend(whiteFraction, NamedColor.WHITE, hue));
     }
 
     private static Color blend(float fraction, Color first, Color second) {
         var r = blend(fraction, first.red(), second.red());
         var g = blend(fraction, first.green(), second.green());
         var b = blend(fraction, first.blue(), second.blue());
-        return Color.RgbInt24Color.of(r, g, b);
+        return RgbInt24Color.of(r, g, b);
     }
 
     private static byte blend(float fraction, byte first, byte second) {

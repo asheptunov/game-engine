@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.function.BiFunction;
 
+import static rendering.Color.NamedColor;
 import static scenes.textureeditor.model.Mode.BOX_SELECT;
 import static scenes.textureeditor.model.Mode.BRUSH;
 import static scenes.textureeditor.model.Mode.COLOR_PICKER;
@@ -50,7 +51,7 @@ public class TextureEditor implements
     private static final Mode   DEFAULT_MODE = BRUSH;
 
     private static final BiFunction<Integer, Double, Color>
-            SELECTION_PATTERN = (i, _) -> (i / 8) % 2 == 0 ? Color.BLACK : Color.WHITE;
+            SELECTION_PATTERN = (i, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
 
     private final RasterRepository repo;
     private final Raster           display;
@@ -72,19 +73,15 @@ public class TextureEditor implements
                 .clock(clock)
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16)
-                .filter(ChromaKey.of(Color.BLACK))
+                .filter(ChromaKey.of(NamedColor.BLACK))
                 .build();
         this.clock = clock;
         this.state = new EditorState(
                 DEFAULT_MODE,
                 Path.of("assets/fonts/test/standard"),
-                Path.of(""),
-                new PixelRaster(width, height, (_, _) -> Color.BLACK),
-                null,
-                null
-        );
+                new PixelRaster(width, height, (_, _) -> NamedColor.BLACK));
         this.rasterHistory = new CircularBufferHistoryImpl<>(state.texture().clone(), 100);
-        this.colorPicker = new ColorPicker(this, Color.WHITE);
+        this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
         this.console = new Console(this, 500);
     }
 
@@ -162,10 +159,8 @@ public class TextureEditor implements
                 state.boxStart(new Coordinates(x, y));
             }
             case LASSO_SELECT -> throw new UnsupportedOperationException("start lasso select");
-            case BRUSH -> {
-                // selection acts as a mask
-                switch (state.selection()) {
-                    case null -> state.texture().setPixel(x, y, colorPicker.getColor());
+            case BRUSH -> state.selection().ifPresentOrElse(s -> {  // selection acts as a mask
+                switch (s) {
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
                             state.texture().setPixel(x, y, colorPicker.getColor());
@@ -182,28 +177,27 @@ public class TextureEditor implements
                         }
                     }
                 }
-            }
-            case FILL -> {
-                // selection acts as an invert toggle
-                switch (state.selection()) {
-                    case null -> {
+            }, () -> state.texture().setPixel(x, y, colorPicker.getColor()));
+            case FILL -> state.selection().ifPresentOrElse(s -> {  // selection acts as an invert toggle
+                        switch (s) {
+                            case PixelSelection px -> {
+                                fillPixel(px, colorPicker.getColor(), !px.is(x, y));
+                                saveToHistory();
+                            }
+                            case BoxSelection box -> {
+                                fillBox(box, colorPicker.getColor(), !box.contains(x, y));
+                                saveToHistory();
+                            }
+                            case LassoSelection lasso -> {
+                                fillLasso(lasso, colorPicker.getColor(), !lasso.contains(c));
+                                saveToHistory();
+                            }
+                        }
+                    }, () -> {
                         fillEverything(colorPicker.getColor());
                         saveToHistory();
                     }
-                    case PixelSelection px -> {
-                        fillPixel(px, colorPicker.getColor(), !px.is(x, y));
-                        saveToHistory();
-                    }
-                    case BoxSelection box -> {
-                        fillBox(box, colorPicker.getColor(), !box.contains(x, y));
-                        saveToHistory();
-                    }
-                    case LassoSelection lasso -> {
-                        fillLasso(lasso, colorPicker.getColor(), !lasso.contains(c));
-                        saveToHistory();
-                    }
-                }
-            }
+            );
             case COLOR_PICKER -> colorPicker.accept(e);
         }
     }
@@ -219,10 +213,11 @@ public class TextureEditor implements
         int y = c.y();
         switch (state.mode()) {
             case BOX_SELECT -> {
-                var box = (BoxSelection) state.selection();
-                box.update(state.boxStart().x(), state.boxStart().y(), x, y);
-                LOG.info("Finished box selection from [%d, %d] at [%d, %d]", state.boxStart().x(), state.boxStart().y(), x, y);
-                state.boxStart(null);
+                var box = (BoxSelection) state.selection().orElseThrow();
+                var boxStart = state.boxStart().orElseThrow();
+                box.update(boxStart.x(), boxStart.y(), x, y);
+                LOG.info("Finished box selection from [%d, %d] at [%d, %d]", boxStart.x(), boxStart.y(), x, y);
+                state.clearBoxStart();
             }
             case LASSO_SELECT -> throw new UnsupportedOperationException("terminate lasso select");
             case BRUSH -> saveToHistory();
@@ -248,15 +243,14 @@ public class TextureEditor implements
         int y = c.y();
         switch (state.mode()) {
             case BOX_SELECT -> {
-                var box = (BoxSelection) state.selection();
-                box.update(state.boxStart().x(), state.boxStart().y(), x, y);
+                var box = (BoxSelection) state.selection().orElseThrow();
+                var boxStart = state.boxStart().orElseThrow();
+                box.update(boxStart.x(), boxStart.y(), x, y);
                 LOG.debug("Updating box selection to %s", box);
             }
             case LASSO_SELECT -> throw new UnsupportedOperationException("update lasso selection");
-            case BRUSH -> {
-                LOG.debug("Painting pixel [%d, %d]", x, y);
-                switch (state.selection()) {
-                    case null -> state.texture().setPixel(x, y, colorPicker.getColor());
+            case BRUSH -> state.selection().ifPresentOrElse(s -> {
+                switch (s) {
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
                             state.texture().setPixel(x, y, colorPicker.getColor());
@@ -273,7 +267,7 @@ public class TextureEditor implements
                         }
                     }
                 }
-            }
+            }, () -> state.texture().setPixel(x, y, colorPicker.getColor()));
             case COLOR_PICKER -> colorPicker.accept(e);
         }
     }
@@ -339,7 +333,11 @@ public class TextureEditor implements
         return 16;
     }
 
-    int fontSpacing() {
+    int charSpacing() {
+        return -2;
+    }
+
+    int lineSpacing() {
         return -2;
     }
 
@@ -363,30 +361,31 @@ public class TextureEditor implements
     private void renderSelection() {
         var xScale = 1. * display.width() / state.texture().width();
         var yScale = 1. * display.height() / state.texture().height();
-        switch (state.selection()) {
-            case null -> {}
-            case PixelSelection px -> {
-                int l = (int) (px.px().x() * xScale);
-                int t = (int) (px.px().y() * yScale);
-                int r = (int) ((px.px().x() + 1) * xScale) - 1;
-                int b = (int) ((px.px().y() + 1) * yScale) - 1;
-                painter.drawLine(l, t, r, t, SELECTION_PATTERN);
-                painter.drawLine(l, t, l, b, SELECTION_PATTERN);
-                painter.drawLine(r, t, r, b, SELECTION_PATTERN);
-                painter.drawLine(l, b, r, b, SELECTION_PATTERN);
+        state.selection().ifPresentOrElse(s -> {
+            switch (s) {
+                case PixelSelection px -> {
+                    int l = (int) (px.px().x() * xScale);
+                    int t = (int) (px.px().y() * yScale);
+                    int r = (int) ((px.px().x() + 1) * xScale) - 1;
+                    int b = (int) ((px.px().y() + 1) * yScale) - 1;
+                    painter.drawLine(l, t, r, t, SELECTION_PATTERN);
+                    painter.drawLine(l, t, l, b, SELECTION_PATTERN);
+                    painter.drawLine(r, t, r, b, SELECTION_PATTERN);
+                    painter.drawLine(l, b, r, b, SELECTION_PATTERN);
+                }
+                case BoxSelection box -> {
+                    int l = (int) (box.tl().x() * xScale);
+                    int t = (int) (box.tl().y() * yScale);
+                    int r = (int) ((box.br().x() + 1) * xScale) - 1;
+                    int b = (int) ((box.br().y() + 1) * yScale) - 1;
+                    painter.drawLine(l, t, r, t, SELECTION_PATTERN);
+                    painter.drawLine(l, t, l, b, SELECTION_PATTERN);
+                    painter.drawLine(r, t, r, b, SELECTION_PATTERN);
+                    painter.drawLine(l, b, r, b, SELECTION_PATTERN);
+                }
+                default -> throw new UnsupportedOperationException(state.selection().getClass().getName());
             }
-            case BoxSelection box -> {
-                int l = (int) (box.tl().x() * xScale);
-                int t = (int) (box.tl().y() * yScale);
-                int r = (int) ((box.br().x() + 1) * xScale) - 1;
-                int b = (int) ((box.br().y() + 1) * yScale) - 1;
-                painter.drawLine(l, t, r, t, SELECTION_PATTERN);
-                painter.drawLine(l, t, l, b, SELECTION_PATTERN);
-                painter.drawLine(r, t, r, b, SELECTION_PATTERN);
-                painter.drawLine(l, b, r, b, SELECTION_PATTERN);
-            }
-            default -> throw new UnsupportedOperationException(state.selection().getClass().getName());
-        }
+        }, () -> {});
     }
 
     private Coordinates normalize(MouseEvent e) {
@@ -399,14 +398,14 @@ public class TextureEditor implements
     private void handleGlobalActions(KeyEvent e) {
         switch (e.getKeyCode()) {
             case KeyEvent.VK_ESCAPE -> {
-                if (state.selection() != null) {
-                    LOG.info("Erasing selection %s", state.selection());
-                    state.selection(null);
+                if (state.selection().isPresent()) {
+                    LOG.info("Erasing selection %s", state.selection().get());
+                    state.clearSelection();
                 }
             }
             case KeyEvent.VK_F1 -> toggleHelp();
-            case KeyEvent.VK_F5 -> saveToFile(state.filename());
-            case KeyEvent.VK_F9 -> loadFromFile(state.filename());
+            case KeyEvent.VK_F5 -> saveToFile(state.filename().orElseThrow());
+            case KeyEvent.VK_F9 -> loadFromFile(state.filename().orElseThrow());
             case KeyEvent.VK_Z -> {
                 switch (e.getModifiersEx()) {
                     case KeyEvent.CTRL_DOWN_MASK -> undo();
@@ -426,7 +425,7 @@ public class TextureEditor implements
         LOG.info("Current state: %s.", state)
                 .info("Keymap:")
                 .info("F1: show help")
-                .info("F5: save to file (current path: %s)", state.dirName().resolve(state.filename()))
+                .info("F5: save to file")
                 .info("q: %s", PIXEL_SELECT)
                 .info("w: %s", BOX_SELECT)
                 .info("e: %s", LASSO_SELECT)

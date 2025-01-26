@@ -3,6 +3,7 @@ package scenes.textureeditor.model;
 import rendering.Raster;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 public class EditorState {
     private Mode        mode;
@@ -14,16 +15,10 @@ public class EditorState {
 
     public EditorState(Mode mode,
                        Path dirName,
-                       Path filename,
-                       Raster texture,
-                       Selection selection,
-                       Coordinates boxStart) {
+                       Raster texture) {
         this.mode = mode;
         this.dirName = dirName;
-        this.filename = filename;
         this.texture = texture;
-        this.selection = selection;
-        this.boxStart = boxStart;
     }
 
     public Mode mode() {
@@ -39,15 +34,25 @@ public class EditorState {
     }
 
     public void dirName(Path dirName) {
+        if (dirName == null) {
+            throw new IllegalArgumentException();
+        }
         this.dirName = dirName;
     }
 
-    public Path filename() {
-        return filename;
+    public Optional<Path> filename() {
+        return Optional.ofNullable(filename);
     }
 
     public void filename(Path filename) {
+        if (filename == null) {
+            throw new IllegalArgumentException();
+        }
         this.filename = filename;
+    }
+
+    public void clearFilename() {
+        this.filename = null;
     }
 
     public Raster texture() {
@@ -55,22 +60,39 @@ public class EditorState {
     }
 
     public void texture(Raster texture) {
+        if (texture == null) {
+            throw new IllegalArgumentException();
+        }
         this.texture = texture;
     }
 
-    public Selection selection() {
-        return selection;
+    public Optional<Selection> selection() {
+        return Optional.ofNullable(selection);
     }
 
     public void selection(Selection selection) {
+        if (selection == null) {
+            throw new IllegalArgumentException();
+        }
         this.selection = selection;
     }
 
-    public Coordinates boxStart() {
-        return boxStart;
+    public void clearSelection() {
+        this.selection = null;
+    }
+
+    public Optional<Coordinates> boxStart() {
+        return Optional.ofNullable(boxStart);
     }
 
     public void boxStart(Coordinates boxStart) {
+        if (boxStart == null) {
+            throw new IllegalArgumentException();
+        }
         this.boxStart = boxStart;
+    }
+
+    public void clearBoxStart() {
+        this.boxStart = null;
     }
 }

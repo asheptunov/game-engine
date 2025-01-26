@@ -9,6 +9,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static rendering.Color.NamedColor;
+
 public class RasterPrinter implements Printer {
     private static final Logger                 LOG         = LogManager.instance().getThis();
     private static final Map<Character, String> FONT_FS_MAP = new HashMap<>() {{
@@ -161,7 +163,7 @@ public class RasterPrinter implements Printer {
                         });
             });
             // nil must be loadable (to render missing textures), but can be overridden
-            res.putIfAbsent('\0', new PixelRaster(size, size, (_, _) -> rendering.Color.BLACK));
+            res.putIfAbsent('\0', new PixelRaster(size, size, (_, _) -> NamedColor.BLACK));
             res.replaceAll((_, v) -> filter.apply(v));
             LOG.info("Loaded font %s in %s", fontPath, Duration.between(start, clock.instant()));
             return res;
@@ -170,7 +172,7 @@ public class RasterPrinter implements Printer {
 
     @Override
     public void print(char c, int x, int y, Style... styles) {
-        var color = (rendering.Color) rendering.Color.WHITE;
+        var color = (rendering.Color) NamedColor.WHITE;
         int size = font.size();
         for (Style style : styles) {
             switch (style) {
@@ -179,9 +181,9 @@ public class RasterPrinter implements Printer {
                 case Spacing _ -> {}
             }
         }
-        var asset = font.getChar(c);
-        if (color != rendering.Color.WHITE) {
-            asset = ColorMap.of(rendering.Color.WHITE, color).apply(asset);
+        var asset = font.getChar(Character.toLowerCase(c));  // todo add uppercase
+        if (!NamedColor.WHITE.equals(color)) {
+            asset = ColorMap.of(NamedColor.WHITE, color).apply(asset);
         }
         var scaled = asset.scale(size, size);
         painter.drawImg(x, y, scaled);

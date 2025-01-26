@@ -14,8 +14,23 @@ public class ChunkedSpliterator<T, C extends Collection<T>> implements Spliterat
     private final Supplier<C> chunkSupplier;
 
     public static <T, C extends Collection<T>> ChunkedSpliterator<T, C> chunk(
-            Iterator<T> delegate, int chunkSize, Supplier<C> chunkSupplier) {
-        return new ChunkedSpliterator<>(delegate, chunkSize, chunkSupplier);
+            Spliterator<T> spliterator, int chunkSize, Supplier<C> chunkSupplier) {
+        return chunk(StreamSupport.stream(spliterator, false), chunkSize, chunkSupplier);
+    }
+
+    public static <T, C extends Collection<T>> ChunkedSpliterator<T, C> chunk(
+            Stream<T> stream, int chunkSize, Supplier<C> chunkSupplier) {
+        return chunk(stream.iterator(), chunkSize, chunkSupplier);
+    }
+
+    public static <T, C extends Collection<T>> ChunkedSpliterator<T, C> chunk(
+            Iterable<T> iterable, int chunkSize, Supplier<C> chunkSupplier) {
+        return chunk(iterable.iterator(), chunkSize, chunkSupplier);
+    }
+
+    public static <T, C extends Collection<T>> ChunkedSpliterator<T, C> chunk(
+            Iterator<T> iterator, int chunkSize, Supplier<C> chunkSupplier) {
+        return new ChunkedSpliterator<>(iterator, chunkSize, chunkSupplier);
     }
 
     private ChunkedSpliterator(Iterator<T> delegate, int chunkSize, Supplier<C> chunkSupplier) {
@@ -35,6 +50,14 @@ public class ChunkedSpliterator<T, C extends Collection<T>> implements Spliterat
 
     public Stream<C> stream() {
         return StreamSupport.stream(this, false);
+    }
+
+    public Iterable<C> iterable() {
+        return this::iterator;
+    }
+
+    public Iterator<C> iterator() {
+        return stream().iterator();
     }
 
     @Override
