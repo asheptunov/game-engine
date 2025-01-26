@@ -17,6 +17,7 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -85,6 +86,7 @@ public class Console {
     private final History<CommandAndResult> history;
     private final StringBuilder             buf;
 
+    private double vtOffset = 0;
 
     public Console(TextureEditor editor, int historySize) {
         this.editor = editor;
@@ -102,6 +104,7 @@ public class Console {
     }
 
     public void accept(KeyEvent keystroke) {
+        vtOffset = 0;
         switch (keystroke.getID()) {
             case KeyEvent.KEY_TYPED: {
                 fastAppend(keystroke.getKeyChar());
@@ -166,6 +169,10 @@ public class Console {
         }
     }
 
+    public void accept(MouseWheelEvent e) {
+        vtOffset += e.getPreciseWheelRotation();
+    }
+
     private record StyledChar(char c, Printer.Style... styles) {}
 
     private record AnsiSequence(int start, int end, Color color) {}
@@ -188,7 +195,6 @@ public class Console {
     }
 
     public void render() {
-        // TODO mouse scroll
         var allChars = concatAllChars();
         var ansiSequences = computeAnsiSequences(allChars);
         var displayLines = convertToDisplayLines(allChars, ansiSequences);
@@ -270,11 +276,10 @@ public class Console {
         int row = 0;
         for (var line : lines) {
             int col = 0;
-            int y = (maxLines - 1 - row) * vtStride;
+            int y = (int) ((maxLines - 1 - row + vtOffset) * vtStride);
             for (var sc : line) {
                 printer.print(sc.c(), col++ * hzStride, y, sc.styles());
             }
-//            painter.drawLine(0, y, display.width(), y, NamedColor.WHITE.withAlpha(.5f));
             if (++row > maxLines) {
                 break;
             }
@@ -298,8 +303,8 @@ public class Console {
                     state.filename().map(Path::toAbsolutePath).map(Path::toString).orElse("<not set>"),
                     state.texture().width(),
                     state.texture().height(),
-                    AnsiColor.formatted(editor.getColorPicker().getColor()),
-                    editor.getColorPicker().getColor().argbInt32(),
+                    AnsiColor.formatted(editor.colorPicker().getColor()),
+                    editor.colorPicker().getColor().argbInt32(),
                     AnsiColor.NONE.formatted());
         } else if (command.startsWith("cd") || command.startsWith("ls")) {
             var root = Path.of(".");

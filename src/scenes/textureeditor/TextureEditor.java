@@ -281,6 +281,9 @@ public class TextureEditor implements
     public void mouseWheelMoved(MouseWheelEvent e) {
         LOG.trace("Handling %s", e);
         // todo zoom / pan
+        switch (state().mode()) {
+            case COMMAND_ENTRY -> console.accept(e);
+        }
     }
 
     @Override
@@ -349,7 +352,7 @@ public class TextureEditor implements
         return state;
     }
 
-    ColorPicker getColorPicker() {
+    ColorPicker colorPicker() {
         return colorPicker;
     }
 
