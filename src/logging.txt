@@ -5,4 +5,4 @@ rendering.CompositeRenderer=INFO
 rendering.GradientRenderer=INFO
 rendering.RasterPrinter=INFO
 scenes.textureeditor.TextureEditor=INFO
-ui.FilteringInputBuffer=INFO
+scenes.textureeditor.Console=INFO

@@ -170,7 +170,7 @@ public class RasterPrinter implements Printer {
 
     @Override
     public void print(char c, int x, int y, Style... styles) {
-        var color = rendering.Color.WHITE;
+        var color = (rendering.Color) rendering.Color.WHITE;
         int size = font.size();
         for (Style style : styles) {
             switch (style) {

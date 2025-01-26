@@ -57,6 +57,26 @@ public class Result<S, F> {
         return delegate == newDelegate ? (Result<S, FF>) this : new Result<>(newDelegate);
     }
 
+    public <SS> Result<SS, F> flatMapSuccess(Function<? super S, ? extends Result<? extends SS, ? extends F>> mapper) {
+        var newDelegate = delegate.<SS>flatMapLeft(mapper
+                .andThen(r -> (Result<? extends SS, ? extends F>) r)
+                .andThen(r -> r.delegate));
+        //noinspection unchecked
+        return delegate == newDelegate
+                ? (Result<SS, F>) this
+                : new Result<>(newDelegate);
+    }
+
+    public <FF> Result<S, FF> flatMapFailure(Function<? super F, Result<? extends S, ? extends FF>> mapper) {
+        var newDelegate = delegate.<FF>flatMapRight(mapper
+                .andThen(r -> (Result<? extends S, ? extends FF>) r)
+                .andThen(r -> r.delegate));
+        //noinspection unchecked
+        return delegate == newDelegate
+                ? (Result<S, FF>) this
+                : new Result<>(newDelegate);
+    }
+
     public Result<S, F> filter(Predicate<S> predicate, Function<S, F> toFailureFunction) {
         if (isFailure()) {
             return this;
@@ -75,5 +95,9 @@ public class Result<S, F> {
             return this;
         }
         return new Result<>(Either.left(toSuccessFunction.apply(getFailure())));
+    }
+
+    public <T> T fold(Function<? super S, ? extends T> successMapper, Function<? super F, ? extends T> failureMapper) {
+        return delegate.fold(successMapper, failureMapper);
     }
 }

@@ -1,7 +1,13 @@
-package rendering;
+package scenes.textureeditor;
 
 import logging.LogManager;
 import logging.Logger;
+import rendering.Color;
+import rendering.Painter;
+import rendering.PixelRaster;
+import rendering.Printer;
+import rendering.Raster;
+import rendering.Renderer;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
@@ -25,49 +31,49 @@ public class ColorPicker implements Renderer {
     private static final float TWO_THIRDS  = (float) 2 / 3;
     private static final float FIVE_SIXTHS = (float) 5 / 6;
 
-    private final Raster   display;
-    private final Painter  painter;
-    private final Printer  printer;
-    private final int      hueSliderWidth;
-    private final int      hueSliderHeight;
-    private final int      hueSliderX;
-    private final int      hueSliderY;
-    private final int      shadePickerWidth;
-    private final int      shadePickerHeight;
-    private final int      shadePickerX;
-    private final int      shadePickerY;
-    private final int      previewWidth;
-    private final int      previewHeight;
-    private final int      previewX;
-    private final int      previewY;
-    private       boolean  selectingHue   = false;
-    private       boolean  selectingShade = false;
-    private       Color    hue;
-    private       Color    shade;
-    private       int      hueX;
-    private       int      shadeX;
-    private       int      shadeY;
-    private final Runnable escapeHook;
-    private final int      fontSize;
+    private final TextureEditor editor;
+    private final Raster        display;
+    private final Painter       painter;
+    private final Printer       printer;
+    private final int           fontSize;
+    private final int           hueSliderWidth;
+    private final int           hueSliderHeight;
+    private final int           hueSliderX;
+    private final int           hueSliderY;
+    private final int           shadePickerWidth;
+    private final int           shadePickerHeight;
+    private final int           shadePickerX;
+    private final int           shadePickerY;
+    private final int           previewWidth;
+    private final int           previewHeight;
+    private final int           previewX;
+    private final int           previewY;
+    private       boolean       selectingHue   = false;
+    private       boolean       selectingShade = false;
+    private       Color         hue;
+    private       Color         shade;
+    private       int           hueX;
+    private       int           shadeX;
+    private       int           shadeY;
 
-    public ColorPicker(Raster display, Painter painter, Printer printer, Color initial, int fontSize, Runnable escapeHook) {
-        this.display = display;
-        this.painter = painter;
-        this.printer = printer;
-        this.hueSliderWidth = (int) (.3333 * display.width());
-        this.hueSliderHeight = 20;
-        this.hueSliderX = display.width() - hueSliderWidth;
-        this.hueSliderY = display.height() - hueSliderHeight;
-        this.shadePickerWidth = hueSliderWidth;
-        this.shadePickerHeight = (int) (.3333 * display.height());
-        this.shadePickerX = hueSliderX;
-        this.shadePickerY = hueSliderY - shadePickerHeight;
-        this.previewWidth = (int) (.1667 * display.width());
-        this.previewHeight = hueSliderHeight + shadePickerHeight;
-        this.previewX = hueSliderX - previewWidth;
-        this.previewY = shadePickerY;
-        this.escapeHook = escapeHook;
-        this.fontSize = fontSize;
+    public ColorPicker(TextureEditor editor, Color initial) {
+        this.editor = editor;
+        this.display = editor.display();
+        this.painter = editor.painter();
+        this.printer = editor.printer();
+        this.fontSize = editor.fontSize();
+        hueSliderWidth = (int) (.3333 * display.width());
+        hueSliderHeight = 20;
+        hueSliderX = display.width() - hueSliderWidth;
+        hueSliderY = display.height() - hueSliderHeight;
+        shadePickerWidth = hueSliderWidth;
+        shadePickerHeight = (int) (.3333 * display.height());
+        shadePickerX = hueSliderX;
+        shadePickerY = hueSliderY - shadePickerHeight;
+        previewWidth = (int) (.1667 * display.width());
+        previewHeight = hueSliderHeight + shadePickerHeight;
+        previewX = hueSliderX - previewWidth;
+        previewY = shadePickerY;
         set(initial);
     }
 
@@ -175,7 +181,7 @@ public class ColorPicker implements Renderer {
         this.shade = color;
     }
 
-    public Color get() {
+    public Color getColor() {
         return shade;
     }
 
@@ -185,7 +191,7 @@ public class ColorPicker implements Renderer {
                 switch (e.getModifiersEx()) {
                     case 0 -> {
                         switch (e.getKeyCode()) {
-                            case KeyEvent.VK_ESCAPE -> escapeHook.run();
+                            case KeyEvent.VK_ESCAPE -> editor.escape();
                         }
                     }
                     case KeyEvent.CTRL_DOWN_MASK, KeyEvent.META_DOWN_MASK -> {

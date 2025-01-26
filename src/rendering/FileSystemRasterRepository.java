@@ -22,49 +22,45 @@ public class FileSystemRasterRepository implements RasterRepository {
     }
 
     @Override
-    public void create(Path targetFilename, Raster raster) {
+    public Result<Void, Exception> create(Path targetFilename, Raster raster) {
         var start = clock.instant();
         var targetFile = targetFilename.toFile();
         if (targetFile.exists()) {
-            LOG.error("Target already exists: %s", targetFilename);
-            return;
+            return fail("Target already exists: %s", targetFilename);
         }
         try {
             if (!targetFile.createNewFile()) {
-                LOG.error("Failed to create %s", targetFilename);
-                return;
+                return fail("Failed to create %s", targetFilename);
             }
         } catch (IOException e) {
-            LOG.error(e, "Failed to create %s", targetFilename);
-            return;
+            return fail(e, "Failed to create %s", targetFilename);
         }
         try (var fos = new FileOutputStream(targetFile)) {
             writeRaster(raster, fos);
         } catch (FileNotFoundException e) {
-            LOG.error(e, "Could not find file after creating it: %s", targetFilename);
+            return fail(e, "Could not find file after creating it: %s", targetFilename);
         } catch (IOException e) {
-            LOG.error(e, "Could not close file: %s", targetFilename);
+            return fail(e, "Could not close file: %s", targetFilename);
         }
-        var end = clock.instant();
-        LOG.info("Created %s in %s", targetFilename, Duration.between(start, end));
+        LOG.info("Created %s in %s", targetFilename, Duration.between(start, clock.instant()));
+        return Result.success(null);
     }
 
     @Override
-    public void delete(Path targetFilename) {
+    public Result<Void, Exception> delete(Path targetFilename) {
+        var start = clock.instant();
         var targetFile = targetFilename.toFile();
         if (!targetFile.exists()) {
-            LOG.error("Target does not exist: %s", targetFilename);
-            return;
+            return fail("Target does not exist: %s", targetFilename);
         }
         if (!targetFile.isFile()) {
-            LOG.error("Target is not a file: %s", targetFilename);
-            return;
+            return fail("Target is not a file: %s", targetFilename);
         }
         if (!targetFile.delete()) {
-            LOG.error("Failed to delete %s", targetFilename);
-            return;
+            return fail("Failed to delete %s", targetFilename);
         }
-        LOG.info("Deleted %s", targetFilename);
+        LOG.info("Deleted %s in %s", targetFilename, Duration.between(start, clock.instant()));
+        return Result.success(null);
     }
 
     @Override
@@ -210,5 +206,4 @@ public class FileSystemRasterRepository implements RasterRepository {
     private int intFromBytes(byte[] b) {
         return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     }
-
 }
