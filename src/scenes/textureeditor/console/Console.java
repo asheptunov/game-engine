@@ -71,6 +71,7 @@ public class Console {
         buf = new StringBuilder();
         cmd = new TrimmingCommand(new DelegatingCommand(Map.of(
                 "cd", new CmdCd(editor.state(), () -> Path.of(".")),
+                "exit", new CmdExit(),
                 "load", new CmdLoad(editor.state(), editor.repo()),
                 "ls", new CmdLs(editor.state(), editor.clock()),
                 "mkdir", new CmdMkdir(editor.state()),
