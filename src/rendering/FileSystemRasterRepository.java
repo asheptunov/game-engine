@@ -4,11 +4,11 @@ import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 
@@ -22,51 +22,8 @@ public class FileSystemRasterRepository implements RasterRepository {
     }
 
     @Override
-    public Result<Void, Exception> create(Path targetFilename, Raster raster) {
+    public Result<Raster, Exception> load(File file) {
         var start = clock.instant();
-        var targetFile = targetFilename.toFile();
-        if (targetFile.exists()) {
-            return fail("Target already exists: %s", targetFilename);
-        }
-        try {
-            if (!targetFile.createNewFile()) {
-                return fail("Failed to create %s", targetFilename);
-            }
-        } catch (IOException e) {
-            return fail(e, "Failed to create %s", targetFilename);
-        }
-        try (var fos = new FileOutputStream(targetFile)) {
-            writeRaster(raster, fos);
-        } catch (FileNotFoundException e) {
-            return fail(e, "Could not find file after creating it: %s", targetFilename);
-        } catch (IOException e) {
-            return fail(e, "Could not close file: %s", targetFilename);
-        }
-        LOG.info("Created %s in %s", targetFilename, Duration.between(start, clock.instant()));
-        return Result.success(null);
-    }
-
-    @Override
-    public Result<Void, Exception> delete(Path targetFilename) {
-        var start = clock.instant();
-        var targetFile = targetFilename.toFile();
-        if (!targetFile.exists()) {
-            return fail("Target does not exist: %s", targetFilename);
-        }
-        if (!targetFile.isFile()) {
-            return fail("Target is not a file: %s", targetFilename);
-        }
-        if (!targetFile.delete()) {
-            return fail("Failed to delete %s", targetFilename);
-        }
-        LOG.info("Deleted %s in %s", targetFilename, Duration.between(start, clock.instant()));
-        return Result.success(null);
-    }
-
-    @Override
-    public Result<Raster, Exception> load(Path filename) {
-        var start = clock.instant();
-        var file = filename.toFile();
         if (file.exists()) {
             if (file.isDirectory()) {
                 return fail("Failed to load from file; %s is a directory, not a file", file);
@@ -76,17 +33,17 @@ public class FileSystemRasterRepository implements RasterRepository {
         }
         Result<Raster, Exception> res;
         try (var fis = new FileInputStream(file)) {
-            res = readRaster(fis, filename);
+            res = readRaster(fis, file);
         } catch (FileNotFoundException e) {
-            res = fail(e, "Could not find file after creating it: %s", filename);
+            res = fail(e, "Could not find file after creating it: %s", file);
         } catch (IOException e) {
-            res = fail(e, "Could not close file %s", filename);
+            res = fail(e, "Could not close file %s", file);
         }
         if (res.isFailure()) {
             return res;
         }
         var end = clock.instant();
-        LOG.info("Loaded from %s in %s", filename, Duration.between(start, end));
+        LOG.info("Loaded from %s in %s", file, Duration.between(start, end));
         return res;
     }
 
@@ -99,9 +56,8 @@ public class FileSystemRasterRepository implements RasterRepository {
     }
 
     @Override
-    public Result<Void, Exception> save(Path filename, Raster raster) {
+    public Result<Void, Exception> save(File file, Raster raster) {
         var start = clock.instant();
-        var file = filename.toFile();
         var dir = file.getParentFile();
         if (dir.exists()) {
             if (!dir.isDirectory()) {
@@ -158,24 +114,24 @@ public class FileSystemRasterRepository implements RasterRepository {
         fos.write(buf);
     }
 
-    private Result<Raster, Exception> readRaster(FileInputStream fis, Path filename) {
+    private Result<Raster, Exception> readRaster(FileInputStream fis, File file) {
         var intBuf = new byte[4];
         try {
             // width - BE int32
             if (4 != fis.read(intBuf)) {
-                return fail("Error reading texture width from file %s (unexpected end of buffer)", filename);
+                return fail("Error reading texture width from file %s (unexpected end of buffer)", file);
             }
             int w = intFromBytes(intBuf);
             // height - BE int32
             if (4 != fis.read(intBuf)) {
-                return fail("Error reading texture height from file %s (unexpected end of buffer)", filename);
+                return fail("Error reading texture height from file %s (unexpected end of buffer)", file);
             }
             int h = intFromBytes(intBuf);
             // pixel data - BE int24 array
             int n = w * h;
             var buf = new byte[n * 3];
             if (buf.length != fis.read(buf)) {
-                return fail("Error reading texture pixel data from file %s (unexpected end of buffer)", filename);
+                return fail("Error reading texture pixel data from file %s (unexpected end of buffer)", file);
             }
             var a = new byte[n];
             var r = new byte[n];

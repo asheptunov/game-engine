@@ -2,22 +2,22 @@ package scenes.textureeditor.model;
 
 import rendering.Raster;
 
-import java.nio.file.Path;
+import java.io.File;
 import java.util.Optional;
 
 public class EditorState {
     private Mode        mode;
-    private Path        dirName;
-    private Path        filename;
+    private File        workingDir;
+    private File        workingFile;
     private Raster      texture;
     private Selection   selection;
     private Coordinates boxStart;
 
     public EditorState(Mode mode,
-                       Path dirName,
+                       File workingDir,
                        Raster texture) {
         this.mode = mode;
-        this.dirName = dirName;
+        this.workingDir = workingDir;
         this.texture = texture;
     }
 
@@ -29,30 +29,30 @@ public class EditorState {
         this.mode = mode;
     }
 
-    public Path dirName() {
-        return dirName;
+    public File workingDir() {
+        return workingDir;
     }
 
-    public void dirName(Path dirName) {
-        if (dirName == null) {
+    public void workingDir(File workingDir) {
+        if (workingDir == null) {
             throw new IllegalArgumentException();
         }
-        this.dirName = dirName;
+        this.workingDir = workingDir;
     }
 
-    public Optional<Path> filename() {
-        return Optional.ofNullable(filename);
+    public Optional<File> workingFile() {
+        return Optional.ofNullable(workingFile);
     }
 
-    public void filename(Path filename) {
-        if (filename == null) {
+    public void workingFile(File workingFile) {
+        if (workingFile == null) {
             throw new IllegalArgumentException();
         }
-        this.filename = filename;
+        this.workingFile = workingFile;
     }
 
-    public void clearFilename() {
-        this.filename = null;
+    public void clearWorkingFile() {
+        this.workingFile = null;
     }
 
     public Raster texture() {

@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Either<L, R> {
-    private       boolean isLeft;
+    private final boolean isLeft;
     private final L       left;
     private final R       right;
 

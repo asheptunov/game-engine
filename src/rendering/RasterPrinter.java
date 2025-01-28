@@ -146,7 +146,7 @@ public class RasterPrinter implements Printer {
             }
             FONT_FS_MAP.forEach((c, filename) -> {
                 var assetPath = fontPath.resolve("standard").resolve(filename);
-                var loadResult = repository.load(assetPath);
+                var loadResult = repository.load(assetPath.toFile());
                 loadResult
                         .ifFailure(ex -> LOG.warn(ex, "Failed to read asset file for char '%c': %s", c, filename))
                         .mapFailure(Exception::getMessage)

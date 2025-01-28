@@ -2,14 +2,10 @@ package rendering;
 
 import misc.monads.Result;
 
-import java.nio.file.Path;
+import java.io.File;
 
 public interface RasterRepository {
-    Result<Void, Exception> create(Path path, Raster raster);
+    Result<Raster, Exception> load(File file);
 
-    Result<Void, Exception> delete(Path path);
-
-    Result<Raster, Exception> load(Path path);
-
-    Result<Void, Exception> save(Path path, Raster raster);
+    Result<Void, Exception> save(File file, Raster raster);
 }

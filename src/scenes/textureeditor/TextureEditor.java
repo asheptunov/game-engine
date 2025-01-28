@@ -15,6 +15,7 @@ import rendering.RasterPrinter;
 import rendering.RasterRepository;
 import rendering.Renderer;
 import scenes.Scene;
+import scenes.textureeditor.console.Console;
 import scenes.textureeditor.model.Coordinates;
 import scenes.textureeditor.model.EditorState;
 import scenes.textureeditor.model.Mode;
@@ -26,6 +27,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.io.File;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.function.BiFunction;
@@ -78,7 +80,7 @@ public class TextureEditor implements
         this.clock = clock;
         this.state = new EditorState(
                 DEFAULT_MODE,
-                Path.of("assets/fonts/test/standard"),
+                Path.of("assets/fonts/test/standard").toFile(),
                 new PixelRaster(width, height, (_, _) -> NamedColor.BLACK));
         this.rasterHistory = new CircularBufferHistoryImpl<>(state.texture().clone(), 100);
         this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
@@ -300,59 +302,59 @@ public class TextureEditor implements
         }
     }
 
-    void escape() {
+    public void escape() {
         state.mode(DEFAULT_MODE);
     }
 
-    Result<Void, Exception> saveToFile(Path filename) {
-        return repo.save(state.dirName().resolve(filename), state.texture());
+    public Result<Void, Exception> saveToFile(File file) {
+        return repo.save(state.workingDir().toPath().resolve(file.toPath()).toFile(), state.texture());
     }
 
-    Result<Raster, Exception> loadFromFile(Path filename) {
-        return repo.load(state.dirName().resolve(filename))
+    public Result<Raster, Exception> loadFromFile(File file) {
+        return repo.load(state.workingDir().toPath().resolve(file.toPath()).toFile())
                 .ifSuccess(raster -> {
                     state.texture(raster);
                     saveToHistory();
                 });
     }
 
-    RasterRepository repo() {
+    public RasterRepository repo() {
         return repo;
     }
 
-    Raster display() {
+    public Raster display() {
         return display;
     }
 
-    Painter painter() {
+    public Painter painter() {
         return painter;
     }
 
-    Printer printer() {
+    public Printer printer() {
         return printer;
     }
 
-    int fontSize() {
-        return 16;
+    public int fontSize() {
+        return 17;
     }
 
-    int charSpacing() {
+    public int charSpacing() {
         return -2;
     }
 
-    int lineSpacing() {
-        return -2;
+    public int lineSpacing() {
+        return 0;
     }
 
-    Clock clock() {
+    public Clock clock() {
         return clock;
     }
 
-    EditorState state() {
+    public EditorState state() {
         return state;
     }
 
-    ColorPicker colorPicker() {
+    public ColorPicker colorPicker() {
         return colorPicker;
     }
 
@@ -407,8 +409,8 @@ public class TextureEditor implements
                 }
             }
             case KeyEvent.VK_F1 -> toggleHelp();
-            case KeyEvent.VK_F5 -> saveToFile(state.filename().orElseThrow());
-            case KeyEvent.VK_F9 -> loadFromFile(state.filename().orElseThrow());
+            case KeyEvent.VK_F5 -> saveToFile(state.workingFile().orElseThrow());
+            case KeyEvent.VK_F9 -> loadFromFile(state.workingFile().orElseThrow());
             case KeyEvent.VK_Z -> {
                 switch (e.getModifiersEx()) {
                     case KeyEvent.CTRL_DOWN_MASK -> undo();
