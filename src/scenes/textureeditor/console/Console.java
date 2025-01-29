@@ -11,12 +11,12 @@ import rendering.Printer;
 import scenes.textureeditor.CircularBufferHistoryImpl;
 import scenes.textureeditor.History;
 import scenes.textureeditor.TextureEditor;
+import ui.KeyAction;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseWheelEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -86,61 +86,56 @@ public class Console {
         )));
     }
 
-    public void accept(KeyEvent keystroke) {
+    public void accept(KeyAction keyAction) {
         vtOffset = 0;
-        switch (keystroke.getID()) {
-            case KeyEvent.KEY_TYPED: {
-                fastAppend(keystroke.getKeyChar());
-            }
-            case KeyEvent.KEY_PRESSED: {
-                switch (keystroke.getModifiersEx()) {
-                    case KeyEvent.CTRL_DOWN_MASK, KeyEvent.META_DOWN_MASK -> {
-                        switch (keystroke.getKeyCode()) {
-                            case KeyEvent.VK_C -> {
-                                var str = buf.toString();
-                                var sel = new StringSelection(str);
-                                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
-                                LOG.info("Copied buffer to clipboard: [%s]", str);
-                            }
-                            case KeyEvent.VK_X -> {
-                                var str = buf.toString();
-                                var sel = new StringSelection(str);
-                                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
-                                fastClear();
-                                LOG.info("Cut buffer to clipboard: [%s]", str);
-                            }
-                            case KeyEvent.VK_V -> {
-                                var contents = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(this);
-                                if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-                                    try (var r = DataFlavor.stringFlavor.getReaderForText(contents)) {
-                                        try (var br = new BufferedReader(r)) {
-                                            var str = br.lines().collect(Collectors.joining("\n"));
-                                            if (CHAR_ACCEPT_LIST.matcher(str).find()) {
-                                                fastSet(str);
-                                                LOG.info("Pasted buffer from clipboard: [%s]", str);
-                                            }
+        switch (keyAction.action()) {
+            case KeyAction.Action.PRESS -> {
+                if (keyAction.mods().none()) {
+                    switch (keyAction.raw()) {
+                        case ESCAPE -> editor.escape();
+                        case BACKSPACE -> fastDeleteLast();
+                        case ENTER -> {
+                            var res = cmd.run(buf.toString().split(" ")).fold(
+                                    s -> new CommandAndResult(buf.toString(), s),
+                                    e -> new CommandAndResult(buf.toString(),
+                                            AnsiColor.RED.formatted() + e + AnsiColor.NONE.formatted()));
+                            history.record(res);
+                            fastClear();
+                        }
+                        default -> keyAction.reified().character().ifPresent(this::fastAppend);
+                    }
+                } else if (keyAction.mods().ctrl() || keyAction.mods().meta()) {
+                    switch (keyAction.raw()) {
+                        case LOWER_C -> {
+                            var str = buf.toString();
+                            var sel = new StringSelection(str);
+                            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+                            LOG.info("Copied buffer to clipboard: [%s]", str);
+                        }
+                        case LOWER_X -> {
+                            var str = buf.toString();
+                            var sel = new StringSelection(str);
+                            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
+                            fastClear();
+                            LOG.info("Cut buffer to clipboard: [%s]", str);
+                        }
+                        case LOWER_V -> {
+                            var contents = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(this);
+                            if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                                try (var r = DataFlavor.stringFlavor.getReaderForText(contents)) {
+                                    try (var br = new BufferedReader(r)) {
+                                        var str = br.lines().collect(Collectors.joining("\n"));
+                                        if (CHAR_ACCEPT_LIST.matcher(str).find()) {
+                                            fastSet(str);
+                                            LOG.info("Pasted buffer from clipboard: [%s]", str);
                                         }
-                                    } catch (UnsupportedFlavorException | IOException ex) {
-                                        LOG.error(ex, "Failed to paste input from clipboard");
                                     }
+                                } catch (UnsupportedFlavorException | IOException ex) {
+                                    LOG.error(ex, "Failed to paste input from clipboard");
                                 }
                             }
-                            case KeyEvent.VK_BACK_SPACE -> fastClear();
                         }
-                    }
-                    case 0 -> {
-                        switch (keystroke.getKeyCode()) {
-                            case KeyEvent.VK_ESCAPE -> editor.escape();
-                            case KeyEvent.VK_ENTER -> {
-                                var res = cmd.run(buf.toString().split(" ")).fold(
-                                        s -> new CommandAndResult(buf.toString(), s),
-                                        e -> new CommandAndResult(buf.toString(),
-                                                AnsiColor.RED.formatted() + e + AnsiColor.NONE.formatted()));
-                                history.record(res);
-                                fastClear();
-                            }
-                            case KeyEvent.VK_BACK_SPACE -> fastDeleteLast();
-                        }
+                        case BACKSPACE -> fastClear();
                     }
                 }
             }

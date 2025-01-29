@@ -21,10 +21,6 @@ public class TrimmingCommand implements Command {
         if (trimmedArgs.length == 0) {
             return Result.success(null);
         }
-        while (trimmedArgs[0].startsWith("/")) {
-            // todo this should not be necessary
-            trimmedArgs[0] = trimmedArgs[0].substring(1);
-        }
         return delegate.run(trimmedArgs);
     }
 }

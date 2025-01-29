@@ -1,11 +1,15 @@
 package scenes.textureeditor.model;
 
+import logging.LogManager;
+import logging.Logger;
 import rendering.Raster;
 
 import java.io.File;
 import java.util.Optional;
 
 public class EditorState {
+    private static final Logger LOG = LogManager.instance().getThis();
+
     private Mode        mode;
     private File        workingDir;
     private File        workingFile;
@@ -26,7 +30,11 @@ public class EditorState {
     }
 
     public void mode(Mode mode) {
-        this.mode = mode;
+        var oldMode = this.mode;
+        if (oldMode != mode) {
+            this.mode = mode;
+            LOG.info("Switched mode from %s to %s", oldMode, mode);
+        }
     }
 
     public File workingDir() {

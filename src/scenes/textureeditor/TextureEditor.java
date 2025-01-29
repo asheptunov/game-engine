@@ -19,6 +19,7 @@ import scenes.textureeditor.console.Console;
 import scenes.textureeditor.model.Coordinates;
 import scenes.textureeditor.model.EditorState;
 import scenes.textureeditor.model.Mode;
+import ui.KeyAction;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -90,33 +91,26 @@ public class TextureEditor implements
     @Override
     public void keyTyped(KeyEvent e) {
         LOG.trace("Handling %s", e);
-        switch (state.mode()) {
-            case COLOR_PICKER:
-                colorPicker.accept(e);
-                break;
-            case COMMAND_ENTRY:
-                console.accept(e);
-                break;
-        }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         LOG.trace("Handling %s", e);
+        var action = KeyAction.fromAwt(e);
         switch (state.mode()) {
             case PIXEL_SELECT:
             case LASSO_SELECT:
             case BOX_SELECT:
             case BRUSH:
             case FILL:
-                state.mode(switch (e.getKeyCode()) {
-                    case KeyEvent.VK_Q -> PIXEL_SELECT;
-                    case KeyEvent.VK_W -> BOX_SELECT;
-                    case KeyEvent.VK_E -> LASSO_SELECT;
-                    case KeyEvent.VK_R -> BRUSH;
-                    case KeyEvent.VK_T -> FILL;
-                    case KeyEvent.VK_C -> COLOR_PICKER;
-                    case KeyEvent.VK_SLASH -> COMMAND_ENTRY;
+                state.mode(switch (action.raw()) {
+                    case KeyAction.Key.LOWER_Q -> PIXEL_SELECT;
+                    case KeyAction.Key.LOWER_W -> BOX_SELECT;
+                    case KeyAction.Key.LOWER_E -> LASSO_SELECT;
+                    case KeyAction.Key.LOWER_R -> BRUSH;
+                    case KeyAction.Key.LOWER_T -> FILL;
+                    case KeyAction.Key.LOWER_C -> COLOR_PICKER;
+                    case KeyAction.Key.FORWARD_SLASH -> COMMAND_ENTRY;
                     default -> state.mode();
                 });
                 handleGlobalActions(e);
@@ -125,14 +119,14 @@ public class TextureEditor implements
                 colorPicker.accept(e);
                 break;
             case COMMAND_ENTRY:
-                console.accept(e);
+                console.accept(action);
                 break;
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        LOG.trace("Handling %s", e);
+        LOG.trace("Handling %s", KeyAction.fromAwt(e));
     }
 
     @Override
