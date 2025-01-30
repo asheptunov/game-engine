@@ -558,16 +558,32 @@ public record KeyAction(Key raw,
             return lCtrl || rCtrl;
         }
 
+        public boolean ctrlOnly() {
+            return ctrl() && !(alt() || shift() || meta());
+        }
+
         public boolean alt() {
             return lAlt || rAlt;
+        }
+
+        public boolean altOnly() {
+            return alt() && !(ctrl() || shift() || meta());
         }
 
         public boolean shift() {
             return lShift || rShift;
         }
 
+        public boolean shiftOnly() {
+            return shift() && !(ctrl() || alt() || meta());
+        }
+
         public boolean meta() {
             return lMeta || rMeta;
+        }
+
+        public boolean metaOnly() {
+            return meta() && !(ctrl() || alt() || shift());
         }
 
         public boolean any() {
@@ -582,7 +598,7 @@ public record KeyAction(Key raw,
             boolean lCtrl = false, rCtrl = false;
             if (awt.isControlDown()) {
                 switch (awt.getKeyLocation()) {
-                    case KEY_LOCATION_LEFT -> lCtrl = true;
+                    case KEY_LOCATION_LEFT, KEY_LOCATION_STANDARD -> lCtrl = true;
                     case KEY_LOCATION_RIGHT -> rCtrl = true;
                     default -> throw new UnsupportedOperationException("" + awt.getKeyLocation());
                 }
@@ -590,7 +606,7 @@ public record KeyAction(Key raw,
             boolean lAlt = false, rAlt = false;
             if (awt.isAltDown()) {
                 switch (awt.getKeyLocation()) {
-                    case KEY_LOCATION_LEFT -> lAlt = true;
+                    case KEY_LOCATION_LEFT, KEY_LOCATION_STANDARD -> lAlt = true;
                     case KEY_LOCATION_RIGHT -> rAlt = true;
                     default -> throw new UnsupportedOperationException("" + awt.getKeyLocation());
                 }
@@ -601,7 +617,7 @@ public record KeyAction(Key raw,
             boolean lShift = false, rShift = false;
             if (awt.isShiftDown()) {
                 switch (awt.getKeyLocation()) {
-                    case KEY_LOCATION_LEFT -> lShift = true;
+                    case KEY_LOCATION_LEFT, KEY_LOCATION_STANDARD -> lShift = true;
                     case KEY_LOCATION_RIGHT -> rShift = true;
                     default -> throw new UnsupportedOperationException("" + awt.getKeyLocation());
                 }
@@ -609,7 +625,7 @@ public record KeyAction(Key raw,
             boolean lMeta = false, rMeta = false;
             if (awt.isMetaDown()) {
                 switch (awt.getKeyLocation()) {
-                    case KEY_LOCATION_LEFT -> lMeta = true;
+                    case KEY_LOCATION_LEFT, KEY_LOCATION_STANDARD -> lMeta = true;
                     case KEY_LOCATION_RIGHT -> rMeta = true;
                     default -> throw new UnsupportedOperationException("" + awt.getKeyLocation());
                 }

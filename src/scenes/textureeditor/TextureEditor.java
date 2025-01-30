@@ -113,10 +113,10 @@ public class TextureEditor implements
                     case KeyAction.Key.FORWARD_SLASH -> COMMAND_ENTRY;
                     default -> state.mode();
                 });
-                handleGlobalActions(e);
+                handleGlobalActions(action);
                 break;
             case COLOR_PICKER:
-                colorPicker.accept(e);
+                colorPicker.accept(action);
                 break;
             case COMMAND_ENTRY:
                 console.accept(action);
@@ -394,27 +394,33 @@ public class TextureEditor implements
         return new Coordinates(x, y);
     }
 
-    private void handleGlobalActions(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_ESCAPE -> {
-                if (state.selection().isPresent()) {
-                    LOG.info("Erasing selection %s", state.selection().get());
-                    state.clearSelection();
-                }
-            }
-            case KeyEvent.VK_F1 -> toggleHelp();
-            case KeyEvent.VK_F5 -> saveToFile(state.workingFile().orElseThrow());
-            case KeyEvent.VK_F9 -> loadFromFile(state.workingFile().orElseThrow());
-            case KeyEvent.VK_Z -> {
-                switch (e.getModifiersEx()) {
-                    case KeyEvent.CTRL_DOWN_MASK -> undo();
-                    case KeyEvent.CTRL_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK -> redo();
-                }
-            }
-            case KeyEvent.VK_A -> {
-                if (e.getModifiersEx() == KeyEvent.CTRL_DOWN_MASK) {
-                    LOG.info("Selecting all");
-                    state.selection(new BoxSelection(0, 0, state.texture().width() - 1, state.texture().height() - 1));
+    private void handleGlobalActions(KeyAction keyAction) {
+        switch (keyAction.action()) {
+            case PRESS -> {
+                switch (keyAction.raw()) {
+                    case KeyAction.Key.ESCAPE -> {
+                        if (state.selection().isPresent()) {
+                            LOG.info("Erasing selection %s", state.selection().get());
+                            state.clearSelection();
+                        }
+                    }
+                    case KeyAction.Key.F1 -> toggleHelp();
+                    case KeyAction.Key.F5 -> saveToFile(state.workingFile().orElseThrow());
+                    case KeyAction.Key.F9 -> loadFromFile(state.workingFile().orElseThrow());
+                    case KeyAction.Key.LOWER_Z -> {
+                        switch (keyAction.mods()) {
+                            case KeyAction.Modifiers m when m.ctrl() && m.shift() -> redo();
+                            case KeyAction.Modifiers m when m.ctrl() -> undo();
+                            default -> {}
+                        }
+                    }
+                    case KeyAction.Key.LOWER_A -> {
+                        switch (keyAction.mods()) {
+                            case KeyAction.Modifiers m when m.ctrlOnly() -> state.selection(
+                                    new BoxSelection(0, 0, state.texture().width() - 1, state.texture().height() - 1));
+                            default -> {}
+                        }
+                    }
                 }
             }
         }

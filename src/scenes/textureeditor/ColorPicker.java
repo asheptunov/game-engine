@@ -8,12 +8,12 @@ import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Raster;
 import rendering.Renderer;
+import ui.KeyAction;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -188,24 +188,24 @@ public class ColorPicker implements Renderer {
         return shade;
     }
 
-    public void accept(KeyEvent e) {
-        switch (e.getID()) {
-            case KeyEvent.KEY_PRESSED -> {
-                switch (e.getModifiersEx()) {
-                    case 0 -> {
-                        switch (e.getKeyCode()) {
-                            case KeyEvent.VK_ESCAPE -> editor.escape();
+    public void accept(KeyAction keyAction) {
+        switch (keyAction.action()) {
+            case PRESS -> {
+                switch (keyAction.mods()) {
+                    case KeyAction.Modifiers m when m.none() -> {
+                        switch (keyAction.raw()) {
+                            case ESCAPE -> editor.escape();
                         }
                     }
-                    case KeyEvent.CTRL_DOWN_MASK, KeyEvent.META_DOWN_MASK -> {
-                        switch (e.getKeyCode()) {
-                            case KeyEvent.VK_C -> {
+                    case KeyAction.Modifiers m when m.ctrlOnly() || m.metaOnly() -> {
+                        switch (keyAction.raw()) {
+                            case LOWER_C -> {
                                 var str = hexCode();
                                 var sel = new StringSelection(str);
                                 Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
                                 LOG.info("Copied selected color to clipboard: [%s]", str);
                             }
-                            case KeyEvent.VK_V -> {
+                            case LOWER_V -> {
                                 var contents = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(this);
                                 if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
                                     try (var r = DataFlavor.stringFlavor.getReaderForText(contents)) {
@@ -225,6 +225,7 @@ public class ColorPicker implements Renderer {
                             }
                         }
                     }
+                    default -> {}
                 }
             }
         }
