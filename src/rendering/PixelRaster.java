@@ -76,7 +76,13 @@ public class PixelRaster implements Raster {
     }
 
     @Override
-    public void setPixel(int x, int y, Color color) {
+    public Color pixel(int x, int y) {
+        int i = y * w + x;
+        return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
+    }
+
+    @Override
+    public void pixel(int x, int y, Color color) {
         int i = y * w + x;
         int c = color.argbInt32();
         a[i] = (byte) (c >> 24);

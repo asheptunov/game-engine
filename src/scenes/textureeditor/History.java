@@ -13,4 +13,8 @@ public interface History<T> {
     Collection<T> getPast();
 
     Collection<T> getFuture();
+
+    int size();
+
+    int maxSize();
 }

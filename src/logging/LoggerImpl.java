@@ -18,16 +18,31 @@ import static java.time.temporal.ChronoField.HOUR_OF_DAY;
 import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
 import static java.time.temporal.ChronoField.NANO_OF_SECOND;
 import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
-import static logging.LoggerImpl.Level.DEBUG;
-import static logging.LoggerImpl.Level.ERROR;
-import static logging.LoggerImpl.Level.FATAL;
-import static logging.LoggerImpl.Level.INFO;
-import static logging.LoggerImpl.Level.TRACE;
-import static logging.LoggerImpl.Level.WARN;
+import static logging.Logger.Level.DEBUG;
+import static logging.Logger.Level.ERROR;
+import static logging.Logger.Level.FATAL;
+import static logging.Logger.Level.INFO;
+import static logging.Logger.Level.TRACE;
+import static logging.Logger.Level.WARN;
 
 public class LoggerImpl implements Logger {
-    private static final Locale            LOCALE                              = Locale.ROOT;
-    private static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER         = new DateTimeFormatterBuilder()
+    private static final Map<Level, PrintStream> PRINT_STREAMS                       = Map.of(
+            TRACE, System.out,
+            DEBUG, System.out,
+            INFO, System.out,
+            WARN, System.err,
+            ERROR, System.err,
+            FATAL, System.err
+    );
+    private static final int                     LONGEST                             = Arrays.stream(Level.values())
+            .map(Enum::name)
+            .map(String::length)
+            .max(Integer::compare)
+            .orElseThrow();
+    private static final Map<Level, String>      PADDING                             = Arrays.stream(Level.values())
+            .collect(Collectors.toMap(t -> t, t -> " ".repeat(LONGEST - t.name().length())));
+    private static final Locale                  LOCALE                              = Locale.ROOT;
+    private static final DateTimeFormatter       DEFAULT_DATE_TIME_FORMATTER         = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .append(ISO_LOCAL_DATE)
             .appendLiteral('T')
@@ -42,10 +57,10 @@ public class LoggerImpl implements Logger {
                     .appendFraction(NANO_OF_SECOND, 9, 9, true)
                     .toFormatter(LOCALE))
             .toFormatter(LOCALE);
-    private static final String            DEFAULT_NEWLINE                     = "\\n";
-    private static final String            DEFAULT_CARRIAGE_RETURN             = "\\r";
-    private static final String            DEFAULT_STACK_TRACE_NEWLINE         = "|";
-    private static final String            DEFAULT_STACK_TRACE_CARRIAGE_RETURN = "";
+    private static final String                  DEFAULT_NEWLINE                     = "\\n";
+    private static final String                  DEFAULT_CARRIAGE_RETURN             = "\\r";
+    private static final String                  DEFAULT_STACK_TRACE_NEWLINE         = "|";
+    private static final String                  DEFAULT_STACK_TRACE_CARRIAGE_RETURN = "";
 
     private final String            name;
     private final Level             min;
@@ -62,36 +77,8 @@ public class LoggerImpl implements Logger {
         this.clock = clock;
     }
 
-    enum Level {
-        TRACE(System.out),
-        DEBUG(System.out),
-        INFO(System.out),
-        WARN(System.err),
-        ERROR(System.err),
-        FATAL(System.err);
-
-        private final PrintStream ps;
-        private final int         len;
-
-        Level(PrintStream ps) {
-            this.ps = ps;
-            this.len = this.name().length();
-        }
-
-        private static final int                LONGEST = Arrays.stream(Level.values())
-                .map(Enum::name)
-                .map(String::length)
-                .max(Integer::compare)
-                .orElseThrow();
-        private static final Map<Level, String> PADDING = Arrays.stream(Level.values())
-                .collect(Collectors.toMap(t -> t, t -> " ".repeat(LONGEST - t.len)));
-
-        private String padding() {
-            return PADDING.get(this);
-        }
-    }
-
-    private Logger log(Level level, Throwable ex, String fmt, Object... args) {
+    @Override
+    public Logger log(Level level, Throwable ex, String fmt, Object... args) {
         if (level.ordinal() < min.ordinal()) {
             return this;
         }
@@ -114,17 +101,17 @@ public class LoggerImpl implements Logger {
         extArgs[extArgs.length - 2] = stackTraceNewline;
         extArgs[extArgs.length - 1] = str;
         log(level, fmt + "%s%s", extArgs);
-//        level.ps.println(str);
         return this;
     }
 
-    private Logger log(Level level, String fmt, Object... args) {
+    @Override
+    public Logger log(Level level, String fmt, Object... args) {
         if (level.ordinal() < min.ordinal()) {
             return this;
         }
-        level.ps.printf("%s %s[%s] %s: %s%n",
+        PRINT_STREAMS.get(level).printf("%s %s[%s] %s: %s%n",
                 dateTimeFormatter.format(LocalDateTime.now(clock)),
-                level.padding(),
+                PADDING.get(level),
                 level.name(),
                 name,
                 String.format(fmt, args)

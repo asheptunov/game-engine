@@ -10,7 +10,7 @@ public class CircularBufferHistoryImpl<T> implements History<T> {
     private       int oldest = 0;
     private       int newest = 0;
 
-    public CircularBufferHistoryImpl(T initial, int maxSize) {
+    public CircularBufferHistoryImpl(int maxSize, T initial) {
         if (maxSize < 1) {
             throw new IllegalArgumentException();
         }
@@ -75,5 +75,18 @@ public class CircularBufferHistoryImpl<T> implements History<T> {
             i %= buf.length;
         }
         return res;
+    }
+
+    @Override
+    public int size() {
+        int newest = this.newest >= oldest
+                ? this.newest
+                : this.newest + buf.length;
+        return newest - oldest + 1;
+    }
+
+    @Override
+    public int maxSize() {
+        return buf.length;
     }
 }

@@ -3,6 +3,9 @@ package scenes.textureeditor.model;
 import logging.LogManager;
 import logging.Logger;
 import rendering.Raster;
+import scenes.textureeditor.CircularBufferHistoryImpl;
+import scenes.textureeditor.History;
+import scenes.textureeditor.console.LoggingHistory;
 
 import java.io.File;
 import java.util.Optional;
@@ -10,19 +13,23 @@ import java.util.Optional;
 public class EditorState {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private Mode        mode;
-    private File        workingDir;
-    private File        workingFile;
-    private Raster      texture;
-    private Selection   selection;
-    private Coordinates boxStart;
+    private       Mode            mode;
+    private       File            workingDir;
+    private       File            workingFile;
+    private       Raster          texture;
+    private final History<Raster> textureHistory;
+    private       Selection       selection;
+    private       Coordinates     boxStart;
 
     public EditorState(Mode mode,
                        File workingDir,
-                       Raster texture) {
+                       Raster texture,
+                       int textureHistorySize) {
         this.mode = mode;
         this.workingDir = workingDir;
         this.texture = texture;
+        this.textureHistory = new LoggingHistory<>(Logger.Level.DEBUG,
+                new CircularBufferHistoryImpl<>(textureHistorySize, texture.clone()));
     }
 
     public Mode mode() {
@@ -72,6 +79,18 @@ public class EditorState {
             throw new IllegalArgumentException();
         }
         this.texture = texture;
+    }
+
+    public void snapshot() {
+        textureHistory.record(texture.clone());
+    }
+
+    public Optional<Raster> rollback() {
+        return textureHistory.goBack();
+    }
+
+    public Optional<Raster> rollforward() {
+        return textureHistory.goForward();
     }
 
     public Optional<Selection> selection() {

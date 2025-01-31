@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,7 +39,8 @@ public class Console {
     // todo add resize command
     private static final Pattern CHAR_ACCEPT_LIST          = Pattern.compile("[ -~]+");
     private static final Pattern ANSI_COLOR_ESCAPE_PATTERN = Pattern.compile("\\\\033\\[(?<colors>[0-9]{1,3}(;[0-9]{1,3})*)m");
-
+    private static final String  PROMPT                    = "$ ";
+    private static final String  CURSOR                    = "_";
 
     private record CommandAndResult(String command, String result) {
         static CommandAndResult empty() {
@@ -67,23 +67,25 @@ public class Console {
         vtStride = editor.fontSize() + editor.lineSpacing();
         maxLineWidth = editor.display().width() / hzStride;
         maxLines = editor.display().height() / vtStride;
-        history = new CircularBufferHistoryImpl<>(CommandAndResult.empty(), historySize);
+        history = new CircularBufferHistoryImpl<>(historySize, CommandAndResult.empty());
         buf = new StringBuilder();
-        cmd = new TrimmingCommand(new DelegatingCommand(Map.of(
-                "cd", new CmdCd(editor.state(), () -> Path.of(".")),
-                "exit", new CmdExit(),
-                "load", new CmdLoad(editor.state(), editor.repo()),
-                "ls", new CmdLs(editor.state(), editor.clock()),
-                "mkdir", new CmdMkdir(editor.state()),
-                "pwd", new CmdPwd(editor.state()),
-                "rm", new CmdRm(editor.state()),
-                "save", new CmdSave(editor.state(), editor.repo()),
-                "status", new CmdStatus(editor.state(), editor.colorPicker()),
-                "touch", new CmdTouch(editor.state(), editor.repo(), () -> new PixelRaster(
+        cmd = new TrimmingCommand(DelegatingCommand.builder()
+                .withCommand("canvas", new CmdCanvas(editor.state()))
+                .withCommand("cd", new CmdCd(editor.state(), () -> Path.of(".")))
+                .withCommand("exit", new CmdExit())
+                .withCommand("load", new CmdLoad(editor.state(), editor.repo()))
+                .withCommand("ls", new CmdLs(editor.state(), editor.clock()))
+                .withCommand("mkdir", new CmdMkdir(editor.state()))
+                .withCommand("pwd", new CmdPwd(editor.state()))
+                .withCommand("rm", new CmdRm(editor.state()))
+                .withCommand("save", new CmdSave(editor.state(), editor.repo()))
+                .withCommand("status", new CmdStatus(editor.state(), editor.colorPicker()))
+                .withCommand("touch", new CmdTouch(editor.state(), editor.repo(), () -> new PixelRaster(
                         editor.state().texture().width(),
                         editor.state().texture().height(),
-                        (_, _) -> Color.NamedColor.BLACK))
-        )));
+                        (_, _) -> Color.NamedColor.BLACK)))
+                .build()
+        );
     }
 
     public void accept(KeyAction keyAction) {
@@ -178,11 +180,11 @@ public class Console {
         return Stream.concat(
                 // history, oldest first (reverse because history.past() returns newest first)
                 ReversedSpliterator.reverse(history.getPast()).stream().flatMap(cnr -> Stream.concat(
-                        Optional.ofNullable(cnr.command()).stream(),
+                        Optional.ofNullable(cnr.command()).stream().map(PROMPT::concat),
                         Optional.ofNullable(cnr.result()).stream()
                 )),
                 // current buf is last line
-                Stream.of(buf.toString())
+                Stream.of(PROMPT + buf.toString() + CURSOR)
         ).collect(Collectors.joining("\n"));
     }
 

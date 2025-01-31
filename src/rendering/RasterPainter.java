@@ -11,7 +11,7 @@ public class RasterPainter implements Painter {
 
     @Override
     public void drawPoint(int x, int y, Color color) {
-        raster.setPixel(x, y, color);
+        raster.pixel(x, y, color);
     }
 
     @Override
@@ -50,7 +50,7 @@ public class RasterPainter implements Painter {
                 // rounding might be more accurate, but maybe slower
                 var color = pattern.apply(n++, progress);
                 if (x >= 0 && x < raster.width() && y >= 0 && y < raster.height()) {
-                    raster.setPixel((int) x, y, color);
+                    raster.pixel((int) x, y, color);
                 }
                 x += slope;
                 progress += progressionRate;
@@ -76,7 +76,7 @@ public class RasterPainter implements Painter {
             for (int x = startX; x < endX; ++x) {
                 var color = pattern.apply(n++, progress);
                 if (x >= 0 && x < raster.width() && y >= 0 && y < raster.height()) {
-                    raster.setPixel(x, (int) y, color);
+                    raster.pixel(x, (int) y, color);
                 }
                 y += slope;
                 progress += progressionRate;

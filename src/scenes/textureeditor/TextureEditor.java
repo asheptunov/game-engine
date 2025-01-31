@@ -62,7 +62,6 @@ public class TextureEditor implements
     private final Printer          printer;
     private final Clock            clock;
     private final EditorState      state;
-    private final History<Raster>  rasterHistory;
     private final ColorPicker      colorPicker;
     private final Console          console;
 
@@ -82,8 +81,8 @@ public class TextureEditor implements
         this.state = new EditorState(
                 DEFAULT_MODE,
                 Path.of("assets/fonts/test/standard").toFile(),
-                new PixelRaster(width, height, (_, _) -> NamedColor.BLACK));
-        this.rasterHistory = new CircularBufferHistoryImpl<>(state.texture().clone(), 100);
+                new PixelRaster(width, height, (_, _) -> NamedColor.BLACK),
+                100);
         this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
         this.console = new Console(this, 500);
     }
@@ -150,7 +149,7 @@ public class TextureEditor implements
                 state.selection(new PixelSelection(c));
             }
             case BOX_SELECT -> {
-                LOG.info("Started box selection at %s", c);
+                LOG.debug("Started box selection at %s", c);
                 state.selection(new BoxSelection(x, y));
                 state.boxStart(new Coordinates(x, y));
             }
@@ -159,21 +158,21 @@ public class TextureEditor implements
                 switch (s) {
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
-                            state.texture().setPixel(x, y, colorPicker.getColor());
+                            state.texture().pixel(x, y, colorPicker.getColor());
                         }
                     }
                     case BoxSelection box -> {
                         if (box.contains(x, y)) {
-                            state.texture().setPixel(x, y, colorPicker.getColor());
+                            state.texture().pixel(x, y, colorPicker.getColor());
                         }
                     }
                     case LassoSelection lasso -> {
                         if (lasso.contains(c)) {
-                            state.texture().setPixel(x, y, colorPicker.getColor());
+                            state.texture().pixel(x, y, colorPicker.getColor());
                         }
                     }
                 }
-            }, () -> state.texture().setPixel(x, y, colorPicker.getColor()));
+            }, () -> state.texture().pixel(x, y, colorPicker.getColor()));
             case FILL -> state.selection().ifPresentOrElse(s -> {  // selection acts as an invert toggle
                         switch (s) {
                             case PixelSelection px -> {
@@ -249,21 +248,21 @@ public class TextureEditor implements
                 switch (s) {
                     case PixelSelection px -> {
                         if (px.is(x, y)) {
-                            state.texture().setPixel(x, y, colorPicker.getColor());
+                            state.texture().pixel(x, y, colorPicker.getColor());
                         }
                     }
                     case BoxSelection box -> {
                         if (box.contains(x, y)) {
-                            state.texture().setPixel(x, y, colorPicker.getColor());
+                            state.texture().pixel(x, y, colorPicker.getColor());
                         }
                     }
                     case LassoSelection lasso -> {
                         if (lasso.contains(c)) {
-                            state.texture().setPixel(x, y, colorPicker.getColor());
+                            state.texture().pixel(x, y, colorPicker.getColor());
                         }
                     }
                 }
-            }, () -> state.texture().setPixel(x, y, colorPicker.getColor()));
+            }, () -> state.texture().pixel(x, y, colorPicker.getColor()));
             case COLOR_PICKER -> colorPicker.accept(e);
         }
     }
@@ -329,11 +328,11 @@ public class TextureEditor implements
     }
 
     public int fontSize() {
-        return 17;
+        return 16;
     }
 
     public int charSpacing() {
-        return -2;
+        return -4;
     }
 
     public int lineSpacing() {
@@ -400,8 +399,8 @@ public class TextureEditor implements
                 switch (keyAction.raw()) {
                     case KeyAction.Key.ESCAPE -> {
                         if (state.selection().isPresent()) {
-                            LOG.info("Erasing selection %s", state.selection().get());
                             state.clearSelection();
+                            LOG.info("Erased selection %s", state.selection().get());
                         }
                     }
                     case KeyAction.Key.F1 -> toggleHelp();
@@ -444,11 +443,11 @@ public class TextureEditor implements
     }
 
     private void saveToHistory() {
-        rasterHistory.record(state.texture().clone());
+        state.snapshot();
     }
 
     private void undo() {
-        var prev = rasterHistory.goBack();
+        var prev = state.rollback();
         if (prev.isPresent()) {
             state.texture(prev.get().clone());
             LOG.info("Undid last action");
@@ -458,7 +457,7 @@ public class TextureEditor implements
     }
 
     private void redo() {
-        var next = rasterHistory.goForward();
+        var next = state.rollforward();
         if (next.isPresent()) {
             state.texture(next.get().clone());
             LOG.info("Redid last undone action");
@@ -471,7 +470,7 @@ public class TextureEditor implements
         LOG.info("Filling everything with color 0x%s", color);
         for (int r = 0; r < state.texture().height(); ++r) {
             for (int c = 0; c < state.texture().width(); ++c) {
-                state.texture().setPixel(c, r, color);
+                state.texture().pixel(c, r, color);
             }
         }
     }
@@ -482,12 +481,12 @@ public class TextureEditor implements
             for (int r = 0; r < state.texture().height(); ++r) {
                 for (int c = 0; c < state.texture().width(); ++c) {
                     if (px.px().x() != c && px.px().y() != r) {
-                        state.texture().setPixel(c, r, color);
+                        state.texture().pixel(c, r, color);
                     }
                 }
             }
         } else {
-            state.texture().setPixel(px.px().x(), px.px().y(), color);
+            state.texture().pixel(px.px().x(), px.px().y(), color);
         }
     }
 
@@ -500,26 +499,26 @@ public class TextureEditor implements
         if (inverse) {
             for (int y = 0; y < t; ++y) {
                 for (int x = 0; x < state.texture().width(); ++x) {
-                    state.texture().setPixel(x, y, color);
+                    state.texture().pixel(x, y, color);
                 }
             }
             for (int y = t; y <= b; ++y) {
                 for (int x = 0; x < l; ++x) {
-                    state.texture().setPixel(x, y, color);
+                    state.texture().pixel(x, y, color);
                 }
                 for (int x = r + 1; x < state.texture().width(); ++x) {
-                    state.texture().setPixel(x, y, color);
+                    state.texture().pixel(x, y, color);
                 }
             }
             for (int y = b + 1; y < state.texture().height(); ++y) {
                 for (int x = 0; x < state.texture().width(); ++x) {
-                    state.texture().setPixel(x, y, color);
+                    state.texture().pixel(x, y, color);
                 }
             }
         } else {
             for (int y = t; y <= b; ++y) {
                 for (int x = l; x <= r; ++x) {
-                    state.texture().setPixel(x, y, color);
+                    state.texture().pixel(x, y, color);
                 }
             }
         }
@@ -531,13 +530,13 @@ public class TextureEditor implements
             for (int r = 0; r < state.texture().height(); ++r) {
                 for (int c = 0; c < state.texture().width(); ++c) {
                     if (lasso.contains(new Coordinates(c, r))) {
-                        state.texture().setPixel(c, r, color);
+                        state.texture().pixel(c, r, color);
                     }
                 }
             }
         } else {
             for (Coordinates px : lasso.all()) {
-                state.texture().setPixel(px.x(), px.y(), color);
+                state.texture().pixel(px.x(), px.y(), color);
             }
         }
     }

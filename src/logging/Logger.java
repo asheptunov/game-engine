@@ -1,6 +1,19 @@
 package logging;
 
 public interface Logger {
+    enum Level {
+        TRACE,
+        DEBUG,
+        INFO,
+        WARN,
+        ERROR,
+        FATAL
+    }
+
+    Logger log(Level level, Throwable ex, String fmt, Object... args);
+
+    Logger log(Level level, String fmt, Object... args);
+
     Logger fatal(Throwable ex, String fmt, Object... args);
 
     Logger fatal(String fmt, Object... args);
