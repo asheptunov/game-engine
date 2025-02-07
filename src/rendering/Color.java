@@ -21,6 +21,10 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
     byte alpha();
 
+    default byte a() {
+        return alpha();
+    }
+
     Color withAlpha(byte alpha);
 
     default Color withAlpha(float alpha) {
@@ -28,6 +32,10 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
     }
 
     byte red();
+
+    default byte r() {
+        return red();
+    }
 
     Color withRed(byte red);
 
@@ -37,6 +45,10 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
     byte green();
 
+    default byte g() {
+        return green();
+    }
+
     Color withGreen(byte green);
 
     default Color withGreen(float green) {
@@ -44,6 +56,10 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
     }
 
     byte blue();
+
+    default byte b() {
+        return blue();
+    }
 
     Color withBlue(byte blue);
 
@@ -160,6 +176,7 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         private static final Map<String, NamedColor> NAME_INDEX = Collections.synchronizedMap(new HashMap<>());
         private static final Random                  RANDOM     = new Random();
 
+        public static final NamedColor NONE    = new NamedColor("none", new ArgbInt32Color(0x0));
         public static final NamedColor BLACK   = new NamedColor("black", new RgbInt24Color(0x0));
         public static final NamedColor WHITE   = new NamedColor("white", new RgbInt24Color(0xffffff));
         public static final NamedColor RED     = new NamedColor("red", new RgbInt24Color(0xff0000));
@@ -348,7 +365,7 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public int rgbInt24() {
-            return argb;
+            return argb & 0x00ffffff;
         }
 
         @Override

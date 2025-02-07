@@ -1,15 +1,31 @@
 package rendering;
 
-import java.util.function.BiFunction;
-
 public interface Painter {
-    void drawPoint(int x, int y, Color color);
+    void drawPoint(int x, int y, Color color, BlendMode blendMode);
 
-    void drawLine(int x1, int y1, int x2, int y2, Color color);
+    @FunctionalInterface
+    interface LineSampler {
+        Color apply(int i, int length, double progress);
+    }
 
-    void drawLine(int x1, int y1, int x2, int y2, BiFunction<Integer, Double, Color> pattern);
+    void drawLine(int x1, int y1, int x2, int y2, LineSampler sampler, BlendMode blendMode);
 
-    void drawImg(int x, int y, Raster imgRaster);
+    @FunctionalInterface
+    interface ImageSampler {
+        Color apply(int i, int x, int y);
+    }
 
-    void drawTri(int x1, int y1, int x2, int y2, int x3, int y3, Color edgeColor, Color fillColor);
+    void drawImg(int x, int y, int w, int h, ImageSampler sampler, BlendMode blendMode);
+
+    default void drawImg(int x, int y, int w, int h, Color color, BlendMode blendMode) {
+        drawImg(x, y, w, h, (_, _, _) -> color, blendMode);
+    }
+
+    default void drawImg(int x, int y, Raster raster, BlendMode blendMode) {
+        var rasterReadable = raster.<Color>read();
+        drawImg(x, y, raster.w(), raster.h(),
+                (_, _, _) -> rasterReadable.next(Raster.Reader.READ_COLOR), blendMode);
+    }
+
+    void drawTri(int x1, int y1, int x2, int y2, int x3, int y3, Color color, BlendMode blendMode);
 }

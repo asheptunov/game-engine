@@ -63,8 +63,8 @@ public class CmdCanvas implements Command {
             return Result.failure("Target canvas dimensions [w=%d, h=%d] must be no smaller than current: [w=%d, h=%d]"
                     .formatted(width, height, oldWidth, oldHeight));
         }
-        state.texture(new PixelRaster(width, height, (x, y)
-                -> (x >= oldWidth || y >= oldHeight)
+        state.texture(new PixelRaster(width, height, (_, x, y)
+                -> x >= oldWidth || y >= oldHeight
                 ? Color.NamedColor.BLACK
                 : tx.pixel(x, y)));
         state.snapshot();

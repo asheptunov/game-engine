@@ -1,7 +1,9 @@
 import logging.LogManager;
 import logging.Logger;
 import rendering.AwtViewer;
+import rendering.Checkerboard;
 import rendering.CompositeRenderer;
+import rendering.Eraser;
 import rendering.PixelRaster;
 import rendering.Renderer;
 import scenes.Scene;
@@ -19,13 +21,13 @@ import static rendering.Color.NamedColor;
 private static final Logger LOG = LogManager.instance().getThis();
 private static final int WIDTH = 800;
 private static final int HEIGHT = 800;
-private static final int FRAME_RATE = 60;
+private static final int FRAME_RATE = 144;
 
 private static final AtomicReference<Scene> SCENE = new AtomicReference<>();
 
 public static void main(String[] ignoredArgs) throws InterruptedException {
     LOG.info("Width %d, height %d, frame rate %d hz", WIDTH, HEIGHT, FRAME_RATE);
-    var displayRaster = new PixelRaster(WIDTH, HEIGHT, (_, _) -> NamedColor.BLACK);
+    var displayRaster = new PixelRaster(WIDTH, HEIGHT, (_, _, _) -> NamedColor.BLACK);
     var clock = Clock.systemUTC();
     var textureEditor = new TextureEditor(displayRaster, clock, 16, 16);
     SCENE.set(textureEditor);
@@ -40,6 +42,8 @@ public static void main(String[] ignoredArgs) throws InterruptedException {
             .withSceneSupplier(SCENE::get)
             .build();
     var renderer = new CompositeRenderer(List.of(
+            new Eraser(displayRaster),
+            new Checkerboard(0.5f, 0.8f, displayRaster),
             switchingRenderer,
             new AwtViewer(displayRaster, switchingListener)
     ));

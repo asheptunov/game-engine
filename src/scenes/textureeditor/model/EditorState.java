@@ -28,7 +28,7 @@ public class EditorState {
         this.mode = mode;
         this.workingDir = workingDir;
         this.texture = texture;
-        this.textureHistory = new LoggingHistory<>(Logger.Level.DEBUG,
+        this.textureHistory = new LoggingHistory<>(Logger.Level.TRACE,
                 new CircularBufferHistoryImpl<>(textureHistorySize, texture.clone()));
     }
 

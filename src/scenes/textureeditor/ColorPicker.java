@@ -2,6 +2,7 @@ package scenes.textureeditor;
 
 import logging.LogManager;
 import logging.Logger;
+import rendering.BlendMode;
 import rendering.Color;
 import rendering.Painter;
 import rendering.PixelRaster;
@@ -290,7 +291,7 @@ public class ColorPicker implements Renderer {
     }
 
     private void renderPreview() {
-        painter.drawImg(previewX, previewY, new PixelRaster(previewWidth, previewHeight, (_, _) -> shade));
+        painter.drawImg(previewX, previewY, previewWidth, previewHeight, shade, BlendMode.NORMAL);
     }
 
     private void renderHexCode() {
@@ -304,22 +305,20 @@ public class ColorPicker implements Renderer {
 
     private void renderHueSlider() {
         var hueSlider = new PixelRaster(hueSliderWidth, hueSliderHeight,
-                (col, _) -> getColorOnHueSlider((float) col));
-        painter.drawImg(hueSliderX, hueSliderY, hueSlider);
-        painter.drawImg(hueSliderX + hueX - 5, hueSliderY, new PixelRaster(10, hueSliderHeight,
-                (col, row)
-                        -> (col == 0 || row == 0 || col == 9 || row == hueSliderHeight - 1)  // white border
-                        ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0)));
+                (_, col, _) -> getColorOnHueSlider((float) col));
+        painter.drawImg(hueSliderX, hueSliderY, hueSlider, BlendMode.NORMAL);
+        painter.drawImg(hueSliderX + hueX - 5, hueSliderY, 10, hueSliderHeight, (_, col, row)
+                -> (col == 0 || row == 0 || col == 9 || row == hueSliderHeight - 1)  // white border
+                ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0), BlendMode.NORMAL);
     }
 
     private void renderShadePicker() {
         var shadePicker = new PixelRaster(shadePickerWidth, shadePickerHeight,
-                (col, row) -> getColorOnShadePicker((float) col, (float) row));
-        painter.drawImg(shadePickerX, shadePickerY, shadePicker);
-        painter.drawImg(shadePickerX + shadeX - 5, shadePickerY + shadeY - 5, new PixelRaster(10, 10,
-                (col, row)
-                        -> (col == 0 || row == 0 || col == 9 || row == 9)  // white border
-                        ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0)));
+                (_, col, row) -> getColorOnShadePicker((float) col, (float) row));
+        painter.drawImg(shadePickerX, shadePickerY, shadePicker, BlendMode.NORMAL);
+        painter.drawImg(shadePickerX + shadeX - 5, shadePickerY + shadeY - 5, 10, 10, (_, col, row)
+                -> (col == 0 || row == 0 || col == 9 || row == 9)  // white border
+                ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0), BlendMode.NORMAL);
     }
 
     @SuppressWarnings("DuplicateBranchesInSwitch")

@@ -5,9 +5,12 @@ import logging.Logger;
 import misc.monads.Result;
 import misc.spliterators.ChunkedSpliterator;
 import misc.spliterators.ReversedSpliterator;
+import rendering.BlendMode;
 import rendering.Color;
+import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
+import rendering.Renderer;
 import scenes.textureeditor.CircularBufferHistoryImpl;
 import scenes.textureeditor.History;
 import scenes.textureeditor.TextureEditor;
@@ -33,7 +36,7 @@ import java.util.stream.Stream;
 import static rendering.Color.AnsiColor;
 import static rendering.Color.RgbInt24Color;
 
-public class Console {
+public class Console implements Renderer {
     private static final Logger LOG = LogManager.instance().getThis();
 
     // todo add resize command
@@ -49,7 +52,10 @@ public class Console {
     }
 
     private final TextureEditor             editor;
+    private final Painter                   painter;
     private final Printer                   printer;
+    private final int                       width;
+    private final int                       height;
     private final int                       hzStride;
     private final int                       vtStride;
     private final int                       maxLineWidth;
@@ -62,11 +68,14 @@ public class Console {
 
     public Console(TextureEditor editor, int historySize) {
         this.editor = editor;
+        this.painter = editor.painter();
         this.printer = editor.printer();
         hzStride = editor.fontSize() + editor.charSpacing();
         vtStride = editor.fontSize() + editor.lineSpacing();
-        maxLineWidth = editor.display().width() / hzStride;
-        maxLines = editor.display().height() / vtStride;
+        width = editor.display().width();
+        height = editor.display().height();
+        maxLineWidth = width / hzStride;
+        maxLines = height / vtStride;
         history = new CircularBufferHistoryImpl<>(historySize, CommandAndResult.empty());
         buf = new StringBuilder();
         cmd = new TrimmingCommand(DelegatingCommand.builder()
@@ -83,7 +92,7 @@ public class Console {
                 .withCommand("touch", new CmdTouch(editor.state(), editor.repo(), () -> new PixelRaster(
                         editor.state().texture().width(),
                         editor.state().texture().height(),
-                        (_, _) -> Color.NamedColor.BLACK)))
+                        (_, _, _) -> Color.NamedColor.BLACK)))
                 .build()
         );
     }
@@ -148,7 +157,7 @@ public class Console {
         vtOffset -= e.getPreciseWheelRotation();
     }
 
-    private record StyledChar(char c, Printer.Style... styles) {}
+    private record StyledChar(char c, List<Printer.Style> styles) {}
 
     private record AnsiSequence(int start, int end, Color color) {}
 
@@ -169,11 +178,17 @@ public class Console {
         return new AnsiSequence(matcher.start(), matcher.end(), color);
     }
 
+    @Override
     public void render() {
+        renderBackground();
         var allChars = concatAllChars();
         var ansiSequences = computeAnsiSequences(allChars);
         var displayLines = convertToDisplayLines(allChars, ansiSequences);
         renderLines(displayLines);
+    }
+
+    private void renderBackground() {
+        painter.drawImg(0, 0, width, height, Color.NamedColor.BLACK.withAlpha(0.8f), BlendMode.OVER_PRE);
     }
 
     private String concatAllChars() {
@@ -200,7 +215,9 @@ public class Console {
     private List<List<StyledChar>> convertToDisplayLines(String allChars, List<AnsiSequence> ansiSequences) {
         int rowI = 0;
         int allI = -1;
-        var style = new Printer.Style[0];
+        var style = new ArrayList<Printer.Style>() {{
+            add(Printer.BlendMode.of(BlendMode.SUBTRACT));
+        }};
         var lines = new ArrayList<List<StyledChar>>() {{
             add(new ArrayList<>());
         }};
@@ -214,7 +231,11 @@ public class Console {
             }
             if (!ansiSequences.isEmpty() && allI == ansiSequences.getFirst().end()) {
                 // finished an escape sequence (pointing at the first char right after); update the color
-                style = new Printer.Style[]{Printer.Color.of(ansiSequences.removeFirst().color())};
+                style.clear();
+                var color = ansiSequences.removeFirst().color();
+                style.add(color == AnsiColor.NONE
+                        ? Printer.BlendMode.of(BlendMode.SUBTRACT)  // for "none", do invert
+                        : Printer.Color.of(color));
             }
             switch (c) {
                 // not close to an escape sequence
@@ -245,6 +266,10 @@ public class Console {
                 }
             }
         }
+        lines.addAll(
+                ChunkedSpliterator.chunk(  // don't forget to wrap the last line, even if it doesn't end with \n
+                                lines.removeLast().iterator(), maxLineWidth, ArrayList::new)
+                        .stream().toList());
         return lines;
     }
 
@@ -256,7 +281,7 @@ public class Console {
             int y = (int) ((row - (n - maxLines) + vtOffset) * vtStride);
 //            int y = (int) ((maxLines - 1 - row + vtOffset) * vtStride);
             for (var sc : line) {
-                printer.print(sc.c(), col++ * hzStride, y, sc.styles());
+                printer.print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
             }
             ++row;
 //            if (++row > maxLines) {

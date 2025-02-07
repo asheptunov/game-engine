@@ -3,9 +3,10 @@ package scenes.textureeditor;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
-import rendering.ChromaKey;
+import rendering.BlendMode;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
+import rendering.Filter;
 import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
@@ -31,7 +32,6 @@ import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.Clock;
-import java.util.function.BiFunction;
 
 import static rendering.Color.NamedColor;
 import static scenes.textureeditor.model.Mode.BOX_SELECT;
@@ -53,8 +53,8 @@ public class TextureEditor implements
     private static final Logger LOG          = LogManager.instance().getThis();
     private static final Mode   DEFAULT_MODE = BRUSH;
 
-    private static final BiFunction<Integer, Double, Color>
-            SELECTION_PATTERN = (i, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
+    private static final Painter.LineSampler SELECTION_PATTERN
+            = (i, _, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
 
     private final RasterRepository repo;
     private final Raster           display;
@@ -62,6 +62,7 @@ public class TextureEditor implements
     private final Printer          printer;
     private final Clock            clock;
     private final EditorState      state;
+    private final ToolCard         toolCard;
     private final ColorPicker      colorPicker;
     private final Console          console;
 
@@ -75,14 +76,15 @@ public class TextureEditor implements
                 .clock(clock)
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16)
-                .filter(ChromaKey.of(NamedColor.BLACK))
+                .filter(Filter.chromaKey(NamedColor.BLACK))
                 .build();
         this.clock = clock;
         this.state = new EditorState(
                 DEFAULT_MODE,
                 Path.of("assets/fonts/test/standard").toFile(),
-                new PixelRaster(width, height, (_, _) -> NamedColor.BLACK),
+                new PixelRaster(width, height, (_, _, _) -> NamedColor.NONE),
                 100);
+        this.toolCard = new ToolCard(this);
         this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
         this.console = new Console(this, 500);
     }
@@ -287,6 +289,7 @@ public class TextureEditor implements
         // todo zoom / pan
         renderTexture();
         renderSelection();
+        toolCard.render();
         if (COLOR_PICKER.equals(state.mode())) {
             colorPicker.render();
         }
@@ -353,7 +356,7 @@ public class TextureEditor implements
 
     private void renderTexture() {
         var scaledTexture = state.texture().scale(display.width(), display.height());
-        painter.drawImg(0, 0, scaledTexture);
+        painter.drawImg(0, 0, scaledTexture, BlendMode.OVER_PRE);
     }
 
     private void renderSelection() {
@@ -366,20 +369,20 @@ public class TextureEditor implements
                     int t = (int) (px.px().y() * yScale);
                     int r = (int) ((px.px().x() + 1) * xScale) - 1;
                     int b = (int) ((px.px().y() + 1) * yScale) - 1;
-                    painter.drawLine(l, t, r, t, SELECTION_PATTERN);
-                    painter.drawLine(l, t, l, b, SELECTION_PATTERN);
-                    painter.drawLine(r, t, r, b, SELECTION_PATTERN);
-                    painter.drawLine(l, b, r, b, SELECTION_PATTERN);
+                    painter.drawLine(l, t, r, t, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                    painter.drawLine(l, t, l, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                    painter.drawLine(r, t, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                    painter.drawLine(l, b, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
                 }
                 case BoxSelection box -> {
                     int l = (int) (box.tl().x() * xScale);
                     int t = (int) (box.tl().y() * yScale);
                     int r = (int) ((box.br().x() + 1) * xScale) - 1;
                     int b = (int) ((box.br().y() + 1) * yScale) - 1;
-                    painter.drawLine(l, t, r, t, SELECTION_PATTERN);
-                    painter.drawLine(l, t, l, b, SELECTION_PATTERN);
-                    painter.drawLine(r, t, r, b, SELECTION_PATTERN);
-                    painter.drawLine(l, b, r, b, SELECTION_PATTERN);
+                    painter.drawLine(l, t, r, t, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                    painter.drawLine(l, t, l, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                    painter.drawLine(r, t, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                    painter.drawLine(l, b, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
                 }
                 default -> throw new UnsupportedOperationException(state.selection().getClass().getName());
             }
@@ -399,8 +402,8 @@ public class TextureEditor implements
                 switch (keyAction.raw()) {
                     case KeyAction.Key.ESCAPE -> {
                         if (state.selection().isPresent()) {
-                            state.clearSelection();
                             LOG.info("Erased selection %s", state.selection().get());
+                            state.clearSelection();
                         }
                     }
                     case KeyAction.Key.F1 -> toggleHelp();

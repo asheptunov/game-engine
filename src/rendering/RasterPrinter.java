@@ -76,7 +76,7 @@ public class RasterPrinter implements Printer {
         private Clock            clock;
         private Path             fontPath;
         private Integer          size;
-        private RasterFilter     filter = RasterFilter.NO_OP;
+        private Filter           filter = Filter.NO_OP;
 
         private Builder() {}
 
@@ -108,7 +108,7 @@ public class RasterPrinter implements Printer {
             return this;
         }
 
-        public Builder filter(RasterFilter filter) {
+        public Builder filter(Filter filter) {
             this.filter = filter;
             return this;
         }
@@ -163,7 +163,7 @@ public class RasterPrinter implements Printer {
                         });
             });
             // nil must be loadable (to render missing textures), but can be overridden
-            res.putIfAbsent('\0', new PixelRaster(size, size, (_, _) -> NamedColor.BLACK));
+            res.putIfAbsent('\0', new PixelRaster(size, size, (_, _, _) -> NamedColor.BLACK));
             res.replaceAll((_, v) -> filter.apply(v));
             LOG.info("Loaded font %s in %s", fontPath, Duration.between(start, clock.instant()));
             return res;
@@ -172,10 +172,12 @@ public class RasterPrinter implements Printer {
 
     @Override
     public void print(char c, int x, int y, Style... styles) {
+        var blendMode = rendering.BlendMode.OVER_PRE;
         var color = (rendering.Color) NamedColor.WHITE;
         int size = font.size();
         for (Style style : styles) {
             switch (style) {
+                case BlendMode bm -> blendMode = bm.blendMode();
                 case Color cl -> color = cl.color();
                 case Size sz -> size = sz.size();
                 case Spacing _ -> {}
@@ -183,10 +185,10 @@ public class RasterPrinter implements Printer {
         }
         var asset = font.getChar(Character.toLowerCase(c));  // todo add uppercase
         if (!NamedColor.WHITE.equals(color)) {
-            asset = ColorMap.of(NamedColor.WHITE, color).apply(asset);
+            asset = Filter.chromaMap(NamedColor.WHITE, color).apply(asset);
         }
         var scaled = asset.scale(size, size);
-        painter.drawImg(x, y, scaled);
+        painter.drawImg(x, y, scaled, blendMode);
     }
 
     @Override
@@ -198,14 +200,19 @@ public class RasterPrinter implements Printer {
         int spacing = 0;
         for (Style style : styles) {
             switch (style) {
+                case BlendMode _, Color _ -> {}
                 case Size sz -> size = sz.size();
                 case Spacing sp -> spacing = sp.spacing();
-                case Color _ -> {}
             }
         }
         for (char c : str.toCharArray()) {
             print(Character.toLowerCase(c), x, y, styles);
             x += size + spacing;
         }
+    }
+
+    @Override
+    public RasterPrinter withRaster(Raster raster) {
+        return new RasterPrinter(raster, this.font);
     }
 }

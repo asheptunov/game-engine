@@ -1,7 +1,5 @@
 package rendering;
 
-import java.util.function.BiFunction;
-
 public class PixelRaster implements Raster {
     private final int    w;
     private final int    h;
@@ -14,8 +12,8 @@ public class PixelRaster implements Raster {
         this(other.width(), other.height(), other.alpha(), other.red(), other.green(), other.blue());
     }
 
-    public PixelRaster(int width, int height, BiFunction<Integer, Integer, Color> color) {
-        this(width, height, initBytes(width, height, color));
+    public PixelRaster(int width, int height, Painter.ImageSampler imageSampler) {
+        this(width, height, initBytes(width, height, imageSampler));
     }
 
     public PixelRaster(int width, int height, byte[][] bytes) {
@@ -48,9 +46,23 @@ public class PixelRaster implements Raster {
         int resI = 0;
         for (int i = 0; i < n; ++i) {
             var alpha = ((int) a[i] & 0xff) / 255.;
-            res[resI++] = (byte) (alpha * r[i]);
-            res[resI++] = (byte) (alpha * g[i]);
-            res[resI++] = (byte) (alpha * b[i]);
+            res[resI++] = ((int) (alpha * ((int) r[i] & 0xff))) & 0xff;
+            res[resI++] = ((int) (alpha * ((int) g[i] & 0xff))) & 0xff;
+            res[resI++] = ((int) (alpha * ((int) b[i] & 0xff))) & 0xff;
+        }
+        return res;
+    }
+
+    @Override
+    public int[] argb() {
+        int n = w * h;
+        var res = new int[n * 4];
+        int resI = 0;
+        for (int i = 0; i < n; ++i) {
+            res[resI++] = (int) a[i] & 0xff;
+            res[resI++] = (int) r[i] & 0xff;
+            res[resI++] = (int) g[i] & 0xff;
+            res[resI++] = (int) b[i] & 0xff;
         }
         return res;
     }
@@ -76,6 +88,54 @@ public class PixelRaster implements Raster {
     }
 
     @Override
+    public void read(int x, int y, int w, int h, Reader<?> reader) {
+        int i = 0;
+        for (int r = Math.max(0, y); r < Math.min(this.h, h); ++r) {
+            for (int c = Math.min(0, x); c < Math.max(this.w, w); ++c) {
+                reader.apply(x, y, Color.ArgbInt32Color.of(this.a[i], this.r[i], this.g[i], this.b[i]));
+                ++i;
+            }
+        }
+    }
+
+    @Override
+    public <T> Readable<T> read() {
+        return new Readable<T>() {
+            private int i = 0;
+            private int x = 0;
+            private int y = 0;
+
+            @Override
+            public T next(Reader<T> reader) {
+                T res = reader.apply(x, y, Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]));
+                if (x == w) {
+                    x = 0;
+                    ++y;
+                } else {
+                    ++x;
+                }
+                ++i;
+                return res;
+            }
+        };
+    }
+
+    @Override
+    public void write(int x, int y, int w, int h, Writer writer) {
+        int i = 0;
+        for (int r = Math.max(0, y); r < Math.min(y + h, this.h); ++r) {
+            for (int c = Math.max(0, x); c < Math.min(x + w, this.w); ++c) {
+                var color = writer.write(i, c, r);
+                this.a[i] = color.a();
+                this.r[i] = color.r();
+                this.g[i] = color.g();
+                this.b[i] = color.b();
+                ++i;
+            }
+        }
+    }
+
+    @Override
     public Color pixel(int x, int y) {
         int i = y * w + x;
         return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
@@ -98,7 +158,7 @@ public class PixelRaster implements Raster {
         }
         double xScale = 1. * this.w / w;
         double yScale = 1. * this.h / h;
-        return new PixelRaster(w, h, (x, y) -> {
+        return new PixelRaster(w, h, (_, x, y) -> {
             int i = ((int) (yScale * y) * this.w) + (int) (xScale * x);
             return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
         });
@@ -109,12 +169,12 @@ public class PixelRaster implements Raster {
         return new PixelRaster(w, h, cloneBytes(a), cloneBytes(r), cloneBytes(g), cloneBytes(b));
     }
 
-    private static byte[][] initBytes(int width, int height, BiFunction<Integer, Integer, Color> color) {
+    private static byte[][] initBytes(int width, int height, Painter.ImageSampler color) {
         var res = new byte[4][width * height];
         int i = 0;
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
-                int c = color.apply(x, y).argbInt32();
+                int c = color.apply(i, x, y).argbInt32();
                 res[0][i] = (byte) (c >> 24);  // alpha
                 res[1][i] = (byte) (c >> 16);  // red
                 res[2][i] = (byte) (c >> 8);  // green
