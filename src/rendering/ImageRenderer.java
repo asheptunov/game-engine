@@ -12,7 +12,7 @@ public class ImageRenderer implements Renderer {
     }
 
     public ImageRenderer(Color color, Raster raster, BlendMode blendMode) {
-        this(new PixelRaster(raster.w(), raster.h(), (_, _, _) -> color), raster, blendMode);
+        this(new PixelRaster(raster.w(), raster.h(), color), raster, blendMode);
     }
 
     @Override

@@ -12,6 +12,14 @@ public class PixelRaster implements Raster {
         this(other.width(), other.height(), other.alpha(), other.red(), other.green(), other.blue());
     }
 
+    public PixelRaster(int width, int height) {
+        this(width, height, Color.NamedColor.BLACK);
+    }
+
+    public PixelRaster(int width, int height, Color color) {
+        this(width, height, (_, _, _) -> color);
+    }
+
     public PixelRaster(int width, int height, Painter.ImageSampler imageSampler) {
         this(width, height, initBytes(width, height, imageSampler));
     }

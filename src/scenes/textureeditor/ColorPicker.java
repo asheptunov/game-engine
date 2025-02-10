@@ -40,6 +40,7 @@ public class ColorPicker implements Renderer {
     private final Painter       painter;
     private final Printer       printer;
     private final int           fontSize;
+    private final int           charSpacing;
     private final int           hueSliderWidth;
     private final int           hueSliderHeight;
     private final int           hueSliderX;
@@ -66,6 +67,7 @@ public class ColorPicker implements Renderer {
         this.painter = editor.painter();
         this.printer = editor.printer();
         this.fontSize = editor.fontSize();
+        this.charSpacing = editor.charSpacing();
         hueSliderWidth = (int) (.3333 * display.width());
         hueSliderHeight = 20;
         hueSliderX = display.width() - hueSliderWidth;
@@ -295,8 +297,11 @@ public class ColorPicker implements Renderer {
     }
 
     private void renderHexCode() {
-        int y = display.height() - fontSize;
-        printer.print(hexCode(), 0, y, Printer.Size.of(fontSize), Printer.Color.of(shade));
+        var code = hexCode();
+        int codeWidth = code.length() * (fontSize + charSpacing);
+        int centerX = previewX + ((previewWidth + shadePickerWidth - codeWidth) >> 1);
+        int y = shadePickerY - fontSize;
+        printer.print(code, centerX, y, Printer.Size.of(fontSize), Printer.Color.of(shade));
     }
 
     private String hexCode() {

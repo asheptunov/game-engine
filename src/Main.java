@@ -27,7 +27,7 @@ private static final AtomicReference<Scene> SCENE = new AtomicReference<>();
 
 public static void main(String[] ignoredArgs) throws InterruptedException {
     LOG.info("Width %d, height %d, frame rate %d hz", WIDTH, HEIGHT, FRAME_RATE);
-    var displayRaster = new PixelRaster(WIDTH, HEIGHT, (_, _, _) -> NamedColor.BLACK);
+    var displayRaster = new PixelRaster(WIDTH, HEIGHT, NamedColor.BLACK);
     var clock = Clock.systemUTC();
     var textureEditor = new TextureEditor(displayRaster, clock, 16, 16);
     SCENE.set(textureEditor);

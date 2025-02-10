@@ -10,8 +10,6 @@ public interface Printer {
 
     void print(String str, int x, int y, Style... styles);
 
-    Printer withRaster(Raster raster);
-
     sealed interface Style permits Size, Spacing, Color, BlendMode {}
 
     final class Size implements Style {

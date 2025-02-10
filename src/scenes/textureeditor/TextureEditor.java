@@ -7,6 +7,8 @@ import rendering.BlendMode;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
 import rendering.Filter;
+import rendering.Font;
+import rendering.FsFontLoader;
 import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
@@ -15,6 +17,7 @@ import rendering.RasterPainter;
 import rendering.RasterPrinter;
 import rendering.RasterRepository;
 import rendering.Renderer;
+import rendering.RgbSerializer;
 import scenes.Scene;
 import scenes.textureeditor.console.Console;
 import scenes.textureeditor.model.Coordinates;
@@ -59,6 +62,7 @@ public class TextureEditor implements
     private final RasterRepository repo;
     private final Raster           display;
     private final Painter          painter;
+    private final Font             font;
     private final Printer          printer;
     private final Clock            clock;
     private final EditorState      state;
@@ -67,22 +71,23 @@ public class TextureEditor implements
     private final Console          console;
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
-        this.repo = new FileSystemRasterRepository(clock);
+        this.repo = new FileSystemRasterRepository(clock, RgbSerializer.INSTANCE);
         this.display = display;
         this.painter = new RasterPainter(display);
-        this.printer = RasterPrinter.builder()
-                .raster(display)
+        this.font = FsFontLoader.builder()
                 .repository(repo)
                 .clock(clock)
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16)
                 .filter(Filter.chromaKey(NamedColor.BLACK))
-                .build();
+                .build()
+                .load();
+        this.printer = new RasterPrinter(display, font);
         this.clock = clock;
         this.state = new EditorState(
                 DEFAULT_MODE,
                 Path.of("assets/fonts/test/standard").toFile(),
-                new PixelRaster(width, height, (_, _, _) -> NamedColor.NONE),
+                new PixelRaster(width, height, NamedColor.NONE),
                 100);
         this.toolCard = new ToolCard(this);
         this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
@@ -302,7 +307,7 @@ public class TextureEditor implements
         state.mode(DEFAULT_MODE);
     }
 
-    public Result<Void, Exception> saveToFile(File file) {
+    public Result<?, Exception> saveToFile(File file) {
         return repo.save(state.workingDir().toPath().resolve(file.toPath()).toFile(), state.texture());
     }
 
@@ -324,6 +329,10 @@ public class TextureEditor implements
 
     public Painter painter() {
         return painter;
+    }
+
+    public Font font() {
+        return font;
     }
 
     public Printer printer() {

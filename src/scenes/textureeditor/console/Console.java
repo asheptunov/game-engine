@@ -92,7 +92,7 @@ public class Console implements Renderer {
                 .withCommand("touch", new CmdTouch(editor.state(), editor.repo(), () -> new PixelRaster(
                         editor.state().texture().width(),
                         editor.state().texture().height(),
-                        (_, _, _) -> Color.NamedColor.BLACK)))
+                        Color.NamedColor.BLACK)))
                 .build()
         );
     }

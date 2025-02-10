@@ -1,7 +1,7 @@
 package misc.monads;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
+import misc.lambdas.TConsumer;
+import misc.lambdas.TFunction;
 
 public class Either<L, R> {
     private final boolean isLeft;
@@ -44,57 +44,56 @@ public class Either<L, R> {
         return right;
     }
 
-    public Either<L, R> ifLeft(Consumer<? super L> consumer) {
+    public Either<L, R> ifLeft(TConsumer<? super L, ?> consumer) {
         if (isLeft) {
             consumer.accept(left);
         }
         return this;
     }
 
-    public Either<L, R> ifRight(Consumer<? super R> consumer) {
+    public Either<L, R> ifRight(TConsumer<? super R, ?> consumer) {
         if (!isLeft) {
             consumer.accept(right);
         }
         return this;
     }
 
-    public <LL> Either<LL, R> mapLeft(Function<? super L, ? extends LL> mapper) {
+    @SuppressWarnings("unchecked")
+    public <LL> Either<LL, R> mapLeft(TFunction<? super L, ? extends LL, ?> map) {
         if (isLeft) {
-            return Either.left(mapper.apply(left));
+            return Either.left(map.apply(left));
         }
-        //noinspection unchecked
         return (Either<LL, R>) this;
     }
 
-    public <RR> Either<L, RR> mapRight(Function<? super R, ? extends RR> mapper) {
+    @SuppressWarnings("unchecked")
+    public <RR> Either<L, RR> mapRight(TFunction<? super R, ? extends RR, ?> map) {
         if (!isLeft) {
-            return Either.right(mapper.apply(right));
+            return Either.right(map.apply(right));
         }
-        //noinspection unchecked
         return (Either<L, RR>) this;
     }
 
-    public <LL> Either<LL, R> flatMapLeft(Function<? super L, ? extends Either<? extends LL, ? extends R>> mapper) {
+    @SuppressWarnings("unchecked")
+    public <LL> Either<LL, R> flatMapLeft(TFunction<? super L, ? extends Either<? extends LL, ? extends R>, ?> map) {
         if (isLeft) {
-            //noinspection unchecked
-            return (Either<LL, R>) mapper.apply(left);
+            return (Either<LL, R>) map.apply(left);
         }
-        //noinspection unchecked
         return (Either<LL, R>) this;
     }
 
-    public <RR> Either<L, RR> flatMapRight(Function<? super R, ? extends Either<? extends L, ? extends RR>> mapper) {
+    @SuppressWarnings("unchecked")
+    public <RR> Either<L, RR> flatMapRight(TFunction<? super R, ? extends Either<? extends L, ? extends RR>, ?> map) {
         if (!isLeft) {
-            //noinspection unchecked
-            return (Either<L, RR>) mapper.apply(right);
+            return (Either<L, RR>) map.apply(right);
         }
-        //noinspection unchecked
         return (Either<L, RR>) this;
     }
 
-    public <T> T fold(Function<? super L, ? extends T> leftMapper, Function<? super R, ? extends T> rightMapper) {
+    public <T> T fold(TFunction<? super L, ? extends T, ?> leftMap,
+                      TFunction<? super R, ? extends T, ?> rightMap) {
         return isLeft
-                ? leftMapper.apply(left)
-                : rightMapper.apply(right);
+                ? leftMap.apply(left)
+                : rightMap.apply(right);
     }
 }

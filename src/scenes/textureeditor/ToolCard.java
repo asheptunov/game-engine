@@ -2,8 +2,13 @@ package scenes.textureeditor;
 
 import rendering.BlendMode;
 import rendering.Color;
+import rendering.Filter;
 import rendering.Painter;
+import rendering.PixelRaster;
 import rendering.Printer;
+import rendering.Raster;
+import rendering.RasterPainter;
+import rendering.RasterPrinter;
 import rendering.Renderer;
 import ui.KeyAction.Key;
 
@@ -12,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ToolCard implements Renderer {
     private final Painter                           displayPainter;
-    private final Printer                           displayPrinter;
     private final int                               fontSize;
     private final int                               charSpacing;
     private final int                               cols;
@@ -20,6 +24,9 @@ public class ToolCard implements Renderer {
     private final int                               stride;
     private final int                               width;
     private final int                               height;
+    private final Raster                            card;
+    private final Painter                           cardPainter;
+    private final Printer                           cardPrinter;
     private final int                               x;
     private final int                               y;
     private final int                               gridSize = 50;
@@ -95,7 +102,6 @@ public class ToolCard implements Renderer {
 
     public ToolCard(TextureEditor editor) {
         this.displayPainter = editor.painter();
-        this.displayPrinter = editor.printer();
         this.fontSize = editor.fontSize();
         this.charSpacing = editor.charSpacing();
         this.cols = grid.get(0).size();
@@ -103,6 +109,9 @@ public class ToolCard implements Renderer {
         this.stride = gridSize + padding;
         this.width = cols * stride + padding;
         this.height = rows * stride + padding;
+        this.card = new PixelRaster(width, height);
+        this.cardPainter = new RasterPainter(card);
+        this.cardPrinter = new RasterPrinter(card, editor.font());
         this.x = 0;
         this.y = editor.display().height() - height;
     }
@@ -112,10 +121,11 @@ public class ToolCard implements Renderer {
         renderPadding();
         renderGrid();
         renderKeys();
+        displayPainter.drawImg(x, y, Filter.opacity(0.9).apply(card), BlendMode.OVER_PRE);
     }
 
     private void renderPadding() {
-        displayPainter.drawImg(x, y, width, height, Color.NamedColor.WHITE.withAlpha(.8f), BlendMode.OVER_PRE);
+        cardPainter.drawImg(0, 0, width, height, Color.RgbInt24Color.of(0x4989c4), BlendMode.OVER_PRE);
     }
 
     private void renderGrid() {
@@ -123,8 +133,8 @@ public class ToolCard implements Renderer {
         for (int c = 0; c < cols; ++c) {
             var yStart = new AtomicInteger(padding);
             for (int r = 0; r < rows; ++r) {
-                displayPainter.drawImg(x + xStart.get(), y + yStart.get(), gridSize, gridSize,
-                        Color.RgbInt24Color.of(0x4989c4).withAlpha(0.8f), BlendMode.OVER_PRE);
+                cardPainter.drawImg(xStart.get(), yStart.get(), gridSize, gridSize,
+                        Color.NamedColor.WHITE, BlendMode.OVER_PRE);
                 yStart.addAndGet(stride);
             }
             xStart.addAndGet(stride);
@@ -148,7 +158,7 @@ public class ToolCard implements Renderer {
                         / (key.length() * (this.fontSize + this.charSpacing)));
                 var fontSize = (int) (scale * this.fontSize);
                 var charSpacing = (int) (scale * this.charSpacing);
-                displayPrinter.print(key, x + xStart.get() + padding, y + yStart.get() + padding,
+                cardPrinter.print(key, xStart.get() + padding, yStart.get() + padding,
                         Printer.Size.of(fontSize),
                         Printer.Spacing.of(charSpacing),
                         Printer.BlendMode.of(BlendMode.SUBTRACT));

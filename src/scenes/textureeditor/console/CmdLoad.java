@@ -54,8 +54,11 @@ public class CmdLoad implements Command {
         return repo.load(targetFile)
                 .ifFailure(e -> LOG.error(e, "Failed to load from %s", targetFile))
                 .mapFailure(Throwable::getMessage)
-                .ifSuccess(state::texture)
-                .ifSuccess(_ -> state.workingFile(targetFile))
+                .ifSuccess(texture -> {
+                    state.texture(texture);
+                    state.snapshot();
+                    state.workingFile(targetFile);
+                })
                 .mapSuccess(_ -> "Loaded from and set active file to " + targetFile);
     }
 }
