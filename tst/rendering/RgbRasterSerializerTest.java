@@ -5,8 +5,8 @@ import harness.Test;
 import static harness.Assertions.assertEquals;
 import static harness.SuiteRunner.runThis;
 
-class ArgbRasterSerializerTest {
-    ArgbSerializer cut = ArgbSerializer.INSTANCE;
+public class RgbRasterSerializerTest {
+    RgbSerializer cut = RgbSerializer.INSTANCE;
 
     @Test
     void testSerializeDeserialize() {

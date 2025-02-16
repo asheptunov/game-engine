@@ -43,7 +43,7 @@ public static void main(String[] ignoredArgs) throws InterruptedException {
             .build();
     var renderer = new CompositeRenderer(List.of(
             new Eraser(displayRaster),
-            new Checkerboard(0.5f, 0.8f, displayRaster),
+            new Checkerboard(0.8f, 0.9f, displayRaster),
             switchingRenderer,
             new AwtViewer(displayRaster, switchingListener)
     ));

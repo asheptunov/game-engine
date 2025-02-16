@@ -3,7 +3,7 @@ package scenes.textureeditor;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
-import rendering.ArgbRasterSerializer;
+import rendering.ArgbSerializer;
 import rendering.BlendMode;
 import rendering.ChainRasterSerializer;
 import rendering.Color;
@@ -74,7 +74,7 @@ public class TextureEditor implements
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
         this.repo = new FileSystemRasterRepository(clock, ChainRasterSerializer.of(
-                ArgbRasterSerializer.INSTANCE,
+                ArgbSerializer.INSTANCE,
                 RgbSerializer.INSTANCE));
         this.display = display;
         this.painter = new RasterPainter(display);
@@ -83,7 +83,7 @@ public class TextureEditor implements
                 .clock(clock)
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16)
-                .filter(Filter.chromaKey(NamedColor.BLACK))
+//                .filter(Filter.chromaKey(NamedColor.BLACK))
                 .build()
                 .load();
         this.printer = new RasterPrinter(display, font);

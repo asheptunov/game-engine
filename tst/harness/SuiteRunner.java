@@ -100,6 +100,9 @@ public class SuiteRunner {
             if (null == method.getAnnotation(Test.class)) {
                 continue;
             }
+            if (!method.getAnnotation(Test.class).enabled()) {
+                continue;
+            }
             if (0 != method.getParameterCount()) {
                 throw new IllegalArgumentException("Test method must have no arguments: " + formatTest(suite, method));
             }

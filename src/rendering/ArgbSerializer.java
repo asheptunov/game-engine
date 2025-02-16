@@ -10,13 +10,13 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class ArgbRasterSerializer implements RasterSerializer {
+public class ArgbSerializer implements RasterSerializer {
     private static final String UUID         = "17E1BD52E4D7A8B5";
     private static final byte[] VERSION_BLOB = ("ARGB." + UUID).getBytes(StandardCharsets.UTF_8);
 
-    public static final ArgbRasterSerializer INSTANCE = new ArgbRasterSerializer();
+    public static final ArgbSerializer INSTANCE = new ArgbSerializer();
 
-    private ArgbRasterSerializer() {}
+    private ArgbSerializer() {}
 
     @Override
     public Result<byte[], Exception> serialize(Raster raster) {

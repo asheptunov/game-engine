@@ -19,7 +19,7 @@ public interface Filter {
     }
 
     static Filter chromaMap(Color from, Color to) {
-        return input -> from.rgbInt24() == input.rgbInt24() ? to : input;
+        return input -> from.rgbInt24() == input.rgbInt24() ? to.withAlpha(input.alpha()) : input;
     }
 
     static Filter opacity(double opacity) {
