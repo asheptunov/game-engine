@@ -70,18 +70,18 @@ public class LogManagerImpl implements LogManager {
 
     @Override
     public Logger getThis() {
-        boolean foundCallingClass = false;
+        var foundSelf = false;
         for (var frame : Thread.currentThread().getStackTrace()) {
             var klassOpt = getClassFromFrame(frame);
             if (klassOpt.isEmpty()) {
                 continue;
             }
             var klass = klassOpt.get();
-            if (!foundCallingClass && this.getClass() == klass) {
-                foundCallingClass = true;
+            if (this.getClass() == klass) {
+                foundSelf = true;
                 continue;
             }
-            if (foundCallingClass) {
+            if (foundSelf) {
                 return forClass(klass);
             }
         }

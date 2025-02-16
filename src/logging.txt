@@ -6,3 +6,4 @@ rendering.GradientRenderer=INFO
 rendering.RasterPrinter=INFO
 scenes.textureeditor.TextureEditor=INFO
 scenes.textureeditor.console.Console=INFO
+harness.SuiteRunner=INFO

@@ -3,7 +3,9 @@ package scenes.textureeditor;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
+import rendering.ArgbRasterSerializer;
 import rendering.BlendMode;
+import rendering.ChainRasterSerializer;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
 import rendering.Filter;
@@ -71,7 +73,9 @@ public class TextureEditor implements
     private final Console          console;
 
     public TextureEditor(Raster display, Clock clock, int width, int height) {
-        this.repo = new FileSystemRasterRepository(clock, RgbSerializer.INSTANCE);
+        this.repo = new FileSystemRasterRepository(clock, ChainRasterSerializer.of(
+                ArgbRasterSerializer.INSTANCE,
+                RgbSerializer.INSTANCE));
         this.display = display;
         this.painter = new RasterPainter(display);
         this.font = FsFontLoader.builder()
@@ -294,7 +298,9 @@ public class TextureEditor implements
         // todo zoom / pan
         renderTexture();
         renderSelection();
-        toolCard.render();
+        if (state.isToolCardShown()) {
+            toolCard.render();
+        }
         if (COLOR_PICKER.equals(state.mode())) {
             colorPicker.render();
         }
@@ -416,6 +422,7 @@ public class TextureEditor implements
                         }
                     }
                     case KeyAction.Key.F1 -> toggleHelp();
+                    case KeyAction.Key.F2 -> state.toggleToolCard();
                     case KeyAction.Key.F5 -> saveToFile(state.workingFile().orElseThrow());
                     case KeyAction.Key.F9 -> loadFromFile(state.workingFile().orElseThrow());
                     case KeyAction.Key.LOWER_Z -> {
@@ -441,6 +448,7 @@ public class TextureEditor implements
         LOG.info("Current state: %s.", state)
                 .info("Keymap:")
                 .info("F1: show help")
+                .info("F2: toggle tool card")
                 .info("F5: save to file")
                 .info("q: %s", PIXEL_SELECT)
                 .info("w: %s", BOX_SELECT)

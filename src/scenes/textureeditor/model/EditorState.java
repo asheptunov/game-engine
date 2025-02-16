@@ -20,6 +20,7 @@ public class EditorState {
     private final History<Raster> textureHistory;
     private       Selection       selection;
     private       Coordinates     boxStart;
+    private       boolean         isToolCardShown;
 
     public EditorState(Mode mode,
                        File workingDir,
@@ -30,6 +31,7 @@ public class EditorState {
         this.texture = texture;
         this.textureHistory = new LoggingHistory<>(Logger.Level.TRACE,
                 new CircularBufferHistoryImpl<>(textureHistorySize, texture.clone()));
+        this.isToolCardShown = false;
     }
 
     public Mode mode() {
@@ -121,5 +123,21 @@ public class EditorState {
 
     public void clearBoxStart() {
         this.boxStart = null;
+    }
+
+    public boolean isToolCardShown() {
+        return isToolCardShown;
+    }
+
+    public void toggleToolCard() {
+        isToolCardShown = !isToolCardShown;
+    }
+
+    public void showToolCard() {
+        isToolCardShown = false;
+    }
+
+    public void hideToolCard() {
+        isToolCardShown = false;
     }
 }

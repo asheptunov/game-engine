@@ -1,5 +1,8 @@
 package rendering;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 public class PixelRaster implements Raster {
     private final int    w;
     private final int    h;
@@ -175,6 +178,23 @@ public class PixelRaster implements Raster {
     @Override
     public PixelRaster clone() {
         return new PixelRaster(w, h, cloneBytes(a), cloneBytes(r), cloneBytes(g), cloneBytes(b));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof PixelRaster that)) {
+            return false;
+        }
+        return w == that.w && h == that.h
+                && Objects.deepEquals(a, that.a)
+                && Objects.deepEquals(r, that.r)
+                && Objects.deepEquals(g, that.g)
+                && Objects.deepEquals(b, that.b);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(w, h, Arrays.hashCode(a), Arrays.hashCode(r), Arrays.hashCode(g), Arrays.hashCode(b));
     }
 
     private static byte[][] initBytes(int width, int height, Painter.ImageSampler color) {
