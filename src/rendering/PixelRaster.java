@@ -148,6 +148,8 @@ public class PixelRaster implements Raster {
 
     @Override
     public Color pixel(int x, int y) {
+        x = Math.max(0, Math.min(x, w - 1));
+        y = Math.max(0, Math.min(y, h - 1));
         int i = y * w + x;
         return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
     }

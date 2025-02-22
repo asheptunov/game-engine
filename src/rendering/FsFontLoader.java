@@ -59,9 +59,9 @@ public class FsFontLoader implements FontLoader {
     private final Clock            clock;
     private final Path             fontPath;
     private final int              size;
-    private final Filter           filter;
+    private final RasterFilter     filter;
 
-    private FsFontLoader(RasterRepository repository, Clock clock, Path fontPath, int size, Filter filter) {
+    private FsFontLoader(RasterRepository repository, Clock clock, Path fontPath, int size, RasterFilter filter) {
         this.repository = repository;
         this.clock = clock;
         this.fontPath = fontPath;
@@ -85,7 +85,7 @@ public class FsFontLoader implements FontLoader {
         private Clock            clock;
         private Path             fontPath;
         private Integer          size;
-        private Filter           filter;
+        private RasterFilter     filter;
 
         private Builder() {}
 
@@ -112,7 +112,12 @@ public class FsFontLoader implements FontLoader {
             return this;
         }
 
-        public Builder filter(Filter filter) {
+        public Builder filter(PixelFilter filter) {
+            this.filter = filter.asRasterFilter();
+            return this;
+        }
+
+        public Builder filter(RasterFilter filter) {
             this.filter = filter;
             return this;
         }
@@ -131,7 +136,7 @@ public class FsFontLoader implements FontLoader {
                 throw new IllegalArgumentException("size");
             }
             if (filter == null) {
-                filter = Filter.NO_OP;
+                filter = RasterFilter.NO_OP;
             }
             return new FsFontLoader(repository, clock, fontPath, size, filter);
         }

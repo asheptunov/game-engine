@@ -26,7 +26,7 @@ public class RasterPrinter implements Printer {
             }
         }
         var asset = font.getChar(Character.toLowerCase(c));  // todo add uppercase
-        asset = Filter.chromaMap(NamedColor.BLACK, color).apply(asset);
+        asset = PixelFilter.chromaMap(NamedColor.BLACK, color).asRasterFilter().apply(asset);
         var scaled = asset.scale(size, size);
         painter.drawImg(x, y, scaled, blendMode);
     }

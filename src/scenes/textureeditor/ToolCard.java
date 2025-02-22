@@ -2,7 +2,7 @@ package scenes.textureeditor;
 
 import rendering.BlendMode;
 import rendering.Color;
-import rendering.Filter;
+import rendering.PixelFilter;
 import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
@@ -121,7 +121,7 @@ public class ToolCard implements Renderer {
         renderPadding();
         renderGrid();
         renderKeys();
-        displayPainter.drawImg(x, y, Filter.opacity(0.9).apply(card), BlendMode.OVER_PRE);
+        displayPainter.drawImg(x, y, PixelFilter.opacity(0.9).asRasterFilter().apply(card), BlendMode.OVER_PRE);
     }
 
     private void renderPadding() {

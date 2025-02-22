@@ -170,6 +170,11 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         public Color withBlue(byte blue) {
             return color.withBlue(blue);
         }
+
+        @Override
+        public String toString() {
+            return "ANSI " + code + " (" + color + ")";
+        }
     }
 
     final class NamedColor implements Color {
@@ -263,6 +268,11 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         public Color withBlue(byte blue) {
             return blue == color.blue() ? this : color.withBlue(blue);
         }
+
+        @Override
+        public String toString() {
+            return name + " (" + color + ")";
+        }
     }
 
     final class RgbInt24Color implements Color {
@@ -336,6 +346,11 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         @Override
         public Color withBlue(byte blue) {
             return blue == blue() ? this : new RgbInt24Color(rgb & 0xffff00 | (int) blue & 0xff);
+        }
+
+        @Override
+        public String toString() {
+            return "%#06X".formatted(rgb);
         }
     }
 
@@ -411,6 +426,11 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         @Override
         public Color withBlue(byte blue) {
             return blue == blue() ? this : new ArgbInt32Color(argb & 0xffffff00 | (int) blue & 0xff);
+        }
+
+        @Override
+        public String toString() {
+            return "%#08X".formatted(argb);
         }
     }
 }

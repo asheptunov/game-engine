@@ -8,13 +8,13 @@ import rendering.BlendMode;
 import rendering.ChainRasterSerializer;
 import rendering.Color;
 import rendering.FileSystemRasterRepository;
-import rendering.Filter;
 import rendering.Font;
 import rendering.FsFontLoader;
 import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Raster;
+import rendering.RasterFilter;
 import rendering.RasterPainter;
 import rendering.RasterPrinter;
 import rendering.RasterRepository;
@@ -83,7 +83,7 @@ public class TextureEditor implements
                 .clock(clock)
                 .fontPath("assets/fonts/test")
                 .fontDimensions(16)
-//                .filter(Filter.chromaKey(NamedColor.BLACK))
+                .filter(RasterFilter.antiAlias())
                 .build()
                 .load();
         this.printer = new RasterPrinter(display, font);

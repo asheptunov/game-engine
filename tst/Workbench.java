@@ -1,7 +1,7 @@
 import harness.Test;
 import rendering.ArgbSerializer;
 import rendering.Color;
-import rendering.Filter;
+import rendering.PixelFilter;
 import rendering.RgbSerializer;
 
 import static harness.SuiteRunner.runThis;
@@ -25,8 +25,8 @@ void whiteOnBlackToBlackOnAlpha() throws IOException {
     for (File file : files) {
         var bytes = Files.readAllBytes(file.toPath());
         var raster = ArgbSerializer.INSTANCE.deserialize(bytes).fold(r -> r, e -> {throw e;});
-        raster = Filter.chromaKey(Color.NamedColor.BLACK).apply(raster);
-        raster = Filter.chromaMap(Color.NamedColor.WHITE, Color.NamedColor.BLACK).apply(raster);
+        raster = PixelFilter.chromaKey(Color.NamedColor.BLACK).asRasterFilter().apply(raster);
+        raster = PixelFilter.chromaMap(Color.NamedColor.WHITE, Color.NamedColor.BLACK).asRasterFilter().apply(raster);
         bytes = ArgbSerializer.INSTANCE.serialize(raster).fold(r -> r, e -> {throw e;});
         Files.write(file.toPath(), bytes);
     }
