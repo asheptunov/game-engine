@@ -16,7 +16,7 @@ public class PixelRaster implements Raster {
     }
 
     public PixelRaster(int width, int height) {
-        this(width, height, Color.NamedColor.BLACK);
+        this(width, height, Color.NamedColor.NONE);
     }
 
     public PixelRaster(int width, int height, Color color) {

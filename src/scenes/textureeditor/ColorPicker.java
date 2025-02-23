@@ -45,6 +45,10 @@ public class ColorPicker implements Renderer {
     private final int           hueSliderHeight;
     private final int           hueSliderX;
     private final int           hueSliderY;
+    private final int           alphaSliderWidth;
+    private final int           alphaSliderHeight;
+    private final int           alphaSliderX;
+    private final int           alphaSliderY;
     private final int           shadePickerWidth;
     private final int           shadePickerHeight;
     private final int           shadePickerX;
@@ -55,9 +59,12 @@ public class ColorPicker implements Renderer {
     private final int           previewY;
     private       boolean       selectingHue   = false;
     private       boolean       selectingShade = false;
+    private       boolean       selectingAlpha = false;
     private       Color         hue;
     private       Color         shade;
+    private       Color         alpha;
     private       int           hueX;
+    private       int           alphaX;
     private       int           shadeX;
     private       int           shadeY;
 
@@ -68,18 +75,27 @@ public class ColorPicker implements Renderer {
         this.printer = editor.printer();
         this.fontSize = editor.fontSize();
         this.charSpacing = editor.charSpacing();
+
         hueSliderWidth = (int) (.3333 * display.width());
         hueSliderHeight = 20;
-        hueSliderX = display.width() - hueSliderWidth;
-        hueSliderY = display.height() - hueSliderHeight;
+        alphaSliderWidth = hueSliderWidth;
+        alphaSliderHeight = hueSliderHeight;
         shadePickerWidth = hueSliderWidth;
         shadePickerHeight = (int) (.3333 * display.height());
+        previewWidth = (int) (.1667 * display.width());
+        previewHeight = alphaSliderHeight + hueSliderHeight + shadePickerHeight;
+
+        hueSliderX = display.width() - hueSliderWidth;
+        hueSliderY = display.height() - alphaSliderHeight - hueSliderHeight;
+        alphaSliderX = hueSliderX;
+        alphaSliderY = hueSliderY + hueSliderHeight;
         shadePickerX = hueSliderX;
         shadePickerY = hueSliderY - shadePickerHeight;
-        previewWidth = (int) (.1667 * display.width());
-        previewHeight = hueSliderHeight + shadePickerHeight;
         previewX = hueSliderX - previewWidth;
         previewY = shadePickerY;
+
+        alphaX = alphaSliderWidth;
+
         set(initial);
     }
 
@@ -87,6 +103,7 @@ public class ColorPicker implements Renderer {
         if (color.blue() == color.green() && color.green() == color.red()) {  // all shades of gray, from white to black
             this.hue = NamedColor.RED;  // arbitrary
             this.shade = color;
+            inferAlpha();
             return;
         }
 
@@ -185,10 +202,11 @@ public class ColorPicker implements Renderer {
                 'b' == argMin ? hueMin : 'b' == argMed ? hueMed : hueMax
         );
         this.shade = color;
+        inferAlpha();
     }
 
     public Color getColor() {
-        return shade;
+        return alpha;
     }
 
     public void accept(KeyAction keyAction) {
@@ -257,6 +275,14 @@ public class ColorPicker implements Renderer {
                     shadeX = e.getX() - shadePickerX;
                     shadeY = e.getY() - shadePickerY;
                     shade = getColorOnShadePicker(shadeX, shadeY);
+                } else if (e.getX() >= alphaSliderX
+                        && e.getX() <= alphaSliderX + alphaSliderWidth
+                        && e.getY() >= alphaSliderY
+                        && e.getY() <= alphaSliderY + alphaSliderHeight) {
+                    LOG.info("Selecting alpha");
+                    selectingAlpha = true;
+                    alphaX = e.getX() - alphaSliderX;
+                    alpha = getColorOnAlphaSlider(alphaX);
                 }
             }
             case MouseEvent.MOUSE_DRAGGED -> {
@@ -264,11 +290,15 @@ public class ColorPicker implements Renderer {
                     hueX = Math.max(0, Math.min(hueSliderWidth, e.getX() - hueSliderX));
                     hue = getColorOnHueSlider(hueX);
                     shade = getColorOnShadePicker(shadeX, shadeY);
+                    inferAlpha();
                 } else if (selectingShade) {
-                    // selecting shade
                     shadeX = Math.max(0, Math.min(shadePickerWidth, e.getX() - shadePickerX));
                     shadeY = Math.max(0, Math.min(shadePickerHeight, e.getY() - shadePickerY));
                     shade = getColorOnShadePicker(shadeX, shadeY);
+                    inferAlpha();
+                } else if (selectingAlpha) {
+                    alphaX = Math.max(0, Math.min(alphaSliderWidth, e.getX() - alphaSliderX));
+                    inferAlpha();
                 }
             }
             case MouseEvent.MOUSE_RELEASED -> {
@@ -280,6 +310,10 @@ public class ColorPicker implements Renderer {
                     LOG.info("Done selecting shade");
                     selectingShade = false;
                 }
+                if (selectingAlpha) {
+                    LOG.info("Done selecting alpha");
+                    selectingAlpha = false;
+                }
             }
         }
     }
@@ -290,10 +324,11 @@ public class ColorPicker implements Renderer {
         renderShadePicker();
         renderHueSlider();
         renderHexCode();
+        renderAlphaSlider();
     }
 
     private void renderPreview() {
-        painter.drawImg(previewX, previewY, previewWidth, previewHeight, shade, BlendMode.NORMAL);
+        painter.drawImg(previewX, previewY, previewWidth, previewHeight, alpha, BlendMode.OVER_PRE);
     }
 
     private void renderHexCode() {
@@ -314,7 +349,16 @@ public class ColorPicker implements Renderer {
         painter.drawImg(hueSliderX, hueSliderY, hueSlider, BlendMode.NORMAL);
         painter.drawImg(hueSliderX + hueX - 5, hueSliderY, 10, hueSliderHeight, (_, col, row)
                 -> (col == 0 || row == 0 || col == 9 || row == hueSliderHeight - 1)  // white border
-                ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0), BlendMode.NORMAL);
+                ? NamedColor.WHITE : NamedColor.NONE, BlendMode.OVER_PRE);
+    }
+
+    private void renderAlphaSlider() {
+        var alphaSlider = new PixelRaster(alphaSliderWidth, alphaSliderHeight,
+                (_, col, _) -> getColorOnAlphaSlider(col));
+        painter.drawImg(alphaSliderX, alphaSliderY, alphaSlider, BlendMode.OVER_PRE);
+        painter.drawImg(alphaSliderX + alphaX - 5, alphaSliderY, 10, alphaSliderHeight, (_, col, row)
+                -> (col == 0 || row == 0 || col == 9 || row == alphaSliderHeight - 1)  // white border
+                ? NamedColor.WHITE : NamedColor.NONE, BlendMode.OVER_PRE);
     }
 
     private void renderShadePicker() {
@@ -350,6 +394,15 @@ public class ColorPicker implements Renderer {
             default -> -6 * (fraction - 1);
         };
         return RgbInt24Color.of((byte) (red * 255), (byte) (green * 255), (byte) (blue * 255));
+    }
+
+    private void inferAlpha() {
+        alpha = getColorOnAlphaSlider(alphaX);
+    }
+
+    private Color getColorOnAlphaSlider(float col) {
+        var fraction = col / hueSliderWidth;
+        return shade.withAlpha(fraction);
     }
 
     private Color getColorOnShadePicker(float col, float row) {

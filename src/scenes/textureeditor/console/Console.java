@@ -91,8 +91,7 @@ public class Console implements Renderer {
                 .withCommand("status", new CmdStatus(editor.state(), editor.colorPicker()))
                 .withCommand("touch", new CmdTouch(editor.state(), editor.repo(), () -> new PixelRaster(
                         editor.state().texture().width(),
-                        editor.state().texture().height(),
-                        Color.NamedColor.BLACK)))
+                        editor.state().texture().height())))
                 .build()
         );
     }
@@ -279,14 +278,10 @@ public class Console implements Renderer {
         for (var line : lines) {
             int col = 0;
             int y = (int) ((row - (n - maxLines) + vtOffset) * vtStride);
-//            int y = (int) ((maxLines - 1 - row + vtOffset) * vtStride);
             for (var sc : line) {
                 printer.print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
             }
             ++row;
-//            if (++row > maxLines) {
-//                break;
-//            }
         }
     }
 

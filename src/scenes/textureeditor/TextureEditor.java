@@ -90,7 +90,7 @@ public class TextureEditor implements
         this.clock = clock;
         this.state = new EditorState(
                 DEFAULT_MODE,
-                Path.of("assets/fonts/test/standard").toFile(),
+                Path.of("assets/icons").toFile(),
                 new PixelRaster(width, height, NamedColor.NONE),
                 100);
         this.toolCard = new ToolCard(this);
