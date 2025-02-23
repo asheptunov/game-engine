@@ -2,8 +2,8 @@ package scenes.textureeditor;
 
 import rendering.BlendMode;
 import rendering.Color;
-import rendering.PixelFilter;
 import rendering.Painter;
+import rendering.PixelFilter;
 import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Raster;
@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ToolCard implements Renderer {
-    private final Painter                           displayPainter;
     private final int                               fontSize;
     private final int                               charSpacing;
     private final int                               cols;
@@ -101,7 +100,6 @@ public class ToolCard implements Renderer {
     }
 
     public ToolCard(TextureEditor editor) {
-        this.displayPainter = editor.painter();
         this.fontSize = editor.fontSize();
         this.charSpacing = editor.charSpacing();
         this.cols = grid.get(0).size();
@@ -117,11 +115,11 @@ public class ToolCard implements Renderer {
     }
 
     @Override
-    public void render() {
+    public void render(Context context) {
         renderPadding();
         renderGrid();
         renderKeys();
-        displayPainter.drawImg(x, y, PixelFilter.opacity(0.9).asRasterFilter().apply(card), BlendMode.OVER_PRE);
+        context.painter().drawImg(x, y, PixelFilter.opacity(0.9).asRasterFilter().apply(card), BlendMode.OVER_PRE);
     }
 
     private void renderPadding() {

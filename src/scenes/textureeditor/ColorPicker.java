@@ -4,10 +4,8 @@ import logging.LogManager;
 import logging.Logger;
 import rendering.BlendMode;
 import rendering.Color;
-import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
-import rendering.Raster;
 import rendering.Renderer;
 import ui.KeyAction;
 
@@ -36,9 +34,6 @@ public class ColorPicker implements Renderer {
     private static final float FIVE_SIXTHS = (float) 5 / 6;
 
     private final TextureEditor editor;
-    private final Raster        display;
-    private final Painter       painter;
-    private final Printer       printer;
     private final int           fontSize;
     private final int           charSpacing;
     private final int           hueSliderWidth;
@@ -70,23 +65,23 @@ public class ColorPicker implements Renderer {
 
     public ColorPicker(TextureEditor editor, Color initial) {
         this.editor = editor;
-        this.display = editor.display();
-        this.painter = editor.painter();
-        this.printer = editor.printer();
         this.fontSize = editor.fontSize();
         this.charSpacing = editor.charSpacing();
 
-        hueSliderWidth = (int) (.3333 * display.width());
+        int width = editor.display().width();
+        int height = editor.display().height();
+
+        hueSliderWidth = (int) (ONE_THIRD * width);
         hueSliderHeight = 20;
         alphaSliderWidth = hueSliderWidth;
         alphaSliderHeight = hueSliderHeight;
         shadePickerWidth = hueSliderWidth;
-        shadePickerHeight = (int) (.3333 * display.height());
-        previewWidth = (int) (.1667 * display.width());
+        shadePickerHeight = (int) (ONE_THIRD * height);
+        previewWidth = (int) (ONE_SIXTH * width);
         previewHeight = alphaSliderHeight + hueSliderHeight + shadePickerHeight;
 
-        hueSliderX = display.width() - hueSliderWidth;
-        hueSliderY = display.height() - alphaSliderHeight - hueSliderHeight;
+        hueSliderX = width - hueSliderWidth;
+        hueSliderY = height - alphaSliderHeight - hueSliderHeight;
         alphaSliderX = hueSliderX;
         alphaSliderY = hueSliderY + hueSliderHeight;
         shadePickerX = hueSliderX;
@@ -319,53 +314,53 @@ public class ColorPicker implements Renderer {
     }
 
     @Override
-    public void render() {
-        renderPreview();
-        renderShadePicker();
-        renderHueSlider();
-        renderHexCode();
-        renderAlphaSlider();
+    public void render(Context context) {
+        renderPreview(context);
+        renderShadePicker(context);
+        renderHueSlider(context);
+        renderHexCode(context);
+        renderAlphaSlider(context);
     }
 
-    private void renderPreview() {
-        painter.drawImg(previewX, previewY, previewWidth, previewHeight, alpha, BlendMode.OVER_PRE);
+    private void renderPreview(Context context) {
+        context.painter().drawImg(previewX, previewY, previewWidth, previewHeight, alpha, BlendMode.OVER_PRE);
     }
 
-    private void renderHexCode() {
+    private void renderHexCode(Context context) {
         var code = hexCode();
         int codeWidth = code.length() * (fontSize + charSpacing);
         int centerX = previewX + ((previewWidth + shadePickerWidth - codeWidth) >> 1);
         int y = shadePickerY - fontSize;
-        printer.print(code, centerX, y, Printer.Size.of(fontSize), Printer.Color.of(shade));
+        context.printer().print(code, centerX, y, Printer.Size.of(fontSize), Printer.Color.of(shade));
     }
 
     private String hexCode() {
         return "%#06X".formatted(shade.rgbInt24());
     }
 
-    private void renderHueSlider() {
+    private void renderHueSlider(Context context) {
         var hueSlider = new PixelRaster(hueSliderWidth, hueSliderHeight,
                 (_, col, _) -> getColorOnHueSlider((float) col));
-        painter.drawImg(hueSliderX, hueSliderY, hueSlider, BlendMode.NORMAL);
-        painter.drawImg(hueSliderX + hueX - 5, hueSliderY, 10, hueSliderHeight, (_, col, row)
+        context.painter().drawImg(hueSliderX, hueSliderY, hueSlider, BlendMode.NORMAL);
+        context.painter().drawImg(hueSliderX + hueX - 5, hueSliderY, 10, hueSliderHeight, (_, col, row)
                 -> (col == 0 || row == 0 || col == 9 || row == hueSliderHeight - 1)  // white border
                 ? NamedColor.WHITE : NamedColor.NONE, BlendMode.OVER_PRE);
     }
 
-    private void renderAlphaSlider() {
+    private void renderAlphaSlider(Context context) {
         var alphaSlider = new PixelRaster(alphaSliderWidth, alphaSliderHeight,
                 (_, col, _) -> getColorOnAlphaSlider(col));
-        painter.drawImg(alphaSliderX, alphaSliderY, alphaSlider, BlendMode.OVER_PRE);
-        painter.drawImg(alphaSliderX + alphaX - 5, alphaSliderY, 10, alphaSliderHeight, (_, col, row)
+        context.painter().drawImg(alphaSliderX, alphaSliderY, alphaSlider, BlendMode.OVER_PRE);
+        context.painter().drawImg(alphaSliderX + alphaX - 5, alphaSliderY, 10, alphaSliderHeight, (_, col, row)
                 -> (col == 0 || row == 0 || col == 9 || row == alphaSliderHeight - 1)  // white border
                 ? NamedColor.WHITE : NamedColor.NONE, BlendMode.OVER_PRE);
     }
 
-    private void renderShadePicker() {
+    private void renderShadePicker(Context context) {
         var shadePicker = new PixelRaster(shadePickerWidth, shadePickerHeight,
                 (_, col, row) -> getColorOnShadePicker((float) col, (float) row));
-        painter.drawImg(shadePickerX, shadePickerY, shadePicker, BlendMode.NORMAL);
-        painter.drawImg(shadePickerX + shadeX - 5, shadePickerY + shadeY - 5, 10, 10, (_, col, row)
+        context.painter().drawImg(shadePickerX, shadePickerY, shadePicker, BlendMode.NORMAL);
+        context.painter().drawImg(shadePickerX + shadeX - 5, shadePickerY + shadeY - 5, 10, 10, (_, col, row)
                 -> (col == 0 || row == 0 || col == 9 || row == 9)  // white border
                 ? NamedColor.WHITE : NamedColor.WHITE.withAlpha(0), BlendMode.NORMAL);
     }

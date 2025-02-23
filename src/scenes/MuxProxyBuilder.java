@@ -9,22 +9,22 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public class SceneAwareProxyBuilder {
+public class MuxProxyBuilder {
     private       Class<?>[]                          interfaces;
     private final Map<Class<? extends Scene>, Object> targetByScene = new HashMap<>();
     private       Supplier<Scene>                     sceneSupplier;
 
-    private SceneAwareProxyBuilder() {}
+    private MuxProxyBuilder() {}
 
-    public static SceneAwareProxyBuilder create() {
-        return new SceneAwareProxyBuilder();
+    public static MuxProxyBuilder create() {
+        return new MuxProxyBuilder();
     }
 
-    public SceneAwareProxyBuilder withInterface(Class<?> anInterface) {
+    public MuxProxyBuilder withInterface(Class<?> anInterface) {
         return withInterfaces(anInterface);
     }
 
-    public SceneAwareProxyBuilder withInterfaces(Class<?>... interfaces) {
+    public MuxProxyBuilder withInterfaces(Class<?>... interfaces) {
         this.interfaces = interfaces;
         if (interfaces == null) {
             throw new IllegalArgumentException();
@@ -40,7 +40,7 @@ public class SceneAwareProxyBuilder {
         return this;
     }
 
-    public SceneAwareProxyBuilder withTargetForScene(Class<? extends Scene> sceneClass, Object target) {
+    public MuxProxyBuilder withTargetForScene(Class<? extends Scene> sceneClass, Object target) {
         if (sceneClass == null) {
             throw new IllegalArgumentException();
         }
@@ -53,7 +53,7 @@ public class SceneAwareProxyBuilder {
         return this;
     }
 
-    public SceneAwareProxyBuilder withSceneSupplier(Supplier<Scene> sceneSupplier) {
+    public MuxProxyBuilder withSceneSupplier(Supplier<Scene> sceneSupplier) {
         this.sceneSupplier = sceneSupplier;
         return this;
     }

@@ -1,7 +1,9 @@
 root=DEBUG
 timing.PeriodicExecutor=INFO
 rendering.AwtViewer=INFO
-rendering.CompositeRenderer=INFO
+rendering.ChainRasterSerializer=INFO
+rendering.MixingRenderer=INFO
+rendering.FsFontLoader=INFO
 rendering.GradientRenderer=INFO
 rendering.RasterPrinter=INFO
 scenes.textureeditor.TextureEditor=INFO

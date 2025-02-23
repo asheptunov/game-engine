@@ -1,13 +1,15 @@
 import logging.LogManager;
 import logging.Logger;
 import rendering.AwtViewer;
-import rendering.Checkerboard;
-import rendering.CompositeRenderer;
-import rendering.Eraser;
+import rendering.BlendMode;
+import rendering.MixerProxy;
+import rendering.MixingRenderer;
+import rendering.Patterns;
 import rendering.PixelRaster;
+import rendering.Raster;
 import rendering.Renderer;
+import scenes.MuxProxyBuilder;
 import scenes.Scene;
-import scenes.SceneAwareProxyBuilder;
 import scenes.textureeditor.TextureEditor;
 import timing.PeriodicExecutor;
 
@@ -30,20 +32,28 @@ public static void main(String[] ignoredArgs) throws InterruptedException {
     var displayRaster = new PixelRaster(WIDTH, HEIGHT, NamedColor.BLACK);
     var clock = Clock.systemUTC();
     var textureEditor = new TextureEditor(displayRaster, clock, 16, 16);
-    SCENE.set(textureEditor);
-    var switchingListener = SceneAwareProxyBuilder.create()
+    var switchingListener = MuxProxyBuilder.create()
             .withInterfaces(KeyListener.class, MouseListener.class, MouseWheelListener.class, MouseMotionListener.class)
             .withTargetForScene(TextureEditor.class, textureEditor)
             .withSceneSupplier(SCENE::get)
             .build();
-    var switchingRenderer = (Renderer) SceneAwareProxyBuilder.create()
-            .withInterface(Renderer.class)
+    var switchingRenderer = (Renderer) MixerProxy.builder(Renderer.class)
+            .withTarget(() -> true, textureEditor)
+            .withTarget()
             .withTargetForScene(TextureEditor.class, textureEditor)
             .withSceneSupplier(SCENE::get)
             .build();
-    var renderer = new CompositeRenderer(List.of(
-            new Eraser(displayRaster),
-            new Checkerboard(0.8f, 0.9f, displayRaster),
+    var renderer = MixingRenderer.builder()
+            .withChannel(_ -> true, new Renderer() {
+                final Raster checkerboard = Patterns.checkerboard(WIDTH, HEIGHT, 0.8f, 0.9f);
+
+                @Override
+                public void render(Context context) {
+                    context.painter().drawImg(0, 0, checkerboard, BlendMode.NORMAL);
+                }
+            })
+            .build();
+    var renderer = new MixingRenderer(List.of(
             switchingRenderer,
             new AwtViewer(displayRaster, switchingListener)
     ));

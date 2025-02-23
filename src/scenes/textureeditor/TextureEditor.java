@@ -3,23 +3,15 @@ package scenes.textureeditor;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
-import rendering.ArgbSerializer;
 import rendering.BlendMode;
-import rendering.ChainRasterSerializer;
 import rendering.Color;
-import rendering.FileSystemRasterRepository;
 import rendering.Font;
-import rendering.FsFontLoader;
 import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Raster;
-import rendering.RasterFilter;
-import rendering.RasterPainter;
-import rendering.RasterPrinter;
 import rendering.RasterRepository;
 import rendering.Renderer;
-import rendering.RgbSerializer;
 import scenes.Scene;
 import scenes.textureeditor.console.Console;
 import scenes.textureeditor.model.Coordinates;
@@ -61,33 +53,12 @@ public class TextureEditor implements
     private static final Painter.LineSampler SELECTION_PATTERN
             = (i, _, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
 
-    private final RasterRepository repo;
-    private final Raster           display;
-    private final Painter          painter;
-    private final Font             font;
-    private final Printer          printer;
-    private final Clock            clock;
     private final EditorState      state;
     private final ToolCard         toolCard;
     private final ColorPicker      colorPicker;
     private final Console          console;
 
-    public TextureEditor(Raster display, Clock clock, int width, int height) {
-        this.repo = new FileSystemRasterRepository(clock, ChainRasterSerializer.of(
-                ArgbSerializer.INSTANCE,
-                RgbSerializer.INSTANCE));
-        this.display = display;
-        this.painter = new RasterPainter(display);
-        this.font = FsFontLoader.builder()
-                .repository(repo)
-                .clock(clock)
-                .fontPath("assets/fonts/test")
-                .fontDimensions(16)
-                .filter(RasterFilter.antiAlias())
-                .build()
-                .load();
-        this.printer = new RasterPrinter(display, font);
-        this.clock = clock;
+    public TextureEditor(int width, int height) {
         this.state = new EditorState(
                 DEFAULT_MODE,
                 Path.of("assets/icons").toFile(),
@@ -293,19 +264,19 @@ public class TextureEditor implements
     }
 
     @Override
-    public void render() {
+    public void render(Context context) {
         LOG.trace("Rendering");
         // todo zoom / pan
         renderTexture();
         renderSelection();
         if (state.isToolCardShown()) {
-            toolCard.render();
+            toolCard.render(context);
         }
         if (COLOR_PICKER.equals(state.mode())) {
-            colorPicker.render();
+            colorPicker.render(context);
         }
         if (COMMAND_ENTRY.equals(state.mode())) {
-            console.render();
+            console.render(context);
         }
     }
 
@@ -327,22 +298,6 @@ public class TextureEditor implements
 
     public RasterRepository repo() {
         return repo;
-    }
-
-    public Raster display() {
-        return display;
-    }
-
-    public Painter painter() {
-        return painter;
-    }
-
-    public Font font() {
-        return font;
-    }
-
-    public Printer printer() {
-        return printer;
     }
 
     public int fontSize() {

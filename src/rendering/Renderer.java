@@ -1,5 +1,13 @@
 package rendering;
 
 public interface Renderer {
-    void render();
+    interface Context {
+        Raster raster();
+
+        Painter painter();
+
+        Printer printer();
+    }
+
+    void render(Context context);
 }

@@ -7,7 +7,6 @@ import misc.spliterators.ChunkedSpliterator;
 import misc.spliterators.ReversedSpliterator;
 import rendering.BlendMode;
 import rendering.Color;
-import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Renderer;
@@ -52,8 +51,6 @@ public class Console implements Renderer {
     }
 
     private final TextureEditor             editor;
-    private final Painter                   painter;
-    private final Printer                   printer;
     private final int                       width;
     private final int                       height;
     private final int                       hzStride;
@@ -68,8 +65,6 @@ public class Console implements Renderer {
 
     public Console(TextureEditor editor, int historySize) {
         this.editor = editor;
-        this.painter = editor.painter();
-        this.printer = editor.printer();
         hzStride = editor.fontSize() + editor.charSpacing();
         vtStride = editor.fontSize() + editor.lineSpacing();
         width = editor.display().width();
@@ -178,16 +173,16 @@ public class Console implements Renderer {
     }
 
     @Override
-    public void render() {
-        renderBackground();
+    public void render(Context context) {
+        renderBackground(context);
         var allChars = concatAllChars();
         var ansiSequences = computeAnsiSequences(allChars);
         var displayLines = convertToDisplayLines(allChars, ansiSequences);
-        renderLines(displayLines);
+        renderLines(displayLines, context);
     }
 
-    private void renderBackground() {
-        painter.drawImg(0, 0, width, height, Color.NamedColor.BLACK.withAlpha(0.8f), BlendMode.OVER_PRE);
+    private void renderBackground(Context context) {
+        context.painter().drawImg(0, 0, width, height, Color.NamedColor.BLACK.withAlpha(0.8f), BlendMode.OVER_PRE);
     }
 
     private String concatAllChars() {
@@ -272,14 +267,14 @@ public class Console implements Renderer {
         return lines;
     }
 
-    private void renderLines(List<List<StyledChar>> lines) {
+    private void renderLines(List<List<StyledChar>> lines, Context context) {
         int row = 0;
         int n = lines.size();
         for (var line : lines) {
             int col = 0;
             int y = (int) ((row - (n - maxLines) + vtOffset) * vtStride);
             for (var sc : line) {
-                printer.print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
+                context.printer().print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
             }
             ++row;
         }

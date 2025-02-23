@@ -11,26 +11,24 @@ import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 
-public class AwtViewer implements Renderer {
+public class AwtViewer implements Display {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final Raster         raster;
     private final BufferStrategy bs;
     private final BufferedImage  image;
 
     // TODO maybe DI this?
-    public AwtViewer(Raster raster, Object listener) {
-        this.raster = raster;
+    public AwtViewer(int width, int height, Object listener) {
         var frame = new JFrame();
         frame.setTitle("game");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(raster.width(), raster.height());
+        frame.setSize(width, height);
         frame.setResizable(false);
         frame.setUndecorated(true);
         frame.setVisible(true);
         frame.createBufferStrategy(2);
         bs = frame.getBufferStrategy();
-        image = new BufferedImage(raster.width(), raster.height(), BufferedImage.TYPE_INT_RGB);
+        image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         if (listener instanceof KeyListener kl) frame.addKeyListener(kl);
         if (listener instanceof MouseListener ml) frame.addMouseListener(ml);
         if (listener instanceof MouseMotionListener mml) frame.addMouseMotionListener(mml);
@@ -38,7 +36,7 @@ public class AwtViewer implements Renderer {
     }
 
     @Override
-    public void render() {
+    public void display(Raster raster) {
         int i = 0;
         do {
             LOG.debug("Render attempt %d...", i);
