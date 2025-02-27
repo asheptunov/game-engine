@@ -153,6 +153,7 @@ public class SuiteRunner {
                     LOG.error(((Failure) r.getValue()).ex(), "%s failed with exception: %s",
                             formatTest(suite, r.getKey()),
                             ((Failure) r.getValue()).ex().getClass());
+                    ((Failure) r.getValue()).ex.printStackTrace(System.err);
                 });
         LOG.info("========================");
     }
