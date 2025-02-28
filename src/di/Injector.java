@@ -65,10 +65,10 @@ public class Injector {
         Arrays.stream(module.getClass().getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(Provides.class))
                 .forEach(method -> {
-                    var linkBuilder = graphBuilder
-                            .link(inferKey(method))
+                    var bindingBuilder = graphBuilder
+                            .bind(inferKey(method))
                             .addEdgeTo(new Graph.ProviderMethodNode<>(module, method));
-                    inferScope(method).ifPresent(linkBuilder::addScope);
+                    inferScope(method).ifPresent(bindingBuilder::addScope);
                 });
     }
 

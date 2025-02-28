@@ -106,7 +106,7 @@ class InjectorTest {
     @Test
     void provider() {
         var lastD = new AtomicReference<D>();
-        var injector = Injector.create(b -> b.link(D.class).toProvider(() -> {
+        var injector = Injector.create(b -> b.bind(D.class).toProvider(() -> {
             lastD.set(new D());
             return lastD.get();
         }));
@@ -122,7 +122,7 @@ class InjectorTest {
     @Test
     void instance() {
         var d = new D();
-        var injector = Injector.create(b -> b.link(D.class).toInstance(d));
+        var injector = Injector.create(b -> b.bind(D.class).toInstance(d));
         assertSame(d, assertInstanceOf(D.class, injector.get(D.class)));
         // proto scope
         assertSame(d, assertInstanceOf(D.class, injector.get(D.class)));
@@ -195,8 +195,8 @@ class InjectorTest {
         var injector = Injector.create(new Module() {
             @Override
             public void configure(GraphBuilder graphBuilder) {
-                graphBuilder.link(String.class).toProvider(MyStringProvider.class);
-                graphBuilder.link(String.class).named("dependent").toProvider(DependentProvider.class);
+                graphBuilder.bind(String.class).toProvider(MyStringProvider.class);
+                graphBuilder.bind(String.class).named("dependent").toProvider(DependentProvider.class);
             }
 
             static class MyStringProvider implements Provider<String> {
@@ -223,8 +223,8 @@ class InjectorTest {
     }
 
     @Test
-    void interfaceLink() {
-        var injector = Injector.create(b -> b.link(IB.class).to(B.class));
+    void interfaceBinding() {
+        var injector = Injector.create(b -> b.bind(IB.class).to(B.class));
         var b1 = assertInstanceOf(B.class, injector.get(IB.class));
         // proto scope
         var b2 = assertInstanceOf(B.class, injector.get(IB.class));
@@ -233,7 +233,7 @@ class InjectorTest {
 
     @Test
     void moduleInstall() {
-        var injector = Injector.create(b -> b.install(bb -> bb.link(IB.class).to(B.class)));
+        var injector = Injector.create(b -> b.install(bb -> bb.bind(IB.class).to(B.class)));
         var b1 = assertInstanceOf(B.class, injector.get(IB.class));
         // proto scope
         var b2 = assertInstanceOf(B.class, injector.get(IB.class));
@@ -242,7 +242,7 @@ class InjectorTest {
 
     @Test
     void singleton() {
-        var injector = Injector.create(b -> b.link(IB.class).to(B.class).singleton());
+        var injector = Injector.create(b -> b.bind(IB.class).to(B.class).singleton());
         // IB is singleton
         var ib1 = assertInstanceOf(B.class, injector.get(IB.class));
         var ib2 = assertInstanceOf(B.class, injector.get(IB.class));
@@ -255,30 +255,13 @@ class InjectorTest {
 
     @Test
     void prototype() {
-        var injector = Injector.create(b -> b.link(IB.class).to(B.class).prototype());
+        var injector = Injector.create(b -> b.bind(IB.class).to(B.class).prototype());
         var ib1 = assertInstanceOf(B.class, injector.get(IB.class));
         var ib2 = assertInstanceOf(B.class, injector.get(IB.class));
         assertNotSame(ib1, ib2);
     }
 
-    public static void main(String[] args) throws NoSuchMethodException {
-//        System.out.println(InjectorTest.class.getDeclaredMethod("prototype").getAnnotation(Test.class).hashCode());
-//        System.out.println(new Test() {
-//            @Override
-//            public Class<? extends Annotation> annotationType() {
-//                return Test.class;
-//            }
-//
-//            @Override
-//            public boolean enabled() {
-//                return true;
-//            }
-//
-//            @Override
-//            public int hashCode() {
-//                return (127 * "enabled".hashCode() ^ Objects.hashCode(true));
-//            }
-//        }.hashCode());
+    public static void main(String[] args) {
         SuiteRunner.runThis();
     }
 }

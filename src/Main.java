@@ -1,3 +1,6 @@
+import di.GraphBuilder;
+import di.Injector;
+import di.Module;
 import logging.LogManager;
 import logging.Logger;
 import rendering.AwtViewer;
@@ -27,6 +30,18 @@ private static final AtomicReference<Scene> SCENE = new AtomicReference<>();
 
 public static void main(String[] ignoredArgs) throws InterruptedException {
     LOG.info("Width %d, height %d, frame rate %d hz", WIDTH, HEIGHT, FRAME_RATE);
+    Injector.create(new Module() {
+                @Override
+                public void configure(GraphBuilder graphBuilder) {
+                    graphBuilder.bind(int.class).named("width").toInstance(WIDTH);
+                    graphBuilder.bind(int.class).named("height").toInstance(HEIGHT);
+                    graphBuilder.bind(int.class).named("frame_rate").toInstance(FRAME_RATE);
+                    graphBuilder.bind(Clock.class).toInstance(Clock.systemDefaultZone());
+                    graphBuilder.bind(Renderer.class).to(CompositeRenderer.class);
+                }
+            })
+            .get(PeriodicExecutor.class)
+            .execute();
     var displayRaster = new PixelRaster(WIDTH, HEIGHT, NamedColor.BLACK);
     var clock = Clock.systemUTC();
     var textureEditor = new TextureEditor(displayRaster, clock, 16, 16);

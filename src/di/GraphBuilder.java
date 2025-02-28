@@ -4,37 +4,37 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 public interface GraphBuilder {
-    <T> QualifiedLinkBuilder<T> link(Key<T> key);
+    <T> QualifiedBindingBuilder<T> bind(Key<T> key);
 
-    default <T> LinkBuilder<T> link(Class<T> klass) {
-        return link((Type) klass);
+    default <T> BindingBuilder<T> bind(Class<T> klass) {
+        return bind((Type) klass);
     }
 
-    default <T> LinkBuilder<T> link(GenericType<T> genericType) {
-        return link(genericType.getType());
+    default <T> BindingBuilder<T> bind(GenericType<T> genericType) {
+        return bind(genericType.getType());
     }
 
-    <T> LinkBuilder<T> link(Type type);
+    <T> BindingBuilder<T> bind(Type type);
 
     void install(Module module);
 
     Graph build();
 
-    interface LinkBuilder<T> extends QualifiedLinkBuilder<T> {
-        QualifiedLinkBuilder<T> qualified(Qualifier qualifier);
+    interface BindingBuilder<T> extends QualifiedBindingBuilder<T> {
+        QualifiedBindingBuilder<T> qualified(Qualifier qualifier);
 
-        default QualifiedLinkBuilder<T> named(String name) {
+        default QualifiedBindingBuilder<T> named(String name) {
             return qualified(new Qualifier.Name(name));
         }
 
-        default QualifiedLinkBuilder<T> annotated(Annotation annotation) {
+        default QualifiedBindingBuilder<T> annotated(Annotation annotation) {
             return qualified(new Qualifier.Annotation(annotation));
         }
 
-        LinkBuilder<T> unqualified();
+        BindingBuilder<T> unqualified();
     }
 
-    interface QualifiedLinkBuilder<T> extends ScopingBuilder<T> {
+    interface QualifiedBindingBuilder<T> extends ScopingBuilder<T> {
         ScopingBuilder<T> to(Key<T> key);
 
         default ScopingBuilder<T> to(Class<? extends T> klass) {

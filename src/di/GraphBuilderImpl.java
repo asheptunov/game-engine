@@ -11,13 +11,13 @@ public class GraphBuilderImpl implements GraphBuilder {
     GraphBuilderImpl() {}
 
     @Override
-    public <T> LinkBuilderImpl<T> link(Key<T> key) {
-        return new LinkBuilderImpl<>(key);
+    public <T> BindingBuilderImpl<T> bind(Key<T> key) {
+        return new BindingBuilderImpl<>(key);
     }
 
     @Override
-    public <T> LinkBuilderImpl<T> link(Type type) {
-        return new LinkBuilderImpl<>(new Key.TypeKey<>(type));
+    public <T> BindingBuilderImpl<T> bind(Type type) {
+        return new BindingBuilderImpl<>(new Key.TypeKey<>(type));
     }
 
     @Override
@@ -30,43 +30,43 @@ public class GraphBuilderImpl implements GraphBuilder {
         return new GraphImpl(edges, scopes);
     }
 
-    public class LinkBuilderImpl<T> implements LinkBuilder<T> {
+    public class BindingBuilderImpl<T> implements BindingBuilder<T> {
         private final Key<T> from;
 
-        private LinkBuilderImpl(Key<T> from) {this.from = from;}
+        private BindingBuilderImpl(Key<T> from) {this.from = from;}
 
         @Override
-        public LinkBuilderImpl<T> qualified(Qualifier qualifier) {
+        public BindingBuilderImpl<T> qualified(Qualifier qualifier) {
             if (from instanceof Key.QualifiedKey<T>) {
-                throw new IllegalArgumentException("Key being linked is already qualified: " + from);
+                throw new IllegalArgumentException("Key being bound is already qualified: " + from);
             }
-            return new LinkBuilderImpl<>(new Key.QualifiedKey<>(qualifier, from));
+            return new BindingBuilderImpl<>(new Key.QualifiedKey<>(qualifier, from));
         }
 
         @Override
-        public LinkBuilderImpl<T> unqualified() {
+        public BindingBuilderImpl<T> unqualified() {
             return this;
         }
 
         @Override
-        public LinkBuilderImpl<T> to(Key<T> key) {
+        public BindingBuilderImpl<T> to(Key<T> key) {
             return addEdgeTo(new Graph.KeyNode<>(key));
         }
 
         @Override
-        public LinkBuilderImpl<T> toProvider(Key<? extends Provider<? extends T>> providerKey) {
+        public BindingBuilderImpl<T> toProvider(Key<? extends Provider<? extends T>> providerKey) {
             return addEdgeTo(new Graph.ProviderKeyNode<>(providerKey));
         }
 
         @Override
-        public LinkBuilderImpl<T> toProvider(Provider<T> providerInstance) {
+        public BindingBuilderImpl<T> toProvider(Provider<T> providerInstance) {
             return addEdgeTo(new Graph.ProviderNode<>(providerInstance));
         }
 
-        LinkBuilderImpl<T> addEdgeTo(Graph.Node<T> to) {
+        BindingBuilderImpl<T> addEdgeTo(Graph.Node<T> to) {
             synchronized (this) {
                 if (edges.containsKey(from)) {
-                    throw new IllegalArgumentException("key " + from + " was already linked");
+                    throw new IllegalArgumentException("Key " + from + " was already bound");
                 }
                 edges.put(from, to);
                 return this;
