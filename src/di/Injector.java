@@ -13,8 +13,6 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -144,7 +142,7 @@ public class Injector {
     }
 
     private <T> Provider<T> initProtoProvider(Key<T> key) {
-        var rawType = keyToRawType(key);
+        var rawType = Types.keyToRawType(key);
         return new PrototypeProvider<>(key, () -> {
             var ctor = getCtor(rawType);
             var args = Arrays.stream(ctor.getAnnotatedParameterTypes())
@@ -161,28 +159,6 @@ public class Injector {
             }
         });
 
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> Class<T> keyToRawType(Key<T> key) {
-        var type = switch (key) {
-            case Key.QualifiedKey<T> qk -> keyToRawType(qk.delegate());
-            case Key.TypeKey<T> tk -> tk.type();
-        };
-        return (Class<T>) typeToRawType(type);
-    }
-
-    private Class<?> typeToRawType(Type type) {
-        return switch (type) {
-            case Class<?> c -> {
-                if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
-                    throw new UnsupportedOperationException("Cannot instantiate non-static inner classes");
-                }
-                yield c;
-            }
-            case ParameterizedType pt -> typeToRawType(pt.getRawType());
-            default -> throw new UnsupportedOperationException("" + type);
-        };
     }
 
     private static <T> Key<T> typeToKey(AnnotatedType type) {

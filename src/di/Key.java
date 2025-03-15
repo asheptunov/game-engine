@@ -22,22 +22,22 @@ public sealed interface Key<T> permits Key.TypeKey, Key.QualifiedKey {
         return new TypeKey<>(type);
     }
 
-    default Key<T> named(String name) {
+    default Key<T> qualified(Qualifier qualifier) {
         if (this instanceof Key.QualifiedKey<T> qk) {
-            throw new IllegalArgumentException("Cannot qualify " + this + " with name '" + name
+            throw new IllegalArgumentException("Cannot qualify " + this + " with '" + qualifier
                     + "' because it's already qualified with " + qk.qualifier());
         }
-        return new QualifiedKey<>(new Qualifier.Name(name), this);
+        return new QualifiedKey<>(qualifier, this);
+    }
+
+    default Key<T> named(String name) {
+        return qualified(new Qualifier.Name(name));
     }
 
     default Key<T> annotated(Annotation annotation) {
-        if (this instanceof Key.QualifiedKey<T> qk) {
-            throw new IllegalArgumentException("Cannot qualify " + this + " with " + annotation
-                    + " because it's already qualified with " + qk.qualifier());
-        }
         if (annotation instanceof Named n) {
             return named(n.value());
         }
-        return new QualifiedKey<>(new Qualifier.Annotation(annotation), this);
+        return qualified(new Qualifier.Annotation(annotation));
     }
 }

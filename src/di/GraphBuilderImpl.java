@@ -21,6 +21,16 @@ public class GraphBuilderImpl implements GraphBuilder {
     }
 
     @Override
+    public ListBinderBuilder bindList() {
+        return new ListBinderImpl.ListBinderBuilderImpl();
+    }
+
+    @Override
+    public MapBinderBuilder bindMap() {
+        return new MapBinderImpl.MapBinderBuilderImpl();
+    }
+
+    @Override
     public void install(Module module) {
         module.configure(this);
     }
