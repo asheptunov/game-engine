@@ -42,8 +42,9 @@ public class Viewport implements
     private static final Logger LOG = LogManager.instance().getThis();
 
     // Sensor pixel grid. Each sensor pixel is drawn as a block on the display.
-    private static final int SENSOR_W = 100;
-    private static final int SENSOR_H = 100;
+    private static final int   SENSOR_W = 100;
+    private static final int   SENSOR_H = 100;
+    private static final float MOVE_STEP = 0.25f;
 
     private final Raster             display;
     private final Painter            painter;
@@ -139,30 +140,56 @@ public class Viewport implements
 
     @Override
     public void keyPressed(KeyEvent e) {
+        LOG.trace("Handling %s", e);
         var action = KeyAction.fromAwt(e);
         if (consoleOpen) {
             console.accept(action);
             return;
         }
-        if (action.raw() == KeyAction.Key.FORWARD_SLASH) {
-            consoleOpen = true;
+        switch (action.raw()) {
+            case KeyAction.Key.FORWARD_SLASH -> consoleOpen = true;
+            case KeyAction.Key.LOWER_W -> translateCamera(new Vec3(0, 0, MOVE_STEP));
+            case KeyAction.Key.LOWER_S -> translateCamera(new Vec3(0, 0, -MOVE_STEP));
+            case KeyAction.Key.LOWER_A -> translateCamera(new Vec3(-MOVE_STEP, 0, 0));
+            case KeyAction.Key.LOWER_D -> translateCamera(new Vec3(MOVE_STEP, 0, 0));
+            case KeyAction.Key.LOWER_E -> translateCamera(new Vec3(0, MOVE_STEP, 0));
+            case KeyAction.Key.LOWER_Q -> translateCamera(new Vec3(0, -MOVE_STEP, 0));
+            case KeyAction.Key.LOWER_R -> resetCamera();
+            default -> {}
         }
     }
 
+    private void translateCamera(Vec3 delta) {
+        state.eye(state.eye().add(delta));
+        var s = state.cameraSensor();
+        state.cameraSensor(new Rect(s.origin().add(delta), s.edge1(), s.edge2()));
+        LOG.info("Camera at eye=%s", state.eye());
+    }
+
+    private void resetCamera() {
+        state.eye(new Vec3(0, 0, -1));
+        state.cameraSensor(new Rect(
+                new Vec3(-0.5f, -0.5f, 0),
+                new Vec3(1, 0, 0),
+                new Vec3(0, 1, 0)));
+        LOG.info("Camera reset");
+    }
+
     @Override public void keyTyped(KeyEvent e) {}
-    @Override public void keyReleased(KeyEvent e) {}
+    @Override public void keyReleased(KeyEvent e) { LOG.trace("Handling %s", e); }
 
-    @Override public void mouseClicked(MouseEvent e) {}
-    @Override public void mousePressed(MouseEvent e) {}
-    @Override public void mouseReleased(MouseEvent e) {}
-    @Override public void mouseEntered(MouseEvent e) {}
-    @Override public void mouseExited(MouseEvent e) {}
+    @Override public void mouseClicked(MouseEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void mousePressed(MouseEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void mouseReleased(MouseEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void mouseEntered(MouseEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void mouseExited(MouseEvent e) { LOG.trace("Handling %s", e); }
 
-    @Override public void mouseDragged(MouseEvent e) {}
-    @Override public void mouseMoved(MouseEvent e) {}
+    @Override public void mouseDragged(MouseEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void mouseMoved(MouseEvent e) { LOG.trace("Handling %s", e); }
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
+        LOG.trace("Handling %s", e);
         if (consoleOpen) {
             console.accept(e);
         }
