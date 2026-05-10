@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# test <ClassName> — run a test suite's main method (uses out/cli/ from ./build)
+#
+# Examples:
+#   ./test di.InjectorTest
+#   ./test di.GenericTypeTest
+set -uo pipefail
+
+cd "$(dirname "$0")"
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: $0 <fully.qualified.TestClass> [args...]" >&2
+  exit 2
+fi
+
+JAVA_HOME="${JAVA_HOME:-/mnt/c/Users/andri/.jdks/openjdk-23.0.1}"
+JAVA="$JAVA_HOME/bin/java"
+[[ -x "$JAVA.exe" ]] && JAVA="$JAVA.exe"
+[[ -x "$JAVA" ]] || { echo "test: java not found at $JAVA" >&2; exit 1; }
+
+OUT="out/cli"
+[[ -d "$OUT" ]] || { echo "test: $OUT not found — run ./build first" >&2; exit 1; }
+
+if [[ "$JAVA" == *.exe ]]; then
+  ARG_CP="$(wslpath -w "$OUT")"
+else
+  ARG_CP="$OUT"
+fi
+
+CLASS="$1"; shift
+exec "$JAVA" --enable-preview -cp "$ARG_CP" "$CLASS" "$@"

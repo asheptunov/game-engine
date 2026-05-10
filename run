@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# run — execute Main (uses out/cli/ from ./build)
+set -uo pipefail
+
+cd "$(dirname "$0")"
+
+JAVA_HOME="${JAVA_HOME:-/mnt/c/Users/andri/.jdks/openjdk-23.0.1}"
+JAVA="$JAVA_HOME/bin/java"
+[[ -x "$JAVA.exe" ]] && JAVA="$JAVA.exe"
+[[ -x "$JAVA" ]] || { echo "run: java not found at $JAVA" >&2; exit 1; }
+
+OUT="out/cli"
+[[ -d "$OUT" ]] || { echo "run: $OUT not found — run ./build first" >&2; exit 1; }
+
+if [[ "$JAVA" == *.exe ]]; then
+  ARG_CP="$(wslpath -w "$OUT")"
+else
+  ARG_CP="$OUT"
+fi
+
+exec "$JAVA" --enable-preview -cp "$ARG_CP" Main "$@"

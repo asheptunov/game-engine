@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# build — compile src/ and tst/ to out/cli/
+#
+# Env vars:
+#   JAVA_HOME  override JDK install dir (default: /mnt/c/Users/andri/.jdks/openjdk-23.0.1)
+#
+# Exits non-zero on compile failure. Full javac output is at out/cli/build.log.
+set -uo pipefail
+
+cd "$(dirname "$0")"
+
+JAVA_HOME="${JAVA_HOME:-/mnt/c/Users/andri/.jdks/openjdk-23.0.1}"
+JAVAC="$JAVA_HOME/bin/javac"
+[[ -x "$JAVAC.exe" ]] && JAVAC="$JAVAC.exe"
+[[ -x "$JAVAC" ]] || { echo "build: javac not found at $JAVAC" >&2; exit 1; }
+
+OUT="out/cli"
+mkdir -p "$OUT"
+LOG="$OUT/build.log"
+SOURCES_LIST="$OUT/.sources"
+
+find src tst -name "*.java" > "$SOURCES_LIST"
+NSRC=$(wc -l < "$SOURCES_LIST")
+
+if [[ "$JAVAC" == *.exe ]]; then
+  # WSL → Windows: the .exe needs Windows-form paths
+  ARG_OUT="$(wslpath -w "$OUT")"
+  ARG_SOURCES="$(wslpath -w "$SOURCES_LIST")"
+else
+  ARG_OUT="$OUT"
+  ARG_SOURCES="$SOURCES_LIST"
+fi
+
+"$JAVAC" -d "$ARG_OUT" --enable-preview --release 23 "@$ARG_SOURCES" > "$LOG" 2>&1
+rc=$?
+
+if [[ $rc -eq 0 ]]; then
+  echo "build: ok ($NSRC files → $OUT)"
+  # Surface any warnings without failing
+  [[ -s "$LOG" ]] && grep -E "warning|Note:" "$LOG" | head -5
+else
+  echo "build: failed — see $LOG" >&2
+  tail -40 "$LOG" >&2
+fi
+exit $rc
