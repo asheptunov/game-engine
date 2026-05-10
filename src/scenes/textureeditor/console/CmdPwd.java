@@ -1,5 +1,7 @@
 package scenes.textureeditor.console;
 
+import ui.console.Command;
+
 import misc.monads.Result;
 import scenes.textureeditor.model.EditorState;
 

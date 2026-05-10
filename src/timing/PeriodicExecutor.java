@@ -1,5 +1,7 @@
 package timing;
 
+import di.annotations.Inject;
+import di.annotations.Named;
 import logging.LogManager;
 import logging.Logger;
 
@@ -21,7 +23,8 @@ public class PeriodicExecutor {
     private final Runnable runnable;
     private final Stats    stats;
 
-    public PeriodicExecutor(int hertz, Clock clock, Runnable runnable) {
+    @Inject
+    public PeriodicExecutor(@Named("frame_rate") int hertz, Clock clock, Runnable runnable) {
         this.period = Duration.ofSeconds(1).dividedBy(hertz);
         this.clock = clock;
         this.runnable = runnable;

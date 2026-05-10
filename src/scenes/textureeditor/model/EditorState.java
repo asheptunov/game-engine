@@ -3,9 +3,9 @@ package scenes.textureeditor.model;
 import logging.LogManager;
 import logging.Logger;
 import rendering.Raster;
-import scenes.textureeditor.CircularBufferHistoryImpl;
-import scenes.textureeditor.History;
-import scenes.textureeditor.console.LoggingHistory;
+import misc.history.CircularBufferHistoryImpl;
+import misc.history.History;
+import misc.history.LoggingHistory;
 
 import java.io.File;
 import java.util.Optional;

@@ -1,31 +1,41 @@
 package scenes.textureeditor;
 
+import di.annotations.Inject;
+import di.annotations.Named;
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;
-import rendering.ArgbSerializer;
 import rendering.BlendMode;
-import rendering.ChainRasterSerializer;
 import rendering.Color;
-import rendering.FileSystemRasterRepository;
 import rendering.Font;
-import rendering.FsFontLoader;
 import rendering.Painter;
 import rendering.PixelRaster;
 import rendering.Printer;
 import rendering.Raster;
-import rendering.RasterFilter;
 import rendering.RasterPainter;
 import rendering.RasterPrinter;
 import rendering.RasterRepository;
 import rendering.Renderer;
-import rendering.RgbSerializer;
+import scenes.CmdScene;
 import scenes.Scene;
-import scenes.textureeditor.console.Console;
+import scenes.textureeditor.console.CmdCanvas;
+import scenes.textureeditor.console.CmdCd;
+import scenes.textureeditor.console.CmdLoad;
+import scenes.textureeditor.console.CmdLs;
+import scenes.textureeditor.console.CmdMkdir;
+import scenes.textureeditor.console.CmdPwd;
+import scenes.textureeditor.console.CmdRm;
+import scenes.textureeditor.console.CmdSave;
+import scenes.textureeditor.console.CmdStatus;
+import scenes.textureeditor.console.CmdTouch;
 import scenes.textureeditor.model.Coordinates;
 import scenes.textureeditor.model.EditorState;
 import scenes.textureeditor.model.Mode;
 import ui.KeyAction;
+import ui.console.CmdExit;
+import ui.console.Console;
+import ui.console.DelegatingCommand;
+import ui.console.TrimmingCommand;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -37,6 +47,8 @@ import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static rendering.Color.NamedColor;
 import static scenes.textureeditor.model.Mode.BOX_SELECT;
@@ -72,20 +84,19 @@ public class TextureEditor implements
     private final ColorPicker      colorPicker;
     private final Console          console;
 
-    public TextureEditor(Raster display, Clock clock, int width, int height) {
-        this.repo = new FileSystemRasterRepository(clock, ChainRasterSerializer.of(
-                ArgbSerializer.INSTANCE,
-                RgbSerializer.INSTANCE));
+    @Inject
+    public TextureEditor(Raster display,
+                         Clock clock,
+                         Font font,
+                         RasterRepository repo,
+                         @Named("texture_width") int width,
+                         @Named("texture_height") int height,
+                         Map<String, Scene> scenes,
+                         AtomicReference<Scene> sceneRef) {
+        this.repo = repo;
         this.display = display;
         this.painter = new RasterPainter(display);
-        this.font = FsFontLoader.builder()
-                .repository(repo)
-                .clock(clock)
-                .fontPath("assets/fonts/test")
-                .fontDimensions(16)
-                .filter(RasterFilter.antiAlias())
-                .build()
-                .load();
+        this.font = font;
         this.printer = new RasterPrinter(display, font);
         this.clock = clock;
         this.state = new EditorState(
@@ -95,7 +106,26 @@ public class TextureEditor implements
                 100);
         this.toolCard = new ToolCard(this);
         this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
-        this.console = new Console(this, 500);
+        var rootCmd = new TrimmingCommand(DelegatingCommand.builder()
+                .withCommand("canvas", new CmdCanvas(state))
+                .withCommand("cd", new CmdCd(state, () -> Path.of(".")))
+                .withCommand("exit", new CmdExit())
+                .withCommand("load", new CmdLoad(state, repo))
+                .withCommand("ls", new CmdLs(state, clock))
+                .withCommand("mkdir", new CmdMkdir(state))
+                .withCommand("pwd", new CmdPwd(state))
+                .withCommand("rm", new CmdRm(state))
+                .withCommand("save", new CmdSave(state, repo))
+                .withCommand("scene", new CmdScene(scenes, sceneRef))
+                .withCommand("status", new CmdStatus(state, colorPicker))
+                .withCommand("touch", new CmdTouch(state, repo,
+                        () -> new PixelRaster(state.texture().width(), state.texture().height())))
+                .build());
+        this.console = new Console(painter, printer, display.width(), display.height(),
+                fontSize(), charSpacing(), lineSpacing(),
+                this::escape,
+                500,
+                rootCmd);
     }
 
     @Override

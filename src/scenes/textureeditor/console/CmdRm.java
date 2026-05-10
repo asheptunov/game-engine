@@ -1,5 +1,7 @@
 package scenes.textureeditor.console;
 
+import ui.console.Command;
+
 import logging.LogManager;
 import logging.Logger;
 import misc.monads.Result;

@@ -1,8 +1,11 @@
 package rendering;
 
+import di.annotations.Inject;
+
 public class Eraser implements Renderer {
     private final Raster raster;
 
+    @Inject
     public Eraser(Raster raster) {
         this.raster = raster;
     }

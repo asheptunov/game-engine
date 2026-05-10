@@ -1,5 +1,7 @@
 package rendering;
 
+import di.annotations.Inject;
+import di.annotations.Named;
 import logging.LogManager;
 import logging.Logger;
 
@@ -18,8 +20,8 @@ public class AwtViewer implements Renderer {
     private final BufferStrategy bs;
     private final BufferedImage  image;
 
-    // TODO maybe DI this?
-    public AwtViewer(Raster raster, Object listener) {
+    @Inject
+    public AwtViewer(Raster raster, @Named("input_listener") Object listener) {
         this.raster = raster;
         var frame = new JFrame();
         frame.setTitle("game");

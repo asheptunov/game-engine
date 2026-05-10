@@ -1,16 +1,18 @@
 package rendering;
 
+import di.annotations.Inject;
 import logging.LogManager;
 import logging.Logger;
 
-import java.util.Collection;
+import java.util.List;
 
 public class CompositeRenderer implements Renderer {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final Collection<Renderer> delegates;
+    private final List<Renderer> delegates;
 
-    public CompositeRenderer(Collection<Renderer> delegates) {
+    @Inject
+    public CompositeRenderer(List<Renderer> delegates) {
         this.delegates = delegates;
     }
 

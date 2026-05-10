@@ -1,5 +1,7 @@
 package scenes.textureeditor.console;
 
+import ui.console.Command;
+
 import misc.monads.Result;
 import rendering.Color;
 import scenes.textureeditor.ColorPicker;
