@@ -20,7 +20,10 @@ import scenes.Scene;
 import scenes.viewport.lights.PointLight;
 import scenes.viewport.objects.Rect;
 import scenes.viewport.objects.Tri;
+import ui.ActionRegistry;
+import ui.InputBindings;
 import ui.KeyAction;
+import ui.KeyChord;
 import ui.console.CmdExit;
 import ui.console.Console;
 import ui.console.DelegatingCommand;
@@ -53,6 +56,8 @@ public class Viewport implements
     private final Console            console;
     private final ViewportState      state;
     private final BackwardRayTracer  tracer;
+    private final ActionRegistry     actions;
+    private final InputBindings      bindings;
 
     private boolean consoleOpen = false;
 
@@ -86,7 +91,35 @@ public class Viewport implements
 
         this.state = defaultScene();
         this.tracer = new BackwardRayTracer(state);
+
+        this.actions = new ActionRegistry()
+                .register("console.open", () -> consoleOpen = true)
+                .register("camera.move.forward", () -> translateCamera(new Vec3(0, 0, MOVE_STEP)))
+                .register("camera.move.back", () -> translateCamera(new Vec3(0, 0, -MOVE_STEP)))
+                .register("camera.strafe.left", () -> translateCamera(new Vec3(-MOVE_STEP, 0, 0)))
+                .register("camera.strafe.right", () -> translateCamera(new Vec3(MOVE_STEP, 0, 0)))
+                .register("camera.move.up", () -> translateCamera(new Vec3(0, MOVE_STEP, 0)))
+                .register("camera.move.down", () -> translateCamera(new Vec3(0, -MOVE_STEP, 0)))
+                .register("camera.reset", this::resetCamera);
+
+        this.bindings = new InputBindings(actions)
+                .bind(KeyChord.of(KeyAction.Key.FORWARD_SLASH), "console.open")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_W), "camera.move.forward")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_S), "camera.move.back")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_A), "camera.strafe.left")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_D), "camera.strafe.right")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_E), "camera.move.up")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_Q), "camera.move.down")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_R), "camera.reset");
+
+        var unresolved = bindings.unresolved();
+        if (!unresolved.isEmpty()) {
+            throw new IllegalStateException("Viewport has unresolved bindings: " + unresolved);
+        }
     }
+
+    public ActionRegistry actions() { return actions; }
+    public InputBindings bindings() { return bindings; }
 
     private static ViewportState defaultScene() {
         // Sensor (image plane): 1×1 unit square at z=0. Eye is at z=-1 (pinhole 1 unit behind sensor).
@@ -146,17 +179,7 @@ public class Viewport implements
             console.accept(action);
             return;
         }
-        switch (action.raw()) {
-            case KeyAction.Key.FORWARD_SLASH -> consoleOpen = true;
-            case KeyAction.Key.LOWER_W -> translateCamera(new Vec3(0, 0, MOVE_STEP));
-            case KeyAction.Key.LOWER_S -> translateCamera(new Vec3(0, 0, -MOVE_STEP));
-            case KeyAction.Key.LOWER_A -> translateCamera(new Vec3(-MOVE_STEP, 0, 0));
-            case KeyAction.Key.LOWER_D -> translateCamera(new Vec3(MOVE_STEP, 0, 0));
-            case KeyAction.Key.LOWER_E -> translateCamera(new Vec3(0, MOVE_STEP, 0));
-            case KeyAction.Key.LOWER_Q -> translateCamera(new Vec3(0, -MOVE_STEP, 0));
-            case KeyAction.Key.LOWER_R -> resetCamera();
-            default -> {}
-        }
+        bindings.handle(action);
     }
 
     private void translateCamera(Vec3 delta) {
