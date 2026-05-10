@@ -14,6 +14,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static harness.Assertions.assertEquals;
@@ -92,6 +93,21 @@ class InjectorTest {
         // proto scope
         var c2 = assertInstanceOf(C.class, injector.get(C.class));
         assertNotSame(c1, c2);
+    }
+
+    static class WithNamedParam {
+        final String s;
+
+        @Inject
+        WithNamedParam(@Named("named1") String s) {
+            this.s = s;
+        }
+    }
+
+    @Test
+    void injectCtorWithNamedQualifier() {
+        var injector = Injector.create(b -> b.bind(String.class).named("named1").toInstance("value"));
+        assertEquals("value", injector.get(WithNamedParam.class).s);
     }
 
     @Test
@@ -259,6 +275,36 @@ class InjectorTest {
         var ib1 = assertInstanceOf(B.class, injector.get(IB.class));
         var ib2 = assertInstanceOf(B.class, injector.get(IB.class));
         assertNotSame(ib1, ib2);
+    }
+
+    @Test
+    void listBinding() {
+        var injector = Injector.create(b -> {
+            var lb = b.bindList().of(String.class);
+            lb.add(String.class).named("1");
+            lb.add(String.class).named("2");
+            lb.add(String.class).named("3");
+            b.bind(String.class).named("1").toInstance("a");
+            b.bind(String.class).named("2").toInstance("b");
+            b.bind(String.class).named("3").toInstance("c");
+        });
+        var list = injector.get(new GenericType<List<String>>() {});
+        assertEquals(List.of("a", "b", "c"), list);
+    }
+
+    @Test
+    void mapBinding() {
+        var injector = Injector.create(b -> {
+            var lb = b.bindMap().from(Integer.class).to(String.class);
+            lb.key(1).value(String.class).named("1");
+            lb.key(2).value(String.class).named("2");
+            lb.key(3).value(String.class).named("3");
+            b.bind(String.class).named("1").toInstance("a");
+            b.bind(String.class).named("2").toInstance("b");
+            b.bind(String.class).named("3").toInstance("c");
+        });
+        var map = injector.get(new GenericType<Map<Integer, String>>() {});
+        assertEquals(Map.of(1, "a", 2, "b", 3, "c"), map);
     }
 
     public static void main(String[] args) {

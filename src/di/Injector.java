@@ -13,11 +13,11 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -134,6 +134,20 @@ public class Injector {
             case Graph.ProviderMethodNode<? extends T> pmn ->
                     new MethodProvider<>(key, pmn.moduleInstance(), pmn.providerMethod());
             case Graph.ProviderNode<? extends T> sn -> new PrototypeProvider<>(key, sn.provider());
+            case Graph.ListNode<?> ln -> new PrototypeProvider<>(key, () -> {
+                //noinspection unchecked
+                var elementKeys = (List<Key<?>>) (List<?>) ln.elementKeys();
+                //noinspection unchecked
+                return (T) elementKeys.stream().map(this::get).toList();
+            });
+            case Graph.MapNode<?, ?> mn -> new PrototypeProvider<>(key, () -> {
+                //noinspection unchecked
+                var entryKeys = (Map<Object, Key<?>>) (Map<?, ?>) mn.entryKeys();
+                var result = new LinkedHashMap<>();
+                entryKeys.forEach((k, vKey) -> result.put(k, get(vKey)));
+                //noinspection unchecked
+                return (T) result;
+            });
         };
         var scope = graph.scope(key)
                 .orElse(DEFAULT_SCOPE);
@@ -144,13 +158,17 @@ public class Injector {
     }
 
     private <T> Provider<T> initProtoProvider(Key<T> key) {
-        var rawType = keyToRawType(key);
+        var rawType = Types.keyToRawType(key);
         return new PrototypeProvider<>(key, () -> {
             var ctor = getCtor(rawType);
-            var args = Arrays.stream(ctor.getAnnotatedParameterTypes())
-                    .map(Injector::typeToKey)
-                    .map(this::get)
-                    .toArray();
+            // getParameterAnnotations() exposes parameter-level annotations like @Named;
+            // getAnnotatedParameterTypes() only sees TYPE_USE annotations and would silently drop them.
+            var paramTypes = ctor.getGenericParameterTypes();
+            var paramAnnotations = ctor.getParameterAnnotations();
+            var args = new Object[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; ++i) {
+                args[i] = get(typeToKey(getAnnotatedType(paramTypes[i], paramAnnotations[i])));
+            }
             try {
                 ctor.setAccessible(true);
                 return ctor.newInstance(args);
@@ -160,29 +178,6 @@ public class Injector {
                 throw new RuntimeException(e.getCause());
             }
         });
-
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> Class<T> keyToRawType(Key<T> key) {
-        var type = switch (key) {
-            case Key.QualifiedKey<T> qk -> keyToRawType(qk.delegate());
-            case Key.TypeKey<T> tk -> tk.type();
-        };
-        return (Class<T>) typeToRawType(type);
-    }
-
-    private Class<?> typeToRawType(Type type) {
-        return switch (type) {
-            case Class<?> c -> {
-                if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
-                    throw new UnsupportedOperationException("Cannot instantiate non-static inner classes");
-                }
-                yield c;
-            }
-            case ParameterizedType pt -> typeToRawType(pt.getRawType());
-            default -> throw new UnsupportedOperationException("" + type);
-        };
     }
 
     private static <T> Key<T> typeToKey(AnnotatedType type) {

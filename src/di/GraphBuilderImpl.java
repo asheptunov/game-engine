@@ -1,12 +1,16 @@
 package di;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class GraphBuilderImpl implements GraphBuilder {
-    private final Map<Key<?>, Graph.Node<?>> edges  = new HashMap<>();
-    private final Map<Key<?>, Scope>         scopes = new HashMap<>();
+    private final Map<Key<?>, Graph.Node<?>> edges       = new HashMap<>();
+    private final Map<Key<?>, Scope>         scopes      = new HashMap<>();
+    private final List<ListBinderImpl<?>>    listBinders = new ArrayList<>();
+    private final List<MapBinderImpl<?, ?>>  mapBinders  = new ArrayList<>();
 
     GraphBuilderImpl() {}
 
@@ -21,12 +25,28 @@ public class GraphBuilderImpl implements GraphBuilder {
     }
 
     @Override
+    public ListBinderBuilder bindList() {
+        return new ListBinderImpl.ListBinderBuilderImpl(listBinders);
+    }
+
+    @Override
+    public MapBinderBuilder bindMap() {
+        return new MapBinderImpl.MapBinderBuilderImpl(mapBinders);
+    }
+
+    @Override
     public void install(Module module) {
         module.configure(this);
     }
 
     @Override
     public Graph build() {
+        for (var lb : listBinders) {
+            edges.put(lb.listKey(), lb.buildNode());
+        }
+        for (var mb : mapBinders) {
+            edges.put(mb.mapKey(), mb.buildNode());
+        }
         return new GraphImpl(edges, scopes);
     }
 
