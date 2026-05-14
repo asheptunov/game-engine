@@ -2,6 +2,8 @@ package ui;
 
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static java.awt.event.KeyEvent.KEY_LOCATION_LEFT;
@@ -289,6 +291,28 @@ public record KeyAction(Key raw,
 
         public Optional<Character> character() {
             return character;
+        }
+
+        private static final Map<String, Key> NAME_INDEX = buildNameIndex();
+
+        private static Map<String, Key> buildNameIndex() {
+            var m = new HashMap<String, Key>();
+            for (Key k : values()) {
+                // UPPER_* keys share a character with their LOWER_* twin; chord syntax is
+                // lowercase-only and addresses shifted keys via the "shift+" modifier instead.
+                if (k.name().startsWith("UPPER_")) continue;
+                k.character.ifPresent(c -> m.put(String.valueOf(c).toLowerCase(), k));
+                if (k.character.isEmpty()) {
+                    m.put(k.name().toLowerCase(), k);
+                }
+            }
+            return Map.copyOf(m);
+        }
+
+        public static Key parse(String s) {
+            var k = NAME_INDEX.get(s.trim().toLowerCase());
+            if (k == null) throw new IllegalArgumentException("Unknown key: '" + s + "'");
+            return k;
         }
 
         static Key fromAwt(KeyEvent awt) {

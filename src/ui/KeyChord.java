@@ -29,4 +29,39 @@ public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shi
         var m = action.mods();
         return new KeyChord(action.raw(), m.ctrl(), m.alt(), m.shift(), m.meta());
     }
+
+    /**
+     * Parses chord syntax like {@code "q"}, {@code "ctrl+a"}, {@code "ctrl+shift+z"}, {@code "f5"}.
+     * Modifiers (case-insensitive, any order): {@code ctrl}, {@code shift}, {@code alt}, {@code meta}.
+     * The last {@code +}-separated token is the key (see {@link KeyAction.Key#parse}).
+     */
+    public static KeyChord parse(String chord) {
+        var trimmed = chord.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Empty chord: '" + chord + "'");
+        }
+        // A trailing '+' is the PLUS key itself, not a token separator.
+        String keyToken, modifierPart;
+        if (trimmed.endsWith("+")) {
+            keyToken = "+";
+            modifierPart = trimmed.substring(0, trimmed.length() - 1);
+        } else {
+            int lastPlus = trimmed.lastIndexOf('+');
+            keyToken = trimmed.substring(lastPlus + 1);
+            modifierPart = lastPlus < 0 ? "" : trimmed.substring(0, lastPlus);
+        }
+        boolean ctrl = false, alt = false, shift = false, meta = false;
+        for (var mod : modifierPart.split("\\+")) {
+            if (mod.isBlank()) continue;
+            switch (mod.trim().toLowerCase()) {
+                case "ctrl" -> ctrl = true;
+                case "shift" -> shift = true;
+                case "alt" -> alt = true;
+                case "meta" -> meta = true;
+                default -> throw new IllegalArgumentException(
+                        "Unknown modifier '" + mod + "' in chord '" + chord + "'");
+            }
+        }
+        return new KeyChord(KeyAction.Key.parse(keyToken), ctrl, alt, shift, meta);
+    }
 }
