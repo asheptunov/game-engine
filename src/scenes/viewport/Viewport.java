@@ -110,16 +110,9 @@ public class Viewport implements
                 .bind(KeyChord.of(KeyAction.Key.LOWER_D), "camera.strafe.right")
                 .bind(KeyChord.of(KeyAction.Key.LOWER_E), "camera.move.up")
                 .bind(KeyChord.of(KeyAction.Key.LOWER_Q), "camera.move.down")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_R), "camera.reset");
-
-        var unresolved = bindings.unresolved();
-        if (!unresolved.isEmpty()) {
-            throw new IllegalStateException("Viewport has unresolved bindings: " + unresolved);
-        }
+                .bind(KeyChord.of(KeyAction.Key.LOWER_R), "camera.reset")
+                .validate("Viewport");
     }
-
-    public ActionRegistry actions() { return actions; }
-    public InputBindings bindings() { return bindings; }
 
     private static ViewportState defaultScene() {
         // Sensor (image plane): 1×1 unit square at z=0. Eye is at z=-1 (pinhole 1 unit behind sensor).
