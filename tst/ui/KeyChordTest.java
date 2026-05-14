@@ -32,6 +32,15 @@ public class KeyChordTest {
     }
 
     @Test
+    void ctrlShiftFactoryHasBoth() {
+        var k = KeyChord.ctrlShift(KeyAction.Key.LOWER_Z);
+        assertEquals(true, k.ctrl());
+        assertEquals(true, k.shift());
+        assertEquals(false, k.alt());
+        assertEquals(false, k.meta());
+    }
+
+    @Test
     void plainAndShiftedDifferent() {
         assertNotEquals(KeyChord.of(KeyAction.Key.LOWER_W), KeyChord.shift(KeyAction.Key.LOWER_W));
     }

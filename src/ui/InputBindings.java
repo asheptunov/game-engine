@@ -57,4 +57,13 @@ public class InputBindings {
         });
         return Collections.unmodifiableMap(bad);
     }
+
+    /** Startup wiring check. Throws if any bound chord references an unregistered action id. */
+    public InputBindings validate(String owner) {
+        var bad = unresolved();
+        if (!bad.isEmpty()) {
+            throw new IllegalStateException(owner + " has unresolved bindings: " + bad);
+        }
+        return this;
+    }
 }

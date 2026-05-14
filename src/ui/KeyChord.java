@@ -21,6 +21,10 @@ public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shi
         return new KeyChord(key, false, true, false, false);
     }
 
+    public static KeyChord ctrlShift(KeyAction.Key key) {
+        return new KeyChord(key, true, false, true, false);
+    }
+
     public static KeyChord from(KeyAction action) {
         var m = action.mods();
         return new KeyChord(action.raw(), m.ctrl(), m.alt(), m.shift(), m.meta());
