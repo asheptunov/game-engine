@@ -21,9 +21,9 @@ import scenes.viewport.lights.PointLight;
 import scenes.viewport.objects.Rect;
 import scenes.viewport.objects.Tri;
 import ui.ActionRegistry;
+import ui.BindingsLoader;
 import ui.InputBindings;
 import ui.KeyAction;
-import ui.KeyChord;
 import ui.console.CmdExit;
 import ui.console.Console;
 import ui.console.DelegatingCommand;
@@ -36,6 +36,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,15 +103,8 @@ public class Viewport implements
                 .register("camera.move.down", () -> translateCamera(new Vec3(0, -MOVE_STEP, 0)))
                 .register("camera.reset", this::resetCamera);
 
-        this.bindings = new InputBindings(actions)
-                .bind(KeyChord.of(KeyAction.Key.FORWARD_SLASH), "console.open")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_W), "camera.move.forward")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_S), "camera.move.back")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_A), "camera.strafe.left")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_D), "camera.strafe.right")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_E), "camera.move.up")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_Q), "camera.move.down")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_R), "camera.reset")
+        this.bindings = BindingsLoader
+                .loadInto(Path.of("assets/bindings/viewport.properties"), new InputBindings(actions))
                 .validate("Viewport");
     }
 

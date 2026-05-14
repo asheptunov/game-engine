@@ -32,9 +32,9 @@ import scenes.textureeditor.model.Coordinates;
 import scenes.textureeditor.model.EditorState;
 import scenes.textureeditor.model.Mode;
 import ui.ActionRegistry;
+import ui.BindingsLoader;
 import ui.InputBindings;
 import ui.KeyAction;
-import ui.KeyChord;
 import ui.console.CmdExit;
 import ui.console.Console;
 import ui.console.DelegatingCommand;
@@ -149,22 +149,8 @@ public class TextureEditor implements
                 .register("history.undo", this::undo)
                 .register("history.redo", this::redo);
 
-        this.bindings = new InputBindings(actions)
-                .bind(KeyChord.of(KeyAction.Key.LOWER_Q), "mode.pixel_select")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_W), "mode.box_select")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_E), "mode.lasso_select")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_R), "mode.brush")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_T), "mode.fill")
-                .bind(KeyChord.of(KeyAction.Key.LOWER_C), "mode.color_picker")
-                .bind(KeyChord.of(KeyAction.Key.FORWARD_SLASH), "mode.command_entry")
-                .bind(KeyChord.of(KeyAction.Key.ESCAPE), "selection.clear")
-                .bind(KeyChord.ctrl(KeyAction.Key.LOWER_A), "selection.all")
-                .bind(KeyChord.of(KeyAction.Key.F1), "help.toggle")
-                .bind(KeyChord.of(KeyAction.Key.F2), "toolcard.toggle")
-                .bind(KeyChord.of(KeyAction.Key.F5), "file.save")
-                .bind(KeyChord.of(KeyAction.Key.F9), "file.load")
-                .bind(KeyChord.ctrl(KeyAction.Key.LOWER_Z), "history.undo")
-                .bind(KeyChord.ctrlShift(KeyAction.Key.LOWER_Z), "history.redo")
+        this.bindings = BindingsLoader
+                .loadInto(Path.of("assets/bindings/texture-editor.properties"), new InputBindings(actions))
                 .validate("TextureEditor");
     }
 
