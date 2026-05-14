@@ -31,7 +31,10 @@ import scenes.textureeditor.console.CmdTouch;
 import scenes.textureeditor.model.Coordinates;
 import scenes.textureeditor.model.EditorState;
 import scenes.textureeditor.model.Mode;
+import ui.ActionRegistry;
+import ui.InputBindings;
 import ui.KeyAction;
+import ui.KeyChord;
 import ui.console.CmdExit;
 import ui.console.Console;
 import ui.console.DelegatingCommand;
@@ -83,6 +86,8 @@ public class TextureEditor implements
     private final ToolCard         toolCard;
     private final ColorPicker      colorPicker;
     private final Console          console;
+    private final ActionRegistry   actions;
+    private final InputBindings    bindings;
 
     @Inject
     public TextureEditor(Raster display,
@@ -126,6 +131,41 @@ public class TextureEditor implements
                 this::escape,
                 500,
                 rootCmd);
+
+        this.actions = new ActionRegistry()
+                .register("mode.pixel_select", () -> state.mode(PIXEL_SELECT))
+                .register("mode.box_select", () -> state.mode(BOX_SELECT))
+                .register("mode.lasso_select", () -> state.mode(LASSO_SELECT))
+                .register("mode.brush", () -> state.mode(BRUSH))
+                .register("mode.fill", () -> state.mode(FILL))
+                .register("mode.color_picker", () -> state.mode(COLOR_PICKER))
+                .register("mode.command_entry", () -> state.mode(COMMAND_ENTRY))
+                .register("selection.clear", this::clearSelection)
+                .register("selection.all", this::selectAll)
+                .register("help.toggle", this::toggleHelp)
+                .register("toolcard.toggle", state::toggleToolCard)
+                .register("file.save", () -> saveToFile(state.workingFile().orElseThrow()))
+                .register("file.load", () -> loadFromFile(state.workingFile().orElseThrow()))
+                .register("history.undo", this::undo)
+                .register("history.redo", this::redo);
+
+        this.bindings = new InputBindings(actions)
+                .bind(KeyChord.of(KeyAction.Key.LOWER_Q), "mode.pixel_select")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_W), "mode.box_select")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_E), "mode.lasso_select")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_R), "mode.brush")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_T), "mode.fill")
+                .bind(KeyChord.of(KeyAction.Key.LOWER_C), "mode.color_picker")
+                .bind(KeyChord.of(KeyAction.Key.FORWARD_SLASH), "mode.command_entry")
+                .bind(KeyChord.of(KeyAction.Key.ESCAPE), "selection.clear")
+                .bind(KeyChord.ctrl(KeyAction.Key.LOWER_A), "selection.all")
+                .bind(KeyChord.of(KeyAction.Key.F1), "help.toggle")
+                .bind(KeyChord.of(KeyAction.Key.F2), "toolcard.toggle")
+                .bind(KeyChord.of(KeyAction.Key.F5), "file.save")
+                .bind(KeyChord.of(KeyAction.Key.F9), "file.load")
+                .bind(KeyChord.ctrl(KeyAction.Key.LOWER_Z), "history.undo")
+                .bind(KeyChord.ctrlShift(KeyAction.Key.LOWER_Z), "history.redo")
+                .validate("TextureEditor");
     }
 
     @Override
@@ -138,29 +178,9 @@ public class TextureEditor implements
         LOG.trace("Handling %s", e);
         var action = KeyAction.fromAwt(e);
         switch (state.mode()) {
-            case PIXEL_SELECT:
-            case LASSO_SELECT:
-            case BOX_SELECT:
-            case BRUSH:
-            case FILL:
-                state.mode(switch (action.raw()) {
-                    case KeyAction.Key.LOWER_Q -> PIXEL_SELECT;
-                    case KeyAction.Key.LOWER_W -> BOX_SELECT;
-                    case KeyAction.Key.LOWER_E -> LASSO_SELECT;
-                    case KeyAction.Key.LOWER_R -> BRUSH;
-                    case KeyAction.Key.LOWER_T -> FILL;
-                    case KeyAction.Key.LOWER_C -> COLOR_PICKER;
-                    case KeyAction.Key.FORWARD_SLASH -> COMMAND_ENTRY;
-                    default -> state.mode();
-                });
-                handleGlobalActions(action);
-                break;
-            case COLOR_PICKER:
-                colorPicker.accept(action);
-                break;
-            case COMMAND_ENTRY:
-                console.accept(action);
-                break;
+            case COLOR_PICKER -> colorPicker.accept(action);
+            case COMMAND_ENTRY -> console.accept(action);
+            default -> bindings.handle(action);
         }
     }
 
@@ -441,37 +461,16 @@ public class TextureEditor implements
         return new Coordinates(x, y);
     }
 
-    private void handleGlobalActions(KeyAction keyAction) {
-        switch (keyAction.action()) {
-            case PRESS -> {
-                switch (keyAction.raw()) {
-                    case KeyAction.Key.ESCAPE -> {
-                        if (state.selection().isPresent()) {
-                            LOG.info("Erased selection %s", state.selection().get());
-                            state.clearSelection();
-                        }
-                    }
-                    case KeyAction.Key.F1 -> toggleHelp();
-                    case KeyAction.Key.F2 -> state.toggleToolCard();
-                    case KeyAction.Key.F5 -> saveToFile(state.workingFile().orElseThrow());
-                    case KeyAction.Key.F9 -> loadFromFile(state.workingFile().orElseThrow());
-                    case KeyAction.Key.LOWER_Z -> {
-                        switch (keyAction.mods()) {
-                            case KeyAction.Modifiers m when m.ctrl() && m.shift() -> redo();
-                            case KeyAction.Modifiers m when m.ctrl() -> undo();
-                            default -> {}
-                        }
-                    }
-                    case KeyAction.Key.LOWER_A -> {
-                        switch (keyAction.mods()) {
-                            case KeyAction.Modifiers m when m.ctrlOnly() -> state.selection(
-                                    new BoxSelection(0, 0, state.texture().width() - 1, state.texture().height() - 1));
-                            default -> {}
-                        }
-                    }
-                }
-            }
+    private void clearSelection() {
+        if (state.selection().isPresent()) {
+            LOG.info("Erased selection %s", state.selection().get());
+            state.clearSelection();
         }
+    }
+
+    private void selectAll() {
+        state.selection(new BoxSelection(0, 0,
+                state.texture().width() - 1, state.texture().height() - 1));
     }
 
     private void toggleHelp() {
