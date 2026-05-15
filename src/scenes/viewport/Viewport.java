@@ -52,6 +52,8 @@ public class Viewport implements
     private static final int   SENSOR_W = 100;
     private static final int   SENSOR_H = 100;
     private static final float MOVE_STEP = 0.25f;
+    // Roll up per-frame trace stats into a single info-level summary every N frames (≈1s at 144Hz).
+    private static final int   STATS_AGGREGATE_FRAMES = 144;
 
     private final Raster             display;
     private final Painter            painter;
@@ -66,6 +68,8 @@ public class Viewport implements
     private final MouseBindings                        mouseBindings;
 
     private boolean consoleOpen = false;
+
+    private final TraceStatsAggregator traceStats = new TraceStatsAggregator();
 
     @Inject
     public Viewport(Raster display,
@@ -141,13 +145,12 @@ public class Viewport implements
     public void render() {
         painter.drawImg(0, 0, width, height, Color.NamedColor.BLACK, BlendMode.OVER_PRE);
 
-        var buf = tracer.trace();
-        float max = 0;
-        for (var row : buf) {
-            for (float v : row) {
-                if (v > max) max = v;
-            }
-        }
+        var traced = tracer.traceWithStats();
+        var buf = traced.buf();
+        var stats = traced.stats();
+        recordStats(stats);
+
+        float max = stats.maxIntensity();
         if (max > 0) {
             int blockW = width / SENSOR_W;
             int blockH = height / SENSOR_H;
@@ -168,6 +171,26 @@ public class Viewport implements
         if (consoleOpen) {
             console.render();
         }
+    }
+
+    private void recordStats(BackwardRayTracer.TraceStats s) {
+        // Guarded: building the vararg Object[] with 8 boxed primitives 144×/s would be pure waste when trace is off.
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("Traced %d rays in %.2f ms (hits=%d, shadow=%d/%d occluded, maxI=%.3f, lit=%d/%d)",
+                    s.primaryRays(), s.elapsedNanos() / 1_000_000.0,
+                    s.primaryHits(), s.occludedShadowRays(), s.shadowRays(),
+                    s.maxIntensity(), s.litPixels(), s.primaryRays());
+        }
+        traceStats.record(s);
+        if (traceStats.frames() < STATS_AGGREGATE_FRAMES) {
+            return;
+        }
+        var sum = traceStats.summary();
+        LOG.info("Trace over last %d frames: avg=%.2f ms (min=%.2f, max=%.2f), avg hits=%d, avg shadow=%d/%d, avg lit=%d/%d",
+                sum.frames(), sum.avgElapsedMs(), sum.minElapsedMs(), sum.maxElapsedMs(),
+                sum.avgPrimaryHits(), sum.avgOccludedShadowRays(), sum.avgShadowRays(),
+                sum.avgLitPixels(), s.primaryRays());
+        traceStats.reset();
     }
 
     @Override
