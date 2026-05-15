@@ -86,7 +86,7 @@ public class TextureEditor implements
     private final ToolCard         toolCard;
     private final ColorPicker      colorPicker;
     private final Console          console;
-    private final ActionRegistry   actions;
+    private final ActionRegistry<Runnable> actions;
     private final InputBindings    bindings;
 
     @Inject
@@ -132,7 +132,7 @@ public class TextureEditor implements
                 500,
                 rootCmd);
 
-        this.actions = new ActionRegistry()
+        this.actions = new ActionRegistry<Runnable>()
                 .register("mode.pixel_select", () -> state.mode(PIXEL_SELECT))
                 .register("mode.box_select", () -> state.mode(BOX_SELECT))
                 .register("mode.lasso_select", () -> state.mode(LASSO_SELECT))

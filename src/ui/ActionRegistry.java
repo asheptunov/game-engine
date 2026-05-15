@@ -7,14 +7,15 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Named-action lookup. Scenes register their actions here under string ids; {@link InputBindings}
+ * Named-action lookup. Scenes register their actions here under string ids; a {@link Bindings} layer
  * references those ids. The split lets bindings live in pure data (config file or builder) without
- * needing to know about the action implementations.
+ * needing to know about the action implementations. {@code T} is the action type — {@link Runnable}
+ * for key actions, {@code Consumer<java.awt.event.MouseEvent>} for mouse actions.
  */
-public class ActionRegistry {
-    private final Map<String, Runnable> actions = new LinkedHashMap<>();
+public class ActionRegistry<T> {
+    private final Map<String, T> actions = new LinkedHashMap<>();
 
-    public ActionRegistry register(String id, Runnable action) {
+    public ActionRegistry<T> register(String id, T action) {
         if (actions.containsKey(id)) {
             throw new IllegalArgumentException("Duplicate action id: " + id);
         }
@@ -22,7 +23,7 @@ public class ActionRegistry {
         return this;
     }
 
-    public Optional<Runnable> get(String id) {
+    public Optional<T> get(String id) {
         return Optional.ofNullable(actions.get(id));
     }
 

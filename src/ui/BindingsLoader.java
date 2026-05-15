@@ -11,17 +11,17 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 /**
- * Loads {@link InputBindings} from a {@code .properties} file. Each line is a {@code chord = action_id}
- * pair, where {@code chord} parses via {@link KeyChord#parse(String)}. Lines starting with {@code #}
- * are comments. Action ids must already be registered in the {@link ActionRegistry} the bindings wrap;
- * call {@link InputBindings#validate(String)} after loading to enforce that.
+ * Loads a {@link Bindings} layer from a {@code .properties} file. Each line is a {@code chord = action_id}
+ * pair, where {@code chord} parses via the layer's own {@link Bindings#bindParsed} (key or mouse syntax).
+ * Lines starting with {@code #} are comments. Action ids must already be registered in the
+ * {@link ActionRegistry} the bindings wrap; call {@link Bindings#validate(String)} after loading to enforce that.
  */
 public final class BindingsLoader {
     private static final Logger LOG = LogManager.instance().getThis();
 
     private BindingsLoader() {}
 
-    public static InputBindings loadInto(Path path, InputBindings bindings) {
+    public static <B extends Bindings> B loadInto(Path path, B bindings) {
         try (Reader r = Files.newBufferedReader(path)) {
             return loadInto(r, bindings);
         } catch (NoSuchFileException e) {
@@ -31,7 +31,7 @@ public final class BindingsLoader {
         }
     }
 
-    public static InputBindings loadInto(Reader reader, InputBindings bindings) {
+    public static <B extends Bindings> B loadInto(Reader reader, B bindings) {
         var props = new Properties();
         try {
             props.load(reader);
@@ -39,12 +39,11 @@ public final class BindingsLoader {
             throw new IllegalStateException("Failed to parse bindings", e);
         }
         for (var name : props.stringPropertyNames()) {
-            var chord = KeyChord.parse(name);
             var actionId = props.getProperty(name).trim();
             if (actionId.isEmpty()) {
                 throw new IllegalStateException("Empty action id for chord '" + name + "'");
             }
-            bindings.bind(chord, actionId);
+            bindings.bindParsed(name, actionId);
         }
         LOG.info("Loaded %d binding(s)", props.size());
         return bindings;

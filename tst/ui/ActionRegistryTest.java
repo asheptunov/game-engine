@@ -9,7 +9,7 @@ import static harness.Assertions.assertTrue;
 public class ActionRegistryTest {
     @Test
     void getRegisteredReturnsAction() {
-        var r = new ActionRegistry();
+        var r = new ActionRegistry<Runnable>();
         var fired = new boolean[]{false};
         r.register("foo", () -> fired[0] = true);
         var fn = r.get("foo");
@@ -20,13 +20,13 @@ public class ActionRegistryTest {
 
     @Test
     void getMissingReturnsEmpty() {
-        var r = new ActionRegistry();
+        var r = new ActionRegistry<Runnable>();
         assertEquals(true, r.get("nope").isEmpty());
     }
 
     @Test
     void duplicateRegisterThrows() {
-        var r = new ActionRegistry().register("x", () -> {});
+        var r = new ActionRegistry<Runnable>().register("x", () -> {});
         try {
             r.register("x", () -> {});
             throw new RuntimeException("expected IAE");
@@ -37,7 +37,7 @@ public class ActionRegistryTest {
 
     @Test
     void idsAreReturnedInInsertionOrder() {
-        var r = new ActionRegistry()
+        var r = new ActionRegistry<Runnable>()
                 .register("a", () -> {})
                 .register("c", () -> {})
                 .register("b", () -> {});

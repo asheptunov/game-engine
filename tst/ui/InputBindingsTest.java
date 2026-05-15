@@ -15,7 +15,7 @@ public class InputBindingsTest {
 
     @Test
     void handleFiresBoundAction() {
-        var r = new ActionRegistry();
+        var r = new ActionRegistry<Runnable>();
         var fired = new boolean[]{false};
         r.register("act", () -> fired[0] = true);
         var b = new InputBindings(r).bind(KeyChord.of(KeyAction.Key.LOWER_W), "act");
@@ -25,20 +25,20 @@ public class InputBindingsTest {
 
     @Test
     void handleReturnsFalseWhenUnbound() {
-        var b = new InputBindings(new ActionRegistry());
+        var b = new InputBindings(new ActionRegistry<Runnable>());
         assertFalse(b.handle(keyOnly(KeyAction.Key.LOWER_W)));
     }
 
     @Test
     void handleReturnsFalseWhenBoundButUnregistered() {
-        var b = new InputBindings(new ActionRegistry())
+        var b = new InputBindings(new ActionRegistry<Runnable>())
                 .bind(KeyChord.of(KeyAction.Key.LOWER_W), "ghost");
         assertFalse(b.handle(keyOnly(KeyAction.Key.LOWER_W)));
     }
 
     @Test
     void unresolvedListsMissingActionIds() {
-        var r = new ActionRegistry().register("present", () -> {});
+        var r = new ActionRegistry<Runnable>().register("present", () -> {});
         var b = new InputBindings(r)
                 .bind(KeyChord.of(KeyAction.Key.LOWER_A), "present")
                 .bind(KeyChord.of(KeyAction.Key.LOWER_B), "missing1")
@@ -51,14 +51,14 @@ public class InputBindingsTest {
 
     @Test
     void lookupReturnsActionId() {
-        var b = new InputBindings(new ActionRegistry())
+        var b = new InputBindings(new ActionRegistry<Runnable>())
                 .bind(KeyChord.of(KeyAction.Key.LOWER_W), "fwd");
         assertEquals("fwd", b.lookup(KeyChord.of(KeyAction.Key.LOWER_W)).orElseThrow());
     }
 
     @Test
     void shiftedAndPlainKeyAreDistinct() {
-        var r = new ActionRegistry()
+        var r = new ActionRegistry<Runnable>()
                 .register("plain", () -> {})
                 .register("shifted", () -> {});
         var b = new InputBindings(r)

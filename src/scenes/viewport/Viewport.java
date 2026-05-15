@@ -57,7 +57,7 @@ public class Viewport implements
     private final Console            console;
     private final ViewportState      state;
     private final BackwardRayTracer  tracer;
-    private final ActionRegistry     actions;
+    private final ActionRegistry<Runnable> actions;
     private final InputBindings      bindings;
 
     private boolean consoleOpen = false;
@@ -93,7 +93,7 @@ public class Viewport implements
         this.state = defaultScene();
         this.tracer = new BackwardRayTracer(state);
 
-        this.actions = new ActionRegistry()
+        this.actions = new ActionRegistry<Runnable>()
                 .register("console.open", () -> consoleOpen = true)
                 .register("camera.move.forward", () -> translateCamera(new Vec3(0, 0, MOVE_STEP)))
                 .register("camera.move.back", () -> translateCamera(new Vec3(0, 0, -MOVE_STEP)))
