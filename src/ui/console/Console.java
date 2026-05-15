@@ -17,6 +17,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -141,6 +142,11 @@ public class Console implements Renderer {
 
     public void accept(MouseWheelEvent e) {
         vtOffset -= e.getPreciseWheelRotation();
+    }
+
+    /** {@link MouseEvent}-typed adapter for binding registries that store {@code Consumer<MouseEvent>}. */
+    public void acceptScroll(MouseEvent e) {
+        accept((MouseWheelEvent) e);
     }
 
     private record StyledChar(char c, List<Printer.Style> styles) {}

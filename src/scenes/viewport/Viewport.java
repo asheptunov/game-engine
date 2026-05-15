@@ -24,6 +24,8 @@ import ui.ActionRegistry;
 import ui.BindingsLoader;
 import ui.InputBindings;
 import ui.KeyAction;
+import ui.MouseBindings;
+import ui.MouseGesture;
 import ui.console.CmdExit;
 import ui.console.Console;
 import ui.console.DelegatingCommand;
@@ -39,6 +41,7 @@ import java.awt.event.MouseWheelListener;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class Viewport implements
         Scene, Renderer,
@@ -57,8 +60,10 @@ public class Viewport implements
     private final Console            console;
     private final ViewportState      state;
     private final BackwardRayTracer  tracer;
-    private final ActionRegistry<Runnable> actions;
-    private final InputBindings      bindings;
+    private final ActionRegistry<Runnable>             actions;
+    private final InputBindings                        bindings;
+    private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
+    private final MouseBindings                        mouseBindings;
 
     private boolean consoleOpen = false;
 
@@ -106,6 +111,13 @@ public class Viewport implements
         this.bindings = BindingsLoader
                 .loadInto(Path.of("assets/bindings/viewport.properties"), new InputBindings(actions))
                 .validate("Viewport");
+
+        this.mouseActions = new ActionRegistry<Consumer<MouseEvent>>()
+                .register("console.scroll", console::acceptScroll);
+
+        this.mouseBindings = BindingsLoader
+                .loadInto(Path.of("assets/bindings/viewport-mouse.properties"), new MouseBindings(mouseActions))
+                .validate("Viewport mouse");
     }
 
     private static ViewportState defaultScene() {
@@ -188,20 +200,17 @@ public class Viewport implements
     @Override public void keyTyped(KeyEvent e) {}
     @Override public void keyReleased(KeyEvent e) { LOG.trace("Handling %s", e); }
 
-    @Override public void mouseClicked(MouseEvent e) { LOG.trace("Handling %s", e); }
-    @Override public void mousePressed(MouseEvent e) { LOG.trace("Handling %s", e); }
-    @Override public void mouseReleased(MouseEvent e) { LOG.trace("Handling %s", e); }
-    @Override public void mouseEntered(MouseEvent e) { LOG.trace("Handling %s", e); }
-    @Override public void mouseExited(MouseEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void mouseClicked(MouseEvent e)         { LOG.trace("Handling %s", e); }
+    @Override public void mouseEntered(MouseEvent e)         { LOG.trace("Handling %s", e); }
+    @Override public void mouseExited(MouseEvent e)          { LOG.trace("Handling %s", e); }
+    @Override public void mouseMoved(MouseEvent e)           { LOG.trace("Handling %s", e); }
+    @Override public void mousePressed(MouseEvent e)         { route(MouseGesture.PRESS, e); }
+    @Override public void mouseReleased(MouseEvent e)        { route(MouseGesture.RELEASE, e); }
+    @Override public void mouseDragged(MouseEvent e)         { route(MouseGesture.DRAG, e); }
+    @Override public void mouseWheelMoved(MouseWheelEvent e) { route(MouseGesture.WHEEL, e); }
 
-    @Override public void mouseDragged(MouseEvent e) { LOG.trace("Handling %s", e); }
-    @Override public void mouseMoved(MouseEvent e) { LOG.trace("Handling %s", e); }
-
-    @Override
-    public void mouseWheelMoved(MouseWheelEvent e) {
+    private void route(MouseGesture gesture, MouseEvent e) {
         LOG.trace("Handling %s", e);
-        if (consoleOpen) {
-            console.accept(e);
-        }
+        mouseBindings.handle(gesture, e, consoleOpen ? "console" : "");
     }
 }

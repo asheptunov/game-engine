@@ -35,6 +35,8 @@ import ui.ActionRegistry;
 import ui.BindingsLoader;
 import ui.InputBindings;
 import ui.KeyAction;
+import ui.MouseBindings;
+import ui.MouseGesture;
 import ui.console.CmdExit;
 import ui.console.Console;
 import ui.console.DelegatingCommand;
@@ -50,8 +52,10 @@ import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static rendering.Color.NamedColor;
 import static scenes.textureeditor.model.Mode.BOX_SELECT;
@@ -70,8 +74,18 @@ public class TextureEditor implements
         Scene,
         Renderer,
         KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
-    private static final Logger LOG          = LogManager.instance().getThis();
-    private static final Mode   DEFAULT_MODE = BRUSH;
+    private static final Logger              LOG          = LogManager.instance().getThis();
+    private static final Mode                DEFAULT_MODE = BRUSH;
+    // Lower-cased mode names, precomputed so MouseBindings lookups don't allocate per event.
+    private static final Map<Mode, String>   MODE_NAMES   = lowerCasedModeNames();
+
+    private static Map<Mode, String> lowerCasedModeNames() {
+        var m = new EnumMap<Mode, String>(Mode.class);
+        for (Mode mode : Mode.values()) {
+            m.put(mode, mode.name().toLowerCase());
+        }
+        return m;
+    }
 
     private static final Painter.LineSampler SELECTION_PATTERN
             = (i, _, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
@@ -86,8 +100,10 @@ public class TextureEditor implements
     private final ToolCard         toolCard;
     private final ColorPicker      colorPicker;
     private final Console          console;
-    private final ActionRegistry<Runnable> actions;
-    private final InputBindings    bindings;
+    private final ActionRegistry<Runnable>             actions;
+    private final InputBindings                        bindings;
+    private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
+    private final MouseBindings                        mouseBindings;
 
     @Inject
     public TextureEditor(Raster display,
@@ -152,6 +168,33 @@ public class TextureEditor implements
         this.bindings = BindingsLoader
                 .loadInto(Path.of("assets/bindings/texture-editor.properties"), new InputBindings(actions))
                 .validate("TextureEditor");
+
+        this.mouseActions = new ActionRegistry<Consumer<MouseEvent>>()
+                .register("select.pixel", e -> {
+                    var c = normalize(e);
+                    LOG.info("Selected pixel %s", c);
+                    state.selection(new PixelSelection(c));
+                })
+                .register("box.start", e -> {
+                    var c = normalize(e);
+                    LOG.debug("Started box selection at %s", c);
+                    state.selection(new BoxSelection(c.x(), c.y()));
+                    state.boxStart(new Coordinates(c.x(), c.y()));
+                })
+                .register("box.update", e -> resizeBox(e, false))
+                .register("box.finish", e -> resizeBox(e, true))
+                .register("lasso.start", _ -> { throw new UnsupportedOperationException("start lasso select"); })
+                .register("lasso.update", _ -> { throw new UnsupportedOperationException("update lasso selection"); })
+                .register("lasso.finish", _ -> { throw new UnsupportedOperationException("terminate lasso select"); })
+                .register("brush.paint", this::paintBrush)
+                .register("fill.apply", this::applyFill)
+                .register("history.save", _ -> saveToHistory())
+                .register("colorpicker.mouse", colorPicker::accept)
+                .register("console.scroll", console::acceptScroll);
+
+        this.mouseBindings = BindingsLoader
+                .loadInto(Path.of("assets/bindings/texture-editor-mouse.properties"), new MouseBindings(mouseActions))
+                .validate("TextureEditor mouse");
     }
 
     @Override
@@ -180,92 +223,8 @@ public class TextureEditor implements
         LOG.trace("Handling %s", e);
     }
 
-    @Override
-    public void mousePressed(MouseEvent e) {
-        LOG.trace("Handling %s", e);
-        if (e.getButton() != MouseEvent.BUTTON1) {
-            return;
-        }
-        var c = normalize(e);
-        int x = c.x();
-        int y = c.y();
-        // todo lasso select
-        switch (state.mode()) {
-            case PIXEL_SELECT -> {
-                LOG.info("Selected pixel %s", c);
-                state.selection(new PixelSelection(c));
-            }
-            case BOX_SELECT -> {
-                LOG.debug("Started box selection at %s", c);
-                state.selection(new BoxSelection(x, y));
-                state.boxStart(new Coordinates(x, y));
-            }
-            case LASSO_SELECT -> throw new UnsupportedOperationException("start lasso select");
-            case BRUSH -> state.selection().ifPresentOrElse(s -> {  // selection acts as a mask
-                switch (s) {
-                    case PixelSelection px -> {
-                        if (px.is(x, y)) {
-                            state.texture().pixel(x, y, colorPicker.getColor());
-                        }
-                    }
-                    case BoxSelection box -> {
-                        if (box.contains(x, y)) {
-                            state.texture().pixel(x, y, colorPicker.getColor());
-                        }
-                    }
-                    case LassoSelection lasso -> {
-                        if (lasso.contains(c)) {
-                            state.texture().pixel(x, y, colorPicker.getColor());
-                        }
-                    }
-                }
-            }, () -> state.texture().pixel(x, y, colorPicker.getColor()));
-            case FILL -> state.selection().ifPresentOrElse(s -> {  // selection acts as an invert toggle
-                        switch (s) {
-                            case PixelSelection px -> {
-                                fillPixel(px, colorPicker.getColor(), !px.is(x, y));
-                                saveToHistory();
-                            }
-                            case BoxSelection box -> {
-                                fillBox(box, colorPicker.getColor(), !box.contains(x, y));
-                                saveToHistory();
-                            }
-                            case LassoSelection lasso -> {
-                                fillLasso(lasso, colorPicker.getColor(), !lasso.contains(c));
-                                saveToHistory();
-                            }
-                        }
-                    }, () -> {
-                        fillEverything(colorPicker.getColor());
-                        saveToHistory();
-                    }
-            );
-            case COLOR_PICKER -> colorPicker.accept(e);
-        }
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-        LOG.trace("Handling %s", e);
-        if (e.getButton() != MouseEvent.BUTTON1) {
-            return;
-        }
-        var c = normalize(e);
-        int x = c.x();
-        int y = c.y();
-        switch (state.mode()) {
-            case BOX_SELECT -> {
-                var box = (BoxSelection) state.selection().orElseThrow();
-                var boxStart = state.boxStart().orElseThrow();
-                box.update(boxStart.x(), boxStart.y(), x, y);
-                LOG.info("Finished box selection from [%d, %d] at [%d, %d]", boxStart.x(), boxStart.y(), x, y);
-                state.clearBoxStart();
-            }
-            case LASSO_SELECT -> throw new UnsupportedOperationException("terminate lasso select");
-            case BRUSH -> saveToHistory();
-            case COLOR_PICKER -> colorPicker.accept(e);
-        }
-    }
+    @Override public void mousePressed(MouseEvent e)         { route(MouseGesture.PRESS, e); }
+    @Override public void mouseReleased(MouseEvent e)        { route(MouseGesture.RELEASE, e); }
 
     @Override
     public void mouseEntered(MouseEvent e) {
@@ -277,55 +236,13 @@ public class TextureEditor implements
         LOG.trace("Handling %s", e);
     }
 
-    @Override
-    public void mouseDragged(MouseEvent e) {
-        LOG.trace("Handling %s", e);
-        var c = normalize(e);
-        int x = c.x();
-        int y = c.y();
-        switch (state.mode()) {
-            case BOX_SELECT -> {
-                var box = (BoxSelection) state.selection().orElseThrow();
-                var boxStart = state.boxStart().orElseThrow();
-                box.update(boxStart.x(), boxStart.y(), x, y);
-                LOG.debug("Updating box selection to %s", box);
-            }
-            case LASSO_SELECT -> throw new UnsupportedOperationException("update lasso selection");
-            case BRUSH -> state.selection().ifPresentOrElse(s -> {
-                switch (s) {
-                    case PixelSelection px -> {
-                        if (px.is(x, y)) {
-                            state.texture().pixel(x, y, colorPicker.getColor());
-                        }
-                    }
-                    case BoxSelection box -> {
-                        if (box.contains(x, y)) {
-                            state.texture().pixel(x, y, colorPicker.getColor());
-                        }
-                    }
-                    case LassoSelection lasso -> {
-                        if (lasso.contains(c)) {
-                            state.texture().pixel(x, y, colorPicker.getColor());
-                        }
-                    }
-                }
-            }, () -> state.texture().pixel(x, y, colorPicker.getColor()));
-            case COLOR_PICKER -> colorPicker.accept(e);
-        }
-    }
+    @Override public void mouseDragged(MouseEvent e)         { route(MouseGesture.DRAG, e); }
+    @Override public void mouseMoved(MouseEvent e)           { LOG.trace("Handling %s", e); }
+    @Override public void mouseWheelMoved(MouseWheelEvent e) { route(MouseGesture.WHEEL, e); }
 
-    @Override
-    public void mouseMoved(MouseEvent e) {
+    private void route(MouseGesture gesture, MouseEvent e) {
         LOG.trace("Handling %s", e);
-    }
-
-    @Override
-    public void mouseWheelMoved(MouseWheelEvent e) {
-        LOG.trace("Handling %s", e);
-        // todo zoom / pan
-        switch (state().mode()) {
-            case COMMAND_ENTRY -> console.accept(e);
-        }
+        mouseBindings.handle(gesture, e, MODE_NAMES.get(state.mode()));
     }
 
     @Override
@@ -445,6 +362,70 @@ public class TextureEditor implements
         int x = (int) (1. * Math.min(e.getX(), display.width() - 1) / display.width() * state.texture().width());
         int y = (int) (1. * Math.min(e.getY(), display.height() - 1) / display.height() * state.texture().height());
         return new Coordinates(x, y);
+    }
+
+    private void paintBrush(MouseEvent e) {  // selection acts as a mask
+        var c = normalize(e);
+        int x = c.x();
+        int y = c.y();
+        state.selection().ifPresentOrElse(s -> {
+            switch (s) {
+                case PixelSelection px -> {
+                    if (px.is(x, y)) {
+                        state.texture().pixel(x, y, colorPicker.getColor());
+                    }
+                }
+                case BoxSelection box -> {
+                    if (box.contains(x, y)) {
+                        state.texture().pixel(x, y, colorPicker.getColor());
+                    }
+                }
+                case LassoSelection lasso -> {
+                    if (lasso.contains(c)) {
+                        state.texture().pixel(x, y, colorPicker.getColor());
+                    }
+                }
+            }
+        }, () -> state.texture().pixel(x, y, colorPicker.getColor()));
+    }
+
+    private void applyFill(MouseEvent e) {  // selection acts as an invert toggle
+        var c = normalize(e);
+        int x = c.x();
+        int y = c.y();
+        state.selection().ifPresentOrElse(s -> {
+            switch (s) {
+                case PixelSelection px -> {
+                    fillPixel(px, colorPicker.getColor(), !px.is(x, y));
+                    saveToHistory();
+                }
+                case BoxSelection box -> {
+                    fillBox(box, colorPicker.getColor(), !box.contains(x, y));
+                    saveToHistory();
+                }
+                case LassoSelection lasso -> {
+                    fillLasso(lasso, colorPicker.getColor(), !lasso.contains(c));
+                    saveToHistory();
+                }
+            }
+        }, () -> {
+            fillEverything(colorPicker.getColor());
+            saveToHistory();
+        });
+    }
+
+    private void resizeBox(MouseEvent e, boolean finish) {
+        var c = normalize(e);
+        var box = (BoxSelection) state.selection().orElseThrow();
+        var boxStart = state.boxStart().orElseThrow();
+        box.update(boxStart.x(), boxStart.y(), c.x(), c.y());
+        if (finish) {
+            LOG.info("Finished box selection from [%d, %d] at [%d, %d]",
+                    boxStart.x(), boxStart.y(), c.x(), c.y());
+            state.clearBoxStart();
+        } else {
+            LOG.debug("Updating box selection to %s", box);
+        }
     }
 
     private void clearSelection() {
