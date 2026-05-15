@@ -18,24 +18,19 @@ public class ViewportDebug {
         st.addObject(new Tri(new Vec3(-2, -2, 10), new Vec3(2, -2, 10), new Vec3(0, 2, 10)));
         st.addLight(new PointLight(new Vec3(0, 0, 5)));
 
-        long t0 = System.nanoTime();
-        var buf = new BackwardRayTracer(st).trace();
-        long elapsed = System.nanoTime() - t0;
+        var traced = new BackwardRayTracer(st).traceWithStats();
+        var buf = traced.buf();
+        var stats = traced.stats();
 
-        float max = 0;
-        int litPixels = 0;
-        for (var row : buf) {
-            for (float v : row) {
-                if (v > max) max = v;
-                if (v > 0) litPixels++;
-            }
-        }
-        System.out.printf("traced in %.2f ms%n", elapsed / 1_000_000.0);
-        System.out.printf("max intensity: %.3f%n", max);
-        System.out.printf("lit pixels: %d / %d%n", litPixels, W * H);
+        System.out.printf("traced in %.2f ms%n", stats.elapsedNanos() / 1_000_000.0);
+        System.out.printf("primary: %d rays, %d hits%n", stats.primaryRays(), stats.primaryHits());
+        System.out.printf("shadow:  %d rays, %d occluded%n", stats.shadowRays(), stats.occludedShadowRays());
+        System.out.printf("max intensity: %.3f%n", stats.maxIntensity());
+        System.out.printf("lit pixels: %d / %d%n", stats.litPixels(), stats.primaryRays());
 
         int down = 5;
         int gridW = W / down, gridH = H / down;
+        float max = stats.maxIntensity();
         System.out.println("--- preview (" + gridW + "x" + gridH + ", '@' = max, ' ' = 0) ---");
         for (int y = gridH - 1; y >= 0; y--) {
             for (int x = 0; x < gridW; x++) {
