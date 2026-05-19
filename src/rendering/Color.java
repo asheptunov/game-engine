@@ -294,6 +294,19 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
                     | (int) blue & 0xff);
         }
 
+        // Cached so per-pixel hot paths (e.g. the viewport's grayscale fill at 800×800 × 144 Hz)
+        // don't allocate ~92M RgbInt24Color objects per second. Inputs outside [0, 255] are clamped.
+        private static final RgbInt24Color[] GRAYS = new RgbInt24Color[256];
+        static {
+            for (int i = 0; i < 256; i++) {
+                GRAYS[i] = new RgbInt24Color((i << 16) | (i << 8) | i);
+            }
+        }
+
+        public static RgbInt24Color gray(int gray) {
+            return GRAYS[Math.max(0, Math.min(255, gray))];
+        }
+
         public static RgbInt24Color random() {
             return new RgbInt24Color(RANDOM.nextInt(0x1000000));
         }

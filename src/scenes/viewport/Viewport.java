@@ -49,11 +49,9 @@ public class Viewport implements
     private static final Logger LOG = LogManager.instance().getThis();
 
     // Sensor pixel grid. Each sensor pixel is drawn as a block on the display.
-    private static final int   SENSOR_W = 100;
-    private static final int   SENSOR_H = 100;
+    private static final int   SENSOR_W = 1600;
+    private static final int   SENSOR_H = 1600;
     private static final float MOVE_STEP = 0.25f;
-    // Roll up per-frame trace stats into a single info-level summary every N frames (≈1s at 144Hz).
-    private static final int   STATS_AGGREGATE_FRAMES = 144;
 
     private final Raster             display;
     private final Painter            painter;
@@ -68,8 +66,6 @@ public class Viewport implements
     private final MouseBindings                        mouseBindings;
 
     private boolean consoleOpen = false;
-
-    private final TraceStatsAggregator traceStats = new TraceStatsAggregator();
 
     @Inject
     public Viewport(Raster display,
@@ -143,54 +139,21 @@ public class Viewport implements
 
     @Override
     public void render() {
-        painter.drawImg(0, 0, width, height, Color.NamedColor.BLACK, BlendMode.OVER_PRE);
-
-        var traced = tracer.traceWithStats();
-        var buf = traced.buf();
-        var stats = traced.stats();
-        recordStats(stats);
-
-        float max = stats.maxIntensity();
-        if (max > 0) {
-            int blockW = width / SENSOR_W;
-            int blockH = height / SENSOR_H;
-            for (int sy = 0; sy < SENSOR_H; sy++) {
-                for (int sx = 0; sx < SENSOR_W; sx++) {
-                    float intensity = buf[sy][sx] / max;
-                    if (intensity <= 0) continue;
-                    int gray = (int) (intensity * 255);
-                    // Flip Y: sensor v=0 is bottom of image, display y=0 is top.
-                    int dy = (SENSOR_H - 1 - sy) * blockH;
-                    int dx = sx * blockW;
-                    var c = RgbInt24Color.of((gray << 16) | (gray << 8) | gray);
-                    painter.drawImg(dx, dy, blockW, blockH, c, BlendMode.OVER_PRE);
-                }
-            }
-        }
+        var resampled = Resampler.resample(tracer.trace(), height, width);
+        final float[][] displayBuf = resampled.buf();
+        // invMax==0 when nothing was hit, which collapses the sampler to a uniform BLACK fill —
+        // so a single drawImg call covers both the "no hits" and "normalize against max" cases.
+        final float invMax = resampled.max() > 0 ? 1f / resampled.max() : 0;
+        // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
+        painter.drawImg(0, 0, width, height, (_, dx, dy) -> {
+            float intensity = displayBuf[height - 1 - dy][dx] * invMax;
+            if (intensity <= 0) return Color.NamedColor.BLACK;
+            return RgbInt24Color.gray((int) (intensity * 255));
+        }, BlendMode.OVER_PRE);
 
         if (consoleOpen) {
             console.render();
         }
-    }
-
-    private void recordStats(BackwardRayTracer.TraceStats s) {
-        // Guarded: building the vararg Object[] with 8 boxed primitives 144×/s would be pure waste when trace is off.
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("Traced %d rays in %.2f ms (hits=%d, shadow=%d/%d occluded, maxI=%.3f, lit=%d/%d)",
-                    s.primaryRays(), s.elapsedNanos() / 1_000_000.0,
-                    s.primaryHits(), s.occludedShadowRays(), s.shadowRays(),
-                    s.maxIntensity(), s.litPixels(), s.primaryRays());
-        }
-        traceStats.record(s);
-        if (traceStats.frames() < STATS_AGGREGATE_FRAMES) {
-            return;
-        }
-        var sum = traceStats.summary();
-        LOG.info("Trace over last %d frames: avg=%.2f ms (min=%.2f, max=%.2f), avg hits=%d, avg shadow=%d/%d, avg lit=%d/%d",
-                sum.frames(), sum.avgElapsedMs(), sum.minElapsedMs(), sum.maxElapsedMs(),
-                sum.avgPrimaryHits(), sum.avgOccludedShadowRays(), sum.avgShadowRays(),
-                sum.avgLitPixels(), s.primaryRays());
-        traceStats.reset();
     }
 
     @Override
