@@ -1,5 +1,7 @@
 package scenes.viewport;
 
+import logging.LogManager;
+import logging.Logger;
 import math.Intersection;
 import math.Ray;
 import scenes.viewport.lights.PointLight;
@@ -11,42 +13,45 @@ import scenes.viewport.lights.PointLight;
  *
  * <p>Surface normals are flipped to face the camera ray so that Lambertian shading works regardless of
  * the object's geometric vertex order.
+ *
+ * <p>Per-trace counters ({@link #primaryRays()}, {@link #primaryHits()}, {@link #shadowRays()},
+ * {@link #shadowsOccluded()}, {@link #litPixels()}, {@link #traceNanos()}) are updated on every
+ * {@link #trace()} call. A one-line INFO summary is emitted at most once per {@value #LOG_INTERVAL_MS} ms
+ * so the AWT 144 Hz render loop doesn't spam the log.
  */
 public class BackwardRayTracer {
-    private static final float SHADOW_BIAS = 1e-3f;
-
-    /** Per-trace counters & timings. {@code primaryRays} = sensorW * sensorH (every pixel shoots one). */
-    public record TraceStats(long elapsedNanos,
-                             int primaryRays,
-                             int primaryHits,
-                             int shadowRays,
-                             int occludedShadowRays,
-                             float maxIntensity,
-                             int litPixels) {}
-
-    /** Return shape of {@link #traceWithStats()}: pixel buffer plus telemetry. */
-    public record Traced(float[][] buf, TraceStats stats) {}
+    private static final Logger LOG               = LogManager.instance().getThis();
+    private static final float  SHADOW_BIAS       = 1e-3f;
+    private static final long   LOG_INTERVAL_MS   = 1000;
+    private static final long   LOG_INTERVAL_NS   = LOG_INTERVAL_MS * 1_000_000L;
 
     private final ViewportState state;
 
-    // Counters reset at the top of every traceWithStats() call. shade()/occluded() bump them.
-    private int primaryHits;
-    private int shadowRays;
-    private int occludedShadowRays;
+    private int  primaryRays;
+    private int  primaryHits;
+    private int  shadowRays;
+    private int  shadowsOccluded;
+    private int  litPixels;
+    private long traceNanos;
+
+    // Initialised so the first call to maybeLog() always emits. (Using Long.MIN_VALUE here would
+    // overflow on subtraction with a positive nanoTime() and silently suppress every log forever.)
+    private long lastLogNanos;
 
     public BackwardRayTracer(ViewportState state) {
         this.state = state;
+        this.lastLogNanos = System.nanoTime() - LOG_INTERVAL_NS;
     }
 
-    /** Back-compat shim: same as {@link #traceWithStats()} but drops the stats. */
+    public int  primaryRays()     { return primaryRays; }
+    public int  primaryHits()     { return primaryHits; }
+    public int  shadowRays()      { return shadowRays; }
+    public int  shadowsOccluded() { return shadowsOccluded; }
+    public int  litPixels()       { return litPixels; }
+    public long traceNanos()      { return traceNanos; }
+
     public float[][] trace() {
-        return traceWithStats().buf();
-    }
-
-    public Traced traceWithStats() {
-        primaryHits = 0;
-        shadowRays = 0;
-        occludedShadowRays = 0;
+        primaryRays = primaryHits = shadowRays = shadowsOccluded = litPixels = 0;
         long t0 = System.nanoTime();
 
         var sensor = state.cameraSensor();
@@ -54,8 +59,6 @@ public class BackwardRayTracer {
         int W = state.sensorPixelsW();
         int H = state.sensorPixelsH();
         var buf = new float[H][W];
-        float max = 0;
-        int lit = 0;
         for (int py = 0; py < H; py++) {
             for (int px = 0; px < W; px++) {
                 float u = (px + 0.5f) / W;
@@ -64,16 +67,18 @@ public class BackwardRayTracer {
                         .add(sensor.edge1().scale(u))
                         .add(sensor.edge2().scale(v));
                 var dir = pixelWorld.sub(eye).normalized();
-                float intensity = shade(new Ray(eye, dir));
-                buf[py][px] = intensity;
-                if (intensity > max) max = intensity;
-                if (intensity > 0) lit++;
+                primaryRays++;
+                float lit = shade(new Ray(eye, dir));
+                if (lit > 0) {
+                    litPixels++;
+                }
+                buf[py][px] = lit;
             }
         }
-        long elapsedNanos = System.nanoTime() - t0;
 
-        return new Traced(buf, new TraceStats(elapsedNanos, W * H, primaryHits,
-                shadowRays, occludedShadowRays, max, lit));
+        traceNanos = System.nanoTime() - t0;
+        maybeLog();
+        return buf;
     }
 
     /** Returns the accumulated light contribution at the first surface hit by {@code ray}. */
@@ -101,7 +106,7 @@ public class BackwardRayTracer {
             var shadowOrigin = hit.point().add(lightDir.scale(SHADOW_BIAS));
             shadowRays++;
             if (occluded(new Ray(shadowOrigin, lightDir), lightDist - SHADOW_BIAS)) {
-                occludedShadowRays++;
+                shadowsOccluded++;
                 continue;
             }
             float cosTheta = Math.max(0, n.dot(lightDir));
@@ -129,5 +134,17 @@ public class BackwardRayTracer {
             }
         }
         return false;
+    }
+
+    private void maybeLog() {
+        long now = System.nanoTime();
+        if (now - lastLogNanos < LOG_INTERVAL_NS) {
+            return;
+        }
+        lastLogNanos = now;
+        double ms = traceNanos / 1e6;
+        double mraysPerSec = primaryRays / (traceNanos / 1e3);  // rays / microsecond == Mrays/s
+        LOG.info("trace: %d rays in %.2f ms (%.1f Mrays/s) — %d hits, %d/%d shadow rays occluded, %d lit pixels",
+                primaryRays, ms, mraysPerSec, primaryHits, shadowsOccluded, shadowRays, litPixels);
     }
 }

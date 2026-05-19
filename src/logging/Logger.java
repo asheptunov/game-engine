@@ -14,11 +14,6 @@ public interface Logger {
 
     Logger log(Level level, String fmt, Object... args);
 
-    /** Cheap pre-check for log-or-skip hot paths — avoids vararg/autobox allocation when filtered. */
-    default boolean isEnabled(Level level) { return true; }
-
-    default boolean isTraceEnabled() { return isEnabled(Level.TRACE); }
-
     Logger fatal(Throwable ex, String fmt, Object... args);
 
     Logger fatal(String fmt, Object... args);

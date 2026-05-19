@@ -18,19 +18,25 @@ public class ViewportDebug {
         st.addObject(new Tri(new Vec3(-2, -2, 10), new Vec3(2, -2, 10), new Vec3(0, 2, 10)));
         st.addLight(new PointLight(new Vec3(0, 0, 5)));
 
-        var traced = new BackwardRayTracer(st).traceWithStats();
-        var buf = traced.buf();
-        var stats = traced.stats();
+        var tracer = new BackwardRayTracer(st);
+        var buf = tracer.trace();
 
-        System.out.printf("traced in %.2f ms%n", stats.elapsedNanos() / 1_000_000.0);
-        System.out.printf("primary: %d rays, %d hits%n", stats.primaryRays(), stats.primaryHits());
-        System.out.printf("shadow:  %d rays, %d occluded%n", stats.shadowRays(), stats.occludedShadowRays());
-        System.out.printf("max intensity: %.3f%n", stats.maxIntensity());
-        System.out.printf("lit pixels: %d / %d%n", stats.litPixels(), stats.primaryRays());
+        float max = 0;
+        for (var row : buf) {
+            for (float v : row) {
+                if (v > max) max = v;
+            }
+        }
+        double ms = tracer.traceNanos() / 1e6;
+        double mraysPerSec = tracer.primaryRays() / (tracer.traceNanos() / 1e3);
+        System.out.printf("traced in %.2f ms (%.1f Mrays/s)%n", ms, mraysPerSec);
+        System.out.printf("primary rays: %d, hits: %d%n", tracer.primaryRays(), tracer.primaryHits());
+        System.out.printf("shadow rays: %d, occluded: %d%n", tracer.shadowRays(), tracer.shadowsOccluded());
+        System.out.printf("lit pixels: %d / %d%n", tracer.litPixels(), W * H);
+        System.out.printf("max intensity: %.3f%n", max);
 
         int down = 5;
         int gridW = W / down, gridH = H / down;
-        float max = stats.maxIntensity();
         System.out.println("--- preview (" + gridW + "x" + gridH + ", '@' = max, ' ' = 0) ---");
         for (int y = gridH - 1; y >= 0; y--) {
             for (int x = 0; x < gridW; x++) {

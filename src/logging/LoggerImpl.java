@@ -78,11 +78,6 @@ public class LoggerImpl implements Logger {
     }
 
     @Override
-    public boolean isEnabled(Level level) {
-        return level.ordinal() >= min.ordinal();
-    }
-
-    @Override
     public Logger log(Level level, Throwable ex, String fmt, Object... args) {
         if (level.ordinal() < min.ordinal()) {
             return this;
