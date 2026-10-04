@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import scenes.Scene;
 import math.Vec3;
 import scenes.viewport.objects.Rect;
+import scenes.viewport.ScenePresets;
 
 /** Headless full-resolution benchmark; timings exclude AWT presentation. */
 public class ViewportBenchmark {
@@ -18,6 +19,8 @@ public class ViewportBenchmark {
         module.registerScenes(injector);
         var viewport = injector.get(Viewport.class);
         boolean close = Arrays.asList(args).contains("close");
+        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("playground") ? "playground" : "triangle");
+        for (String arg : args) if (arg.startsWith("size=")) viewport.state().resolution(Integer.parseInt(arg.substring(5)));
         if (close) {
             var state = viewport.state();
             var delta = new Vec3(0, 0, 9);
@@ -40,7 +43,9 @@ public class ViewportBenchmark {
         Arrays.sort(times);
         System.out.printf("Headless frame: median %.2f ms, p95 %.2f ms%n", times[50]/1e6, times[94]/1e6);
         var frame = profiler.snapshot().frames().getLast();
-        System.out.println("Scene: " + (close ? "close" : "default") + "; rays: " + frame.rays());
+        System.out.println("Scene: " + viewport.state().preset() + (close ? " close" : "")
+                + "; depth=0; spp/frame=1; deterministic; rays: " + frame.rays());
+        System.out.printf("Trace throughput: %.2f Mrays/s%n", frame.rays().primary()*1000./frame.rays().traceNanos());
         System.out.println("Trace profile: " + frame.trace());
         System.out.println("Trace execution samples: " + profiler.traceSamples());
         profiler.close();

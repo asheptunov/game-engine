@@ -152,7 +152,10 @@ public final class PerformanceOverlay implements Renderer {
                     trace.cpuNanos() < 0 ? "n/a" : format("%.2f", trace.cpuNanos() / 1e6),
                     latest.rays() == null ? 0 : latest.rays().traceNanos() / 1e6, mib(trace.allocatedBytes())), 14, 412);
         }
-        text(g, "CPU trace uses one render thread; hardware counters refresh at 4 Hz", 14, 432);
+        text(g, trace != null && trace.scene() != null
+                ? format("%s: depth %d, %d spp/frame; continuation %,d; deterministic direct",
+                        trace.scene(), trace.depth(), trace.samplesPerPixel(), trace.continuationRays())
+                : "CPU trace uses one render thread; hardware counters refresh at 4 Hz", 14, 432);
     }
 
     private void traceDetails(Graphics2D g, List<FrameProfiler.Frame> frames) {

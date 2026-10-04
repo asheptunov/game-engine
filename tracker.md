@@ -2,6 +2,10 @@
 
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
+The next renderer requirements and six playable implementation phases are in
+[RenderingRequirements.md](RenderingRequirements.md). Phase 1 is implemented;
+phases 2–6 remain planned.
+
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
 Make `math.Vec3` useful for geometry math. Operations: `add`, `sub`, `scale`, `negate`, `dot`, `cross`, `lengthSq`, `length`, `normalized`. Constants: `ZERO`.
@@ -139,6 +143,36 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   Close-up trace allocation fell from 258,592,368 to 10,272,816 bytes/frame.
   Same 1600x1600 sensor and lighting; measurements exclude presentation and overlay.
   Live JFR confirmed zero shadow traversal samples for the single-primitive scene.
+
+## Phase 1 — Material and object playground `[done]`
+
+- Active `DirectRgbTracer` renders linear RGB with editable named diffuse materials,
+  inverse-square colored point lights, fixed exposure, Reinhard tone mapping, and sRGB.
+  It retains direct-only transport (depth 0, one deterministic sample/pixel/frame).
+- The default playground has a sphere, a closed 12-triangle box, a floor, backdrop,
+  and reference sphere. Positive nonuniform scales and Euler rotations work for all
+  geometry. Sphere rays from inside return the exit; original geometric normals and
+  object/material/primitive identities remain available for the later glass phase.
+- `/` → `view help` discovers presets, object/material selection, transforms, color,
+  light editing, exposure, camera/scene reset, and explicit sensor resolution.
+  `view preset triangle` preserves the old diagnostic geometry with documented new
+  brightness conventions. `view resolution 400` is useful for interactive editing;
+  default remains 1600. Edits apply coherently between frames.
+- Prepared geometry is cached between edits. A conservative object bounds test avoids
+  testing all box triangles on misses; uniform spheres have a world-space fast path.
+  RGB storage is reused. F3 reports resolution/depth/spp/continuations, and F4 classifies
+  the new tracer. Live JFR collected intersection and visibility samples successfully.
+- Geometry, lighting/exposure, seeded reference intersections, shadows, commands,
+  resizing, image determinism, and existing renderer/DI/profiling/input/editor tests pass.
+  Preview: `out/cli/material-playground.png`. Hands-on checklist and conventions live
+  in the requirements document.
+- Headless playground at 1600²: 211.71 ms median / 222.00 p95, down from 457.04 / 531.32
+  before object bounds/sphere fast paths. At explicitly selected 400²: 21.30 / 23.91 ms.
+  These are different quality settings; display is 800², warmup 50 / measured 100 frames.
+  RGB triangle at 1600²: distant 53.61 / 56.21, close 82.42 / 89.30 ms; RGB lighting/display
+  adds work relative to the scalar predecessor. Unchanged trace allocation is ~0.7 KiB;
+  resampling allocations are outside that figure. Full-resolution playground tests:
+  12,460,864 primary / 7,741,705 shadow primitives, last-frame throughput ~12.9 Mrays/s.
 
 ## Notes / Decisions
 

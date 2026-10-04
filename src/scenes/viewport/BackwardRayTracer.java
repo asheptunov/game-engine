@@ -126,7 +126,7 @@ public class BackwardRayTracer {
             return 0;
         }
         primaryHits++;
-        var n = hit.surface.normal();
+        var n = hit.surface.normalAt(hit.x, hit.y, hit.z);
         float nx = n.x(), ny = n.y(), nz = n.z();
         if (nx * dx + ny * dy + nz * dz > 0) {
             nx = -nx; ny = -ny; nz = -nz;
@@ -147,7 +147,7 @@ public class BackwardRayTracer {
             if (cosTheta <= 0) continue;
             shadowRays++;
             // With no other primitive there is nothing to query, including no shadow origin to construct.
-            if (surfaces.length > 1 && occluded(hit.x + lx * SHADOW_BIAS, hit.y + ly * SHADOW_BIAS, hit.z + lz * SHADOW_BIAS,
+            if ((surfaces.length > 1 || !hit.surface.flat()) && occluded(hit.x + lx * SHADOW_BIAS, hit.y + ly * SHADOW_BIAS, hit.z + lz * SHADOW_BIAS,
                     lx, ly, lz, lightDist - SHADOW_BIAS, surfaces, hit.surface)) {
                 shadowsOccluded++;
                 continue;
@@ -181,7 +181,7 @@ public class BackwardRayTracer {
         for (var surface : surfaces) {
             // Skip only this primitive, not a whole mesh: other triangles must still cast shadows.
             // Tri and Rect are flat, so a departing ray cannot hit its source again.
-            if (surface == source) continue;
+            if (surface == source && surface.flat()) continue;
             shadowTests++;
             if (surface.distance(ox, oy, oz, dx, dy, dz) < maxDist) {
                 return true;

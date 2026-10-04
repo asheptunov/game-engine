@@ -48,7 +48,8 @@ public final class TraceSampler implements AutoCloseable {
     }
 
     static Work classify(List<String> methods) {
-        String tracer = "scenes.viewport.BackwardRayTracer.";
+        String tracer = methods.contains("scenes.viewport.DirectRgbTracer.trace")
+                ? "scenes.viewport.DirectRgbTracer." : "scenes.viewport.BackwardRayTracer.";
         if (!methods.contains(tracer + "trace")) return null;
         if (methods.contains(tracer + "occluded")) return Work.SHADOW;
         if (methods.contains(tracer + "nearestHit")) return Work.INTERSECTION;

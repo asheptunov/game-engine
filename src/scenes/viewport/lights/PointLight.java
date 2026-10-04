@@ -7,7 +7,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
-public record PointLight(Vec3 position) implements Light {
+public record PointLight(Vec3 position, Vec3 color, float intensity) implements Light {
+    public PointLight(Vec3 position) { this(position, new Vec3(1,1,1), 1); }
+    public PointLight {
+        if (!Float.isFinite(intensity) || intensity < 0) throw new IllegalArgumentException("Intensity must be finite and >= 0");
+        for (var v : new Vec3[]{position, color})
+            if (!Float.isFinite(v.x()) || !Float.isFinite(v.y()) || !Float.isFinite(v.z())) throw new IllegalArgumentException("Light must be finite");
+        if (color.x()<0 || color.y()<0 || color.z()<0 || color.x()>1 || color.y()>1 || color.z()>1)
+            throw new IllegalArgumentException("Light color must be 0..1 linear RGB");
+    }
     @Override
     public List<Ray> sample(int n, RandomGenerator rng) {
         var rays = new ArrayList<Ray>(n);

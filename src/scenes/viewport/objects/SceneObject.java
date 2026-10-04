@@ -5,6 +5,6 @@ import math.Ray;
 
 import java.util.Optional;
 
-public sealed interface SceneObject permits Tri, Rect {
+public sealed interface SceneObject permits Tri, Rect, Sphere {
     Optional<Intersection> intersect(Ray ray);
 }

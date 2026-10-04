@@ -14,9 +14,7 @@ import rendering.RasterPrinter;
 import rendering.Renderer;
 import scenes.CmdScene;
 import scenes.Scene;
-import scenes.viewport.lights.PointLight;
 import scenes.viewport.objects.Rect;
-import scenes.viewport.objects.Tri;
 import ui.ActionRegistry;
 import ui.BindingsLoader;
 import ui.InputBindings;
@@ -53,18 +51,19 @@ public class Viewport implements
 
     private final Raster             display;
     private final Painter            painter;
+    private final Printer            printer;
     private final int                width;
     private final int                height;
     private final Console            console;
     private final ViewportState      state;
-    private final BackwardRayTracer  tracer;
+    private final DirectRgbTracer  tracer;
     private final FrameProfiler profiler;
     private final ActionRegistry<Runnable>             actions;
     private final InputBindings                        bindings;
     private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
     private final MouseBindings                        mouseBindings;
 
-    private boolean consoleOpen = false;
+    private volatile boolean consoleOpen = false;
 
     @Inject
     public Viewport(Raster display,
@@ -76,7 +75,7 @@ public class Viewport implements
         this.profiler = profiler;
         this.display = display;
         this.painter = new RasterPainter(display);
-        Printer printer = new RasterPrinter(display, font);
+        this.printer = new RasterPrinter(display, font);
         this.width = width;
         this.height = height;
 
@@ -84,7 +83,10 @@ public class Viewport implements
         int charSpacing = -4;
         int lineSpacing = 0;
 
+        this.state = defaultScene();
+        this.tracer = new DirectRgbTracer(state);
         var rootCmd = new TrimmingCommand(DelegatingCommand.builder()
+                .withCommand("view", new ViewportCommand(state))
                 .withCommand("scene", new CmdScene(scenes, sceneRef))
                 .withCommand("exit", new CmdExit())
                 .build());
@@ -95,8 +97,6 @@ public class Viewport implements
                 100,
                 rootCmd);
 
-        this.state = defaultScene();
-        this.tracer = new BackwardRayTracer(state);
 
         this.actions = new ActionRegistry<Runnable>()
                 .register("console.open", () -> consoleOpen = true)
@@ -128,8 +128,7 @@ public class Viewport implements
                 new Vec3(0, 1, 0));
         var st = new ViewportState(sensor, SENSOR_W, SENSOR_H);
         st.eye(new Vec3(0, 0, -1));
-        st.addObject(new Tri(new Vec3(-2, -2, 10), new Vec3(2, -2, 10), new Vec3(0, 2, 10)));
-        st.addLight(new PointLight(new Vec3(0, 0, 5)));
+        ScenePresets.load(st, "playground");
         return st;
     }
 
@@ -139,16 +138,18 @@ public class Viewport implements
 
     @Override
     public void render() {
+        synchronized (state) { renderFrame(); }
+    }
+    private void renderFrame() {
         var traced = profiler.measure(FrameProfiler.Stage.TRACE, tracer::trace);
-        profiler.traceStats(tracer.profile());
+        profiler.traceStats(tracer.profile);
         profiler.rayStats(new FrameProfiler.Rays(state.sensorPixelsW(), state.sensorPixelsH(),
-                tracer.primaryRays(), tracer.primaryHits(), tracer.shadowRays(),
-                tracer.shadowsOccluded(), tracer.litPixels(), tracer.traceNanos()));
+                tracer.primaryRays, tracer.primaryHits, tracer.shadowRays,
+                tracer.shadowsOccluded, tracer.litPixels, tracer.traceNanos));
         var resampled = profiler.measure(FrameProfiler.Stage.RESAMPLE,
-                () -> Resampler.resample(traced, height, width));
-        final float[][] displayBuf = resampled.buf();
-        // A fully opaque grayscale image replaces the display, including black miss pixels.
-        final float invMax = resampled.max() > 0 ? 1f / resampled.max() : 0;
+                () -> new float[][][]{Resampler.resample(traced[0], height, width).buf(),
+                        Resampler.resample(traced[1], height, width).buf(), Resampler.resample(traced[2], height, width).buf()});
+        final float exposure = (float) Math.pow(2, state.exposure());
         // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
         profiler.measure(FrameProfiler.Stage.PAINT, () -> {
             var a = display.alpha();
@@ -156,18 +157,22 @@ public class Viewport implements
             var g = display.green();
             var b = display.blue();
             for (int y = 0; y < height; y++) {
-                var row = displayBuf[height - 1 - y];
+                int sy = height - 1 - y;
                 for (int x = 0; x < width; x++) {
                     int i = y * display.width() + x;
-                    byte gray = (byte) (row[x] * invMax * 255);
                     a[i] = (byte) 255;
-                    r[i] = g[i] = b[i] = gray;
+                    r[i] = DisplayMapping.encode(resampled[0][sy][x], exposure);
+                    g[i] = DisplayMapping.encode(resampled[1][sy][x], exposure);
+                    b[i] = DisplayMapping.encode(resampled[2][sy][x], exposure);
                 }
             }
         });
 
         if (consoleOpen) {
             console.render();
+        } else {
+            printer.print("/: view help  |  " + state.preset() + "  |  exposure " + state.exposure() + " stops",
+                    12, height - 24, Printer.Size.of(12), Printer.Spacing.of(-3));
         }
     }
 
@@ -183,19 +188,19 @@ public class Viewport implements
     }
 
     private void translateCamera(Vec3 delta) {
-        state.eye(state.eye().add(delta));
-        var s = state.cameraSensor();
-        state.cameraSensor(new Rect(s.origin().add(delta), s.edge1(), s.edge2()));
-        LOG.info("Camera at eye=%s", state.eye());
+        synchronized (state) {
+            state.eye(state.eye().add(delta));
+            var s = state.cameraSensor();
+            state.cameraSensor(new Rect(s.origin().add(delta), s.edge1(), s.edge2()));
+            LOG.info("Camera at eye=%s", state.eye());
+        }
     }
 
     private void resetCamera() {
-        state.eye(new Vec3(0, 0, -1));
-        state.cameraSensor(new Rect(
-                new Vec3(-0.5f, -0.5f, 0),
-                new Vec3(1, 0, 0),
-                new Vec3(0, 1, 0)));
-        LOG.info("Camera reset");
+        synchronized (state) {
+            ScenePresets.resetCamera(state);
+            LOG.info("Camera reset");
+        }
     }
 
     @Override public void keyTyped(KeyEvent e) {}

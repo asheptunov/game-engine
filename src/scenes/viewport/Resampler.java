@@ -28,6 +28,18 @@ public final class Resampler {
         int sensorW = sensorH == 0 ? 0 : sensor[0].length;
         var out = new float[dispH][dispW];
         if (sensorH == 0 || sensorW == 0) return new Result(out, 0);
+        if (dispH % sensorH == 0 && dispW % sensorW == 0) {
+            int blockH = dispH / sensorH, blockW = dispW / sensorW;
+            float max = 0;
+            for (int y = 0; y < dispH; y++) {
+                var row = sensor[y / blockH];
+                for (int x = 0; x < dispW; x++) {
+                    float value = row[x / blockW];
+                    out[y][x] = value; max = Math.max(max, value);
+                }
+            }
+            return new Result(out, max);
+        }
         // Integer downsampling (including 1:1) needs no overlap geometry or per-sample weights.
         if (dispH > 0 && dispW > 0 && sensorH % dispH == 0 && sensorW % dispW == 0) {
             int blockH = sensorH / dispH, blockW = sensorW / dispW;
