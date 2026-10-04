@@ -8,3 +8,6 @@ out/
 
 ### JRE ###
 hs_err_pid*.log
+
+### Agentic ###
+.claude/
