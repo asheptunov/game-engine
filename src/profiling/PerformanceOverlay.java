@@ -170,9 +170,10 @@ public final class PerformanceOverlay implements Renderer {
                     names[i], totals[i] * 100. / total, totals[i]), 14, 485 + i * 18);
         }
         var latest = frames.getLast();
-        text(g, format("%,d samples%s; hit %.1f%%; primary tests/frame %,d",
-                total, total < 100 ? " (low sample count)" : "", latest.rays().primary() == 0 ? 0 : latest.rays().hits() * 100. / latest.rays().primary(),
-                latest.trace() == null ? 0 : latest.trace().primaryTests()), 14, 563);
+        text(g, format("%,d samples%s; tests/frame primary %,d / shadow %,d",
+                total, total < 100 ? " (low sample count)" : "",
+                latest.trace() == null ? 0 : latest.trace().primaryTests(),
+                latest.trace() == null ? 0 : latest.trace().shadowTests()), 14, 563);
         text(g, sampling.status().equals("active")
                 ? "10ms sampling; batched delivery. Statistical CPU shares, not wall-time ms."
                 : "Sampler: " + sampling.status(), 14, 584);

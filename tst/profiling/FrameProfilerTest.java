@@ -43,7 +43,7 @@ public class FrameProfilerTest {
         p.beginFrame();
         for (int i = 1; i <= 20; i++) {
             if (i == 1) p.rayStats(new FrameProfiler.Rays(10, 10, 100, 1, 1, 0, 1, 100));
-            if (i == 1) p.traceStats(new TraceProfile.Stats(50, 60, 100));
+            if (i == 1) p.traceStats(new TraceProfile.Stats(50, 60, 100, 1));
             time += i * 1_000_000L;
             p.endFrame();
             p.beginFrame();
@@ -122,7 +122,7 @@ public class FrameProfilerTest {
             p.measure(FrameProfiler.Stage.PAINT, () -> { time += 3_000_000; });
             p.measure(FrameProfiler.Stage.PRESENT, () -> { time += 1_000_000; });
             p.rayStats(new FrameProfiler.Rays(1600, 1600, 2_560_000, 210_000, 210_000, 12_000, 198_000, 8_000_000));
-            p.traceStats(new TraceProfile.Stats(7_000_000, 100_000_000, 2_560_000));
+            p.traceStats(new TraceProfile.Stats(7_000_000, 100_000_000, 2_560_000, 210_000));
             p.endFrame(); time += 1_000_000; p.beginFrame();
         }
         p.toggle(); overlay.render();

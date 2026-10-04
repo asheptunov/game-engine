@@ -2,7 +2,6 @@ package scenes.viewport;
 
 import logging.LogManager;
 import logging.Logger;
-import math.Intersection;
 import math.Ray;
 import profiling.RuntimeMetrics;
 import profiling.TraceProfile;
@@ -35,6 +34,13 @@ public class BackwardRayTracer {
     private int  shadowsOccluded;
     private int  litPixels;
     private long traceNanos;
+    private long shadowTests;
+    public long shadowTests() { return shadowTests; }
+    /** One scratch hit per trace invocation, reused for all pixels; never returned to callers. */
+    private static final class Hit {
+        TraceSurface surface;
+        float x, y, z;
+    }
     private TraceProfile.Stats profile;
     public TraceProfile.Stats profile() { return profile; }
 
@@ -56,25 +62,31 @@ public class BackwardRayTracer {
 
     public float[][] trace() {
         primaryRays = primaryHits = shadowRays = shadowsOccluded = litPixels = 0;
+        shadowTests = 0;
         long cpuStart = RuntimeMetrics.threadCpu(), bytesStart = RuntimeMetrics.allocatedBytes();
         long t0 = System.nanoTime();
 
         var sensor = state.cameraSensor();
         var eye = state.eye();
         var surfaces = state.objects().stream().map(TraceSurface::new).toArray(TraceSurface[]::new);
+        var lights = pointLights(); // Snapshot once, avoiding list iterators and filtering in each pixel.
         int W = state.sensorPixelsW();
         int H = state.sensorPixelsH();
         var buf = new float[H][W];
+        var hit = new Hit();
         for (int py = 0; py < H; py++) {
             for (int px = 0; px < W; px++) {
                 float u = (px + 0.5f) / W;
                 float v = (py + 0.5f) / H;
-                var pixelWorld = sensor.origin()
-                        .add(sensor.edge1().scale(u))
-                        .add(sensor.edge2().scale(v));
-                var dir = pixelWorld.sub(eye).normalized();
+                float dx = sensor.origin().x() + sensor.edge1().x() * u + sensor.edge2().x() * v - eye.x();
+                float dy = sensor.origin().y() + sensor.edge1().y() * u + sensor.edge2().y() * v - eye.y();
+                float dz = sensor.origin().z() + sensor.edge1().z() * u + sensor.edge2().z() * v - eye.z();
+                float length = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+                if (length == 0) throw new ArithmeticException("Cannot normalize zero vector");
+                float inverseLength = 1f / length;
                 primaryRays++;
-                float lit = shade(new Ray(eye, dir), surfaces);
+                float lit = shade(eye.x(), eye.y(), eye.z(), dx * inverseLength, dy * inverseLength,
+                        dz * inverseLength, surfaces, lights, hit);
                 if (lit > 0) {
                     litPixels++;
                 }
@@ -85,69 +97,93 @@ public class BackwardRayTracer {
         traceNanos = System.nanoTime() - t0;
         long cpu = RuntimeMetrics.delta(cpuStart, RuntimeMetrics.threadCpu());
         long bytes = RuntimeMetrics.delta(bytesStart, RuntimeMetrics.allocatedBytes());
-        profile = new TraceProfile.Stats(cpu, bytes, (long) primaryRays * surfaces.length);
+        profile = new TraceProfile.Stats(cpu, bytes, (long) primaryRays * surfaces.length, shadowTests);
         maybeLog();
         return buf;
     }
 
     /** Returns the accumulated light contribution at the first surface hit by {@code ray}. */
     public float shade(Ray ray) {
-        return shade(ray, state.objects().stream().map(TraceSurface::new).toArray(TraceSurface[]::new));
+        var origin = ray.origin();
+        var direction = ray.direction();
+        return shade(origin.x(), origin.y(), origin.z(), direction.x(), direction.y(), direction.z(),
+                state.objects().stream().map(TraceSurface::new).toArray(TraceSurface[]::new), pointLights(), new Hit());
     }
 
-    private float shade(Ray ray, TraceSurface[] surfaces) {
-        var hit = nearestHit(ray, surfaces);
-        return light(ray, hit, surfaces);
+    private PointLight[] pointLights() {
+        return state.lights().stream().filter(PointLight.class::isInstance)
+                .map(PointLight.class::cast).toArray(PointLight[]::new);
     }
 
-    private float light(Ray ray, Intersection hit, TraceSurface[] surfaces) {
+    private float shade(float ox, float oy, float oz, float dx, float dy, float dz,
+                        TraceSurface[] surfaces, PointLight[] lights, Hit scratch) {
+        var hit = nearestHit(ox, oy, oz, dx, dy, dz, surfaces, scratch);
+        return light(dx, dy, dz, hit, surfaces, lights);
+    }
+
+    private float light(float dx, float dy, float dz, Hit hit, TraceSurface[] surfaces, PointLight[] lights) {
         if (hit == null) {
             return 0;
         }
         primaryHits++;
-        var n = hit.normal();
-        if (n.dot(ray.direction()) > 0) {
-            n = n.negate();
+        var n = hit.surface.normal();
+        float nx = n.x(), ny = n.y(), nz = n.z();
+        if (nx * dx + ny * dy + nz * dz > 0) {
+            nx = -nx; ny = -ny; nz = -nz;
         }
         float lit = 0;
-        for (var light : state.lights()) {
-            if (!(light instanceof PointLight pl)) {
-                continue;
-            }
-            var toLight = pl.position().sub(hit.point());
-            float lightDist = toLight.length();
+        for (var light : lights) {
+            float lx = light.position().x() - hit.x;
+            float ly = light.position().y() - hit.y;
+            float lz = light.position().z() - hit.z;
+            float lightDist = (float) Math.sqrt(lx * lx + ly * ly + lz * lz);
             if (lightDist < SHADOW_BIAS) {
                 continue;
             }
-            var lightDir = toLight.scale(1f / lightDist);
-            var shadowOrigin = hit.point().add(lightDir.scale(SHADOW_BIAS));
+            float inverseDistance = 1f / lightDist;
+            lx *= inverseDistance; ly *= inverseDistance; lz *= inverseDistance;
+            float cosTheta = Math.max(0, nx * lx + ny * ly + nz * lz);
+            // A light behind the camera-facing surface contributes nothing, regardless of visibility.
+            if (cosTheta <= 0) continue;
             shadowRays++;
-            if (occluded(new Ray(shadowOrigin, lightDir), lightDist - SHADOW_BIAS, surfaces)) {
+            // With no other primitive there is nothing to query, including no shadow origin to construct.
+            if (surfaces.length > 1 && occluded(hit.x + lx * SHADOW_BIAS, hit.y + ly * SHADOW_BIAS, hit.z + lz * SHADOW_BIAS,
+                    lx, ly, lz, lightDist - SHADOW_BIAS, surfaces, hit.surface)) {
                 shadowsOccluded++;
                 continue;
             }
-            float cosTheta = Math.max(0, n.dot(lightDir));
             lit += cosTheta;
         }
         return lit;
     }
 
-    private Intersection nearestHit(Ray ray, TraceSurface[] surfaces) {
+    private Hit nearestHit(float ox, float oy, float oz, float dx, float dy, float dz,
+                           TraceSurface[] surfaces, Hit result) {
         TraceSurface nearest = null;
         float distance = Float.POSITIVE_INFINITY;
         for (var surface : surfaces) {
-            float t = surface.distance(ray);
+            float t = surface.distance(ox, oy, oz, dx, dy, dz);
             if (t < distance) {
                 nearest = surface;
                 distance = t;
             }
         }
-        return nearest == null ? null : nearest.hit(ray, distance);
+        if (nearest == null) return null;
+        result.surface = nearest;
+        result.x = ox + dx * distance;
+        result.y = oy + dy * distance;
+        result.z = oz + dz * distance;
+        return result;
     }
 
-    private boolean occluded(Ray ray, float maxDist, TraceSurface[] surfaces) {
+    private boolean occluded(float ox, float oy, float oz, float dx, float dy, float dz,
+                             float maxDist, TraceSurface[] surfaces, TraceSurface source) {
         for (var surface : surfaces) {
-            if (surface.distance(ray) < maxDist) {
+            // Skip only this primitive, not a whole mesh: other triangles must still cast shadows.
+            // Tri and Rect are flat, so a departing ray cannot hit its source again.
+            if (surface == source) continue;
+            shadowTests++;
+            if (surface.distance(ox, oy, oz, dx, dy, dz) < maxDist) {
                 return true;
             }
         }

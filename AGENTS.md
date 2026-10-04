@@ -71,6 +71,9 @@ F3 only hides the panel; active collection continues. Hardware/JVM counters refr
 at 4 Hz: machine-normalized CPU load, logical CPUs, heap/RAM, and GC deltas. Trace
 CPU time and allocated bytes are read once around each trace; CPU time has OS timer
 granularity. Unsupported counters display n/a. The tracer does not use the GPU.
+The trace detail shows primary/shadow primitive-test counts. Shadow-ray counts are
+visibility queries for contributing lights; a query may test zero primitives when
+the scene contains only the hit surface. Back-facing lights issue no shadow query.
 
 `./test ViewportBenchmark` measures the default view headlessly; pass `close` for a
 near-full-screen triangle and `details` to enable JFR sampling. It warms up 50 frames

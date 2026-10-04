@@ -123,6 +123,23 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   rendering correctness, and overlay previews. JFR streaming was exercised against
   actual default and close-up benchmark workloads. Timing varies with JIT and load.
 
+## Scalar tracing and shadow-query pruning `[done]`
+
+- Prepared triangle/rectangle geometry feeds scalar intersection and lighting paths.
+  One invocation-local scratch hit replaces per-pixel Ray/Vec3/Intersection allocation;
+  the object-based geometry API remains available to other callers.
+- Skip the hit flat primitive during shadow queries, but retain all other primitives
+  and the bias/distance bound. Reject zero-contribution lights before querying shadows.
+- The overlay reports actual shadow primitive tests separately from shadow-ray queries.
+- Independent reference-image regressions cover distant/close cameras, randomized
+  multi-surface/multi-light scenes, external blockers, blockers beyond the light,
+  and scene mutation. Existing geometry, rendering, and profiling suites pass.
+- Local headless medians: default 33.43 -> 32.95 ms; close 81.37 -> 53.70 ms
+  (close p95 97.62 -> 57.92 ms). Shadow pruning alone measured 74.26 ms close-up.
+  Close-up trace allocation fell from 258,592,368 to 10,272,816 bytes/frame.
+  Same 1600x1600 sensor and lighting; measurements exclude presentation and overlay.
+  Live JFR confirmed zero shadow traversal samples for the single-primitive scene.
+
 ## Notes / Decisions
 
 - `float` throughout (consistent with existing Vec3, Camera).
