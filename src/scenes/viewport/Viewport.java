@@ -171,7 +171,8 @@ public class Viewport implements
         if (consoleOpen) {
             console.render();
         } else {
-            printer.print("/: view help  |  " + state.preset() + "  |  exposure " + state.exposure() + " stops",
+            printer.print("/: view help | " + state.preset() + " | N=" + state.pathDepth()
+                            + " | " + state.accumulatedSamples() + " spp " + state.samplingStatus(),
                     12, height - 24, Printer.Size.of(12), Printer.Spacing.of(-3));
         }
     }

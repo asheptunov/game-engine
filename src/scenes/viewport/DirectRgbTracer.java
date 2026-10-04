@@ -8,7 +8,7 @@ import scenes.viewport.lights.PointLight;
 import scenes.viewport.objects.SceneObject;
 import java.util.List;
 
-/** Deterministic, zero-continuation Lambertian transport. No transient objects per sensor ray. */
+/** Iterative diffuse/mirror paths and progressive linear RGB means; no per-ray objects. */
 public final class DirectRgbTracer {
     private static final float BIAS = 1e-3f;
     private final ViewportState state;
@@ -16,9 +16,33 @@ public final class DirectRgbTracer {
     private List<SceneObject> cachedLegacyObjects = List.of();
     private PreparedObject[] objects = new PreparedObject[0];
     private float[][][] buffer;
+    private double[][][] mean;
+    private AccumulationKey accumulationKey;
+    private long samples;
+    private boolean continuation;
+
+    /** Snapshot mutable lists; display and sample-batch settings do not change the estimator. */
+    private record AccumulationKey(List<SceneInstance> instances, List<SceneObject> legacy,
+                                   List<scenes.viewport.lights.Light> lights, Vec3 eye,
+                                   scenes.viewport.objects.Rect sensor, int width, int height,
+                                   int depth, long seed, long restart) {}
+
+    /** Pixel/sample-local stream, independent of batch boundaries and traversal lengths. */
+    static final class Sampler {
+        private long value;
+        void reset(long seed, long pixel, long sample) {
+            value = mix(seed) ^ mix(pixel + 0x632be59bd9b4e019L) ^ mix(sample + 0x8cb92baa3f3d8dd7L);
+        }
+        private static long mix(long n) {
+            n = (n ^ (n >>> 30)) * 0xbf58476d1ce4e5b9L;
+            n = (n ^ (n >>> 27)) * 0x94d049bb133111ebL;
+            return n ^ (n >>> 31);
+        }
+        float next() { value += 0x9e3779b97f4a7c15L; return (mix(value) >>> 40) * 0x1.0p-24f; }
+    }
 
     public int primaryRays, primaryHits, shadowRays, shadowsOccluded, litPixels;
-    public long traceNanos, primaryTests, shadowTests;
+    public long traceNanos, primaryTests, continuationTests, shadowTests, continuationRays;
     public TraceProfile.Stats profile;
 
     /** Retain the geometric normal and orientation; derive the shading normal separately. */
@@ -49,44 +73,101 @@ public final class DirectRgbTracer {
         cachedLegacyObjects = legacy;
     }
 
-    /** Returns reusable planar linear RGB storage, valid until the next trace. */
+    /** Returns reusable averaged radiance; caller holds the state monitor for coherent edits. */
     public float[][][] trace() {
         long cpu = RuntimeMetrics.threadCpu(), bytes = RuntimeMetrics.allocatedBytes(), start = System.nanoTime();
         prepare();
         primaryRays = primaryHits = shadowRays = shadowsOccluded = litPixels = 0;
-        primaryTests = shadowTests = 0;
+        primaryTests = continuationTests = shadowTests = continuationRays = 0;
+        continuation = false;
         var lights = state.lights().stream().filter(PointLight.class::isInstance)
                 .map(PointLight.class::cast).toArray(PointLight[]::new);
         var eye = state.eye();
         var sensor = state.cameraSensor();
         var hit = new Hit();
         var rgb = new float[3];
+        var lighting = new float[3];
+        var sampler = new Sampler();
+        var scattering = new Material.Sample();
         int width = state.sensorPixelsW(), height = state.sensorPixelsH();
-        if (buffer[0].length != height || buffer[0][0].length != width)
-            buffer = new float[3][height][width];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                float u = (x + .5f) / width, v = (y + .5f) / height;
-                float dx = sensor.origin().x() + sensor.edge1().x()*u + sensor.edge2().x()*v - eye.x();
-                float dy = sensor.origin().y() + sensor.edge1().y()*u + sensor.edge2().y()*v - eye.y();
-                float dz = sensor.origin().z() + sensor.edge1().z()*u + sensor.edge2().z()*v - eye.z();
-                float inverseLength = 1 / (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
-                dx *= inverseLength; dy *= inverseLength; dz *= inverseLength;
-                primaryRays++;
-                rgb[0] = rgb[1] = rgb[2] = 0;
-                if (nearestHit(eye.x(), eye.y(), eye.z(), dx, dy, dz, hit)) {
-                    primaryHits++;
-                    light(hit, lights, rgb);
+        var key = new AccumulationKey(cachedInstances, cachedLegacyObjects, List.copyOf(state.lights()),
+                eye, sensor, width, height, state.pathDepth(), state.seed(), state.restartVersion());
+        if (!key.equals(accumulationKey)) {
+            accumulationKey = key;
+            samples = 0;
+            state.accumulatedSamples(0);
+            if (mean == null || buffer[0].length != height || buffer[0][0].length != width) {
+                mean = new double[3][height][width];
+                buffer = new float[3][height][width];
+            } else {
+                for (int c = 0; c < 3; c++) for (int y = 0; y < height; y++) {
+                    java.util.Arrays.fill(mean[c][y], 0);
+                    java.util.Arrays.fill(buffer[c][y], 0);
                 }
-                buffer[0][y][x] = rgb[0]; buffer[1][y][x] = rgb[1]; buffer[2][y][x] = rgb[2];
-                if (rgb[0] + rgb[1] + rgb[2] > 0) litPixels++;
             }
         }
+        int batch = state.paused() ? 0 : (int) Math.min(state.samplesPerFrame(), Math.max(0, state.effectiveTarget() - samples));
+        int rendered = 0;
+        for (int s = 0; s < batch; s++) {
+            double inverseCount = 1.0 / (samples + 1);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    if (state.pathDepth() > 0) sampler.reset(state.seed(), (long)y*width + x, samples);
+                    // Preserve the phase 1 pixel-center diagnostic exactly at depth zero.
+                    float u = (x + (state.pathDepth() == 0 ? .5f : sampler.next())) / width;
+                    float v = (y + (state.pathDepth() == 0 ? .5f : sampler.next())) / height;
+                    float dx = sensor.origin().x() + sensor.edge1().x()*u + sensor.edge2().x()*v - eye.x();
+                    float dy = sensor.origin().y() + sensor.edge1().y()*u + sensor.edge2().y()*v - eye.y();
+                    float dz = sensor.origin().z() + sensor.edge1().z()*u + sensor.edge2().z()*v - eye.z();
+                    float inverseLength = 1 / (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    dx *= inverseLength; dy *= inverseLength; dz *= inverseLength;
+                    primaryRays++;
+                    path(eye.x(), eye.y(), eye.z(), dx, dy, dz, hit, lights, rgb, lighting, sampler, scattering);
+                    for (int c = 0; c < 3; c++) {
+                        mean[c][y][x] += (rgb[c] - mean[c][y][x]) * inverseCount;
+                        buffer[c][y][x] = (float) mean[c][y][x];
+                    }
+                    if (rgb[0] + rgb[1] + rgb[2] > 0) litPixels++;
+                }
+            }
+            samples++;
+            rendered++;
+            // Release the monitor between batches; finish at least one complete sensor sample.
+            if (System.nanoTime() - start >= 50_000_000L) break;
+        }
+        state.accumulatedSamples(samples);
         traceNanos = System.nanoTime() - start;
         profile = new TraceProfile.Stats(RuntimeMetrics.delta(cpu, RuntimeMetrics.threadCpu()),
                 RuntimeMetrics.delta(bytes, RuntimeMetrics.allocatedBytes()), primaryTests, shadowTests,
-                state.preset(), 0, 1, 0);
+                state.preset(), state.pathDepth(), rendered, continuationRays, continuationTests,
+                samples, state.samplingStatus(), state.seed());
         return buffer;
+    }
+
+    private void path(float ox, float oy, float oz, float dx, float dy, float dz, Hit hit,
+                      PointLight[] lights, float[] rgb, float[] lighting, Sampler sampler, Material.Sample scattering) {
+        rgb[0] = rgb[1] = rgb[2] = 0;
+        float red = 1, green = 1, blue = 1;
+        for (int depth = 0; depth <= state.pathDepth(); depth++) {
+            continuation = depth != 0;
+            if (!nearestHit(ox, oy, oz, dx, dy, dz, hit)) break; // Black environment.
+            if (depth == 0) primaryHits++;
+            var material = hit.primitive.material;
+            if (material.kind() == Material.Kind.DIFFUSE) {
+                light(hit, lights, lighting);
+                rgb[0] += red*lighting[0]; rgb[1] += green*lighting[1]; rgb[2] += blue*lighting[2];
+            }
+            // Evaluate direct lighting at the final vertex before stopping continuation.
+            if (depth == state.pathDepth()) break;
+            if (material.color().x()*red + material.color().y()*green + material.color().z()*blue == 0) break;
+            float sign = hit.frontFace ? 1 : -1;
+            float nx = hit.nx*sign, ny = hit.ny*sign, nz = hit.nz*sign;
+            material.sample(dx, dy, dz, nx, ny, nz, sampler.next(), sampler.next(), scattering);
+            red *= scattering.red; green *= scattering.green; blue *= scattering.blue;
+            dx = scattering.dx; dy = scattering.dy; dz = scattering.dz;
+            ox = hit.x + nx*BIAS; oy = hit.y + ny*BIAS; oz = hit.z + nz*BIAS;
+            continuationRays++;
+        }
     }
 
     private void light(Hit hit, PointLight[] lights, float[] rgb) {
@@ -125,7 +206,7 @@ public final class DirectRgbTracer {
         for (var object : objects) {
             if (object.primitives.length > 1 && !object.overlaps(ox, oy, oz, dx, dy, dz, distance)) continue;
             for (var primitive : object.primitives) {
-                primaryTests++;
+                if (continuation) continuationTests++; else primaryTests++;
                 float t = primitive.distance(ox, oy, oz, dx, dy, dz);
                 if (t < distance) { distance = t; nearest = primitive; }
             }
@@ -140,8 +221,21 @@ public final class DirectRgbTracer {
     }
 
     /** Test adapter, outside the hot path. */
+    float[] radiance(Ray ray, long sample) {
+        prepare();
+        var rgb = new float[3];
+        var sampler = new Sampler(); sampler.reset(state.seed(), 0, sample);
+        var origin = ray.origin(); var direction = ray.direction().normalized();
+        var lights = state.lights().stream().filter(PointLight.class::isInstance).map(PointLight.class::cast).toArray(PointLight[]::new);
+        path(origin.x(), origin.y(), origin.z(), direction.x(), direction.y(), direction.z(),
+                new Hit(), lights, rgb, new float[3], sampler, new Material.Sample());
+        return rgb;
+    }
+
+    /** Test adapter, outside the hot path. */
     Hit intersect(Ray ray) {
         prepare();
+        continuation = false;
         var hit = new Hit(); var origin = ray.origin(); var direction = ray.direction();
         return nearestHit(origin.x(), origin.y(), origin.z(), direction.x(), direction.y(), direction.z(), hit)
                 ? hit : null;

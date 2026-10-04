@@ -42,8 +42,10 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   `AwtViewer` presents the raster through a Swing frame and `BufferStrategy`.
 - `TextureEditor` handles painting, selection, color picking, undo/redo, and `.tx` file I/O.
   `ChainRasterSerializer` tries ARGB then RGB formats. Shared console code is in `src/ui/console/`.
-- `Viewport` uses `DirectRgbTracer` for deterministic RGB pinhole rays and Lambertian
-  direct lighting with shadows and inverse-square point lights. `Resampler` filters linear
+- `Viewport` uses `DirectRgbTracer` for iterative diffuse/mirror RGB paths with progressive
+  accumulation, shadow visibility, and inverse-square point lights. Depth 0 preserves the
+  deterministic pixel-center direct diagnostic; depth >0 jitters each pixel's primary ray.
+  `Resampler` filters averaged linear
   RGB before fixed exposure, Reinhard tone mapping, and sRGB display encoding.
   `BackwardRayTracer` retains scalar reference behavior; the forward `RayTracer` remains
   available but neither is used by the viewport.
@@ -52,6 +54,15 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   `view resolution 400` explicitly selects a smaller sensor for editing; default is 1600.
   Immutable named `SceneInstance` edits share the state monitor with frame rendering.
   Prepared geometry and per-object bounds are cached until edits.
+- `view preset bounce-room` enables the phase 2 mirror/color-bleeding demo at depth 3.
+  Select `view resolution 200` explicitly for faster editing. `view depth`, `samples`,
+  `seed`, `restart`, `target`, `pause`, and `resume` control convergence; `view type`
+  changes a shared material between diffuse and mirror. `view status` shows settings.
+  The active `pathDepth` setting is independent of the old forward `maxBounces`.
+  Snapshot invalidation detects camera/scene/light/transport changes between batches;
+  exposure, overlays, console, and batch-size edits retain samples. RGB means use double
+  precision; counts cap at one billion spp. Input runs between full sensor batches,
+  with a 50 ms budget checked after each complete sample (one sample can exceed it).
 - Keyboard and mouse bindings live in `assets/bindings/*.properties`; action registration
   stays in the scenes. Binding parsing/validation is in `src/ui/`.
 - `src/di/` provides constructor injection (`@Inject` or a no-arg constructor), `@Provides`,
@@ -78,7 +89,9 @@ F3 only hides the panel; active collection continues. Hardware/JVM counters refr
 at 4 Hz: machine-normalized CPU load, logical CPUs, heap/RAM, and GC deltas. Trace
 CPU time and allocated bytes are read once around each trace; CPU time has OS timer
 granularity. Unsupported counters display n/a. The tracer does not use the GPU.
-The trace detail shows primary/shadow primitive-test counts. Shadow-ray counts are
+The trace detail shows primary/continuation/shadow primitive-test counts, accumulated
+spp and sampling status. Primary throughput is labeled separately from all-ray throughput
+in the benchmark. Shadow-ray counts are
 visibility queries for contributing lights; a query may test zero primitives when
 the scene contains only the hit surface. Back-facing lights issue no shadow query.
 
@@ -86,11 +99,18 @@ the scene contains only the hit surface. Back-facing lights issue no shadow quer
 near-full-screen triangle and `details` to enable JFR sampling. It warms up 50 frames
 and measures 100; it excludes overlay drawing, AWT presentation, and scheduler idle.
 Pass `playground` for the material demo and `size=400` for an explicit sensor size.
+Pass `bounce-room depth=3 size=200 samples=1 seed=1` for progressive paths. Benchmark
+metadata includes requested/actual batch spp, total accumulated spp and sampling seed.
 It records dimensions, depth, samples per frame, deterministic sampling, throughput,
 trace allocations, and actual primitive tests. Compare matching settings.
 Run `scenes.viewport.MaterialPlaygroundTest` for phase 1 numeric/image/control checks;
 it writes `out/cli/material-playground.png`. Texture editor key tests need a non-headless
 AWT toolkit (they query keyboard lock state), but do not open a window.
+Run `scenes.viewport.ProgressivePathTest` for sampling probability/weight, depth,
+reflection, seeded convergence, batch equivalence and invalidation checks. It writes
+`out/cli/bounce-room-preview-1.png` and `bounce-room-preview-128.png` (320 square).
+`ViewportKeyBindingsTest` also requires `-Djava.awt.headless=false`, without opening
+a window; it exercises console opening/closing and camera invalidation.
 
 Run `./test profiling.FrameProfilerTest` and `./test ProfilingIntegrationTest` for
 headless timing, toggle, rendering, and scene/DI checks. The first writes synthetic

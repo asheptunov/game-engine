@@ -18,6 +18,38 @@ public class ViewportState {
     private final List<SceneInstance> instances = new ArrayList<>();
     private float exposure;
     private String preset = "custom";
+    // Active backward path settings are independent of the legacy forward tracer's maxBounces.
+    private int pathDepth, samplesPerFrame = 1;
+    private long seed = 1, restartVersion, sampleTarget, accumulatedSamples;
+    private boolean paused;
+    public static final long SAMPLE_LIMIT = 1_000_000_000L;
+    public int pathDepth() { return pathDepth; }
+    public void pathDepth(int n) {
+        if (n < 0 || n > 32) throw new IllegalArgumentException("Depth must be 0..32 continuations");
+        pathDepth = n;
+    }
+    public int samplesPerFrame() { return samplesPerFrame; }
+    public void samplesPerFrame(int n) {
+        if (n < 1 || n > 8) throw new IllegalArgumentException("Samples/frame must be 1..8");
+        samplesPerFrame = n;
+    }
+    public long seed() { return seed; }
+    public void seed(long n) { seed = n; }
+    public void restart() { restartVersion++; }
+    public long restartVersion() { return restartVersion; }
+    public long sampleTarget() { return sampleTarget; }
+    public void sampleTarget(long n) {
+        if (n < 0 || n > SAMPLE_LIMIT) throw new IllegalArgumentException("Target must be 0 (continuous)..1000000000 spp");
+        sampleTarget = n;
+    }
+    public boolean paused() { return paused; }
+    public void paused(boolean value) { paused = value; }
+    public long accumulatedSamples() { return accumulatedSamples; }
+    void accumulatedSamples(long n) { accumulatedSamples = n; }
+    public long effectiveTarget() { return sampleTarget == 0 ? SAMPLE_LIMIT : sampleTarget; }
+    public String samplingStatus() {
+        return paused ? "paused" : accumulatedSamples >= effectiveTarget() ? "complete" : "converging";
+    }
     public List<SceneInstance> instances() { return instances; }
     public String preset() { return preset; }
     public void preset(String name) { preset = name; }

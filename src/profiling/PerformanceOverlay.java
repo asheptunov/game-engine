@@ -84,11 +84,11 @@ public final class PerformanceOverlay implements Renderer {
             if (rays == null) {
                 text(g, "Texture editor    ray statistics: n/a", 14, 64);
             } else {
-                text(g, format("Render %dx%d    %,d rays    %.2f Mrays/s    trace %.2f ms",
+                text(g, format("Render %dx%d    %,d primary    %.2f Mprimary/s    trace %.2f ms",
                         rays.width(), rays.height(), rays.primary(),
                         rays.traceNanos() > 0 ? rays.primary() * 1000. / rays.traceNanos() : 0,
                         rays.traceNanos() / 1e6), 14, 64);
-                text(g, format("Hits %,d    shadows %,d / %,d blocked    lit pixels %,d",
+                text(g, format("Primary hits %,d    blocked %,d / %,d visibility    lit samples %,d",
                         rays.hits(), rays.occluded(), rays.shadows(), rays.lit()), 14, 82);
             }
             double[] means = new double[COLORS.length];
@@ -153,8 +153,9 @@ public final class PerformanceOverlay implements Renderer {
                     latest.rays() == null ? 0 : latest.rays().traceNanos() / 1e6, mib(trace.allocatedBytes())), 14, 412);
         }
         text(g, trace != null && trace.scene() != null
-                ? format("%s: depth %d, %d spp/frame; continuation %,d; deterministic direct",
-                        trace.scene(), trace.depth(), trace.samplesPerPixel(), trace.continuationRays())
+                ? format("%s: N=%d batch %d spp; total %,d spp %s; cont %,d",
+                        trace.scene(), trace.depth(), trace.samplesPerPixel(), trace.accumulatedSamples(),
+                        trace.samplingStatus(), trace.continuationRays())
                 : "CPU trace uses one render thread; hardware counters refresh at 4 Hz", 14, 432);
     }
 
@@ -167,15 +168,16 @@ public final class PerformanceOverlay implements Renderer {
         long total = sampling.total();
         if (total == 0) { text(g, "Sampler: " + sampling.status(), 14, 485); return; }
         long[] totals = {sampling.generation(), sampling.intersection(), sampling.lighting(), sampling.shadow()};
-        String[] names = {"Ray generation / trace other", "Nearest hit + materialize", "Lighting / light vectors", "Shadow intersection tests"};
+        String[] names = {"Generation / transport / mean", "Nearest hit + materialize", "Lighting / light vectors", "Shadow intersection tests"};
         for (int i = 0; i < totals.length; i++) {
             text(g, format("%-29s %5.1f%%   %,d samples",
                     names[i], totals[i] * 100. / total, totals[i]), 14, 485 + i * 18);
         }
         var latest = frames.getLast();
-        text(g, format("%,d samples%s; tests/frame primary %,d / shadow %,d",
+        text(g, format("%,d samples%s; tests primary %,d / cont %,d / shadow %,d",
                 total, total < 100 ? " (low sample count)" : "",
                 latest.trace() == null ? 0 : latest.trace().primaryTests(),
+                latest.trace() == null ? 0 : latest.trace().continuationTests(),
                 latest.trace() == null ? 0 : latest.trace().shadowTests()), 14, 563);
         text(g, sampling.status().equals("active")
                 ? "10ms sampling; batched delivery. Statistical CPU shares, not wall-time ms."

@@ -19,8 +19,14 @@ public class ViewportBenchmark {
         module.registerScenes(injector);
         var viewport = injector.get(Viewport.class);
         boolean close = Arrays.asList(args).contains("close");
-        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("playground") ? "playground" : "triangle");
-        for (String arg : args) if (arg.startsWith("size=")) viewport.state().resolution(Integer.parseInt(arg.substring(5)));
+        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("bounce-room") ? "bounce-room"
+                : Arrays.asList(args).contains("playground") ? "playground" : "triangle");
+        for (String arg : args) {
+            if (arg.startsWith("size=")) viewport.state().resolution(Integer.parseInt(arg.substring(5)));
+            if (arg.startsWith("depth=")) viewport.state().pathDepth(Integer.parseInt(arg.substring(6)));
+            if (arg.startsWith("samples=")) viewport.state().samplesPerFrame(Integer.parseInt(arg.substring(8)));
+            if (arg.startsWith("seed=")) viewport.state().seed(Long.parseLong(arg.substring(5)));
+        }
         if (close) {
             var state = viewport.state();
             var delta = new Vec3(0, 0, 9);
@@ -40,12 +46,17 @@ public class ViewportBenchmark {
             pipeline.render();
             if (i >= 0) times[i] = System.nanoTime() - start;
         }
+        // Publish the final completed frame before reading its counters.
+        profiler.beginFrame();
         Arrays.sort(times);
         System.out.printf("Headless frame: median %.2f ms, p95 %.2f ms%n", times[50]/1e6, times[94]/1e6);
         var frame = profiler.snapshot().frames().getLast();
         System.out.println("Scene: " + viewport.state().preset() + (close ? " close" : "")
-                + "; depth=0; spp/frame=1; deterministic; rays: " + frame.rays());
-        System.out.printf("Trace throughput: %.2f Mrays/s%n", frame.rays().primary()*1000./frame.rays().traceNanos());
+                + "; depth=" + viewport.state().pathDepth() + "; spp/batch max=" + viewport.state().samplesPerFrame()
+                + "; accumulated=" + viewport.state().accumulatedSamples() + "; seed=" + viewport.state().seed()
+                + (viewport.state().pathDepth() == 0 ? "; pixel centers" : "; jittered progressive") + "; rays: " + frame.rays());
+        System.out.printf("Trace throughput (primary + continuation + visibility): %.2f Mrays/s%n",
+                (frame.rays().primary() + frame.trace().continuationRays() + frame.rays().shadows())*1000./frame.rays().traceNanos());
         System.out.println("Trace profile: " + frame.trace());
         System.out.println("Trace execution samples: " + profiler.traceSamples());
         profiler.close();

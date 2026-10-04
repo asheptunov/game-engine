@@ -35,5 +35,19 @@ public class ProfilingIntegrationTest {
         assertEquals(0L, editor.stage(FrameProfiler.Stage.TRACE));
         assertTrue(editor.stage(FrameProfiler.Stage.OVERLAY) > 0);
     }
+    @Test void progressiveViewportKeepsSamplesAcrossOverlayExposureAndSceneSwitch() {
+        var module = new MainModule();var injector = Injector.create(module);module.registerScenes(injector);
+        var viewport = injector.get(Viewport.class);var state = viewport.state();
+        state.resolution(64);scenes.viewport.ScenePresets.load(state,"bounce-room");
+        var profiler = injector.get(FrameProfiler.class);
+        viewport.render();assertEquals(1L,state.accumulatedSamples());
+        profiler.toggle();state.exposure(1);
+        viewport.render();assertEquals(2L,state.accumulatedSamples());
+        profiler.toggle();viewport.render();assertEquals(3L,state.accumulatedSamples());
+        state.sampleTarget(3);viewport.render();assertEquals("complete",state.samplingStatus());
+        // Re-entering after rendering the editor also preserves the stationary viewport's mean.
+        injector.get(TextureEditor.class).render();viewport.render();assertEquals(3L,state.accumulatedSamples());
+        profiler.close();
+    }
     public static void main(String[] args) { SuiteRunner.runThis(); }
 }

@@ -3,8 +3,8 @@
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
 The next renderer requirements and six playable implementation phases are in
-[RenderingRequirements.md](RenderingRequirements.md). Phase 1 is implemented;
-phases 2–6 remain planned.
+[RenderingRequirements.md](RenderingRequirements.md). Phases 1–2 are implemented;
+phases 3–6 remain planned.
 
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
@@ -174,9 +174,35 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   resampling allocations are outside that figure. Full-resolution playground tests:
   12,460,864 primary / 7,741,705 shadow primitives, last-frame throughput ~12.9 Mrays/s.
 
+## Phase 2 — Progressive paths and indirect bounces `[done]`
+
+- One iterative continuation per hit; cosine-weighted diffuse scattering and ideal
+  mirror reflection. RGB throughput includes the correctly weighted material sample.
+  Direct point lighting is evaluated at diffuse vertices, including the final allowed
+  vertex. Mirrors receive reflected views, with no diffuse point-light highlight.
+- `bounce-room` has red/green walls, a neutral floor and mirror sphere reflecting a
+  gold sphere. Depth defaults to 3 for this preset; original presets stay depth 0.
+  `view type diffuse/mirror`, depth, samples, seed, restart, target, pause/resume are live.
+- Double-precision online RGB means keep storage fixed; long counts stop at one billion
+  spp. Camera, geometry, material, light, resolution, seed and depth edits reset sampling.
+  Exposure, overlays, console and sample batch changes preserve it. Pixel/sample-local
+  seeded streams reproduce the same result regardless of batch boundaries.
+- Footer/F3 show spp and convergence status. F4 distinguishes primitive work for
+  primary, continuation and visibility rays; CPU sample attribution remains statistical.
+  Benchmark supports progressive settings and reports actual batch work.
+- Numeric tests cover sampling density, throughput, final-vertex lighting and bounded
+  mirror loops. Seeded room images show color bleeding and declining error; 64 spp has
+  about 1.3% of the 1-spp squared error relative to a 512-spp reference. Renderer,
+  geometry, profiling, DI/input/editor regressions pass. Previews and hands-on controls
+  are documented in the requirements.
+- Seed 1, one spp/batch, 800² display: room depth 3 at 200² measured 30.07 ms median /
+  47.77 p95; at 400² 96.04 / 144.23. Room depth 0 at 400² measured 23.79 / 47.11;
+  triangle depth 0 at 1600² 61.65 / 101.17. Settings differ in quality and work.
+  Progressive traces reuse storage and allocate about 1 KiB/batch after preparation.
+
 ## Notes / Decisions
 
-- `float` throughout (consistent with existing Vec3, Camera).
+- `float` geometry/transport (consistent with Vec3); progressive RGB means use `double`.
 - Epsilon for intersection: `1e-4f`. Tunable later.
 - Sealed interfaces for `SceneObject` so the compiler enforces exhaustive handling if/when intersection logic needs branching by type.
 - Rect's normal direction = `edge1 × edge2` normalized. Construct sensor rects with edges oriented so the normal faces the scene (sensing side).
