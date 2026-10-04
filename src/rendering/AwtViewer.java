@@ -12,6 +12,7 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 
 public class AwtViewer implements Renderer {
     private static final Logger LOG = LogManager.instance().getThis();
@@ -41,12 +42,23 @@ public class AwtViewer implements Renderer {
 
     @Override
     public void render() {
+        // Pack directly into the reusable image, avoiding a 3-channel int[] allocation and setPixels.
+        var pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+        var a = raster.alpha();
+        var r = raster.red();
+        var green = raster.green();
+        var b = raster.blue();
+        for (int p = 0; p < pixels.length; p++) {
+            double alpha = (a[p] & 255) / 255.;
+            pixels[p] = ((int) (alpha * (r[p] & 255)) << 16)
+                    | ((int) (alpha * (green[p] & 255)) << 8)
+                    | (int) (alpha * (b[p] & 255));
+        }
         int i = 0;
         do {
             LOG.debug("Render attempt %d...", i);
             do {
                 var g = bs.getDrawGraphics();
-                image.getRaster().setPixels(0, 0, raster.width(), raster.height(), raster.rgb());
                 g.drawImage(image, 0, 0, null);
                 g.dispose();
             } while (bs.contentsRestored());

@@ -56,6 +56,7 @@ public class BackwardRayTracer {
 
         var sensor = state.cameraSensor();
         var eye = state.eye();
+        var surfaces = state.objects().stream().map(TraceSurface::new).toArray(TraceSurface[]::new);
         int W = state.sensorPixelsW();
         int H = state.sensorPixelsH();
         var buf = new float[H][W];
@@ -68,7 +69,7 @@ public class BackwardRayTracer {
                         .add(sensor.edge2().scale(v));
                 var dir = pixelWorld.sub(eye).normalized();
                 primaryRays++;
-                float lit = shade(new Ray(eye, dir));
+                float lit = shade(new Ray(eye, dir), surfaces);
                 if (lit > 0) {
                     litPixels++;
                 }
@@ -83,7 +84,11 @@ public class BackwardRayTracer {
 
     /** Returns the accumulated light contribution at the first surface hit by {@code ray}. */
     public float shade(Ray ray) {
-        var hit = nearestHit(ray);
+        return shade(ray, state.objects().stream().map(TraceSurface::new).toArray(TraceSurface[]::new));
+    }
+
+    private float shade(Ray ray, TraceSurface[] surfaces) {
+        var hit = nearestHit(ray, surfaces);
         if (hit == null) {
             return 0;
         }
@@ -105,7 +110,7 @@ public class BackwardRayTracer {
             var lightDir = toLight.scale(1f / lightDist);
             var shadowOrigin = hit.point().add(lightDir.scale(SHADOW_BIAS));
             shadowRays++;
-            if (occluded(new Ray(shadowOrigin, lightDir), lightDist - SHADOW_BIAS)) {
+            if (occluded(new Ray(shadowOrigin, lightDir), lightDist - SHADOW_BIAS, surfaces)) {
                 shadowsOccluded++;
                 continue;
             }
@@ -115,21 +120,22 @@ public class BackwardRayTracer {
         return lit;
     }
 
-    private Intersection nearestHit(Ray ray) {
-        Intersection nearest = null;
-        for (var obj : state.objects()) {
-            var h = obj.intersect(ray);
-            if (h.isPresent() && (nearest == null || h.get().distance() < nearest.distance())) {
-                nearest = h.get();
+    private Intersection nearestHit(Ray ray, TraceSurface[] surfaces) {
+        TraceSurface nearest = null;
+        float distance = Float.POSITIVE_INFINITY;
+        for (var surface : surfaces) {
+            float t = surface.distance(ray);
+            if (t < distance) {
+                nearest = surface;
+                distance = t;
             }
         }
-        return nearest;
+        return nearest == null ? null : nearest.hit(ray, distance);
     }
 
-    private boolean occluded(Ray ray, float maxDist) {
-        for (var obj : state.objects()) {
-            var h = obj.intersect(ray);
-            if (h.isPresent() && h.get().distance() < maxDist) {
+    private boolean occluded(Ray ray, float maxDist, TraceSurface[] surfaces) {
+        for (var surface : surfaces) {
+            if (surface.distance(ray) < maxDist) {
                 return true;
             }
         }

@@ -92,7 +92,8 @@ public class MainModule implements Module {
 
     @Provides
     @Singleton
-    Renderer renderer(List<Renderer> pipeline, FrameProfiler profiler) {
+    Renderer renderer(List<Renderer> pipeline, FrameProfiler profiler,
+                      AtomicReference<Scene> sceneRef) {
         var timed = new java.util.ArrayList<Renderer>();
         for (var delegate : pipeline) {
             var stage = switch (delegate) {
@@ -101,7 +102,10 @@ public class MainModule implements Module {
                 case AwtViewer _ -> FrameProfiler.Stage.PRESENT;
                 default -> FrameProfiler.Stage.SCENE;
             };
-            timed.add(ProfiledFrame.stage(profiler, stage, delegate));
+            Renderer active = stage == FrameProfiler.Stage.BACKGROUND
+                    ? () -> { if (!(sceneRef.get() instanceof Viewport)) delegate.render(); }
+                    : delegate;
+            timed.add(ProfiledFrame.stage(profiler, stage, active));
         }
         return new ProfiledFrame(profiler, new CompositeRenderer(timed));
     }

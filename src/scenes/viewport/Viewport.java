@@ -5,9 +5,6 @@ import di.annotations.Named;
 import logging.LogManager;
 import logging.Logger;
 import math.Vec3;
-import rendering.BlendMode;
-import rendering.Color;
-import rendering.Color.RgbInt24Color;
 import rendering.Font;
 import rendering.Painter;
 import rendering.Printer;
@@ -149,15 +146,24 @@ public class Viewport implements
         var resampled = profiler.measure(FrameProfiler.Stage.RESAMPLE,
                 () -> Resampler.resample(traced, height, width));
         final float[][] displayBuf = resampled.buf();
-        // invMax==0 when nothing was hit, which collapses the sampler to a uniform BLACK fill —
-        // so a single drawImg call covers both the "no hits" and "normalize against max" cases.
+        // A fully opaque grayscale image replaces the display, including black miss pixels.
         final float invMax = resampled.max() > 0 ? 1f / resampled.max() : 0;
         // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
-        profiler.measure(FrameProfiler.Stage.PAINT, () -> painter.drawImg(0, 0, width, height, (_, dx, dy) -> {
-            float intensity = displayBuf[height - 1 - dy][dx] * invMax;
-            if (intensity <= 0) return Color.NamedColor.BLACK;
-            return RgbInt24Color.gray((int) (intensity * 255));
-        }, BlendMode.OVER_PRE));
+        profiler.measure(FrameProfiler.Stage.PAINT, () -> {
+            var a = display.alpha();
+            var r = display.red();
+            var g = display.green();
+            var b = display.blue();
+            for (int y = 0; y < height; y++) {
+                var row = displayBuf[height - 1 - y];
+                for (int x = 0; x < width; x++) {
+                    int i = y * display.width() + x;
+                    byte gray = (byte) (row[x] * invMax * 255);
+                    a[i] = (byte) 255;
+                    r[i] = g[i] = b[i] = gray;
+                }
+            }
+        });
 
         if (consoleOpen) {
             console.render();
