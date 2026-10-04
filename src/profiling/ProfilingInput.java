@@ -7,6 +7,7 @@ public final class ProfilingInput implements KeyListener, MouseListener, MouseMo
     private final FrameProfiler profiler;
     private final Object delegate;
     private boolean held;
+    private boolean detailsHeld;
     public ProfilingInput(FrameProfiler profiler, Object delegate) {
         this.profiler = profiler;
         this.delegate = delegate;
@@ -15,10 +16,14 @@ public final class ProfilingInput implements KeyListener, MouseListener, MouseMo
         if (e.getKeyCode() == KeyEvent.VK_F3) {
             if (!held) profiler.toggle();
             held = true;
+        } else if (e.getKeyCode() == KeyEvent.VK_F4) {
+            if (!detailsHeld) profiler.toggleTraceDetails();
+            detailsHeld = true;
         } else ((KeyListener) delegate).keyPressed(e);
     }
     @Override public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_F3) held = false;
+        else if (e.getKeyCode() == KeyEvent.VK_F4) detailsHeld = false;
         else ((KeyListener) delegate).keyReleased(e);
     }
     @Override public void keyTyped(KeyEvent e) { ((KeyListener) delegate).keyTyped(e); }

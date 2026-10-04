@@ -105,6 +105,24 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
 - Headless tests cover timing accounting, history limits, percentiles, toggle behavior, rendering,
   and real scene/DI integration.
 
+## Trace drilldown and runtime telemetry `[done]`
+
+- F4 enables/disables a JFR execution-sampling breakdown: ray generation/other trace
+  work, nearest-hit search/materialization, lighting, and shadow intersection tests.
+  No timing calls are added to individual rays. Recording and samples are bounded;
+  the overlay flags low sample counts and unavailable JFR support.
+- F3 includes logical CPU count, whole-machine-normalized JVM/system CPU use, heap,
+  physical RAM, GC deltas, and per-trace render-thread CPU time/allocated bytes.
+  Opaque overlay pixels are copied directly to avoid adding a blending bottleneck.
+- Benchmark supports default/close views and sampling on/off. The close view raises
+  hits/shadow rays from 169,362 to 2,240,000 per frame at the same 2,560,000 primary rays.
+  A local JFR capture found shadow testing the largest sampled hotspot, followed by
+  nearest-hit search; temporary Vec3/Ray/Intersection objects dominate allocations
+  (about 247 MiB allocated per close-up trace). GC is secondary in that capture.
+- Tests cover sample classification and bounds, toggle debouncing, telemetry reset,
+  rendering correctness, and overlay previews. JFR streaming was exercised against
+  actual default and close-up benchmark workloads. Timing varies with JIT and load.
+
 ## Notes / Decisions
 
 - `float` throughout (consistent with existing Vec3, Camera).

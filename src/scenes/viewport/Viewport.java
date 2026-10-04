@@ -140,6 +140,7 @@ public class Viewport implements
     @Override
     public void render() {
         var traced = profiler.measure(FrameProfiler.Stage.TRACE, tracer::trace);
+        profiler.traceStats(tracer.profile());
         profiler.rayStats(new FrameProfiler.Rays(state.sensorPixelsW(), state.sensorPixelsH(),
                 tracer.primaryRays(), tracer.primaryHits(), tracer.shadowRays(),
                 tracer.shadowsOccluded(), tracer.litPixels(), tracer.traceNanos()));

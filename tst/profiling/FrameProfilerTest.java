@@ -43,6 +43,7 @@ public class FrameProfilerTest {
         p.beginFrame();
         for (int i = 1; i <= 20; i++) {
             if (i == 1) p.rayStats(new FrameProfiler.Rays(10, 10, 100, 1, 1, 0, 1, 100));
+            if (i == 1) p.traceStats(new TraceProfile.Stats(50, 60, 100));
             time += i * 1_000_000L;
             p.endFrame();
             p.beginFrame();
@@ -51,6 +52,8 @@ public class FrameProfilerTest {
         assertEquals(19., p.snapshot().p95Ms());
         assertNotNull(p.snapshot().frames().getFirst().rays());
         assertNull(p.snapshot().frames().getLast().rays());
+        assertNotNull(p.snapshot().frames().getFirst().trace());
+        assertNull(p.snapshot().frames().getLast().trace());
     }
 
     @Test void historyIsTimeBoundedAndCapacityBounded() {
@@ -96,10 +99,17 @@ public class FrameProfilerTest {
         assertFalse(p.visible());
         input.keyPressed(new KeyEvent(source, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_W, 'w'));
         assertEquals(1, forwarded[0]);
+        var f4 = new KeyEvent(source, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_F4, KeyEvent.CHAR_UNDEFINED);
+        input.keyPressed(f4); input.keyPressed(f4);
+        assertTrue(p.visible()); assertTrue(p.traceDetails());
+        input.keyReleased(new KeyEvent(source, KeyEvent.KEY_RELEASED, 0, 0, KeyEvent.VK_F4, KeyEvent.CHAR_UNDEFINED));
+        input.keyPressed(f4);
+        assertFalse(p.traceDetails()); assertEquals(1, forwarded[0]);
     }
 
     @Test void overlayIsHiddenByDefaultAndRendersBothScenes() throws Exception {
-        var p = profiler();
+        var sampler = new TraceSampler();
+        var p = new FrameProfiler(() -> time, sampler);
         var raster = new PixelRaster(800, 800, Color.NamedColor.BLACK);
         var overlay = new PerformanceOverlay(p, raster, 144);
         overlay.render();
@@ -112,17 +122,38 @@ public class FrameProfilerTest {
             p.measure(FrameProfiler.Stage.PAINT, () -> { time += 3_000_000; });
             p.measure(FrameProfiler.Stage.PRESENT, () -> { time += 1_000_000; });
             p.rayStats(new FrameProfiler.Rays(1600, 1600, 2_560_000, 210_000, 210_000, 12_000, 198_000, 8_000_000));
+            p.traceStats(new TraceProfile.Stats(7_000_000, 100_000_000, 2_560_000));
             p.endFrame(); time += 1_000_000; p.beginFrame();
         }
         p.toggle(); overlay.render();
         assertNotEquals(Color.NamedColor.BLACK.rgbInt24(), raster.pixel(12, 12).rgbInt24());
         save(raster, "out/cli/perf-viewport.png");
+        for (int i = 0; i < 200; i++) sampler.record(System.nanoTime(), TraceSampler.Work.values()[i % 4]);
+        p.toggleTraceDetails(); overlay.render();
+        save(raster, "out/cli/perf-trace.png");
+        p.toggleTraceDetails();
         time += 300_000_000; p.endFrame(); p.beginFrame(); overlay.render();
         save(raster, "out/cli/perf-editor.png");
         p.toggle();
         raster.write((_, _, _) -> Color.NamedColor.BLACK);
         overlay.render();
         assertEquals(Color.NamedColor.BLACK.rgbInt24(), raster.pixel(12, 12).rgbInt24());
+    }
+    @Test void samplesAreExclusiveBoundedAndUnsupportedMetricsStayUnavailable() {
+        String prefix = "scenes.viewport.BackwardRayTracer.";
+        assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(prefix + "occluded", prefix + "light", prefix + "trace")));
+        assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(prefix + "nearestHit", prefix + "shade", prefix + "trace")));
+        assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(prefix + "light", prefix + "trace")));
+        assertEquals(TraceSampler.Work.GENERATION, TraceSampler.classify(java.util.List.of(prefix + "trace")));
+        assertNull(TraceSampler.classify(java.util.List.of("other.Work.render")));
+        var sampler = new TraceSampler();
+        for (int i = 0; i < 5000; i++) sampler.record(i, TraceSampler.Work.SHADOW);
+        assertEquals(4096L, sampler.snapshot(5000).total());
+        assertEquals(0L, sampler.snapshot(11_000_000_000L).total());
+        sampler.close();
+        assertEquals(-1L, RuntimeMetrics.delta(-1, 100));
+        assertEquals(-1L, RuntimeMetrics.delta(100, -1));
+        assertEquals(50L, RuntimeMetrics.delta(100, 150));
     }
     private static void save(PixelRaster raster, String path) throws Exception {
         var image = new BufferedImage(800, 800, BufferedImage.TYPE_INT_RGB);

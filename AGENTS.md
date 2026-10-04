@@ -63,6 +63,19 @@ intervals include idle/scheduler time between renders. History is capped at 10 s
 and 4096 frames; the panel refreshes at 4 Hz. Timeline columns show the slowest frame,
 with a white target-budget line.
 
+F4 toggles a tracing drilldown (and shows the overlay). It uses opt-in JFR execution
+sampling at 10 ms, with batched delivery and a bounded 10-second sample history.
+Shares describe sampled execution stacks, not exclusive wall-time durations; wait
+for sufficient samples after changing the camera. F4 off closes the recording.
+F3 only hides the panel; active collection continues. Hardware/JVM counters refresh
+at 4 Hz: machine-normalized CPU load, logical CPUs, heap/RAM, and GC deltas. Trace
+CPU time and allocated bytes are read once around each trace; CPU time has OS timer
+granularity. Unsupported counters display n/a. The tracer does not use the GPU.
+
+`./test ViewportBenchmark` measures the default view headlessly; pass `close` for a
+near-full-screen triangle and `details` to enable JFR sampling. It warms up 50 frames
+and measures 100; it excludes overlay drawing, AWT presentation, and scheduler idle.
+
 Run `./test profiling.FrameProfilerTest` and `./test ProfilingIntegrationTest` for
 headless timing, toggle, rendering, and scene/DI checks. The first writes synthetic
 previews to `out/cli/perf-viewport.png` and `out/cli/perf-editor.png`.

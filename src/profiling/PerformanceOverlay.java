@@ -21,38 +21,51 @@ public final class PerformanceOverlay implements Renderer {
             "background", "scene", "trace", "resample", "paint", "overlay", "present", "other", "idle"
     };
     private final FrameProfiler profiler;
-    private final Painter painter;
+    private final Raster raster;
     private final BufferedImage panel;
-    private final rendering.Color[] cachedPixels;
+    private final byte[][] cachedChannels;
     private final int[] pixels;
     private final double budgetMs;
     private long lastRefresh;
     private boolean wasVisible;
+    private boolean wereDetails;
+    private final RuntimeMetrics metrics = new RuntimeMetrics();
 
     @Inject
     public PerformanceOverlay(FrameProfiler profiler, Raster raster, @Named("frame_rate") int rate) {
         this.profiler = profiler;
-        painter = new RasterPainter(raster);
-        panel = new BufferedImage(Math.min(760, raster.width() - 24), 340, BufferedImage.TYPE_INT_RGB);
+        this.raster = raster;
+        panel = new BufferedImage(Math.max(1, Math.min(760, raster.width() - 24)), 600, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) panel.getRaster().getDataBuffer()).getData();
-        cachedPixels = new rendering.Color[pixels.length];
+        cachedChannels = new byte[3][pixels.length];
         budgetMs = 1000. / rate;
     }
 
     @Override public void render() {
         if (!profiler.visible()) { wasVisible = false; return; }
         long now = profiler.now();
-        if (!wasVisible || now - lastRefresh >= 250_000_000L) {
+        if (!wasVisible || wereDetails != profiler.traceDetails() || now - lastRefresh >= 250_000_000L) {
             refresh(profiler.snapshot(), now);
-            var colors = new java.util.HashMap<Integer, rendering.Color>();
             for (int i = 0; i < pixels.length; i++) {
-                cachedPixels[i] = colors.computeIfAbsent(pixels[i], rendering.Color.RgbInt24Color::of);
+                cachedChannels[0][i] = (byte) (pixels[i] >> 16);
+                cachedChannels[1][i] = (byte) (pixels[i] >> 8);
+                cachedChannels[2][i] = (byte) pixels[i];
             }
             lastRefresh = now;
         }
         wasVisible = true;
-        painter.drawImg(12, 12, panel.getWidth(), panel.getHeight(),
-                (i, x, y) -> cachedPixels[y * panel.getWidth() + x], BlendMode.OVER_PRE);
+        wereDetails = profiler.traceDetails();
+        // The cached panel is opaque; copying channels avoids making the profiler a blending bottleneck.
+        int height = Math.min(wereDetails ? 600 : 446, raster.height() - 12);
+        int width = Math.min(panel.getWidth(), raster.width() - 12);
+        if (width <= 0) return;
+        for (int y = 0; y < height; y++) {
+            int dest = (y + 12) * raster.width() + 12, source = y * panel.getWidth();
+            java.util.Arrays.fill(raster.alpha(), dest, dest + width, (byte) 255);
+            System.arraycopy(cachedChannels[0], source, raster.red(), dest, width);
+            System.arraycopy(cachedChannels[1], source, raster.green(), dest, width);
+            System.arraycopy(cachedChannels[2], source, raster.blue(), dest, width);
+        }
     }
 
     private void refresh(FrameProfiler.Snapshot snapshot, long now) {
@@ -61,7 +74,7 @@ public final class PerformanceOverlay implements Renderer {
             g.setColor(new java.awt.Color(0x141c29));
             g.fillRect(0, 0, panel.getWidth(), panel.getHeight());
             g.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-            text(g, "PERFORMANCE  [F3]    rolling 10s / exclusive wall time", 14, 22);
+            text(g, "PERFORMANCE [F3]  Trace detail [F4]  rolling 10s", 14, 22);
             List<FrameProfiler.Frame> frames = snapshot.frames();
             if (frames.isEmpty()) { text(g, "Waiting for completed frames...", 14, 45); return; }
             text(g, format("%.1f FPS    avg %.2f ms    p95 %.2f ms    budget %.2f ms",
@@ -119,8 +132,54 @@ public final class PerformanceOverlay implements Renderer {
             text(g, "-10s", left, 318);
             text(g, "now", left + width - 24, 318);
             text(g, "Tallest frame per column; white line = target budget", 14, 335);
+            hardware(g, latest, metrics.sample());
+            if (profiler.traceDetails()) traceDetails(g, frames);
         } finally { g.dispose(); }
     }
+
+    private void hardware(Graphics2D g, FrameProfiler.Frame latest, RuntimeMetrics.Snapshot hw) {
+        text(g, format("CPU: %d logical  JVM %s / system %s (whole-machine capacity)",
+                hw.processors(), percent(hw.processCpu()), percent(hw.systemCpu())), 14, 358);
+        text(g, format("Heap %s / %s MiB   RAM free %s / %s MiB",
+                mib(hw.heapUsed()), mib(hw.heapMax()), mib(hw.freeMemory()), mib(hw.totalMemory())), 14, 376);
+        text(g, format("GC since refresh: %s collections / %s ms   GPU: unused by CPU tracer",
+                count(hw.gcCount()), count(hw.gcMillis())), 14, 394);
+        var trace = latest.trace();
+        if (trace == null) {
+            text(g, "Trace CPU / allocations: n/a in this scene", 14, 412);
+        } else {
+            text(g, format("Last trace: thread CPU %s ms / wall %.2f ms; allocated %s MiB",
+                    trace.cpuNanos() < 0 ? "n/a" : format("%.2f", trace.cpuNanos() / 1e6),
+                    latest.rays() == null ? 0 : latest.rays().traceNanos() / 1e6, mib(trace.allocatedBytes())), 14, 412);
+        }
+        text(g, "CPU trace uses one render thread; hardware counters refresh at 4 Hz", 14, 432);
+    }
+
+    private void traceDetails(Graphics2D g, List<FrameProfiler.Frame> frames) {
+        text(g, "TRACE DRILLDOWN [F4]  JVM execution samples / rolling 10s", 14, 463);
+        if (frames.getLast().rays() == null) {
+            text(g, "No tracing in the active scene", 14, 485); return;
+        }
+        var sampling = profiler.traceSamples();
+        long total = sampling.total();
+        if (total == 0) { text(g, "Sampler: " + sampling.status(), 14, 485); return; }
+        long[] totals = {sampling.generation(), sampling.intersection(), sampling.lighting(), sampling.shadow()};
+        String[] names = {"Ray generation / trace other", "Nearest hit + materialize", "Lighting / light vectors", "Shadow intersection tests"};
+        for (int i = 0; i < totals.length; i++) {
+            text(g, format("%-29s %5.1f%%   %,d samples",
+                    names[i], totals[i] * 100. / total, totals[i]), 14, 485 + i * 18);
+        }
+        var latest = frames.getLast();
+        text(g, format("%,d samples%s; hit %.1f%%; primary tests/frame %,d",
+                total, total < 100 ? " (low sample count)" : "", latest.rays().primary() == 0 ? 0 : latest.rays().hits() * 100. / latest.rays().primary(),
+                latest.trace() == null ? 0 : latest.trace().primaryTests()), 14, 563);
+        text(g, sampling.status().equals("active")
+                ? "10ms sampling; batched delivery. Statistical CPU shares, not wall-time ms."
+                : "Sampler: " + sampling.status(), 14, 584);
+    }
+    private static String percent(double n) { return n < 0 ? "n/a" : format("%.1f%%", n * 100); }
+    private static String mib(long n) { return n < 0 ? "n/a" : format("%.1f", n / 1048576.); }
+    private static String count(long n) { return n < 0 ? "n/a" : Long.toString(n); }
     private static String format(String pattern, Object... args) { return String.format(Locale.ROOT, pattern, args); }
     private static void text(Graphics2D g, String value, int x, int y) {
         g.setColor(new java.awt.Color(0xe5edf8));

@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
-/** Render-thread-owned, exclusive stage timings. Only the visibility flag crosses threads. */
-public final class FrameProfiler {
+/** Render-thread-owned, exclusive stage timings; UI flags and JFR samples cross threads. */
+public final class FrameProfiler implements AutoCloseable {
     public enum Stage { BACKGROUND, SCENE, TRACE, RESAMPLE, PAINT, OVERLAY, PRESENT, OTHER, IDLE }
     public record Rays(int width, int height, int primary, int hits, int shadows, int occluded,
                        int lit, long traceNanos) {}
-    public record Frame(long start, long end, List<Long> nanos, Rays rays) {
+    public record Frame(long start, long end, List<Long> nanos, Rays rays, TraceProfile.Stats trace) {
         public long duration() { return end - start; }
         public long stage(Stage stage) { return nanos.get(stage.ordinal()); }
     }
@@ -27,22 +27,31 @@ public final class FrameProfiler {
     private long start, renderEnd;
     private boolean pending;
     private Rays rays;
+    private TraceProfile.Stats trace;
     private volatile boolean visible;
+    private volatile boolean traceDetails;
+    private final TraceSampler traceSampler;
     private static final class Scope { long children; }
 
     public FrameProfiler() { this(System::nanoTime); }
-    public FrameProfiler(LongSupplier clock) { this.clock = clock; }
+    public FrameProfiler(LongSupplier clock) { this(clock, new TraceSampler()); }
+    FrameProfiler(LongSupplier clock, TraceSampler sampler) { this.clock = clock; this.traceSampler = sampler; }
+    @Override public void close() { traceSampler.close(); }
     public boolean visible() { return visible; }
     public void toggle() { visible = !visible; }
+    public boolean traceDetails() { return traceDetails; }
+    public void toggleTraceDetails() { traceDetails = !traceDetails; visible = true; }
+    public TraceSampler.Snapshot traceSamples() { return traceSampler.snapshot(); }
     public long now() { return clock.getAsLong(); }
 
     public void beginFrame() {
+        traceSampler.enabled(traceDetails);
         long now = now();
         if (pending) {
             times[Stage.IDLE.ordinal()] = Math.max(0, now - renderEnd);
             long accounted = Arrays.stream(times).sum();
             times[Stage.OTHER.ordinal()] += Math.max(0, now - start - accounted);
-            history.addLast(new Frame(start, now, Arrays.stream(times).boxed().toList(), rays));
+            history.addLast(new Frame(start, now, Arrays.stream(times).boxed().toList(), rays, trace));
         }
         while (!history.isEmpty() && (history.peekFirst().end() < now - WINDOW || history.size() > CAPACITY)) {
             history.removeFirst();
@@ -50,11 +59,13 @@ public final class FrameProfiler {
         start = now;
         times = new long[Stage.values().length];
         rays = null;
+        trace = null;
         scopes.clear();
         pending = false;
     }
     public void endFrame() { renderEnd = now(); pending = true; }
     public void rayStats(Rays stats) { rays = stats; }
+    public void traceStats(TraceProfile.Stats stats) { trace = stats; }
     public void measure(Stage stage, Runnable action) {
         measure(stage, () -> { action.run(); return null; });
     }

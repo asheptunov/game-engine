@@ -4,6 +4,8 @@ import logging.LogManager;
 import logging.Logger;
 import math.Intersection;
 import math.Ray;
+import profiling.RuntimeMetrics;
+import profiling.TraceProfile;
 import scenes.viewport.lights.PointLight;
 
 /**
@@ -33,6 +35,8 @@ public class BackwardRayTracer {
     private int  shadowsOccluded;
     private int  litPixels;
     private long traceNanos;
+    private TraceProfile.Stats profile;
+    public TraceProfile.Stats profile() { return profile; }
 
     // Initialised so the first call to maybeLog() always emits. (Using Long.MIN_VALUE here would
     // overflow on subtraction with a positive nanoTime() and silently suppress every log forever.)
@@ -52,6 +56,7 @@ public class BackwardRayTracer {
 
     public float[][] trace() {
         primaryRays = primaryHits = shadowRays = shadowsOccluded = litPixels = 0;
+        long cpuStart = RuntimeMetrics.threadCpu(), bytesStart = RuntimeMetrics.allocatedBytes();
         long t0 = System.nanoTime();
 
         var sensor = state.cameraSensor();
@@ -78,6 +83,9 @@ public class BackwardRayTracer {
         }
 
         traceNanos = System.nanoTime() - t0;
+        long cpu = RuntimeMetrics.delta(cpuStart, RuntimeMetrics.threadCpu());
+        long bytes = RuntimeMetrics.delta(bytesStart, RuntimeMetrics.allocatedBytes());
+        profile = new TraceProfile.Stats(cpu, bytes, (long) primaryRays * surfaces.length);
         maybeLog();
         return buf;
     }
@@ -89,6 +97,10 @@ public class BackwardRayTracer {
 
     private float shade(Ray ray, TraceSurface[] surfaces) {
         var hit = nearestHit(ray, surfaces);
+        return light(ray, hit, surfaces);
+    }
+
+    private float light(Ray ray, Intersection hit, TraceSurface[] surfaces) {
         if (hit == null) {
             return 0;
         }

@@ -11,6 +11,21 @@ import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertTrue;
 
 public class BackwardRayTracerTest {
+    @Test void profilingPreservesImageAndCounters() {
+        var st = new ViewportState(sensor(), 80, 80);
+        st.addObject(new Tri(new Vec3(-2, -2, 2), new Vec3(2, -2, 2), new Vec3(0, 2, 2)));
+        st.addLight(new PointLight(new Vec3(0, 0, -1)));
+        var tracer = new BackwardRayTracer(st);
+        var expected = tracer.trace();
+        int hits = tracer.primaryHits(), shadows = tracer.shadowRays(), lit = tracer.litPixels();
+        var actual = tracer.trace();
+        assertEquals(expected, actual);
+        assertEquals(hits, tracer.primaryHits()); assertEquals(shadows, tracer.shadowRays());
+        assertEquals(lit, tracer.litPixels());
+        assertTrue(tracer.profile().cpuNanos() >= -1);
+        assertTrue(tracer.profile().allocatedBytes() >= -1);
+        assertEquals(6400L, tracer.profile().primaryTests());
+    }
     // 1×1 sensor at z=0 facing +z. Eye 1 unit behind.
     private static Rect sensor() {
         return new Rect(new Vec3(-0.5f, -0.5f, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0));
