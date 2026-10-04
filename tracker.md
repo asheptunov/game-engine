@@ -90,6 +90,21 @@ Frame timing: ~10ms per frame at 100×100 sensor resolution. App targets 144Hz (
 
 Run app, verify viewport shows light hitting the tri reaching the camera. Iterate on tuning (sample count, intensity) for visibility.
 
+## Performance overlay `[done]`
+
+- F3 toggles a shared overlay in either scene, including while the console is open. Hidden at startup.
+- Rolling 10-second timeline of exclusive frame stages: background, scene overhead/editor,
+  tracing, resampling, painting, overlay, presentation, uninstrumented work, and idle between renders.
+- FPS, average/p95 frame interval, target budget, stage averages/percentages, viewport resolution,
+  ray throughput, hits, shadows, and lit pixels. Frame intervals include idle; idle also includes
+  scheduler work outside the render pipeline. Wall time is measured, not CPU sampling.
+- History is bounded to 10 seconds / 4096 frames. Panel refreshes at 4 Hz; collection is per frame
+  even while hidden. Slowest frame per timeline column preserves spikes. Stats show completed frames.
+- Cross-cutting implementation lives in `src/profiling/`; render/input decorators are composed in
+  `MainModule`, with three timing hooks and ray metadata publication in `Viewport`.
+- Headless tests cover timing accounting, history limits, percentiles, toggle behavior, rendering,
+  and real scene/DI integration.
+
 ## Notes / Decisions
 
 - `float` throughout (consistent with existing Vec3, Camera).

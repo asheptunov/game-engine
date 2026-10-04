@@ -26,6 +26,10 @@ import scenes.SceneAwareProxyBuilder;
 import scenes.SceneSwitcher;
 import scenes.textureeditor.TextureEditor;
 import scenes.viewport.Viewport;
+import profiling.FrameProfiler;
+import profiling.PerformanceOverlay;
+import profiling.ProfiledFrame;
+import profiling.ProfilingInput;
 
 import java.awt.event.KeyListener;
 import java.awt.event.MouseListener;
@@ -51,7 +55,6 @@ public class MainModule implements Module {
         // Raster is shared by every Renderer in the pipeline.
         b.bind(TextureEditor.class).singleton();
         b.bind(Viewport.class).singleton();
-        b.bind(Renderer.class).to(CompositeRenderer.class).singleton();
 
         // Mutable scene registry. Bound as an empty map at config time and populated post-injection
         // by registerScenes(). Breaks the cycle Scene → Console → Command → CmdScene → Map → Scene.
@@ -67,6 +70,7 @@ public class MainModule implements Module {
         pipeline.add(Eraser.class);
         pipeline.add(Checkerboard.class);
         pipeline.add(Renderer.class).named("scene_renderer");
+        pipeline.add(PerformanceOverlay.class);
         pipeline.add(AwtViewer.class);
     }
 
@@ -78,6 +82,28 @@ public class MainModule implements Module {
         map.put("editor", te);
         map.put("viewport", vp);
         ref.set(te);  // startup scene
+    }
+
+    @Provides
+    @Singleton
+    FrameProfiler profiler() {
+        return new FrameProfiler();
+    }
+
+    @Provides
+    @Singleton
+    Renderer renderer(List<Renderer> pipeline, FrameProfiler profiler) {
+        var timed = new java.util.ArrayList<Renderer>();
+        for (var delegate : pipeline) {
+            var stage = switch (delegate) {
+                case Eraser _, Checkerboard _ -> FrameProfiler.Stage.BACKGROUND;
+                case PerformanceOverlay _ -> FrameProfiler.Stage.OVERLAY;
+                case AwtViewer _ -> FrameProfiler.Stage.PRESENT;
+                default -> FrameProfiler.Stage.SCENE;
+            };
+            timed.add(ProfiledFrame.stage(profiler, stage, delegate));
+        }
+        return new ProfiledFrame(profiler, new CompositeRenderer(timed));
     }
 
     @Provides
@@ -131,7 +157,7 @@ public class MainModule implements Module {
     @Singleton
     Object inputListener(TextureEditor te, Viewport vp,
                          AtomicReference<Scene> sceneRef,
-                         List<Scene> scenes) {
+                         List<Scene> scenes, FrameProfiler profiler) {
         var proxy = SceneAwareProxyBuilder.create()
                 .withInterfaces(KeyListener.class, MouseListener.class,
                         MouseWheelListener.class, MouseMotionListener.class)
@@ -139,7 +165,7 @@ public class MainModule implements Module {
                 .withTargetForScene(Viewport.class, vp)
                 .withSceneSupplier(sceneRef::get)
                 .build();
-        return new SceneSwitcher(scenes, sceneRef, proxy);
+        return new ProfilingInput(profiler, new SceneSwitcher(scenes, sceneRef, proxy));
     }
 
     @Provides

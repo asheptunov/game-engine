@@ -16,6 +16,18 @@ All three use JDK 23 with `--enable-preview`. Override the JDK with `JAVA_HOME=/
 - **Test root**: `tst/`
 - **Entry point**: `Main.java` (no package declaration) — opens an 800×800 AWT window at 144hz
 
+**Performance overlay**: F3 toggles the overlay in both scenes (hidden at startup). F12 switches
+scenes. `src/profiling/` owns the shared profiler, frame/input decorators, bounded history, and
+overlay renderer. `MainModule` composes timing decorators around the pipeline; `Viewport` publishes
+ray counters and times tracing/resampling/painting. Nested timing is exclusive, and frame intervals
+include idle between renders. Stats refresh at 4 Hz over a rolling 10-second history. The profiler
+collects while hidden so opening the overlay immediately shows recent history. The timeline shows
+the tallest frame in each time column and a white target-budget line.
+
+Verification: `./test profiling.FrameProfilerTest` and `./test ProfilingIntegrationTest` run headless
+without opening application windows. The first also writes synthetic visual previews to
+`out/cli/perf-viewport.png` and `out/cli/perf-editor.png`.
+
 **Running tests**: Each test suite has its own `main` method. The custom harness (`tst/harness/`) discovers and runs all `@harness.Test`-annotated methods in the calling class. To run a single test: disable all others via `@Test(enabled = false)`, or add a standalone `@Test`-annotated method and run from that class's `main`.
 
 `Workbench.java` contains one-off data migration tests; its tests are disabled by default.

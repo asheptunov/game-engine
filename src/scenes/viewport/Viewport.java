@@ -42,6 +42,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import profiling.FrameProfiler;
 
 public class Viewport implements
         Scene, Renderer,
@@ -60,6 +61,7 @@ public class Viewport implements
     private final Console            console;
     private final ViewportState      state;
     private final BackwardRayTracer  tracer;
+    private final FrameProfiler profiler;
     private final ActionRegistry<Runnable>             actions;
     private final InputBindings                        bindings;
     private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
@@ -73,7 +75,8 @@ public class Viewport implements
                     @Named("display_width") int width,
                     @Named("display_height") int height,
                     Map<String, Scene> scenes,
-                    AtomicReference<Scene> sceneRef) {
+                    AtomicReference<Scene> sceneRef, FrameProfiler profiler) {
+        this.profiler = profiler;
         this.display = display;
         this.painter = new RasterPainter(display);
         Printer printer = new RasterPrinter(display, font);
@@ -139,17 +142,22 @@ public class Viewport implements
 
     @Override
     public void render() {
-        var resampled = Resampler.resample(tracer.trace(), height, width);
+        var traced = profiler.measure(FrameProfiler.Stage.TRACE, tracer::trace);
+        profiler.rayStats(new FrameProfiler.Rays(state.sensorPixelsW(), state.sensorPixelsH(),
+                tracer.primaryRays(), tracer.primaryHits(), tracer.shadowRays(),
+                tracer.shadowsOccluded(), tracer.litPixels(), tracer.traceNanos()));
+        var resampled = profiler.measure(FrameProfiler.Stage.RESAMPLE,
+                () -> Resampler.resample(traced, height, width));
         final float[][] displayBuf = resampled.buf();
         // invMax==0 when nothing was hit, which collapses the sampler to a uniform BLACK fill —
         // so a single drawImg call covers both the "no hits" and "normalize against max" cases.
         final float invMax = resampled.max() > 0 ? 1f / resampled.max() : 0;
         // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
-        painter.drawImg(0, 0, width, height, (_, dx, dy) -> {
+        profiler.measure(FrameProfiler.Stage.PAINT, () -> painter.drawImg(0, 0, width, height, (_, dx, dy) -> {
             float intensity = displayBuf[height - 1 - dy][dx] * invMax;
             if (intensity <= 0) return Color.NamedColor.BLACK;
             return RgbInt24Color.gray((int) (intensity * 255));
-        }, BlendMode.OVER_PRE);
+        }, BlendMode.OVER_PRE));
 
         if (consoleOpen) {
             console.render();
