@@ -6,6 +6,11 @@ import harness.Test;
 import static harness.Assertions.assertEquals;
 
 public class KeyChordParseTest {
+    @Test void spaceAndBothControlKeysParse() {
+        assertEquals(KeyChord.of(KeyAction.Key.SPACE), KeyChord.parse("space"));
+        assertEquals(KeyChord.of(KeyAction.Key.L_CTRL), KeyChord.parse("l_ctrl"));
+        assertEquals(KeyChord.of(KeyAction.Key.R_CTRL), KeyChord.parse("r_ctrl"));
+    }
     @Test
     void singleLetter() {
         assertEquals(KeyChord.of(KeyAction.Key.LOWER_Q), KeyChord.parse("q"));

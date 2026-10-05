@@ -74,6 +74,12 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   and direct point lighting across its boundaries remain outside this phase.
 - Keyboard and mouse bindings live in `assets/bindings/*.properties`; action registration
   stays in the scenes. Binding parsing/validation is in `src/ui/`.
+  Viewport WASD moves relative to the view, Space/Ctrl moves vertically, and mouse
+  movement looks around without clicking (pitch clamped to ±89°). CameraControls tracks physical held keys,
+  independent of OS repeat, and integrates normalized movement at 3 scene units/second
+  before tracing. Elapsed steps cap at 250 ms after stalls. Console opening, camera reset,
+  scene switching and window focus loss clear transient input. Mouse look preserves the
+  sensor's size and pinhole distance; camera changes invalidate progressive samples.
 - `src/di/` provides constructor injection (`@Inject` or a no-arg constructor), `@Provides`,
   qualifiers, singleton/prototype scopes, and list/map bindings. Use `GenericType<T>` for
   parameterized keys. Scenes and the display raster are shared singletons.

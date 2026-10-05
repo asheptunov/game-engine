@@ -30,7 +30,7 @@ public record MouseChord(MouseButton button,
      * Parses chord syntax like {@code "left+press+brush"}, {@code "drag+box_select"}, {@code "wheel"}.
      * Tokens are {@code +}-separated, case-insensitive, order-independent:
      * <ul>
-     *   <li>gesture (required): {@code press}, {@code release}, {@code drag}, {@code wheel}</li>
+     *   <li>gesture (required): {@code press}, {@code release}, {@code drag}, {@code move}, {@code wheel}</li>
      *   <li>button (optional, default {@code none}): {@code left}, {@code middle}, {@code right}, {@code none}</li>
      *   <li>modifiers (optional): {@code ctrl}, {@code shift}, {@code alt}, {@code meta}</li>
      *   <li>mode (optional): any other single token, matched against the scene's current mode</li>
@@ -62,6 +62,7 @@ public record MouseChord(MouseButton button,
                 case "press" -> gesture = MouseGesture.PRESS;
                 case "release" -> gesture = MouseGesture.RELEASE;
                 case "drag" -> gesture = MouseGesture.DRAG;
+                case "move" -> gesture = MouseGesture.MOVE;
                 case "wheel" -> gesture = MouseGesture.WHEEL;
                 default -> {
                     if (!mode.isEmpty()) {
@@ -74,7 +75,7 @@ public record MouseChord(MouseButton button,
         }
         if (gesture == null) {
             throw new IllegalArgumentException("No gesture in mouse chord '" + chord
-                    + "' (expected one of press, release, drag, wheel)");
+                    + "' (expected one of press, release, drag, move, wheel)");
         }
         return new MouseChord(button, gesture, mode, ctrl, alt, shift, meta);
     }

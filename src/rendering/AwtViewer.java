@@ -35,6 +35,7 @@ public class AwtViewer implements Renderer {
         bs = frame.getBufferStrategy();
         image = new BufferedImage(raster.width(), raster.height(), BufferedImage.TYPE_INT_RGB);
         if (listener instanceof KeyListener kl) frame.addKeyListener(kl);
+        if (listener instanceof java.awt.event.FocusListener fl) frame.addFocusListener(fl);
         if (listener instanceof MouseListener ml) frame.addMouseListener(ml);
         if (listener instanceof MouseMotionListener mml) frame.addMouseMotionListener(mml);
         if (listener instanceof MouseWheelListener mwl) frame.addMouseWheelListener(mwl);

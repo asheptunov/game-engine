@@ -25,6 +25,8 @@ public class CmdScene implements Command {
         if (target == null) {
             return Result.failure("no scene: " + name + "; available: " + scenesByName.keySet());
         }
+        var previous = activeScene.get();
+        if (previous != null) previous.suspendInput();
         activeScene.set(target);
         return Result.success("switched to " + name);
     }

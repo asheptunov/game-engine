@@ -5,5 +5,6 @@ public enum MouseGesture {
     PRESS,
     RELEASE,
     DRAG,
+    MOVE,
     WHEEL
 }

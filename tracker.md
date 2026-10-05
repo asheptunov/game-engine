@@ -228,6 +228,12 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
 
 ## Notes / Decisions
 
+- Viewport input: simultaneous physical held keys now drive per-frame camera movement,
+  replacing OS key-repeat movement. Space/Ctrl replace E/Q; WASD follows camera rotation,
+  diagonal speed is normalized, and button-free mouse movement adds clamped look. Console,
+  reset, focus loss and both scene-switch paths clear held input. CameraControlsTest and
+  expanded ViewportKeyBindingsTest cover timing, releases, modifiers, rotation and cleanup.
+
 - `float` geometry/transport (consistent with Vec3); progressive RGB means use `double`.
 - Epsilon for intersection: `1e-4f`. Tunable later.
 - Sealed interfaces for `SceneObject` so the compiler enforces exhaustive handling if/when intersection logic needs branching by type.

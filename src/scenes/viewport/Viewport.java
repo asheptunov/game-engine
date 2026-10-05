@@ -19,7 +19,9 @@ import ui.ActionRegistry;
 import ui.BindingsLoader;
 import ui.InputBindings;
 import ui.KeyAction;
+import ui.KeyChord;
 import ui.MouseBindings;
+import ui.MouseChord;
 import ui.MouseGesture;
 import ui.console.CmdExit;
 import ui.console.Console;
@@ -47,7 +49,7 @@ public class Viewport implements
     // Sensor pixel grid. Each sensor pixel is drawn as a block on the display.
     private static final int   SENSOR_W = 1600;
     private static final int   SENSOR_H = 1600;
-    private static final float MOVE_STEP = 0.25f;
+    private final CameraControls cameraControls = new CameraControls();
 
     private final Raster             display;
     private final Painter            painter;
@@ -99,13 +101,14 @@ public class Viewport implements
 
 
         this.actions = new ActionRegistry<Runnable>()
-                .register("console.open", () -> consoleOpen = true)
-                .register("camera.move.forward", () -> translateCamera(new Vec3(0, 0, MOVE_STEP)))
-                .register("camera.move.back", () -> translateCamera(new Vec3(0, 0, -MOVE_STEP)))
-                .register("camera.strafe.left", () -> translateCamera(new Vec3(-MOVE_STEP, 0, 0)))
-                .register("camera.strafe.right", () -> translateCamera(new Vec3(MOVE_STEP, 0, 0)))
-                .register("camera.move.up", () -> translateCamera(new Vec3(0, MOVE_STEP, 0)))
-                .register("camera.move.down", () -> translateCamera(new Vec3(0, -MOVE_STEP, 0)))
+                .register("console.open", () -> { suspendInput(); consoleOpen = true; })
+                // Movement actions are held by CameraControls instead of dispatched on repeat.
+                .register("camera.move.forward", () -> {})
+                .register("camera.move.back", () -> {})
+                .register("camera.strafe.left", () -> {})
+                .register("camera.strafe.right", () -> {})
+                .register("camera.move.up", () -> {})
+                .register("camera.move.down", () -> {})
                 .register("camera.reset", this::resetCamera);
 
         this.bindings = BindingsLoader
@@ -113,6 +116,7 @@ public class Viewport implements
                 .validate("Viewport");
 
         this.mouseActions = new ActionRegistry<Consumer<MouseEvent>>()
+                .register("camera.look.move", e -> cameraControls.look(e.getX(), e.getY()))
                 .register("console.scroll", console::acceptScroll);
 
         this.mouseBindings = BindingsLoader
@@ -141,6 +145,7 @@ public class Viewport implements
         synchronized (state) { renderFrame(); }
     }
     private void renderFrame() {
+        if (!consoleOpen) cameraControls.update(state, System.nanoTime());
         var traced = profiler.measure(FrameProfiler.Stage.TRACE, tracer::trace);
         profiler.traceStats(tracer.profile);
         profiler.rayStats(new FrameProfiler.Rays(state.sensorPixelsW(), state.sensorPixelsH(),
@@ -171,7 +176,7 @@ public class Viewport implements
         if (consoleOpen) {
             console.render();
         } else {
-            printer.print("/: view help | " + state.preset() + " | N=" + state.pathDepth()
+            printer.print("WASD Space/Ctrl | Mouse: look | /: view help | " + state.preset() + " | N=" + state.pathDepth()
                             + " | " + state.accumulatedSamples() + " spp " + state.samplingStatus(),
                     12, height - 24, Printer.Size.of(12), Printer.Spacing.of(-3));
         }
@@ -179,45 +184,65 @@ public class Viewport implements
 
     @Override
     public void keyPressed(KeyEvent e) {
+        synchronized (state) { handleKeyPressed(e); }
+    }
+    private void handleKeyPressed(KeyEvent e) {
         LOG.trace("Handling %s", e);
         var action = KeyAction.fromAwt(e);
         if (consoleOpen) {
             console.accept(action);
             return;
         }
+        // Movement keys remain usable while Ctrl/Shift is held; console shortcuts stay strict.
+        var id = bindings.lookup(KeyChord.of(action.raw())).orElse("");
+        if (cameraControls.press(e.getKeyCode(), e.getKeyLocation(), id, System.nanoTime())) return;
         bindings.handle(action);
-    }
-
-    private void translateCamera(Vec3 delta) {
-        synchronized (state) {
-            state.eye(state.eye().add(delta));
-            var s = state.cameraSensor();
-            state.cameraSensor(new Rect(s.origin().add(delta), s.edge1(), s.edge2()));
-            LOG.info("Camera at eye=%s", state.eye());
-        }
     }
 
     private void resetCamera() {
         synchronized (state) {
+            cameraControls.clear();
             ScenePresets.resetCamera(state);
             LOG.info("Camera reset");
         }
     }
 
     @Override public void keyTyped(KeyEvent e) {}
-    @Override public void keyReleased(KeyEvent e) { LOG.trace("Handling %s", e); }
+    @Override public void keyReleased(KeyEvent e) {
+        synchronized (state) { cameraControls.release(e.getKeyCode(), e.getKeyLocation()); }
+    }
+    @Override public void suspendInput() {
+        synchronized (state) { cameraControls.clear(); }
+    }
 
     @Override public void mouseClicked(MouseEvent e)         { LOG.trace("Handling %s", e); }
-    @Override public void mouseEntered(MouseEvent e)         { LOG.trace("Handling %s", e); }
-    @Override public void mouseExited(MouseEvent e)          { LOG.trace("Handling %s", e); }
-    @Override public void mouseMoved(MouseEvent e)           { LOG.trace("Handling %s", e); }
-    @Override public void mousePressed(MouseEvent e)         { route(MouseGesture.PRESS, e); }
-    @Override public void mouseReleased(MouseEvent e)        { route(MouseGesture.RELEASE, e); }
-    @Override public void mouseDragged(MouseEvent e)         { route(MouseGesture.DRAG, e); }
+    @Override public void mouseEntered(MouseEvent e) {
+        synchronized (state) {
+            if (!consoleOpen) cameraControls.startLook(e.getX(), e.getY());
+        }
+    }
+    @Override public void mouseExited(MouseEvent e)          { synchronized (state) { cameraControls.stopLook(); } }
+    @Override public void mouseMoved(MouseEvent e)           { route(MouseGesture.MOVE, e); }
+    @Override public void mousePressed(MouseEvent e) {
+        route(MouseGesture.PRESS, e);
+    }
+    @Override public void mouseReleased(MouseEvent e) {
+        route(MouseGesture.RELEASE, e);
+    }
+    @Override public void mouseDragged(MouseEvent e) {
+        route(MouseGesture.DRAG, e);
+    }
     @Override public void mouseWheelMoved(MouseWheelEvent e) { route(MouseGesture.WHEEL, e); }
 
     private void route(MouseGesture gesture, MouseEvent e) {
-        LOG.trace("Handling %s", e);
-        mouseBindings.handle(gesture, e, consoleOpen ? "console" : "");
+        synchronized (state) {
+            LOG.trace("Handling %s", e);
+            var chord = MouseChord.from(gesture, e, consoleOpen ? "console" : "");
+            var plain = MouseChord.of(chord.button(), chord.gesture(), chord.mode());
+            var id = mouseBindings.lookup(plain).orElse("");
+            // Looking continues while movement modifiers (notably crouch/Ctrl) are held.
+            if (id.startsWith("camera.look.")) mouseActions.get(id).orElseThrow().accept(e);
+            else mouseBindings.handle(gesture, e, consoleOpen ? "console" : "");
+        }
     }
 }

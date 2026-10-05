@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SceneSwitcher
-        implements KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
+        implements KeyListener, MouseListener, MouseMotionListener, MouseWheelListener, java.awt.event.FocusListener {
     private static final Logger LOG = LogManager.instance().getThis();
     private static final int    SWITCH_KEY = KeyEvent.VK_F12;
 
@@ -50,11 +50,17 @@ public class SceneSwitcher
         var current = activeScene.get();
         var idx = scenes.indexOf(current);
         var next = scenes.get(((idx < 0 ? -1 : idx) + 1) % scenes.size());
+        if (current != null) current.suspendInput();
         activeScene.set(next);
         LOG.info("Switched scene: %s -> %s", current, next);
     }
 
     @Override public void keyTyped(KeyEvent e) { kl.keyTyped(e); }
+    @Override public void focusGained(java.awt.event.FocusEvent e) {}
+    @Override public void focusLost(java.awt.event.FocusEvent e) {
+        var scene = activeScene.get();
+        if (scene != null) scene.suspendInput();
+    }
     @Override public void keyReleased(KeyEvent e) { kl.keyReleased(e); }
 
     @Override public void mouseClicked(MouseEvent e) { ml.mouseClicked(e); }

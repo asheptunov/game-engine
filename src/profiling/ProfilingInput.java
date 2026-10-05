@@ -3,7 +3,7 @@ package profiling;
 import java.awt.event.*;
 
 /** Global toggle outside scene bindings, including while a scene console is open. */
-public final class ProfilingInput implements KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
+public final class ProfilingInput implements KeyListener, MouseListener, MouseMotionListener, MouseWheelListener, FocusListener {
     private final FrameProfiler profiler;
     private final Object delegate;
     private boolean held;
@@ -27,6 +27,13 @@ public final class ProfilingInput implements KeyListener, MouseListener, MouseMo
         else ((KeyListener) delegate).keyReleased(e);
     }
     @Override public void keyTyped(KeyEvent e) { ((KeyListener) delegate).keyTyped(e); }
+    @Override public void focusGained(FocusEvent e) {
+        if (delegate instanceof FocusListener listener) listener.focusGained(e);
+    }
+    @Override public void focusLost(FocusEvent e) {
+        held = detailsHeld = false;
+        if (delegate instanceof FocusListener listener) listener.focusLost(e);
+    }
     @Override public void mouseClicked(MouseEvent e) { ((MouseListener) delegate).mouseClicked(e); }
     @Override public void mousePressed(MouseEvent e) { ((MouseListener) delegate).mousePressed(e); }
     @Override public void mouseReleased(MouseEvent e) { ((MouseListener) delegate).mouseReleased(e); }

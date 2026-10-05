@@ -297,6 +297,7 @@ public record KeyAction(Key raw,
 
         private static Map<String, Key> buildNameIndex() {
             var m = new HashMap<String, Key>();
+            m.put("space", SPACE);
             for (Key k : values()) {
                 // UPPER_* keys share a character with their LOWER_* twin; chord syntax is
                 // lowercase-only and addresses shifted keys via the "shift+" modifier instead.
