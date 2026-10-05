@@ -13,10 +13,11 @@ public final class ScenePresets {
         state.restart();
     }
     public static void load(ViewportState state,String name) {
-        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room");
+        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside");
         state.instances().clear();state.objects().clear();state.lights().clear();resetCamera(state);state.exposure(0);state.preset(name);
         state.pathDepth(name.equals("bounce-room") ? 3 : 0);
         state.paused(false);state.sampleTarget(0);
+        if(name.startsWith("glass")) { glass(state,name.equals("glass-inside"));return; }
         if(name.equals("bounce-room")) { bounceRoom(state);return; }
         if(name.equals("triangle")) {
             state.instances().add(new SceneInstance("triangle",List.of(new Tri(new Vec3(-2,-2,10),new Vec3(2,-2,10),new Vec3(0,2,10))),
@@ -34,6 +35,24 @@ public final class ScenePresets {
         state.instances().add(new SceneInstance("reference",List.of(new Sphere(Vec3.ZERO,1)),
                 new Transform(new Vec3(.1f,.5f,10),Vec3.ZERO,new Vec3(.6f,.6f,.6f)),Material.srgb("gold",0xeec447)));
         state.addLight(new PointLight(new Vec3(-2,3,3),new Vec3(1,1,1),160));
+    }
+    private static void glass(ViewportState state, boolean inside) {
+        state.pathDepth(8);
+        var clear=new Material("clear",new Vec3(1,1,1),Material.Kind.DIELECTRIC);
+        state.instances().add(new SceneInstance("glass-sphere",List.of(new Sphere(Vec3.ZERO,1)),
+                new Transform(new Vec3(-1.15f,0,5),Vec3.ZERO,new Vec3(1,1,1)),clear));
+        state.instances().add(new SceneInstance("glass-box",SceneInstance.box(),
+                new Transform(new Vec3(1.2f,-.15f,5.5f),new Vec3(0,20,0),new Vec3(.8f,1,.6f)),
+                new Material("tinted",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1.5f,new Vec3(.8f,.15f,.04f))));
+        for(int i=0;i<10;i++) state.instances().add(new SceneInstance("stripe-"+i,
+                List.of(new Rect(new Vec3(-5+i,-2,9),new Vec3(0,5,0),new Vec3(1,0,0))),Transform.IDENTITY,
+                Material.srgb(i%2==0?"stripe-red":"stripe-blue",i%2==0?0xe95638:0x388de9)));
+        state.instances().add(new SceneInstance("floor",List.of(new Rect(new Vec3(-6,-1.5f,1),new Vec3(0,0,12),new Vec3(12,0,0))),Transform.IDENTITY,Material.srgb("floor",0xbdbdbd)));
+        state.addLight(new PointLight(new Vec3(0,4,7),new Vec3(1,1,1),220));
+        if(inside) {
+            state.eye(new Vec3(-1.15f,0,5));
+            state.cameraSensor(new Rect(new Vec3(-1.65f,-.5f,6),new Vec3(1,0,0),new Vec3(0,1,0)));
+        }
     }
     private static void bounceRoom(ViewportState state) {
         var neutral = Material.srgb("neutral", 0xbdbdbd);

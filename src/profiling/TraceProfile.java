@@ -5,7 +5,14 @@ public final class TraceProfile {
     private TraceProfile() {}
     public record Stats(long cpuNanos, long allocatedBytes, long primaryTests, long shadowTests,
                         String scene, int depth, int samplesPerPixel, long continuationRays,
-                        long continuationTests, long accumulatedSamples, String samplingStatus, long seed) {
+                        long continuationTests, long accumulatedSamples, String samplingStatus, long seed,
+                        long dielectricReflections, long dielectricTransmissions, long absorptionSegments) {
+        public Stats(long cpuNanos, long allocatedBytes, long primaryTests, long shadowTests,
+                     String scene, int depth, int samplesPerPixel, long continuationRays,
+                     long continuationTests, long accumulatedSamples, String samplingStatus, long seed) {
+            this(cpuNanos, allocatedBytes, primaryTests, shadowTests, scene, depth, samplesPerPixel,
+                    continuationRays, continuationTests, accumulatedSamples, samplingStatus, seed, 0, 0, 0);
+        }
         public Stats(long cpuNanos, long allocatedBytes, long primaryTests, long shadowTests,
                      String scene, int depth, int samplesPerPixel, long continuationRays) {
             this(cpuNanos, allocatedBytes, primaryTests, shadowTests, scene, depth, samplesPerPixel,

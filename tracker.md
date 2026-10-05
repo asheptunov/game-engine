@@ -200,6 +200,32 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   triangle depth 0 at 1600² 61.65 / 101.17. Settings differ in quality and work.
   Progressive traces reuse storage and allocate about 1 KiB/batch after preparation.
 
+## Phase 3 — Smooth glass and absorption `[done]`
+
+- Smooth dielectric reflection/refraction uses exact Fresnel, Snell and total internal
+  reflection, sampled as one continuation with the appropriate radiance IOR weight.
+  Entry/exit consume separate depth events. No diffuse point-light highlight on glass.
+- Distance-based RGB absorption replaces per-boundary tint; nested media replace the
+  outer medium until exiting. Inside cameras initialize their enclosing media once
+  per batch. Reflection preserves the stack; transmission crosses the correct side.
+  Supported boundaries are spheres/ellipsoids and closed boxes, disjoint or strictly
+  nested with nonintersecting boundaries. Open glass is rejected; overlaps/touching
+  and features/gaps smaller than the spawn offset remain outside the supported model.
+- `glass` and `glass-inside` presets default to depth 8. `view type dielectric`,
+  `view ior` and `view absorption` expose editing; status reports parameters. Shared
+  edits validate atomically and preserve other material fields. Glass blocks direct
+  visibility queries; direct caustics are not guaranteed. Previews/checklist are in
+  RenderingRequirements.md. F4 adds reflection/transmission and medium segment counts.
+- DielectricPathTest covers optics, boundaries, nested/inside transport, absorption,
+  visibility, commands/invalidation, seeded batch equivalence and convergence. At
+  64 spp the glass demo has ~1.3% of first-sample error against a 512-spp reference.
+  Earlier renderer, geometry, profiling, DI/input and editor regressions pass.
+- Seed 1, one spp/batch, 800² display: glass depth 8 at 200² measured 30.36 ms median /
+  49.29 p95; at 400² 93.76 / 100.97. Inside-glass at 200² measured 38.69 / 48.88.
+  Unchanged glass tracing allocates ~1.3 KiB/batch, with no per-path object chains.
+  Matching earlier demos: bounce-room depth 3 at 200² 29.49 / 36.22; triangle depth 0
+  at 1600² 63.26 / 87.10. Different quality settings are not equivalent comparisons.
+
 ## Notes / Decisions
 
 - `float` geometry/transport (consistent with Vec3); progressive RGB means use `double`.

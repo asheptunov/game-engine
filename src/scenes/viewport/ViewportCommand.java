@@ -11,9 +11,12 @@ public final class ViewportCommand implements Command {
     private final ViewportState state;
     private String selected="sphere";
     public ViewportCommand(ViewportState state) { this.state=state; }
-    public static final String HELP="view status | preset playground/triangle/bounce-room | reset | camera reset\n"
+    public static final String HELP="view status | preset playground/triangle/bounce-room/glass/glass-inside | reset | camera reset\n"
             +"view select <object> | material <name> | color <RRGGBB>\n"
-            +"view type diffuse/mirror (edits selected object's shared material)\n"
+            +"view type diffuse/mirror/dielectric (glass requires a closed sphere/box)\n"
+            +"view ior <1..3> | absorption <red> <green> <blue> (0..100 per scene unit)\n"
+            +"Glass uses distance absorption, not base color; nested nonintersecting solids supported.\n"
+            +"Glass blocks direct shadow queries; focused refractive caustics are not guaranteed.\n"
             +"view move/rotate/scale <x> <y> <z> (absolute; degrees; positive scale)\n"
             +"view light position <x> <y> <z> | light color <RRGGBB> | light intensity <n>\n"
             +"view exposure <-16..16 stops>; Esc closes console; WASDQE moves; R resets camera\n"
@@ -43,15 +46,17 @@ public final class ViewportCommand implements Command {
                     case "select" -> {require(args,3);index(args[2]);selected=args[2];}
                     case "color" -> {
                         require(args,3);int index=index(selected);var object=state.instances().get(index);
-                        var material=Material.srgb(object.material().name(),rgb(args[2])).withKind(object.material().kind());
+                        var material=object.material().withColor(Material.srgb(object.material().name(),rgb(args[2])).color());
                         // Shared material edits affect every referencing object.
-                        state.instances().replaceAll(o->o.material().name().equals(material.name())?o.withMaterial(material):o);
+                        editMaterial(material);
                     }
                     case "type" -> {
                         require(args,3);var object=state.instances().get(index(selected));
                         var material=object.material().withKind(Material.Kind.valueOf(args[2].toUpperCase(java.util.Locale.ROOT)));
-                        state.instances().replaceAll(o->o.material().name().equals(material.name())?o.withMaterial(material):o);
+                        editMaterial(material);
                     }
+                    case "ior" -> {require(args,3);editMaterial(state.instances().get(index(selected)).material().withIor(number(args[2])));}
+                    case "absorption" -> {require(args,5);editMaterial(state.instances().get(index(selected)).material().withAbsorption(vector(args,2)));}
                     case "material" -> {
                         require(args,3);var material=state.instances().stream().map(SceneInstance::material).filter(m->m.name().equals(args[2])).findFirst()
                                 .orElseThrow(()->new IllegalArgumentException("Unknown material: "+args[2]));
@@ -82,11 +87,16 @@ public final class ViewportCommand implements Command {
     private String status() {
         var names=state.instances().stream().map(SceneInstance::name).toList();
         var materials=state.instances().stream().map(o->o.material().name()).distinct().toList();
-        String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()).orElse("none");
+        String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()+" IOR="+o.material().ior()+" absorption="+o.material().absorption()).orElse("none");
         return "Preset="+state.preset()+" exposure="+state.exposure()+" stops; sensor="+state.sensorPixelsW()+"x"+state.sensorPixelsH()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint light: "+state.lights().getFirst()+"\nview help for controls";
+    }
+    private void editMaterial(Material material) {
+        // Validate every affected instance before publishing any shared edit.
+        var next=state.instances().stream().map(o->o.material().name().equals(material.name())?o.withMaterial(material):o).toList();
+        for(int i=0;i<next.size();i++) state.instances().set(i,next.get(i));
     }
     private int index(String name) {
         for(int i=0;i<state.instances().size();i++) if(state.instances().get(i).name().equals(name)) return i;

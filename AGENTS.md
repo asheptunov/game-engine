@@ -42,7 +42,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   `AwtViewer` presents the raster through a Swing frame and `BufferStrategy`.
 - `TextureEditor` handles painting, selection, color picking, undo/redo, and `.tx` file I/O.
   `ChainRasterSerializer` tries ARGB then RGB formats. Shared console code is in `src/ui/console/`.
-- `Viewport` uses `DirectRgbTracer` for iterative diffuse/mirror RGB paths with progressive
+- `Viewport` uses `DirectRgbTracer` for iterative diffuse/mirror/dielectric RGB paths with progressive
   accumulation, shadow visibility, and inverse-square point lights. Depth 0 preserves the
   deterministic pixel-center direct diagnostic; depth >0 jitters each pixel's primary ray.
   `Resampler` filters averaged linear
@@ -63,6 +63,15 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   exposure, overlays, console, and batch-size edits retain samples. RGB means use double
   precision; counts cap at one billion spp. Input runs between full sensor batches,
   with a 50 ms budget checked after each complete sample (one sample can exceed it).
+- `view preset glass` shows a clear sphere and absorbing box against colored stripes;
+  `glass-inside` starts the camera inside the sphere. Both use depth 8. `view type dielectric`,
+  `view ior 1..3`, and `view absorption r g b` (0..100 inverse scene units) edit materials.
+  Glass uses exact Fresnel/Snell/TIR and radiance IOR weights; base color does not tint it.
+  Media replace one another through disjoint or strictly nested nonintersecting sphere/
+  ellipsoid/box boundaries, including inside cameras. Open glass surfaces are rejected.
+  Overlapping/touching boundaries and sub-offset gaps are unsupported. Each entry/exit
+  consumes a continuation. Glass blocks direct visibility; reliable refractive caustics
+  and direct point lighting across its boundaries remain outside this phase.
 - Keyboard and mouse bindings live in `assets/bindings/*.properties`; action registration
   stays in the scenes. Binding parsing/validation is in `src/ui/`.
 - `src/di/` provides constructor injection (`@Inject` or a no-arg constructor), `@Provides`,
@@ -94,6 +103,9 @@ spp and sampling status. Primary throughput is labeled separately from all-ray t
 in the benchmark. Shadow-ray counts are
 visibility queries for contributing lights; a query may test zero primitives when
 the scene contains only the hit surface. Back-facing lights issue no shadow query.
+F4 also shows exact glass reflection/transmission and interior segment counts, even
+before sufficient CPU samples arrive. Interior absorption also applies to visible
+point-light segments within the same medium.
 
 `./test ViewportBenchmark` measures the triangle diagnostic headlessly; pass `close` for a
 near-full-screen triangle and `details` to enable JFR sampling. It warms up 50 frames
@@ -111,6 +123,10 @@ reflection, seeded convergence, batch equivalence and invalidation checks. It wr
 `out/cli/bounce-room-preview-1.png` and `bounce-room-preview-128.png` (320 square).
 `ViewportKeyBindingsTest` also requires `-Djava.awt.headless=false`, without opening
 a window; it exercises console opening/closing and camera invalidation.
+Run `scenes.viewport.DielectricPathTest` for phase 3 optics, nested/inside media,
+absorption, validation, invalidation, convergence and image checks. It writes 240²
+`out/cli/glass-preview-64.png`, `glass-ior-1-preview.png`, and `glass-inside-preview-64.png`.
+Benchmark glass with `glass depth=8 size=200 samples=1 seed=1`, or `glass-inside`.
 
 Run `./test profiling.FrameProfilerTest` and `./test ProfilingIntegrationTest` for
 headless timing, toggle, rendering, and scene/DI checks. The first writes synthetic
