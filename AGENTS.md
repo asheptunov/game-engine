@@ -1,5 +1,22 @@
 # AGENTS.md
 
+## Human questions and glossary
+
+`FAQ.md` is the human-facing knowledge base. Only humans add terms or questions;
+agents may contribute answers. During relevant repository work, check for unanswered
+entries and answer those you can ground in the implementation or reliable sources.
+Preserve human wording, numbering, ordering, and follow-up threads. Define `TN <term>`
+with a separate `TN: <definition>` paragraph immediately below it, and answer
+`QN <question>` with `AN: <answer>` immediately below it. Do not invent new questions,
+renumber entries, or replace the human introduction.
+
+Keep answers concise, explain unfamiliar terms in plain language, and use a small
+example when helpful. Distinguish current implementation from proposed optimizations;
+check the code before explaining project behavior. Link relevant code or sources
+where useful. Update inaccurate answers when related code changes, preserving the
+question and thread. Longer implementation plans belong in requirements documents;
+`PerformanceRequirements.md` contains the proposed optimization phases.
+
 ## Build and verification
 
 Java 23 with preview features; no Maven/Gradle. Sources are in `src/`, tests in `tst/`,

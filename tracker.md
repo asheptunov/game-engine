@@ -5,6 +5,11 @@ Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 The next renderer requirements and six playable implementation phases are in
 [RenderingRequirements.md](RenderingRequirements.md). All six phases are implemented.
 
+The proposed performance roadmap is in [PerformanceRequirements.md](PerformanceRequirements.md).
+It ranks CPU optimization phases by estimated practical impact, with measurement and
+completion gates, plus separate GPU and native backend evaluations. All performance
+phases are pending; begin with P0 through P3.
+
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
 Make `math.Vec3` useful for geometry math. Operations: `add`, `sub`, `scale`, `negate`, `dot`, `cross`, `lengthSq`, `length`, `normalized`. Constants: `ZERO`.
