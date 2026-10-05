@@ -4,7 +4,6 @@ import di.annotations.Inject;
 import di.annotations.Named;
 import rendering.*;
 
-import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
@@ -73,7 +72,7 @@ public final class PerformanceOverlay implements Renderer {
         try {
             g.setColor(new java.awt.Color(0x141c29));
             g.fillRect(0, 0, panel.getWidth(), panel.getHeight());
-            g.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+            g.setFont(AwtText.monospaced(12));
             text(g, "PERFORMANCE [F3]  Trace detail [F4]  rolling 10s", 14, 22);
             List<FrameProfiler.Frame> frames = snapshot.frames();
             if (frames.isEmpty()) { text(g, "Waiting for completed frames...", 14, 45); return; }

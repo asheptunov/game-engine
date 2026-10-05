@@ -10,6 +10,7 @@ import java.util.List;
 
 public class ViewportState {
     private       Rect              cameraSensor;
+    private float presentationAspect;
     private       Vec3              eye             = new Vec3(0, 0, -1);
     private int                     sensorPixelsW;
     private int                     sensorPixelsH;
@@ -65,9 +66,16 @@ public class ViewportState {
     private       int               maxBounces      = 4;
     private float[][]               accumulator;
     public void resolution(int size) {
-        if (size < 64 || size > 1600) throw new IllegalArgumentException("Sensor size must be 64..1600");
-        sensorPixelsW = sensorPixelsH = size;
-        accumulator = new float[size][size];
+        resolution(size, size);
+    }
+
+    public void resolution(int width, int height) {
+        if (width < 64 || width > 1600 || height < 64 || height > 1600)
+            throw new IllegalArgumentException("Sensor width and height must each be 64..1600");
+        var next = new float[height][width];
+        sensorPixelsW = width;
+        sensorPixelsH = height;
+        accumulator = next;
     }
 
     public ViewportState(Rect cameraSensor, int sensorPixelsW, int sensorPixelsH) {
@@ -86,7 +94,25 @@ public class ViewportState {
     }
 
     public Rect cameraSensor() { return cameraSensor; }
-    public void cameraSensor(Rect r) { this.cameraSensor = r; }
+    /** Set the display aspect without changing the sampling grid or vertical field of view. */
+    public void presentationAspect(float aspect) {
+        if (!Float.isFinite(aspect) || aspect <= 0) throw new IllegalArgumentException("Aspect must be positive");
+        presentationAspect = aspect;
+        cameraSensor(cameraSensor);
+    }
+
+    public void cameraSensor(Rect r) {
+        if (presentationAspect > 0) {
+            float targetWidth = r.edge2().length() * presentationAspect;
+            float currentWidth = r.edge1().length();
+            // Avoid modifying already-fitted sensors on every camera movement.
+            if (Math.abs(targetWidth - currentWidth) > targetWidth * 1e-6f) {
+                var horizontal = r.edge1().scale(targetWidth / currentWidth);
+                r = new Rect(r.origin().add(r.edge1().sub(horizontal).scale(.5f)), horizontal, r.edge2());
+            }
+        }
+        this.cameraSensor = r;
+    }
     public Vec3 eye() { return eye; }
     public void eye(Vec3 e) { this.eye = e; }
     public int sensorPixelsW() { return sensorPixelsW; }

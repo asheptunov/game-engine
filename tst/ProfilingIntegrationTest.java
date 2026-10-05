@@ -10,6 +10,29 @@ import static harness.Assertions.*;
 
 /** Exercises the real DI graph and scene timing hooks without opening an AWT window. */
 public class ProfilingIntegrationTest {
+    @Test void cameraMatchesWindowAcrossPresetsAndResolutionChanges() {
+        var module = new MainModule(); var injector = Injector.create(module); module.registerScenes(injector);
+        var state = injector.get(Viewport.class).state();
+        var display = injector.get(rendering.Raster.class);
+        float aspect = (float) display.width() / display.height();
+        assertEquals(1600, state.sensorPixelsW());
+        assertEquals(1000, state.sensorPixelsH());
+        for (String preset : new String[]{"playground", "glass-inside", "volume-room"}) {
+            scenes.viewport.ScenePresets.load(state, preset);
+            var sensor = state.cameraSensor();
+            assertTrue(Math.abs(sensor.edge1().length() / sensor.edge2().length() - aspect) < 1e-5);
+            assertEquals(1f, sensor.edge2().length());
+            var center = sensor.origin().add(sensor.edge1().scale(.5f)).add(sensor.edge2().scale(.5f));
+            assertTrue(Math.abs(center.sub(state.eye()).length() - 1f) < 1e-5);
+            state.resolution(64);
+            assertEquals(sensor, state.cameraSensor());
+            scenes.viewport.ScenePresets.resetCamera(state);
+            assertEquals(sensor.edge1(), state.cameraSensor().edge1());
+            assertEquals(sensor.edge2(), state.cameraSensor().edge2());
+            assertEquals(64, state.sensorPixelsW());
+            assertEquals(64, state.sensorPixelsH());
+        }
+    }
     @Test void sharedProfilerAndBothScenes() {
         var module = new MainModule();
         var injector = Injector.create(module);
@@ -22,7 +45,7 @@ public class ProfilingIntegrationTest {
         profiler.measure(FrameProfiler.Stage.SCENE, injector.get(Viewport.class)::render);
         profiler.endFrame(); profiler.beginFrame();
         var viewport = profiler.snapshot().frames().getLast();
-        assertEquals(2_560_000, viewport.rays().primary());
+        assertEquals(1_600_000, viewport.rays().primary());
         assertTrue(viewport.stage(FrameProfiler.Stage.TRACE) > 0);
         assertTrue(viewport.stage(FrameProfiler.Stage.RESAMPLE) > 0);
         assertTrue(viewport.stage(FrameProfiler.Stage.PAINT) > 0);

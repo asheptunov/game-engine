@@ -40,6 +40,19 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
 
 - `Raster`/`PixelRaster` hold pixels; `Painter` and `Printer` draw graphics and bitmap text.
   `AwtViewer` presents the raster through a Swing frame and `BufferStrategy`.
+- Both consoles use `Console.withAwtText` and the reusable `AwtPrinter` (16-point
+  native monospaced glyphs, measured cell dimensions, cached masks). `AwtText` shares
+  the native font choice with F3/F4. `RasterPrinter`/`FsFontLoader` remain available
+  for bitmap text. Run `rendering.AwtPrinterTest` for native rendering equivalence,
+  clipping and ANSI colors; preview: `out/cli/console-awt-preview.png`.
+- Console Up/Down recalls submitted commands (including failures), restoring the
+  unfinished draft after the newest entry. History is bounded and lasts for the
+  scene's lifetime. `help` lists root commands; `help view resolution`,
+  `view help resolution`, and `view resolution help` show the same focused page.
+  Nested groups have their own indexes (`view light help`) and leaf usage pages
+  (`view light position help`). Successful view edits print one-line confirmations;
+  `view status` explicitly prints full state. Run `ui.console.ConsoleInteractionTest`
+  for history/draft, bounded recall, help routing and response checks.
 - `TextureEditor` handles painting, selection, color picking, undo/redo, and `.tx` file I/O.
   `ChainRasterSerializer` tries ARGB then RGB formats. Shared console code is in `src/ui/console/`.
 - `Viewport` uses `DirectRgbTracer` for iterative diffuse/mirror/dielectric RGB paths with progressive
@@ -51,7 +64,12 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   available but neither is used by the viewport.
 - The default viewport preset is `playground`; `/` then `view help` lists live controls.
   `view preset triangle` selects the original geometry with the new lighting model.
-  `view resolution 400` explicitly selects a smaller sensor for editing; default is 1600.
+  Default tracing resolution follows the window aspect with a 1600-pixel long edge
+  (1600×1000 for the 1440×900 window). `view resolution 800 500` sets width and height;
+  each must be 64..1600. `view resolution native`, `half`, `quarter`, or `0.5x` uses
+  the window dimensions as a fixed reference, rounding to nearest pixels. Out-of-range
+  scales are rejected. The legacy `view resolution 400` still selects a square grid.
+  Resolution changes leave the camera field of view unchanged; presets retain the grid.
   Immutable named `SceneInstance` edits share the state monitor with frame rendering.
   Prepared geometry and per-object bounds are cached until edits.
 - `view preset bounce-room` enables the phase 2 mirror/color-bleeding demo at depth 3.

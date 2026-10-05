@@ -44,8 +44,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class MainModule implements Module {
     @Override
     public void configure(GraphBuilder b) {
-        b.bind(int.class).named("display_width").toInstance(800);
-        b.bind(int.class).named("display_height").toInstance(800);
+        // Window/UI dimensions are independent of the viewport's tracing resolution.
+        b.bind(int.class).named("display_width").toInstance(1440);
+        b.bind(int.class).named("display_height").toInstance(900);
         b.bind(int.class).named("texture_width").toInstance(16);
         b.bind(int.class).named("texture_height").toInstance(16);
         b.bind(int.class).named("frame_rate").toInstance(144);

@@ -13,6 +13,9 @@ public class TrimmingCommand implements Command {
     }
 
     @Override
+    public Result<String, String> help(String... path) { return delegate.help(path); }
+
+    @Override
     public Result<String, String> run(String... args) {
         var trimmedArgs = Arrays.stream(args)
                 .map(String::strip)

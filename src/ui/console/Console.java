@@ -7,6 +7,9 @@ import misc.history.History;
 import misc.spliterators.ChunkedSpliterator;
 import misc.spliterators.ReversedSpliterator;
 import rendering.BlendMode;
+import rendering.AwtPrinter;
+import rendering.Raster;
+import rendering.RasterPainter;
 import rendering.Color;
 import rendering.Painter;
 import rendering.Printer;
@@ -62,6 +65,17 @@ public class Console implements Renderer {
     private final Command                   cmd;
 
     private double vtOffset = 0;
+    private final List<String> commandHistory = new ArrayList<>();
+    private final int historyLimit;
+    private int historyPosition = -1;
+    private String draft = "";
+
+    /** Console text uses native glyph metrics rather than square bitmap cells. */
+    public static Console withAwtText(Raster display, Runnable onClose, int historySize, Command command) {
+        var printer = new AwtPrinter(display, 16);
+        return new Console(new RasterPainter(display), printer, display.width(), display.height(),
+                printer.cellWidth(), printer.cellHeight(), 0, 2, onClose, historySize, command);
+    }
 
     public Console(Painter painter,
                    Printer printer,
@@ -70,18 +84,26 @@ public class Console implements Renderer {
                    Runnable onClose,
                    int historySize,
                    Command rootCommand) {
+        this(painter, printer, width, height, fontSize, fontSize, charSpacing, lineSpacing,
+                onClose, historySize, rootCommand);
+    }
+
+    public Console(Painter painter, Printer printer, int width, int height,
+                   int cellWidth, int cellHeight, int charSpacing, int lineSpacing,
+                   Runnable onClose, int historySize, Command rootCommand) {
         this.painter = painter;
         this.printer = printer;
         this.width = width;
         this.height = height;
-        this.hzStride = fontSize + charSpacing;
-        this.vtStride = fontSize + lineSpacing;
-        this.maxLineWidth = width / hzStride;
+        this.hzStride = cellWidth + charSpacing;
+        this.vtStride = cellHeight + lineSpacing;
+        this.maxLineWidth = Math.max(1, width / hzStride);
         this.maxLines = height / vtStride;
         this.onClose = onClose;
         this.history = new CircularBufferHistoryImpl<>(historySize, CommandAndResult.empty());
         this.buf = new StringBuilder();
         this.cmd = rootCommand;
+        this.historyLimit = historySize;
     }
 
     public void accept(KeyAction keyAction) {
@@ -92,12 +114,20 @@ public class Console implements Renderer {
                     switch (keyAction.raw()) {
                         case ESCAPE -> onClose.run();
                         case BACKSPACE -> fastDeleteLast();
+                        case UP -> recallCommand(-1);
+                        case DOWN -> recallCommand(1);
                         case ENTER -> {
+                            if (buf.toString().isBlank()) { fastClear(); historyPosition = -1; draft = ""; break; }
+                            String submitted = buf.toString();
                             var res = cmd.run(buf.toString().split(" ")).fold(
                                     s -> new CommandAndResult(buf.toString(), s),
                                     e -> new CommandAndResult(buf.toString(),
                                             AnsiColor.RED.formatted() + e + AnsiColor.NONE.formatted()));
                             history.record(res);
+                            commandHistory.add(submitted);
+                            if (commandHistory.size() > historyLimit) commandHistory.removeFirst();
+                            historyPosition = -1;
+                            draft = "";
                             fastClear();
                         }
                         default -> keyAction.reified().character().ifPresent(this::fastAppend);
@@ -208,7 +238,7 @@ public class Console implements Renderer {
         int rowI = 0;
         int allI = -1;
         var style = new ArrayList<Printer.Style>() {{
-            add(Printer.BlendMode.of(BlendMode.SUBTRACT));
+            add(Printer.Color.of(Color.NamedColor.WHITE));
         }};
         var lines = new ArrayList<List<StyledChar>>() {{
             add(new ArrayList<>());
@@ -226,7 +256,7 @@ public class Console implements Renderer {
                 style.clear();
                 var color = ansiSequences.removeFirst().color();
                 style.add(color == AnsiColor.NONE
-                        ? Printer.BlendMode.of(BlendMode.SUBTRACT)  // for "none", do invert
+                        ? Printer.Color.of(Color.NamedColor.WHITE)
                         : Printer.Color.of(color));
             }
             switch (c) {
@@ -248,7 +278,7 @@ public class Console implements Renderer {
                 }
                 default: {
                     var line = lines.getLast();
-                    var sc = new StyledChar(c, style);
+                    var sc = new StyledChar(c, List.copyOf(style));
                     if (rowI >= line.size()) {  // extend line
                         line.addLast(sc);
                     } else {  // within line (returned carriage earlier)
@@ -271,11 +301,26 @@ public class Console implements Renderer {
         for (var line : lines) {
             int col = 0;
             int y = (int) ((row - (n - maxLines) + vtOffset) * vtStride);
+            if (y + vtStride <= 0 || y >= height) { ++row; continue; }
             for (var sc : line) {
                 printer.print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
             }
             ++row;
         }
+    }
+
+    private void recallCommand(int direction) {
+        if (commandHistory.isEmpty()) return;
+        if (historyPosition == -1) {
+            if (direction > 0) return;
+            draft = buf.toString();
+            historyPosition = commandHistory.size();
+        }
+        historyPosition = Math.clamp(historyPosition + direction, 0, commandHistory.size());
+        if (historyPosition == commandHistory.size()) {
+            fastSet(draft);
+            historyPosition = -1;
+        } else fastSet(commandHistory.get(historyPosition));
     }
 
     private void fastSet(String buffer) {

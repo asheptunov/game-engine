@@ -23,6 +23,8 @@ public class CmdSave implements Command {
         this.repo = repo;
     }
 
+    @Override public String helpText() { return "Usage: save [<file>.tx]\n  Save the texture to the supplied or active file."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length > 2) {

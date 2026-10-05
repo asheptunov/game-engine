@@ -14,6 +14,8 @@ public class CmdPwd implements Command {
         this.state = state;
     }
 
+    @Override public String helpText() { return "Usage: pwd\n  Show the current working directory."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length > 1) {

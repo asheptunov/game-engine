@@ -142,8 +142,7 @@ public class TextureEditor implements
                 .withCommand("touch", new CmdTouch(state, repo,
                         () -> new PixelRaster(state.texture().width(), state.texture().height())))
                 .build());
-        this.console = new Console(painter, printer, display.width(), display.height(),
-                fontSize(), charSpacing(), lineSpacing(),
+        this.console = Console.withAwtText(display,
                 this::escape,
                 500,
                 rootCmd);

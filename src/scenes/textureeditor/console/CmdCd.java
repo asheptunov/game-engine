@@ -19,6 +19,8 @@ public class CmdCd implements Command {
         this.root = root;
     }
 
+    @Override public String helpText() { return "Usage: cd [dir]\n  Change the working directory; omit dir to return to the starting directory."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length > 2) {

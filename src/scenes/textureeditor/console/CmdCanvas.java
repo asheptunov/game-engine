@@ -18,6 +18,8 @@ public class CmdCanvas implements Command {
         this.state = state;
     }
 
+    @Override public String helpText() { return "Usage: canvas [<size> | <width> <height>]\n  Show dimensions or expand the texture canvas."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length > 3) {

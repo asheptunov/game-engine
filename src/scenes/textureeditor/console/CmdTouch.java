@@ -27,6 +27,8 @@ public class CmdTouch implements Command {
         this.emptyRasterFactory = emptyRasterFactory;
     }
 
+    @Override public String helpText() { return "Usage: touch <file>.tx\n  Create a new texture file."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length != 2) {

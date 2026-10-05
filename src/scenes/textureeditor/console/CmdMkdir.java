@@ -16,6 +16,8 @@ public class CmdMkdir implements Command {
         this.state = state;
     }
 
+    @Override public String helpText() { return "Usage: mkdir <dir>\n  Create a directory."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length != 2) {

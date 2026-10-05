@@ -9,34 +9,27 @@ import java.util.Arrays;
 /** Console edits and rendering share the state monitor, so a frame observes one complete edit. */
 public final class ViewportCommand implements Command {
     private final ViewportState state;
+    private final int referenceWidth, referenceHeight;
     private String selected="sphere";
-    public ViewportCommand(ViewportState state) { this.state=state; }
-    public static final String HELP="view status | preset playground/triangle/bounce-room/glass/glass-inside/rough-room/mesh-room/volume-room | reset | camera reset\n"
-            +"view scattering <0..100 per scene unit> | anisotropy <-0.95..0.95> (dielectric interior)\n"
-            +"Scattering: homogeneous sphere/box only; +anisotropy forward, - backward; 0 density restores surface-only transport.\n"
-            +"view mesh detail <4..64> (all instances sharing selected mesh) | copy <unique name> | remove <object>\n"
-            +"view acceleration bvh/brute (restarts samples for seeded comparisons)\n"
-            +"view select <object> | material <name> | color <RRGGBB>\n"
-            +"view type diffuse/mirror/dielectric (glass requires a closed sphere/box/indexed mesh)\n"
-            +"view ior <1..3> | absorption <red> <green> <blue> (0..100 per scene unit)\n"
-            +"view roughness <0..1> (mirror/glass; 0 ideal) | emission <r> <g> <b> (linear radiance 0..10000; rect only)\n"
-            +"Glass uses distance absorption, not base color; nested nonintersecting solids supported.\n"
-            +"Refractive glass blocks straight light queries; scattering scenes transmit through index-matched boundaries with extinction.\n"
-            +"view move/rotate/scale <x> <y> <z> (absolute; degrees; positive scale)\n"
-            +"view light position <x> <y> <z> | light color <RRGGBB> | light intensity <n>\n"
-            +"In rough-room these edit the area emitter; light size <width> <depth> (fixed radiance, more area = more power).\n"
-            +"view exposure <-16..16 stops>; Esc closes console; WASD moves; Space/Ctrl up/down\n"
-            +"Mouse movement looks around (no button needed); R resets camera; movement follows the view.\n"
-            +"view resolution <64..1600> (square sensor; default 1600, try 400 for editing)\n"
-            +"view depth <0..32> | samples <1..8 per batch> | seed <integer> | restart\n"
-            +"view target <spp; 0 continuous> | pause | resume; F3 metrics, F4 CPU samples.\n"
-            +"50ms batch budget checked after each full sensor sample; depth 0 uses pixel centers.";
+    /** Headless callers use their initial sampling grid as the scale reference. */
+    public ViewportCommand(ViewportState state) { this(state, state.sensorPixelsW(), state.sensorPixelsH()); }
+    public ViewportCommand(ViewportState state, int displayWidth, int displayHeight) {
+        this.state=state;
+        this.referenceWidth=displayWidth;
+        this.referenceHeight=displayHeight;
+    }
+    public static final String HELP = ViewportHelp.INDEX;
+    @Override public Result<String, String> help(String... path) { return ViewportHelp.help(path); }
     @Override public Result<String,String> run(String... raw) {
         var args=Arrays.stream(raw).filter(s->!s.isBlank()).toArray(String[]::new);
         synchronized(state) {
             try {
-                if(args.length<2||args[1].equals("help")) return Result.success(HELP);
+                if(args.length<2) return help();
+                if(args[1].equals("help")) return help(Arrays.copyOfRange(args,2,args.length));
+                if(args[args.length-1].equals("help") || args[args.length-1].equals("--help"))
+                    return help(Arrays.copyOfRange(args,1,args.length-1));
                 String op=args[1];
+                if(args.length==2 && (op.equals("light") || op.equals("mesh") || op.equals("camera"))) return help(op);
                 switch(op) {
                     case "status" -> require(args,2);
                     case "acceleration" -> {require(args,3);if(!args[2].equals("bvh")&&!args[2].equals("brute"))throw new IllegalArgumentException("view acceleration bvh/brute");state.acceleration(args[2].equals("bvh"));}
@@ -59,7 +52,7 @@ public final class ViewportCommand implements Command {
                     case "reset" -> {require(args,2);ScenePresets.load(state,state.preset());selected=state.instances().getFirst().name();}
                     case "camera" -> {require(args,3);if(!args[2].equals("reset")) throw new IllegalArgumentException("view camera reset");ScenePresets.resetCamera(state);}
                     case "exposure" -> {require(args,3);state.exposure(number(args[2]));}
-                    case "resolution" -> {require(args,3);state.resolution(Integer.parseInt(args[2]));}
+                    case "resolution" -> resolution(args);
                     case "depth" -> {require(args,3);state.pathDepth(Integer.parseInt(args[2]));}
                     case "samples" -> {require(args,3);state.samplesPerFrame(Integer.parseInt(args[2]));}
                     case "seed" -> {require(args,3);state.seed(Long.parseLong(args[2]));}
@@ -109,10 +102,51 @@ public final class ViewportCommand implements Command {
                     }
                     default -> throw new IllegalArgumentException("Unknown view command; view help");
                 }
-                return Result.success(status());
+                return Result.success(op.equals("status") ? status() : confirmation(args));
             } catch(IllegalArgumentException e) { return Result.failure(e.getMessage()); }
         }
     }
+    private String confirmation(String[] args) {
+        return switch(args[1]) {
+            case "resolution" -> "Updated resolution to " + state.sensorPixelsW() + "x" + state.sensorPixelsH() + ".";
+            case "preset" -> "Loaded preset " + state.preset() + ".";
+            case "reset" -> "Reset preset " + state.preset() + ".";
+            case "camera" -> "Reset camera.";
+            case "restart" -> "Restarted sampling.";
+            case "pause" -> "Paused sampling.";
+            case "resume" -> "Resumed sampling.";
+            case "select" -> "Selected " + selected + ".";
+            case "copy" -> "Created and selected " + selected + ".";
+            case "remove" -> "Removed " + args[2] + ".";
+            case "light", "mesh" -> "Updated " + args[1] + " " + args[2] + " to " + String.join(" ", Arrays.copyOfRange(args,3,args.length)) + ".";
+            default -> "Updated " + args[1] + " to " + String.join(" ", Arrays.copyOfRange(args,2,args.length)) + ".";
+        };
+    }
+    private void resolution(String[] args) {
+        if (args.length == 4) {
+            state.resolution(Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+            return;
+        }
+        require(args, 3);
+        String value = args[2];
+        if (!value.endsWith("x") && !value.equals("native") && !value.equals("half") && !value.equals("quarter")) {
+            state.resolution(Integer.parseInt(value));
+            return;
+        }
+        double factor = switch (value) {
+            case "native" -> 1;
+            case "half" -> .5;
+            case "quarter" -> .25;
+            default -> Double.parseDouble(value.substring(0, value.length() - 1));
+        };
+        if (!Double.isFinite(factor) || factor <= 0)
+            throw new IllegalArgumentException("Resolution multiplier must be positive and finite");
+        long width = Math.round(referenceWidth * factor), height = Math.round(referenceHeight * factor);
+        if (width < 64 || width > 1600 || height < 64 || height > 1600)
+            throw new IllegalArgumentException("Scaled width and height must each be 64..1600");
+        state.resolution((int) width, (int) height);
+    }
+
     private String status() {
         var names=state.instances().stream().map(SceneInstance::name).toList();
         var materials=state.instances().stream().map(o->o.material().name()).distinct().toList();
@@ -149,7 +183,7 @@ public final class ViewportCommand implements Command {
         for(int i=0;i<state.instances().size();i++) if(state.instances().get(i).name().equals(name)) return i;
         throw new IllegalArgumentException("Unknown object: "+name);
     }
-    private static void require(String[] args,int length) {if(args.length!=length) throw new IllegalArgumentException("Invalid arguments; view help");}
+    private static void require(String[] args,int length) {if(args.length!=length) throw new IllegalArgumentException(ViewportHelp.usage(args));}
     private static float number(String s) {float n=Float.parseFloat(s);if(!Float.isFinite(n)) throw new IllegalArgumentException("Value must be finite");return n;}
     private static Vec3 vector(String[] args,int start) {return new Vec3(number(args[start]),number(args[start+1]),number(args[start+2]));}
     private static int rgb(String s) {if(!s.matches("#?[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Color needs six hex digits");return Integer.parseInt(s.replace("#",""),16);}

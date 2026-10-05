@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CmdScene implements Command {
+    @Override public String helpText() { return "Usage: scene <name>\n  Available: " + String.join(", ", new java.util.TreeSet<>(scenesByName.keySet())); }
     private final Map<String, Scene>       scenesByName;
     private final AtomicReference<Scene>   activeScene;
 

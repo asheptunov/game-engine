@@ -20,6 +20,8 @@ public class CmdRm implements Command {
         this.state = state;
     }
 
+    @Override public String helpText() { return "Usage: rm [-r] <file|dir>\n  Remove a file; -r also removes directories recursively."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length < 2 || args.length > 3) {

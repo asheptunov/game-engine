@@ -137,6 +137,47 @@ public class MaterialPlaygroundTest {
         var reference=state(64);ScenePresets.load(reference,"playground");assertEquals(new DirectRgbTracer(reference).trace(),actual);
         assertTrue(command.run("view","resolution","0").isFailure());assertEquals(64,st.sensorPixelsW());
     }
+    @Test void rectangularResolutionMatchesReferenceAndRestartsSampling() {
+        var st=state(80);ScenePresets.load(st,"playground");st.presentationAspect(1.6f);
+        var camera=st.cameraSensor();var tracer=new DirectRgbTracer(st);
+        var command=new ViewportCommand(st,1440,900);
+        tracer.trace();
+        assertTrue(command.run("view","resolution","128","80").isSuccess());
+        var actual=tracer.trace();
+        assertEquals(80,actual[0].length);assertEquals(128,actual[0][0].length);
+        assertEquals(128*80,tracer.primaryRays);assertEquals(camera,st.cameraSensor());
+        var reference=new ViewportState(camera,128,80);ScenePresets.load(reference,"playground");reference.presentationAspect(1.6f);
+        assertEquals(new DirectRgbTracer(reference).trace(),actual);
+        st.pathDepth(1);tracer.trace();tracer.trace();assertEquals(2L,st.accumulatedSamples());
+        assertTrue(command.run("view","resolution","80","128").isSuccess());
+        actual=tracer.trace();assertEquals(128,actual[0].length);assertEquals(80,actual[0][0].length);
+        assertEquals(1L,st.accumulatedSamples());assertEquals(camera,st.cameraSensor());
+        assertEquals(128,st.accumulator().length);assertEquals(80,st.accumulator()[0].length);
+    }
+
+    @Test void resolutionPresetsAndMultipliersUseFixedWindowReferenceAndRejectInvalidEdits() {
+        var st=state(80);ScenePresets.load(st,"playground");var command=new ViewportCommand(st,1440,900);
+        assertTrue(command.run("view","resolution","native").isSuccess());
+        assertEquals(1440,st.sensorPixelsW());assertEquals(900,st.sensorPixelsH());
+        for(String value:new String[]{"half","0.5x","0.5x"}) {
+            assertTrue(command.run("view","resolution",value).isSuccess());
+            assertEquals(720,st.sensorPixelsW());assertEquals(450,st.sensorPixelsH());
+        }
+        assertTrue(command.run("view","resolution","quarter").isSuccess());
+        assertEquals(360,st.sensorPixelsW());assertEquals(225,st.sensorPixelsH());
+        assertTrue(command.run("view","resolution","0.333x").isSuccess());
+        assertEquals(480,st.sensorPixelsW());assertEquals(300,st.sensorPixelsH());
+        assertTrue(command.run("view","preset","triangle").isSuccess());
+        assertEquals(480,st.sensorPixelsW());assertEquals(300,st.sensorPixelsH());
+        var storage=st.accumulator();
+        for(String[] args:new String[][]{{"0x"},{"-1x"},{"NaNx"},{"Infinityx"},{"2x"},{"0.001x"},
+                {"800","0"},{"1601","1000"},{"800","bad"},{"800","500","extra"},{}}) {
+            var input=new String[args.length+2];input[0]="view";input[1]="resolution";System.arraycopy(args,0,input,2,args.length);
+            assertTrue(command.run(input).isFailure());assertSame(storage,st.accumulator());
+            assertEquals(480,st.sensorPixelsW());assertEquals(300,st.sensorPixelsH());
+        }
+    }
+
     @Test void playgroundDeterministicPreview() throws Exception {
         var st=state(400);ScenePresets.load(st,"playground");var tracer=new DirectRgbTracer(st);var first=deepCopy(tracer.trace());
         assertEquals(first,tracer.trace());assertTrue(tracer.primaryHits>0);assertTrue(tracer.shadowsOccluded>0);

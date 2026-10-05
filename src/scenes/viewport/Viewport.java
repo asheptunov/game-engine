@@ -47,8 +47,7 @@ public class Viewport implements
     private static final Logger LOG = LogManager.instance().getThis();
 
     // Sensor pixel grid. Each sensor pixel is drawn as a block on the display.
-    private static final int   SENSOR_W = 1600;
-    private static final int   SENSOR_H = 1600;
+    private static final int   SENSOR_LONG_EDGE = 1600;
     private final CameraControls cameraControls = new CameraControls();
 
     private final Raster             display;
@@ -81,20 +80,16 @@ public class Viewport implements
         this.width = width;
         this.height = height;
 
-        int fontSize = 16;
-        int charSpacing = -4;
-        int lineSpacing = 0;
-
-        this.state = defaultScene();
+        this.state = defaultScene(width, height);
+        this.state.presentationAspect((float) width / height);
         this.tracer = new DirectRgbTracer(state);
         var rootCmd = new TrimmingCommand(DelegatingCommand.builder()
-                .withCommand("view", new ViewportCommand(state))
+                .withCommand("view", new ViewportCommand(state, width, height))
                 .withCommand("scene", new CmdScene(scenes, sceneRef))
                 .withCommand("exit", new CmdExit())
                 .build());
 
-        this.console = new Console(painter, printer, width, height,
-                fontSize, charSpacing, lineSpacing,
+        this.console = Console.withAwtText(display,
                 () -> consoleOpen = false,
                 100,
                 rootCmd);
@@ -124,13 +119,14 @@ public class Viewport implements
                 .validate("Viewport mouse");
     }
 
-    private static ViewportState defaultScene() {
+    private static ViewportState defaultScene(int width, int height) {
         // Sensor (image plane): 1×1 unit square at z=0. Eye is at z=-1 (pinhole 1 unit behind sensor).
         var sensor = new Rect(
                 new Vec3(-0.5f, -0.5f, 0),
                 new Vec3(1, 0, 0),
                 new Vec3(0, 1, 0));
-        var st = new ViewportState(sensor, SENSOR_W, SENSOR_H);
+        double scale = (double) SENSOR_LONG_EDGE / Math.max(width, height);
+        var st = new ViewportState(sensor, (int) Math.round(width * scale), (int) Math.round(height * scale));
         st.eye(new Vec3(0, 0, -1));
         ScenePresets.load(st, "playground");
         return st;
@@ -151,9 +147,11 @@ public class Viewport implements
         profiler.rayStats(new FrameProfiler.Rays(state.sensorPixelsW(), state.sensorPixelsH(),
                 tracer.primaryRays, tracer.primaryHits, tracer.shadowRays,
                 tracer.shadowsOccluded, tracer.litPixels, tracer.traceNanos));
+        // Camera geometry matches the window; sampling resolution is independent.
         var resampled = profiler.measure(FrameProfiler.Stage.RESAMPLE,
                 () -> new float[][][]{Resampler.resample(traced[0], height, width).buf(),
-                        Resampler.resample(traced[1], height, width).buf(), Resampler.resample(traced[2], height, width).buf()});
+                        Resampler.resample(traced[1], height, width).buf(),
+                        Resampler.resample(traced[2], height, width).buf()});
         final float exposure = (float) Math.pow(2, state.exposure());
         // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
         profiler.measure(FrameProfiler.Stage.PAINT, () -> {

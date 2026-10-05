@@ -18,6 +18,8 @@ public class CmdStatus implements Command {
         this.colorPicker = colorPicker;
     }
 
+    @Override public String helpText() { return "Usage: status\n  Show texture editor state."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length != 1) {

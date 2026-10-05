@@ -42,6 +42,8 @@ public class CmdLs implements Command {
         this.clock = clock;
     }
 
+    @Override public String helpText() { return "Usage: ls [file|dir]\n  List files in the working directory or at the given path."; }
+
     @Override
     public Result<String, String> run(String... args) {
         if (args.length > 2) {
