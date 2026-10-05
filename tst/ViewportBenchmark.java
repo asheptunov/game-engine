@@ -78,7 +78,7 @@ public class ViewportBenchmark {
         var checker = injector.get(Checkerboard.class);
         var profiler = injector.get(FrameProfiler.class);
         if (Arrays.asList(args).contains("details")) profiler.toggleTraceDetails();
-        var pipeline = module.renderer(List.of(eraser, checker, viewport), profiler,
+        var pipeline = module.renderer(List.of(eraser, checker, (rendering.Renderer) viewport::renderBlocking), profiler,
                 new AtomicReference<Scene>(viewport));
         int warmup=option(args,"warmup",50), frames=option(args,"frames",100);
         if(warmup<1 || frames<1) throw new IllegalArgumentException("warmup and frames must be positive");
@@ -165,7 +165,7 @@ public class ViewportBenchmark {
                     +"; aggregate_cpu_ns="+cpuTotal+"; frame_alloc_bytes="+allocTotal+"; trace_alloc_bytes="+traceAllocTotal
                     +"; gc_count="+gcCount+"; gc_ms="+gcMillis+"\n"+convergence);
         }
-        viewport.tracer().close();
+        viewport.close();
         profiler.close();
     }
     private static int option(String[] args,String key,int fallback) {

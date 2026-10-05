@@ -9,6 +9,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ViewportState {
+    /** Immutable estimator identity; display and scheduling settings intentionally excluded. */
+    public record RenderKey(List<SceneInstance> instances, List<SceneObject> objects, List<Light> lights,
+                            Vec3 eye, Rect sensor, int width, int height, int depth, long seed, long restart) {
+        /** Camera-only differences can finish as a coherent preview, never as current accumulation. */
+        public boolean sameTransport(RenderKey other) {
+            return other != null && instances.equals(other.instances) && objects.equals(other.objects)
+                    && lights.equals(other.lights) && width==other.width && height==other.height
+                    && depth==other.depth && seed==other.seed && restart==other.restart;
+        }
+    }
+    public RenderKey renderKey() {
+        return new RenderKey(List.copyOf(instances), List.copyOf(objects), List.copyOf(lights), eye,
+                cameraSensor, sensorPixelsW, sensorPixelsH, pathDepth, seed, restartVersion);
+    }
+    /** Caller holds this state's monitor. The copy belongs exclusively to the trace coordinator. */
+    public ViewportState renderSnapshot() {
+        var copy = new ViewportState(cameraSensor, sensorPixelsW, sensorPixelsH, false);
+        copy.eye=eye; copy.instances.addAll(instances); copy.objects.addAll(objects); copy.lights.addAll(lights);
+        copy.pathDepth=pathDepth; copy.seed=seed; copy.restartVersion=restartVersion; copy.preset=preset;
+        copy.samplesPerFrame=samplesPerFrame; copy.sampleTarget=sampleTarget; copy.paused=paused;
+        copy.acceleration=acceleration; copy.workers=workers; copy.tileSize=tileSize;
+        return copy;
+    }
     private       Rect              cameraSensor;
     private float presentationAspect;
     private       Vec3              eye             = new Vec3(0, 0, -1);
@@ -92,12 +115,15 @@ public class ViewportState {
     }
 
     public ViewportState(Rect cameraSensor, int sensorPixelsW, int sensorPixelsH) {
+        this(cameraSensor, sensorPixelsW, sensorPixelsH, true);
+    }
+    private ViewportState(Rect cameraSensor, int sensorPixelsW, int sensorPixelsH, boolean legacyBuffer) {
         workers(workers);
         tileSize(tileSize);
         this.cameraSensor = cameraSensor;
         this.sensorPixelsW = sensorPixelsW;
         this.sensorPixelsH = sensorPixelsH;
-        this.accumulator = new float[sensorPixelsH][sensorPixelsW];
+        this.accumulator = legacyBuffer ? new float[sensorPixelsH][sensorPixelsW] : null;
     }
 
     public float[][] accumulator() { return accumulator; }

@@ -1,0 +1,14 @@
+Headless frame: median 93.81 ms, p95 116.28 ms
+TRACE: median 9.85 ms, p95 12.65 ms
+RESAMPLE: median 65.90 ms, p95 83.65 ms
+PAINT: median 18.89 ms, p95 20.66 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.99; frame allocated bytes/frame: 16242041; trace bytes/frame: 4878; GC count=4 time=9 ms; measured spp=100
+Stationary time to 8 spp (headless frame pipeline): 819.00 ms
+Headless frame: median 81.08 ms, p95 99.98 ms
+TRACE: median 63.78 ms, p95 68.67 ms
+RESAMPLE: median 5.90 ms, p95 9.78 ms
+PAINT: median 10.17 ms, p95 20.61 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 10.08; frame allocated bytes/frame: 16246333; trace bytes/frame: 6682; GC count=1 time=1 ms; measured spp=20
+Stationary time to 8 spp (headless frame pipeline): 852.89 ms

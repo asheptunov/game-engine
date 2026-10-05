@@ -106,7 +106,7 @@ public class Console implements Renderer {
         this.historyLimit = historySize;
     }
 
-    public void accept(KeyAction keyAction) {
+    public synchronized void accept(KeyAction keyAction) {
         vtOffset = 0;
         switch (keyAction.action()) {
             case KeyAction.Action.PRESS -> {
@@ -170,7 +170,7 @@ public class Console implements Renderer {
         }
     }
 
-    public void accept(MouseWheelEvent e) {
+    public synchronized void accept(MouseWheelEvent e) {
         vtOffset -= e.getPreciseWheelRotation();
     }
 
@@ -202,11 +202,13 @@ public class Console implements Renderer {
 
     @Override
     public void render() {
+        String allChars;
+        double scroll;
+        synchronized(this) { allChars=concatAllChars(); scroll=vtOffset; }
         renderBackground();
-        var allChars = concatAllChars();
         var ansiSequences = computeAnsiSequences(allChars);
         var displayLines = convertToDisplayLines(allChars, ansiSequences);
-        renderLines(displayLines);
+        renderLines(displayLines,scroll);
     }
 
     private void renderBackground() {
@@ -295,12 +297,12 @@ public class Console implements Renderer {
         return lines;
     }
 
-    private void renderLines(List<List<StyledChar>> lines) {
+    private void renderLines(List<List<StyledChar>> lines,double scroll) {
         int row = 0;
         int n = lines.size();
         for (var line : lines) {
             int col = 0;
-            int y = (int) ((row - (n - maxLines) + vtOffset) * vtStride);
+            int y = (int) ((row - (n - maxLines) + scroll) * vtStride);
             if (y + vtStride <= 0 || y >= height) { ++row; continue; }
             for (var sc : line) {
                 printer.print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));

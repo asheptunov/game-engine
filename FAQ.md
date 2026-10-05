@@ -68,11 +68,11 @@ A12: Each path starts a reproducible pseudorandom sequence from three identifier
 
 Q13: why is there a monitor around state in Viewport.java? is there parallelization around that component?
 
-A13: AWT delivers input on its event thread while the rendering loop reads and updates scene state on another thread. `synchronized (state)` prevents an input edit from changing the camera or scene halfway through rendering and makes updates visible between threads. P1 now parallelizes tracing: workers process tiles using a fixed snapshot and their own scratch data. The coordinator still holds the state lock throughout rendering, so input waits for the complete pass and display work. P2 will shorten that locking and add cancellation so input can proceed while workers trace.
+A13: AWT delivers input on its event thread while the display loop and trace coordinator run on other threads. The monitor protects brief edits, snapshot capture, and publication of matching sample counts. P2 performs tracing and image conversion outside that lock, so input can proceed while workers trace. Workers use a fixed snapshot. Camera motion lets the active pass finish as a coherent, slightly older preview; the next job captures the latest camera. Scene or resolution edits still cancel between tiles. Preview samples do not count toward a different camera's accumulation. The display reads its own immutable completed image, and console drawing snapshots its text before drawing.
 
 Q14: why does the tracer have a budget if it's only checked after it's done?
 
-A14: One `trace()` call can perform several complete image samples, according to `samplesPerFrame`. The 50 ms check runs after each sample, before starting the next. If a sample takes 10 ms, it can stop a large batch after roughly five samples. If the first sample takes 600 ms, it cannot interrupt it; with one sample per frame it saves no work. It is a soft batch limit, not a frame deadline. Tile-level checks would provide smaller interruption points. The state lock is released only after the remaining viewport work finishes too.
+A14: The 50 ms limit still stops a batch between complete image samples. P2 additionally checks cancellation and a 16.67 ms work-slice budget between tiles. Workers finish their current tiles, then return; the coordinator can schedule another slice of the same unfinished pass. A complete pass may span many slices, and a long tile can exceed the slice budget. Camera motion ends the batch after its active pass completes, allowing previews to update during sustained movement; cancelling every mouse event would prevent any pass from finishing. Scene/resolution edits and pause still cancel incomplete passes. These are cooperative limits, not a promise of a fresh image every 16.67 ms; input no longer waits on the pass or image conversion.
 
 Q15: is how does rendering snapshots asynchronously "enable automatic resolution reduction during movement and refinement when stationary"
 
@@ -101,3 +101,11 @@ A20: Independent random samples can accidentally cluster, leaving gaps. **Strati
 Q21: what is Temporal reuse and denoising?
 
 A21: **Temporal reuse** uses information from earlier frames. Our stationary accumulation already averages past samples at an unchanged camera; the proposed extension maps useful history into a changed view and rejects history that no longer matches. **Denoising** estimates a cleaner image from noisy samples, often using nearby pixels plus depth, normals, and surface color to avoid blurring across boundaries. It can also use temporal history. Both can make a low-sample image more useful, but can introduce blur or ghosting. Glass and mirrors are difficult because the first visible surface does not identify the reflected or refracted scene. Keep raw samples separate and provide a raw-image view.
+
+Q22: Define integer enlargement
+
+A22: Enlarging by a whole-number factor in both dimensions, such as 360×225 to 1440×900 at 4×. Each source pixel covers a 4×4 display block. With our box filter, all sixteen display pixels receive the same source value, so we can encode that value once and copy it across the block. This optimization is planned for P3.
+
+Q23: Define "filter linear radiance"
+
+A23: Combine neighboring light values while they are still proportional to physical brightness, before tone mapping and sRGB encoding. For example, equal contributions of radiance 0 and 4 average to 2; then we tone-map 2. Tone-mapping the inputs first and averaging their display values produces a different result. Our existing resampler already filters linear radiance; P3 must preserve that order.

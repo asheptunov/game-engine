@@ -11,13 +11,19 @@ import java.util.List;
 /** Iterative RGB paths, GGX/delta transport and area-light MIS; no per-ray objects. */
 public final class DirectRgbTracer implements AutoCloseable {
     private static final float BIAS = 1e-3f;
-    private final ViewportState state;
+    private ViewportState state;
     private List<SceneInstance> cachedInstances = List.of();
     private List<SceneObject> cachedLegacyObjects = List.of();
     private PreparedObject[] objects = new PreparedObject[0];
     private PreparedEmitter[] emitters = new PreparedEmitter[0];
     private float[][][] buffer;
     private double[][][] mean;
+    private double[][][] stagingMean;
+    private java.util.function.BooleanSupplier cancellation = () -> false;
+    private volatile long sliceDeadline;
+    private final java.util.concurrent.atomic.AtomicInteger completedTiles = new java.util.concurrent.atomic.AtomicInteger();
+    public boolean cancelled;
+    public long maxTileNanos, discardedPrimaryRays;
     private AccumulationKey accumulationKey;
     private long samples;
     private boolean volumeMode;
@@ -115,8 +121,20 @@ public final class DirectRgbTracer implements AutoCloseable {
     /** Completed linear radiance, reused on the next trace; callers must not mutate it. */
     public float[][][] radianceBuffer() { return buffer; }
 
-    /** Caller owns the state monitor. Only immutable snapshot data reaches workers. */
+    /** Blocking reference path: caller owns the supplied state and prevents concurrent edits. */
     public float[][][] trace() {
+        return trace(state, () -> false);
+    }
+    /** Single coordinator only; snapshot is owned by the caller, never the live input state. */
+    public float[][][] trace(ViewportState snapshotState, java.util.function.BooleanSupplier cancel) {
+        return trace(snapshotState,cancel,()->false);
+    }
+    /** Camera motion may finish the current pass but suppress further passes in this batch. */
+    public float[][][] trace(ViewportState snapshotState, java.util.function.BooleanSupplier cancel,
+                             java.util.function.BooleanSupplier stopAfterPass) {
+        state = snapshotState;
+        cancellation = cancel;
+        cancelled = false; maxTileNanos = discardedPrimaryRays = 0;
         if (closed) throw new IllegalStateException("Tracer is closed");
         long cpu = RuntimeMetrics.threadCpu(), bytes = RuntimeMetrics.allocatedBytes(), start = System.nanoTime();
         prepare();
@@ -147,7 +165,8 @@ public final class DirectRgbTracer implements AutoCloseable {
         if (!key.equals(accumulationKey)) {
             accumulationKey = key; samples = 0; state.accumulatedSamples(0);
             if (mean == null || buffer[0].length != height || buffer[0][0].length != width) {
-                mean = new double[3][height][width]; buffer = new float[3][height][width];
+                mean = new double[3][height][width]; stagingMean = new double[3][height][width];
+                buffer = new float[3][height][width];
             } else for (int c = 0; c < 3; c++) for (int y = 0; y < height; y++) {
                 java.util.Arrays.fill(mean[c][y], 0); java.util.Arrays.fill(buffer[c][y], 0);
             }
@@ -165,31 +184,36 @@ public final class DirectRgbTracer implements AutoCloseable {
             var snapshot = new Snapshot(objects, emitters, lights, eye, sensor, width, height,
                     state.pathDepth(), state.seed(), samples, state.acceleration(), volumeMode, visibilityCrossingLimit);
             nextTile.set(0);
+            completedTiles.set(0);
             for (var worker : workers) worker.configure(snapshot, state.tileSize());
-            // All workers finish before commit, including on failure/interruption. Never expose mixed passes.
-            if (count == 1) {
-                try { workers.getFirst().call(); }
-                catch (RuntimeException | Error failure) { accumulationKey = null; throw failure; }
-            }
-            else {
-                var futures = new java.util.ArrayList<java.util.concurrent.Future<Void>>();
-                Throwable failure = null; boolean interrupted = false;
-                try {
-                    for (var worker : workers) futures.add(Pool.EXECUTOR.submit(worker));
-                } catch (RuntimeException e) { failure = e; }
-                for (var future : futures) {
-                    boolean done = false;
-                    while (!done) try { future.get(); done = true; }
-                    catch (InterruptedException e) { interrupted = true; }
-                    catch (java.util.concurrent.ExecutionException e) { failure = e.getCause(); done = true; }
+            do {
+                sliceDeadline = System.nanoTime() + 16_666_667L;
+                // All workers finish before commit, including on failure/interruption. Never expose mixed passes.
+                if (count == 1) {
+                    try { workers.getFirst().call(); }
+                    catch (RuntimeException | Error failure) { accumulationKey = null; throw failure; }
                 }
-                if (interrupted) Thread.currentThread().interrupt();
-                if (failure != null || interrupted) {
-                    accumulationKey = null; // Invalidate any writes from this uncommitted pass.
-                    throw new IllegalStateException("Trace pass failed", failure);
+                else {
+                    var futures = new java.util.ArrayList<java.util.concurrent.Future<Void>>();
+                    Throwable failure = null; boolean interrupted = false;
+                    try {
+                        for (var worker : workers) futures.add(Pool.EXECUTOR.submit(worker));
+                    } catch (RuntimeException e) { failure = e; }
+                    for (var future : futures) {
+                        boolean done = false;
+                        while (!done) try { future.get(); done = true; }
+                        catch (InterruptedException e) { interrupted = true; }
+                        catch (java.util.concurrent.ExecutionException e) { failure = e.getCause(); done = true; }
+                    }
+                    if (interrupted) Thread.currentThread().interrupt();
+                    if (failure != null || interrupted) {
+                        accumulationKey = null; // Invalidate any writes from this uncommitted pass.
+                        throw new IllegalStateException("Trace pass failed", failure);
+                    }
                 }
-            }
+            } while (!cancellation.getAsBoolean() && nextTile.get() < workers.getFirst().tileCount);
             for (var worker : workers) {
+                maxTileNanos = Math.max(maxTileNanos, worker.maxTileNanos);
                 primaryRays += worker.primaryRays;
                 primaryHits += worker.primaryHits;
                 shadowRays += worker.shadowRays;
@@ -215,8 +239,16 @@ public final class DirectRgbTracer implements AutoCloseable {
                     workerAllocatedBytes = addMetric(workerAllocatedBytes, worker.allocatedBytes);
                 }
             }
+            if (cancellation.getAsBoolean() || completedTiles.get() != workers.getFirst().tileCount) {
+                cancelled = true;
+                discardedPrimaryRays = workers.stream().mapToLong(w -> w.primaryRays).sum();
+                break;
+            }
+            var previous = mean; mean = stagingMean; stagingMean = previous;
+            for (int c=0;c<3;c++) for(int y=0;y<height;y++) for(int x=0;x<width;x++)
+                buffer[c][y][x]=(float)mean[c][y][x];
             samples++; rendered++;
-            if (System.nanoTime()-start >= 50_000_000L) break;
+            if (stopAfterPass.getAsBoolean() || System.nanoTime()-start >= 50_000_000L) break;
         }
         state.accumulatedSamples(samples);
         traceNanos = System.nanoTime()-start;
@@ -291,6 +323,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         private final Sampler sampler = new Sampler();
         private final Material.Sample scattering = new Material.Sample(), evaluation = new Material.Sample();
         private long cpuNanos, allocatedBytes;
+        private long maxTileNanos;
         private boolean continuation;
         private final Hit visibilityHit = new Hit();
         private PreparedObject[] visibilityMedia = new PreparedObject[0];
@@ -319,6 +352,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         private long volumeVisibilitySegments;
 
         void configure(Snapshot value, int tile) {
+            cpuNanos = allocatedBytes = maxTileNanos = 0;
             snapshot=value; objects=value.objects(); emitters=value.emitters();
             volumeMode=value.volumeMode(); visibilityCrossingLimit=value.crossingLimit();
             if (media == null || media.length != objects.length+1) {
@@ -353,14 +387,18 @@ public final class DirectRgbTracer implements AutoCloseable {
             long cpu=RuntimeMetrics.threadCpu(), bytes=RuntimeMetrics.allocatedBytes();
             try {
                 int tile;
-                while ((tile=nextTile.getAndIncrement()) < tileCount) {
+                while (!cancellation.getAsBoolean() && System.nanoTime() < sliceDeadline
+                        && (tile=nextTile.getAndIncrement()) < tileCount) {
+                    long start = System.nanoTime();
                     int x0=tile%tilesX*tileSize, y0=tile/tilesX*tileSize;
                     render(x0,y0,Math.min(snapshot.width(),x0+tileSize),Math.min(snapshot.height(),y0+tileSize));
+                    completedTiles.incrementAndGet();
+                    maxTileNanos=Math.max(maxTileNanos,System.nanoTime()-start);
                 }
                 return null;
             } finally {
-                cpuNanos=RuntimeMetrics.delta(cpu,RuntimeMetrics.threadCpu());
-                allocatedBytes=RuntimeMetrics.delta(bytes,RuntimeMetrics.allocatedBytes());
+                cpuNanos=addMetric(cpuNanos,RuntimeMetrics.delta(cpu,RuntimeMetrics.threadCpu()));
+                allocatedBytes=addMetric(allocatedBytes,RuntimeMetrics.delta(bytes,RuntimeMetrics.allocatedBytes()));
             }
         }
         private void render(int x0,int y0,int x1,int y1) {
@@ -380,8 +418,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                     primaryRays++;
                     path(eye.x(), eye.y(), eye.z(), dx, dy, dz, hit, lights, rgb, lighting, sampler, scattering, evaluation, initialMedia, media);
                     for (int c = 0; c < 3; c++) {
-                        mean[c][y][x] += (rgb[c] - mean[c][y][x]) * inverseCount;
-                        buffer[c][y][x] = (float) mean[c][y][x];
+                        stagingMean[c][y][x] = mean[c][y][x] + (rgb[c] - mean[c][y][x]) * inverseCount;
                     }
                     if (rgb[0] + rgb[1] + rgb[2] > 0) litPixels++;
             }

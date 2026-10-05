@@ -30,9 +30,9 @@ final class ViewportHelp {
                     + "  Changes sampling density, not camera field of view or window size.\n"
                     + "Examples:\n  view resolution 800 500\n  view resolution 0.5x"),
             Map.entry("depth", page("depth <0..32>", "Maximum path continuations; 0 gives direct lighting only.")),
-            Map.entry("samples", page("samples <1..8>", "Maximum samples per frame batch; retains accumulated samples.")),
+            Map.entry("samples", page("samples <1..8>", "Maximum samples per background batch; retains accumulated samples.\n  The display can repeat the previous complete image while tracing.")),
             Map.entry("workers", page("workers <count>", "Persistent tracing workers: 1..min(32, available CPUs). Retains samples.")),
-            Map.entry("tile", page("tile <1..256>", "Square tracing tile size in pixels; default 32. Retains samples.")),
+            Map.entry("tile", page("tile <1..256>", "Square tracing tile size in pixels; default 32. Retains samples.\n  Smaller tiles allow earlier cancellation after scene edits or pause.\n  Camera motion finishes the active pass as a preview.")),
             Map.entry("seed", page("seed <integer>", "Set the deterministic sampling seed; restarts accumulation.")),
             Map.entry("target", page("target <spp>", "Stop at this sample count; 0 means continuous sampling.")),
             Map.entry("restart", page("restart", "Clear accumulated samples and start again.")),

@@ -18,6 +18,13 @@ public final class FrameProfiler implements AutoCloseable {
         public long stage(Stage stage) { return nanos.get(stage.ordinal()); }
     }
     public record Snapshot(List<Frame> frames, double fps, double meanMs, double p95Ms) {}
+    /** Async image diagnostics; excludes AWT delivery latency. */
+    public record RenderProgress(long generation, long shownGeneration, long completedSamples,
+                                 long imageAgeNanos, long firstImageNanos, long cancelledJobs,
+                                 long wastedPrimaryRays, long maxTileNanos, boolean running) {}
+    private RenderProgress renderProgress;
+    public void renderProgress(RenderProgress value) { renderProgress=value; }
+    public RenderProgress renderProgress() { return renderProgress; }
     private static final long WINDOW = 10_000_000_000L;
     private static final int CAPACITY = 4096;
     private final LongSupplier clock;
@@ -60,6 +67,7 @@ public final class FrameProfiler implements AutoCloseable {
         times = new long[Stage.values().length];
         rays = null;
         trace = null;
+        renderProgress = null;
         scopes.clear();
         pending = false;
     }

@@ -1,0 +1,14 @@
+mode=P2 async; glass 1440x900 sensor/display; workers=14; tile=32; events=100
+handler median/p95 0.138/0.328 ms; AWT synthetic delivery median/p95 0.292/1.149 ms; display median/p95 21.236/29.788 ms; frames=79
+last progress=RenderProgress[generation=100, shownGeneration=100, completedSamples=1, imageAgeNanos=125526000, firstImageNanos=144369200, cancelledJobs=73, wastedPrimaryRays=5036032, maxTileNanos=33288800, running=true]
+completed camera images displayed during continuous motion=0
+Synthetic events only; no physical input or AWT presentation. legacy-lock emulates the previous full-frame monitor using the current transport code.
+mode=P2 async; glass 1440x900 sensor/display; workers=14; tile=32; events=100
+handler median/p95 0.134/0.271 ms; AWT synthetic delivery median/p95 0.277/0.850 ms; display median/p95 25.338/34.522 ms; frames=69
+last progress=RenderProgress[generation=100, shownGeneration=100, completedSamples=1, imageAgeNanos=119535900, firstImageNanos=140288700, cancelledJobs=0, wastedPrimaryRays=0, maxTileNanos=27406700, running=true]
+completed camera images displayed during continuous motion=15
+Synthetic events only; no physical input or AWT presentation. legacy-lock emulates the previous full-frame monitor using the current transport code.
+src/scenes/viewport/AsyncViewportTrace.java SHA256=4E47BCC26EE51CED06CB4976EB0E10563DCE6F8D02E5C693633EBD8DB87CE46C
+src/scenes/viewport/DirectRgbTracer.java SHA256=09F6D2C01099826CB99FDB3A028E2AE11686FF4BBE04843631B197CEB465411A
+src/scenes/viewport/ViewportState.java SHA256=07D3812441A07F563A93E6BD34DF92605D49368F6CF18E0EDE018FE78D1218EF
+tst/ResponsiveViewportBenchmark.java SHA256=D20C424944962E313812BBF9C036E832474161E343E158162C23758F5E596614

@@ -128,11 +128,15 @@ public class FrameProfilerTest {
         p.toggle(); overlay.render();
         assertNotEquals(Color.NamedColor.BLACK.rgbInt24(), raster.pixel(12, 12).rgbInt24());
         save(raster, "out/cli/perf-viewport.png");
+        p.renderProgress(new FrameProfiler.RenderProgress(100,99,4,40_000_000,127_000_000,81,6_804_480,29_300_000,true));
+        time+=300_000_000; overlay.render();
+        save(raster,"out/cli/perf-viewport-async.png");
         for (int i = 0; i < 200; i++) sampler.record(System.nanoTime(), TraceSampler.Work.values()[i % 4]);
         p.toggleTraceDetails(); overlay.render();
         save(raster, "out/cli/perf-trace.png");
         p.toggleTraceDetails();
         time += 300_000_000; p.endFrame(); p.beginFrame(); overlay.render();
+        assertNull(p.renderProgress());
         save(raster, "out/cli/perf-editor.png");
         p.toggle();
         raster.write((_, _, _) -> Color.NamedColor.BLACK);

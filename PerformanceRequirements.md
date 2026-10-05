@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: P0 and P1 implemented. P2 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md).
+Status: P0 through P2 implemented. P3 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md) and [P2 results](benchmarks/p2/README.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -25,7 +25,7 @@ User observations at approximately 1400 by 900 are about 6 FPS in playground, 1.
 
 Window dimensions are not necessarily tracing dimensions. The configured window is 1440 by 900, while the default sensor has a 1600-pixel long edge, producing 1600 by 1000. Record both dimensions before making comparisons.
 
-Code inspection found:
+Baseline code inspection, before P0 through P2, found:
 
 - `DirectRgbTracer.trace()` runs the pixel loops sequentially. Mutable scratch fields and counters prevent safe parallel use as written.
 - `Viewport.render()` holds the state monitor during tracing, resampling, and painting; input handlers acquire that monitor too.
@@ -71,7 +71,7 @@ Start with P0 through P3. Review that result before committing to the later phas
 
 ## Shared completion requirements
 
-Each phase includes controls, documentation, relevant tests, and a before/after result in `tracker.md`. P0 and P1 were delivered together at the user's request; later phases are pending. An experiment that shows no useful improvement may be marked evaluated and deferred, with evidence; do not retain complexity solely because it was planned.
+Each phase includes controls, documentation, relevant tests, and a before/after result in `tracker.md`. P0 and P1 were delivered together at the user's request; P2 followed separately. An experiment that shows no useful improvement may be marked evaluated and deferred, with evidence; do not retain complexity solely because it was planned.
 
 For implementation-preserving changes, compare fixed seeds, camera, geometry, depth, resolution, and sample counts against the reference. Preserve exact images where arithmetic order is unchanged. Otherwise document justified tolerances and test transport invariants. For sampling changes, use multiple seeds and independent references to compare error at equal elapsed time; identical noisy pixels are not the criterion.
 
@@ -101,7 +101,7 @@ Implemented: a shared persistent platform-thread pool, dynamically claimed tiles
 worker-owned scratch/counters, fixed pass snapshots and complete-pass publication.
 `view workers` and `view tile` tune scheduling without discarding samples. The
 default is min(14, max(1, available CPUs - 2)) workers and 32-pixel tiles, selected
-from the local scaling measurements. P2 still owns responsive input/cancellation.
+from the local scaling measurements. P2 adds responsive input/cancellation below.
 
 Divide the sensor into tiles and dynamically assign them to a persistent, bounded platform-thread pool. Begin by benchmarking 16 by 16 and 32 by 32 tiles and worker counts such as 1, 2, 4, 6, 10, 14, and 20 where available. Tile size and worker count are experiments, not fixed promises. Avoid one task per pixel and per-ray atomics.
 
@@ -113,13 +113,47 @@ Acceptance: one-worker output agrees with the reference; several worker counts a
 
 ## P2 Responsive rendering and cancellation
 
-Separate input/state editing, tracing, and presentation. Acquire the state monitor only to apply edits or capture/publish coherent state; perform expensive tracing and image conversion outside it. Maintain an immutable snapshot and monotonically increasing render generation. Camera or transport changes invalidate old work. Exposure and overlays retain radiance samples.
+Implemented: the live viewport uses a single background coordinator and immutable
+state snapshots. Transport generations cancel obsolete tiles; complete
+passes commit from staging storage. Presentation reads an owned immutable RGB
+copy, and console drawing snapshots text before painting. There is one active job
+and no queue of requested generations. Pause/resume and target edits cancel work
+without discarding previously committed radiance; exposure retains samples.
 
-Check cancellation and time budgets between tiles. Stop scheduling obsolete tiles promptly; in-flight tiles may finish but must not publish into a newer generation. Publish through explicitly owned buffers so presentation never reads storage being modified. Discard incomplete passes initially; showing partial passes later requires valid per-pixel counts and clear stale-pixel handling.
+Camera-only motion lets the active pass finish and publish a coherent preview
+tagged with its captured generation. The batch stops after that pass, and the next
+job captures the newest camera. Preview samples count toward live accumulation
+only when the exact render key matches. Cancelling every camera edit starves
+publication during sustained movement, so camera previews deliberately permit
+one active pass of lag. Transport/resolution/restart changes and suspension still
+cancel between tiles and reject obsolete publication.
+
+Workers return between tiles when a 16.67 ms slice expires, then resume the same
+pass in another bounded wave. The slice is cooperative: an in-flight tile may
+overrun it, and a full pass can take many slices. The existing 50 ms limit remains
+an inter-pass batch limit. F3/F4 and the viewport footer show requested/shown
+generation, completed spp, age since snapshot capture, first-image latency, cancelled jobs, wasted
+primary paths and maximum tile wall time. Display FPS and the display-thread
+timeline do not measure fresh sample throughput; last-job CPU/ray/JFR data remain
+available. First-image latency ends after conversion to the display raster,
+excluding AWT presentation and physical input delivery.
+
+`renderBlocking()` retains deterministic full-pipeline benchmark/test behavior;
+mixing it with asynchronous rendering on one viewport is rejected. Sensor-sized
+publication copies and an extra double mean staging buffer are bounded, but
+allocation reduction and cached display conversion remain P3 work. The previous
+image stays visible while a new generation is pending, with its generation shown.
+Headless race/integration tests and synthetic AWT input measurements pass; manual
+GUI checks and physical input-to-screen latency remain unverified. See the
+[P2 measurements](benchmarks/p2/README.md).
+
+Separate input/state editing, tracing, and presentation. Acquire the state monitor only to apply edits or capture/publish coherent state; perform expensive tracing and image conversion outside it. Maintain an immutable snapshot and monotonically increasing render generation. Camera or transport changes invalidate accumulation for a different render key. Exposure and overlays retain radiance samples.
+
+Check cancellation and time budgets between tiles. Stop scheduling tiles promptly after transport or resolution edits; in-flight tiles may finish but must not publish into a newer generation. Camera-only edits may finish the active pass as an explicitly tagged preview, then capture the latest camera without a backlog. Publish through explicitly owned buffers so presentation never reads storage being modified. Discard incomplete passes initially; showing partial passes later requires valid per-pixel counts and clear stale-pixel handling.
 
 Keep input responsive while a pass is unfinished. A 16.67 ms display budget does not imply a complete fresh sensor sample fits inside it. Report image age and completed work, not just presentation FPS. Bound queued generations and memory; repeated mouse motion must not accumulate a backlog.
 
-Acceptance: rapid camera movement, resolution changes, preset switches, pause/resume, console interaction, and window focus loss cannot mix generations, race buffers, or deadlock. Measure input latency and wasted obsolete work. Aim for p95 input handling within one 60 Hz interval on the baseline host; separately report time to a visible camera update. Long individual tiles must be visible in diagnostics and motivate smaller tiles.
+Acceptance: rapid camera movement, resolution changes, preset switches, pause/resume, console interaction, and window focus loss cannot mix generations, race buffers, or deadlock. Continuous camera movement must display newly completed previews before input stops; repeated presentation of one old image is not progress. Check previews against their captured camera and stationary convergence against the latest camera. Measure input latency and wasted obsolete work. Aim for p95 input handling within one 60 Hz interval on the baseline host; separately report time to a visible camera update. Long individual tiles must be visible in diagnostics and motivate smaller tiles.
 
 ## P3 Reuse and fuse display buffers
 

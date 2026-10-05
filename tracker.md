@@ -326,6 +326,47 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   transport/profiling/input/console suites pass. AWT presentation and real event
   latency remain live-only measurements; asynchronous generation metrics arrive in P2.
 
+## Renderer performance P2 `[done]`
+
+- Live rendering now captures state briefly, then traces on one background coordinator
+  while the display loop paints an immutable completed image. Camera/transport edits
+  advance generations; transport edits stop obsolete tile scheduling. Camera motion
+  lets the active pass finish as a tagged preview before capturing the latest camera.
+  Preview samples do not count toward a different camera; no camera backlog is queued.
+  Input, resampling, tone mapping and console painting do not hold the state monitor.
+- Tiles stage mean updates and commit only complete passes. Cancellation preserves
+  previously committed spp. Cooperative 16.67 ms tile waves resume unfinished work;
+  individual long tiles can overrun. Pause/target edits and focus/scene suspension
+  invalidate active requests; exposure retains samples. F3/F4/footer show image age,
+  requested/shown generations, first-image latency, cancellation waste and max tile.
+  Display FPS/timings are separate from completed-job trace CPU/ray/JFR statistics.
+- Initial P2 synthetic AWT native-glass input, 100 events, fourteen workers/tile 32: p95 handler
+  time 0.212 ms versus 103.825 ms with the emulated P1 full-frame monitor; synthetic
+  dispatch-through-handler p95 0.421 ms versus 103.934 ms. The final settled generation
+  reached the display raster after 127.22 ms, excluding AWT presentation. 81 jobs
+  cancelled, 6,804,480 obsolete primary paths; max tile 29.30 ms. This policy starved
+  publication during sustained motion and was corrected below. Fresh full-resolution
+  samples remain far below 60 Hz.
+- Blocking measurement remains available for fixed-spp comparisons: native glass
+  trace median 63.78 ms / frame 81.08 ms, compared with the earlier P1 66.57 / 84.05 ms
+  (separate short runs, no claimed throughput improvement). At 400 square the longer
+  run is 9.85 ms trace / 93.81 ms frame, similar to P1's 9.58 / 94.88 ms longer repeat.
+  Display conversion and recurring buffers remain P3; P2 adds bounded sensor copies
+  and a double mean staging buffer. See [raw results and commands](benchmarks/p2/README.md).
+- Thirteen relevant suites pass, covering all transport presets, exact worker/tile
+  agreement, cancellation recovery, rapid edits, immutable buffers, console commands,
+  focus/scene switches and lifecycle. Automated checks open no windows. Manual GUI
+  checks and physical input-to-screen latency remain unverified.
+
+- Continuous-motion correction: cancelling every camera edit prevented any pass
+  from finishing while display FPS stayed stable. Camera-only edits now finish the
+  active pass as a coherent preview, stop the batch, and capture the newest camera
+  next. Transport/resolution/restart edits and suspension remain cancellable. Native
+  glass with 100 synthetic events displayed 0 new camera images with the old policy
+  versus 15 with previews; p95 input handling remained 0.271 ms. Snapshot age includes
+  trace time. A new sustained-motion regression checks preview correctness, separate
+  latest-camera spp and exact settled convergence. Results are in the P2 archive.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

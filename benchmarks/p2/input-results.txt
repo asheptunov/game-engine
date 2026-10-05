@@ -1,0 +1,12 @@
+mode=emulated P1 state lock; glass 1440x900 sensor/display; workers=14; tile=32; events=100
+handler median/p95 95.156/103.825 ms; AWT synthetic delivery median/p95 95.297/103.934 ms; display median/p95 110.893/118.312 ms; frames=101
+last progress=null
+Synthetic events only; no physical input or AWT presentation. legacy-lock emulates the previous full-frame monitor using the current transport code.
+mode=P2 async; glass 1440x900 sensor/display; workers=14; tile=32; events=100
+handler median/p95 0.116/0.212 ms; AWT synthetic delivery median/p95 0.240/0.421 ms; display median/p95 19.389/24.444 ms; frames=86
+last progress=RenderProgress[generation=100, shownGeneration=100, completedSamples=1, imageAgeNanos=40568500, firstImageNanos=127223200, cancelledJobs=81, wastedPrimaryRays=6804480, maxTileNanos=29298600, running=true]
+Synthetic events only; no physical input or AWT presentation. legacy-lock emulates the previous full-frame monitor using the current transport code.
+mode=P2 async; glass 1440x900 sensor/display; workers=14; tile=32; events=100
+handler median/p95 0.119/0.281 ms; AWT synthetic delivery median/p95 0.233/0.716 ms; display median/p95 19.487/24.718 ms; frames=85
+last progress=RenderProgress[generation=100, shownGeneration=100, completedSamples=1, imageAgeNanos=51096900, firstImageNanos=119325200, cancelledJobs=79, wastedPrimaryRays=5989376, maxTileNanos=32798300, running=true]
+Synthetic events only; no physical input or AWT presentation. legacy-lock emulates the previous full-frame monitor using the current transport code.

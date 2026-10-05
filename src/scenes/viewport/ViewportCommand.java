@@ -6,7 +6,7 @@ import scenes.viewport.lights.PointLight;
 import ui.console.Command;
 import java.util.Arrays;
 
-/** Console edits and rendering share the state monitor, so a frame observes one complete edit. */
+/** Console edits and render snapshot capture share the state monitor. */
 public final class ViewportCommand implements Command {
     private final ViewportState state;
     private final int referenceWidth, referenceHeight;

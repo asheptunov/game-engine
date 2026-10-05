@@ -1,0 +1,8 @@
+revision=bb694ac76eb180b4a6e31d81c39ddd09d95008e0; working-tree source SHA256=6c3756810f43dfd516db64f4a49b119ccdab215dc2def1031270590ce6bbb746; args=glass size=native workers=14 tile=32 warmup=10 frames=20 target=8 output=out/cli/p2-glass-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion changes the camera before each timed render; event-to-image latency and generation/cancellation metrics apply in P2.
+Scene settings: Stats[cpuNanos=875000000, allocatedBytes=6560, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+frame median_ns=81079800 p95_ns=99979500; aggregate_cpu_ns=17015625000; frame_alloc_bytes=324926672; trace_alloc_bytes=133656; gc_count=1; gc_ms=1
+Stationary time to 8 spp (headless frame pipeline): 852.89 ms

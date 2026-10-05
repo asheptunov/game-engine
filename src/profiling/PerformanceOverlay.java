@@ -55,7 +55,7 @@ public final class PerformanceOverlay implements Renderer {
         wasVisible = true;
         wereDetails = profiler.traceDetails();
         // The cached panel is opaque; copying channels avoids making the profiler a blending bottleneck.
-        int height = Math.min(wereDetails ? 660 : 446, raster.height() - 12);
+        int height = Math.min(wereDetails ? 660 : 464, raster.height() - 12);
         int width = Math.min(panel.getWidth(), raster.width() - 12);
         if (width <= 0) return;
         for (int y = 0; y < height; y++) {
@@ -76,8 +76,8 @@ public final class PerformanceOverlay implements Renderer {
             text(g, "PERFORMANCE [F3]  Trace detail [F4]  rolling 10s", 14, 22);
             List<FrameProfiler.Frame> frames = snapshot.frames();
             if (frames.isEmpty()) { text(g, "Waiting for completed frames...", 14, 45); return; }
-            text(g, format("%.1f FPS    avg %.2f ms    p95 %.2f ms    budget %.2f ms",
-                    snapshot.fps(), snapshot.meanMs(), snapshot.p95Ms(), budgetMs), 14, 43);
+            text(g, format("%.1f %sFPS    avg %.2f ms    p95 %.2f ms    budget %.2f ms",
+                    snapshot.fps(),profiler.renderProgress()==null ? "" : "display ", snapshot.meanMs(), snapshot.p95Ms(), budgetMs), 14, 43);
             var latest = frames.getLast();
             var rays = latest.rays();
             if (rays == null) {
@@ -137,6 +137,10 @@ public final class PerformanceOverlay implements Renderer {
     }
 
     private void hardware(Graphics2D g, FrameProfiler.Frame latest, RuntimeMetrics.Snapshot hw) {
+        var progress=profiler.renderProgress();
+        if(progress != null) text(g,format("Async gen %d/%d age %.0fms first %.0fms cancel %d waste %,d paths tile max %.1fms",
+                progress.generation(),progress.shownGeneration(),progress.imageAgeNanos()/1e6,
+                progress.firstImageNanos()/1e6,progress.cancelledJobs(),progress.wastedPrimaryRays(),progress.maxTileNanos()/1e6),14,450);
         text(g, format("CPU: %d logical  JVM %s / system %s (whole-machine capacity)",
                 hw.processors(), percent(hw.processCpu()), percent(hw.systemCpu())), 14, 358);
         text(g, format("Heap %s / %s MiB   RAM free %s / %s MiB",

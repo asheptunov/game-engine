@@ -89,7 +89,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   the window dimensions as a fixed reference, rounding to nearest pixels. Out-of-range
   scales are rejected. The legacy `view resolution 400` still selects a square grid.
   Resolution changes leave the camera field of view unchanged; presets retain the grid.
-  Immutable named `SceneInstance` edits share the state monitor with frame rendering.
+  Immutable named `SceneInstance` edits share the state monitor with brief snapshot/publication work.
   Prepared geometry and per-object bounds are cached until edits.
 - `view preset bounce-room` enables the phase 2 mirror/color-bleeding demo at depth 3.
   Select `view resolution 200` explicitly for faster editing. `view depth`, `samples`,
@@ -98,8 +98,27 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   The active `pathDepth` setting is independent of the old forward `maxBounces`.
   Snapshot invalidation detects camera/scene/light/transport changes between batches;
   exposure, overlays, console, and batch-size edits retain samples. RGB means use double
-  precision; counts cap at one billion spp. Input runs between full sensor batches,
-  with a 50 ms budget checked after each complete sample (one sample can exceed it).
+  precision; counts cap at one billion spp. Live tracing uses `AsyncViewportTrace`:
+  one background coordinator, no queued camera generations, immutable state snapshots
+  and owned completed RGB copies. Input and image conversion run outside the state
+  monitor. Tiles write a staged double mean; only complete passes swap into committed
+  accumulation. Cancellation discards partial work without changing committed spp.
+  Camera-only edits let the active pass finish as a complete preview of its captured
+  camera, then stop that batch. The next job captures the latest camera; no camera
+  backlog is queued. Preview samples count toward live accumulation only when its
+  exact render key matches. Transport/resolution/restart edits, pause/target changes,
+  focus/scene suspension and close still cancel between tiles. Do not cancel every
+  camera edit: that starves publication during continuous movement.
+  Workers check cancellation and a cooperative 16.67 ms slice between tiles; an
+  unfinished pass continues in another wave. A long tile can exceed the budget.
+  The 50 ms inter-pass batch limit remains. Old images remain visible until a new
+  generation completes; coherent lagging camera previews update during motion.
+  Footer/F3/F4 show requested/shown generation, age since snapshot capture,
+  first-image latency, cancelled jobs, wasted paths and max tile time. First-image
+  latency ends at raster conversion and excludes physical input/AWT presentation.
+  Display FPS/timeline describe the display thread; background trace CPU/ray/JFR
+  diagnostics describe the last completed job. Publication-copy reuse and conversion
+  caching remain P3. `Viewport.close()` cancels and shuts down its coordinator.
 - `view preset glass` shows a clear sphere and absorbing box against colored stripes;
   `glass-inside` starts the camera inside the sphere. Both use depth 8. `view type dielectric`,
   `view ior 1..3`, and `view absorption r g b` (0..100 inverse scene units) edit materials.
@@ -191,7 +210,17 @@ seeded agreement across workers/tiles, lifecycle, commands and interrupted joins
 `view workers <count>` and `view tile <pixels>` retain accumulation. Defaults are
 min(14, max(1, available CPUs - 2)) workers and 32-pixel square tiles. Workers share
 one lazy process-wide daemon pool, drained by a JVM shutdown hook; scene switches
-do not create pools. The coordinator retains the state lock until P2.
+do not create pools. `ViewportBenchmark` calls `renderBlocking()` for comparable
+complete-pass timings; never mix blocking and asynchronous rendering on one viewport.
+Run `scenes.viewport.ResponsiveTraceTest` for staged cancellation recovery, immutable
+publication, rapid generation edits, pause/restart/target and suspension/close checks.
+It also requires completed previews during sustained camera edits, exact preview
+pixels for their captured cameras, and correct stationary convergence afterward.
+`ViewportKeyBindingsTest` also covers asynchronous console edits and focus/scene switches.
+`ResponsiveViewportBenchmark` posts synthetic AWT mouse events during concurrent
+native glass tracing/conversion without opening a window; `legacy-lock` emulates
+the former full-frame monitor. Use `-Djava.awt.headless=false`. Results and limitations
+are in `benchmarks/p2/README.md`.
 Benchmark metadata includes requested/actual batch spp, total accumulated spp and sampling seed.
 It records dimensions, depth, samples per frame, deterministic sampling, throughput,
 trace allocations, and actual primitive tests. Compare matching settings.

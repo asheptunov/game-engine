@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import profiling.FrameProfiler;
 
-public class Viewport implements
+public class Viewport implements AutoCloseable,
         Scene, Renderer,
         KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
     private static final Logger LOG = LogManager.instance().getThis();
@@ -59,12 +59,20 @@ public class Viewport implements
     private final ViewportState      state;
     private final DirectRgbTracer  tracer;
     private final FrameProfiler profiler;
+    private final AsyncViewportTrace asyncTrace;
     private final ActionRegistry<Runnable>             actions;
     private final InputBindings                        bindings;
     private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
     private final MouseBindings                        mouseBindings;
 
     private volatile boolean consoleOpen = false;
+    private Boolean blockingMode;
+    private synchronized void mode(boolean blocking) {
+        if(blockingMode != null && blockingMode != blocking)
+            throw new IllegalStateException("Do not mix blocking and asynchronous rendering on one viewport");
+        blockingMode=blocking;
+    }
+    @Override public void close() { asyncTrace.close(); }
 
     @Inject
     public Viewport(Raster display,
@@ -83,6 +91,7 @@ public class Viewport implements
         this.state = defaultScene(width, height);
         this.state.presentationAspect((float) width / height);
         this.tracer = new DirectRgbTracer(state);
+        this.asyncTrace = new AsyncViewportTrace(state, tracer);
         var rootCmd = new TrimmingCommand(DelegatingCommand.builder()
                 .withCommand("view", new ViewportCommand(state, width, height))
                 .withCommand("scene", new CmdScene(scenes, sceneRef))
@@ -135,26 +144,64 @@ public class Viewport implements
     public ViewportState state() {
         return state;
     }
-    /** Diagnostics for headless measurement; access only between completed renders. */
+    /** Diagnostics for blocking measurement only; live tracing owns this tracer in the background. */
     public DirectRgbTracer tracer() { return tracer; }
 
     @Override
     public void render() {
-        synchronized (state) { renderFrame(); }
+        mode(false);
+        AsyncViewportTrace.Image image;
+        float exposure;
+        String label, status;
+        synchronized(state) {
+            if (!consoleOpen) cameraControls.update(state,System.nanoTime());
+            asyncTrace.request(); image=asyncTrace.image();
+            exposure=(float)Math.pow(2,state.exposure()); label=label(); status=asyncTrace.status();
+        }
+        if (image != null) {
+            profiler.traceStats(image.stats());
+            profiler.rayStats(new FrameProfiler.Rays(image.key().width(),image.key().height(),
+                    image.primaryRays(),image.primaryHits(),image.shadowRays(),image.shadowsOccluded(),
+                    image.litPixels(),image.traceNanos()));
+            paintImage(image.rgb(),exposure);
+        } else {
+            java.util.Arrays.fill(display.alpha(),(byte)255);
+            java.util.Arrays.fill(display.red(),(byte)0);
+            java.util.Arrays.fill(display.green(),(byte)0);
+            java.util.Arrays.fill(display.blue(),(byte)0);
+        }
+        synchronized(state) { asyncTrace.presented(image); profiler.renderProgress(asyncTrace.progress(image)); }
+        renderUi(label,status);
     }
-    private void renderFrame() {
-        if (!consoleOpen) cameraControls.update(state, System.nanoTime());
-        var traced = profiler.measure(FrameProfiler.Stage.TRACE, tracer::trace);
+    /** Deterministic full-pipeline measurement; never mix with asynchronous render on this instance. */
+    public void renderBlocking() {
+        mode(true);
+        ViewportState snapshot;
+        float exposure;
+        synchronized(state) {
+            if (!consoleOpen) cameraControls.update(state,System.nanoTime());
+            snapshot=state.renderSnapshot(); exposure=(float)Math.pow(2,state.exposure());
+        }
+        var traced = profiler.measure(FrameProfiler.Stage.TRACE, () -> tracer.trace(snapshot, () -> false));
+        synchronized(state) { if(snapshot.renderKey().equals(state.renderKey())) state.accumulatedSamples(snapshot.accumulatedSamples()); }
         profiler.traceStats(tracer.profile);
-        profiler.rayStats(new FrameProfiler.Rays(state.sensorPixelsW(), state.sensorPixelsH(),
+        profiler.rayStats(new FrameProfiler.Rays(snapshot.sensorPixelsW(), snapshot.sensorPixelsH(),
                 tracer.primaryRays, tracer.primaryHits, tracer.shadowRays,
                 tracer.shadowsOccluded, tracer.litPixels, tracer.traceNanos));
-        // Camera geometry matches the window; sampling resolution is independent.
+        paintImage(traced,exposure);
+        String label;
+        synchronized(state) { label=label(); }
+        renderUi(label,null);
+    }
+    private String label() {
+        return "WASD Space/Ctrl | Mouse: look | /: view help | " + state.preset() + " | N=" + state.pathDepth()
+                + " | " + state.accumulatedSamples() + " spp " + state.samplingStatus();
+    }
+    private void paintImage(float[][][] traced,float exposure) {
         var resampled = profiler.measure(FrameProfiler.Stage.RESAMPLE,
                 () -> new float[][][]{Resampler.resample(traced[0], height, width).buf(),
                         Resampler.resample(traced[1], height, width).buf(),
                         Resampler.resample(traced[2], height, width).buf()});
-        final float exposure = (float) Math.pow(2, state.exposure());
         // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
         profiler.measure(FrameProfiler.Stage.PAINT, () -> {
             var a = display.alpha();
@@ -173,18 +220,20 @@ public class Viewport implements
             }
         });
 
+    }
+    private void renderUi(String label,String status) {
         if (consoleOpen) {
             console.render();
         } else {
-            printer.print("WASD Space/Ctrl | Mouse: look | /: view help | " + state.preset() + " | N=" + state.pathDepth()
-                            + " | " + state.accumulatedSamples() + " spp " + state.samplingStatus(),
+            if(status != null) printer.print(status,12,height-42,Printer.Size.of(12),Printer.Spacing.of(-3));
+            printer.print(label,
                     12, height - 24, Printer.Size.of(12), Printer.Spacing.of(-3));
         }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        synchronized (state) { handleKeyPressed(e); }
+        synchronized (state) { handleKeyPressed(e); asyncTrace.invalidate(); }
     }
     private void handleKeyPressed(KeyEvent e) {
         LOG.trace("Handling %s", e);
@@ -203,6 +252,7 @@ public class Viewport implements
         synchronized (state) {
             cameraControls.clear();
             ScenePresets.resetCamera(state);
+            asyncTrace.invalidate();
             LOG.info("Camera reset");
         }
     }
@@ -212,7 +262,7 @@ public class Viewport implements
         synchronized (state) { cameraControls.release(e.getKeyCode(), e.getKeyLocation()); }
     }
     @Override public void suspendInput() {
-        synchronized (state) { cameraControls.clear(); }
+        synchronized (state) { cameraControls.clear(); asyncTrace.suspend(); }
     }
 
     @Override public void mouseClicked(MouseEvent e)         { LOG.trace("Handling %s", e); }
@@ -243,6 +293,8 @@ public class Viewport implements
             // Looking continues while movement modifiers (notably crouch/Ctrl) are held.
             if (id.startsWith("camera.look.")) mouseActions.get(id).orElseThrow().accept(e);
             else mouseBindings.handle(gesture, e, consoleOpen ? "console" : "");
+            if (!consoleOpen) cameraControls.update(state,System.nanoTime());
+            asyncTrace.invalidate();
         }
     }
 }
