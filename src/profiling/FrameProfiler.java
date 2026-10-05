@@ -90,4 +90,6 @@ public final class FrameProfiler implements AutoCloseable {
         return new Snapshot(List.copyOf(frames), mean > 0 ? 1000 / mean : 0,
                 mean, ms[(int) Math.ceil(ms.length * .95) - 1]);
     }
+    /** Latest published frame without allocating a history snapshot. */
+    public Frame latestFrame() { return history.peekLast(); }
 }

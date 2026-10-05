@@ -146,6 +146,11 @@ public class FrameProfilerTest {
         assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(prefix + "light", prefix + "trace")));
         assertEquals(TraceSampler.Work.GENERATION, TraceSampler.classify(java.util.List.of(prefix + "trace")));
         assertNull(TraceSampler.classify(java.util.List.of("other.Work.render")));
+        String worker = "scenes.viewport.DirectRgbTracer$Worker.";
+        assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(worker+"volumeVisibility",worker+"nearestHit",worker+"call")));
+        assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(worker+"nearestHit",worker+"call")));
+        assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(worker+"areaLight",worker+"call")));
+        assertEquals(TraceSampler.Work.GENERATION, TraceSampler.classify(java.util.List.of(worker+"render",worker+"call")));
         String rgb = "scenes.viewport.DirectRgbTracer.";
         assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(rgb + "occluded", rgb + "light", rgb + "trace")));
         assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(rgb + "nearestHit", rgb + "trace")));

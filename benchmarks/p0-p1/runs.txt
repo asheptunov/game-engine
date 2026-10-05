@@ -1,0 +1,785 @@
+ORIGINAL TRACER BASELINE (HEAD 844b65e, clean build, glass 400x400, 50 warmup / 100 measured)
+Headless frame: median 114.65 ms, p95 120.33 ms
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=150; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100242, shadows=127477, occluded=19433, lit=82613, traceNanos=67667800]
+Trace throughput (primary + continuation + visibility): 7.18 Mrays/s
+Trace profile: Stats[cpuNanos=62500000, allocatedBytes=1464, primaryTests=2067120, shadowTests=1305660, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198527, continuationTests=2976876, accumulatedSamples=150, samplingStatus=converging, seed=1, dielectricReflections=12028, dielectricTransmissions=59246, absorptionSegments=39061, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+
+RUN p1-bounce-room-half
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=bounce-room size=half samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-bounce-room-half.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=720x450; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=bounce-room; depth=3; seed=1; requestedSpp=1; acceleration=true; instances=7; primitives=7; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 38.39 ms, p95 58.91 ms
+TRACE: median 20.00 ms, p95 39.99 ms
+RESAMPLE: median 7.02 ms, p95 10.41 ms
+PAINT: median 10.67 ms, p95 10.85 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 7.23; frame allocated bytes/frame: 16290744; trace bytes/frame: 4461; GC count=2 time=6 ms; measured spp=10
+Scene: bounce-room; acceleration=bvh; primitives=7; depth=3; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=720, height=450, primary=324000, hits=324000, shadows=920225, occluded=34126, lit=317525, traceNanos=27567300]
+Trace throughput (primary + continuation + visibility): 89.89 Mrays/s
+Trace profile: Stats[cpuNanos=218750000, allocatedBytes=4464, primaryTests=2268000, shadowTests=5380652, scene=bounce-room, depth=3, samplesPerPixel=1, continuationRays=801773, continuationTests=5612411, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 41.34 ms
+
+RUN p1-bounce-room-native
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=bounce-room size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-bounce-room-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=bounce-room; depth=3; seed=1; requestedSpp=1; acceleration=true; instances=7; primitives=7; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 93.01 ms, p95 95.53 ms
+TRACE: median 74.63 ms, p95 77.73 ms
+RESAMPLE: median 6.03 ms, p95 10.06 ms
+PAINT: median 10.65 ms, p95 10.85 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 10.88; frame allocated bytes/frame: 16290740; trace bytes/frame: 4456; GC count=1 time=3 ms; measured spp=10
+Scene: bounce-room; acceleration=bvh; primitives=7; depth=3; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=1296000, shadows=3680990, occluded=137561, lit=1270250, traceNanos=77727300]
+Trace throughput (primary + continuation + visibility): 108.96 Mrays/s
+Trace profile: Stats[cpuNanos=1093750000, allocatedBytes=4440, primaryTests=9072000, shadowTests=21518244, scene=bounce-room, depth=3, samplesPerPixel=1, continuationRays=3206986, continuationTests=22448902, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 108.13 ms
+
+RUN p1-bounce-room-quarter
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=bounce-room size=quarter samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-bounce-room-quarter.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=bounce-room; depth=3; seed=1; requestedSpp=1; acceleration=true; instances=7; primitives=7; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 23.90 ms, p95 26.73 ms
+TRACE: median 5.47 ms, p95 6.67 ms
+RESAMPLE: median 6.92 ms, p95 9.94 ms
+PAINT: median 10.67 ms, p95 10.97 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 3.80; frame allocated bytes/frame: 16290747; trace bytes/frame: 4464; GC count=1 time=3 ms; measured spp=10
+Scene: bounce-room; acceleration=bvh; primitives=7; depth=3; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=81000, shadows=229713, occluded=8514, lit=79394, traceNanos=5467100]
+Trace throughput (primary + continuation + visibility): 91.33 Mrays/s
+Trace profile: Stats[cpuNanos=93750000, allocatedBytes=4488, primaryTests=567000, shadowTests=1343140, scene=bounce-room, depth=3, samplesPerPixel=1, continuationRays=200233, continuationTests=1401631, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 24.56 ms
+
+RUN p1-final-w1
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e075720f9bb89451b451318f4c2f7e45331538769603653d0718045247f33e10; args=glass size=400 workers=1 warmup=50 frames=100 target=1 output=out/cli/p1-final-w1.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=1; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 122.93 ms, p95 169.72 ms
+TRACE: median 73.17 ms, p95 116.61 ms
+RESAMPLE: median 34.40 ms, p95 64.21 ms
+PAINT: median 10.12 ms, p95 18.41 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 0.99; frame allocated bytes/frame: 16237370; trace bytes/frame: 1296; GC count=4 time=10 ms; measured spp=100
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=150; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100242, shadows=127477, occluded=19433, lit=82613, traceNanos=65643900]
+Trace throughput (primary + continuation + visibility): 6.19 Mrays/s
+Trace profile: Stats[cpuNanos=78125000, allocatedBytes=1296, primaryTests=2067120, shadowTests=1305660, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198527, continuationTests=2976876, accumulatedSamples=150, samplingStatus=converging, seed=1, dielectricReflections=12028, dielectricTransmissions=59246, absorptionSegments=39061, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=1, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 113.76 ms
+
+RUN p1-final-w14
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e075720f9bb89451b451318f4c2f7e45331538769603653d0718045247f33e10; args=glass size=400 workers=14 warmup=50 frames=100 target=1 output=out/cli/p1-final-w14.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 94.88 ms, p95 115.73 ms
+TRACE: median 9.58 ms, p95 13.52 ms
+RESAMPLE: median 64.35 ms, p95 84.30 ms
+PAINT: median 18.87 ms, p95 20.59 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.01; frame allocated bytes/frame: 16240907; trace bytes/frame: 4832; GC count=4 time=10 ms; measured spp=100
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=150; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100242, shadows=127477, occluded=19433, lit=82613, traceNanos=9387200]
+Trace throughput (primary + continuation + visibility): 47.10 Mrays/s
+Trace profile: Stats[cpuNanos=218750000, allocatedBytes=4848, primaryTests=2067120, shadowTests=1305660, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198527, continuationTests=2976876, accumulatedSamples=150, samplingStatus=converging, seed=1, dielectricReflections=12028, dielectricTransmissions=59246, absorptionSegments=39061, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 110.73 ms
+
+RUN p1-glass-half
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=half samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-glass-half.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=720x450; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 32.90 ms, p95 37.14 ms
+TRACE: median 16.19 ms, p95 17.22 ms
+RESAMPLE: median 5.82 ms, p95 10.04 ms
+PAINT: median 10.09 ms, p95 10.24 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 6.83; frame allocated bytes/frame: 16243736; trace bytes/frame: 5164; GC count=1 time=2 ms; measured spp=10
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=720, height=450, primary=324000, hits=202991, shadows=257198, occluded=39335, lit=167286, traceNanos=15350900]
+Trace throughput (primary + continuation + visibility): 60.61 Mrays/s
+Trace profile: Stats[cpuNanos=218750000, allocatedBytes=5160, primaryTests=4185684, shadowTests=2635463, scene=glass, depth=8, samplesPerPixel=1, continuationRays=400829, continuationTests=6006984, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=24587, dielectricTransmissions=119470, absorptionSegments=79260, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 39.67 ms
+
+RUN p1-glass-native
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-glass-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 89.03 ms, p95 95.25 ms
+TRACE: median 72.18 ms, p95 76.95 ms
+RESAMPLE: median 6.20 ms, p95 10.08 ms
+PAINT: median 10.26 ms, p95 10.41 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 10.89; frame allocated bytes/frame: 16243714; trace bytes/frame: 5143; GC count=1 time=2 ms; measured spp=10
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812019, shadows=1029288, occluded=157184, lit=668748, traceNanos=71660700]
+Trace throughput (primary + continuation + visibility): 54.13 Mrays/s
+Trace profile: Stats[cpuNanos=968750000, allocatedBytes=5136, primaryTests=16742328, shadowTests=10545771, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603017, continuationTests=24021960, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=98274, dielectricTransmissions=477253, absorptionSegments=316216, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 89.13 ms
+
+RUN p1-glass-quarter
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=quarter samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-glass-quarter.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 21.96 ms, p95 27.21 ms
+TRACE: median 4.87 ms, p95 5.62 ms
+RESAMPLE: median 5.92 ms, p95 10.23 ms
+PAINT: median 9.97 ms, p95 13.81 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.56; frame allocated bytes/frame: 16243772; trace bytes/frame: 5200; GC count=2 time=8 ms; measured spp=10
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=50745, shadows=64563, occluded=9743, lit=41812, traceNanos=4617600]
+Trace throughput (primary + continuation + visibility): 49.81 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5184, primaryTests=1046388, shadowTests=662364, scene=glass, depth=8, samplesPerPixel=1, continuationRays=100396, continuationTests=1505088, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=6157, dielectricTransmissions=29784, absorptionSegments=19735, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 21.39 ms
+
+RUN p1-glass-w1
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=1 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w1.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=1; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 117.30 ms, p95 129.59 ms
+TRACE: median 70.23 ms, p95 81.33 ms
+RESAMPLE: median 35.60 ms, p95 40.77 ms
+PAINT: median 10.19 ms, p95 11.65 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 0.99; frame allocated bytes/frame: 16239836; trace bytes/frame: 1294; GC count=3 time=7 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=69534800]
+Trace throughput (primary + continuation + visibility): 6.79 Mrays/s
+Trace profile: Stats[cpuNanos=62500000, allocatedBytes=1288, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 116.73 ms
+
+RUN p1-glass-w10
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=10 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w10.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=10; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 55.10 ms, p95 61.12 ms
+TRACE: median 10.06 ms, p95 12.74 ms
+RESAMPLE: median 33.65 ms, p95 37.49 ms
+PAINT: median 10.03 ms, p95 10.68 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.44; frame allocated bytes/frame: 16242552; trace bytes/frame: 4011; GC count=2 time=6 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=12733300]
+Trace throughput (primary + continuation + visibility): 45.46 Mrays/s
+Trace profile: Stats[cpuNanos=62500000, allocatedBytes=4008, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 60.05 ms
+
+RUN p1-glass-w14
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=14 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w14.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 53.39 ms, p95 56.66 ms
+TRACE: median 8.52 ms, p95 11.64 ms
+RESAMPLE: median 33.80 ms, p95 36.20 ms
+PAINT: median 9.96 ms, p95 11.04 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.96; frame allocated bytes/frame: 16243723; trace bytes/frame: 5181; GC count=2 time=2 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=8045500]
+Trace throughput (primary + continuation + visibility): 52.59 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5176, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 57.16 ms
+
+RUN p1-glass-w2
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=2 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w2.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=2; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 80.25 ms, p95 86.32 ms
+TRACE: median 34.69 ms, p95 41.99 ms
+RESAMPLE: median 34.13 ms, p95 35.87 ms
+PAINT: median 10.14 ms, p95 10.65 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.37; frame allocated bytes/frame: 16240332; trace bytes/frame: 1790; GC count=3 time=6 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=41978900]
+Trace throughput (primary + continuation + visibility): 13.61 Mrays/s
+Trace profile: Stats[cpuNanos=93750000, allocatedBytes=1784, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 83.11 ms
+
+RUN p1-glass-w20
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=20 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w20.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=20; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 52.35 ms, p95 62.65 ms
+TRACE: median 7.56 ms, p95 12.90 ms
+RESAMPLE: median 33.63 ms, p95 39.00 ms
+PAINT: median 9.97 ms, p95 12.56 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.72; frame allocated bytes/frame: 16245487; trace bytes/frame: 6968; GC count=2 time=7 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=7205500]
+Trace throughput (primary + continuation + visibility): 57.15 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=6888, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 59.06 ms
+
+RUN p1-glass-w4
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=4 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w4.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=4; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 63.03 ms, p95 70.65 ms
+TRACE: median 17.68 ms, p95 22.55 ms
+RESAMPLE: median 34.56 ms, p95 37.13 ms
+PAINT: median 9.97 ms, p95 10.45 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.80; frame allocated bytes/frame: 16240862; trace bytes/frame: 2344; GC count=2 time=5 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=17219500]
+Trace throughput (primary + continuation + visibility): 25.92 Mrays/s
+Trace profile: Stats[cpuNanos=62500000, allocatedBytes=2328, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 64.74 ms
+
+RUN p1-glass-w6
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=400 samples=1 seed=1 workers=6 tile=32 warmup=20 frames=30 target=1 output=out/cli/p1-glass-w6.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=400x400; workers=6; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 57.01 ms, p95 63.47 ms
+TRACE: median 12.18 ms, p95 19.11 ms
+RESAMPLE: median 33.51 ms, p95 35.94 ms
+PAINT: median 9.98 ms, p95 10.45 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.98; frame allocated bytes/frame: 16241411; trace bytes/frame: 2892; GC count=2 time=4 ms; measured spp=30
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=50; seed=1; jittered progressive; rays: Rays[width=400, height=400, primary=160000, hits=100247, shadows=127307, occluded=19401, lit=82627, traceNanos=11970300]
+Trace throughput (primary + continuation + visibility): 36.39 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=2896, primaryTests=2067156, shadowTests=1304157, scene=glass, depth=8, samplesPerPixel=1, continuationRays=198357, continuationTests=2972460, accumulatedSamples=50, samplingStatus=converging, seed=1, dielectricReflections=12276, dielectricTransmissions=59026, absorptionSegments=39257, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 61.04 ms
+
+RUN p1-instances
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=mesh-room size=64 workers=14 instances=32 warmup=10 frames=10 target=1 output=out/cli/p1-instances.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=mesh-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=32; primitives=9518; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 40.79 ms, p95 43.96 ms
+TRACE: median 2.95 ms, p95 3.95 ms
+RESAMPLE: median 26.87 ms, p95 30.25 ms
+PAINT: median 10.37 ms, p95 10.59 ms
+BACKGROUND: median 0.00 ms, p95 0.01 ms
+Aggregate CPU/wall cores: 0.98; frame allocated bytes/frame: 16277723; trace bytes/frame: 7232; GC count=1 time=2 ms; measured spp=10
+Scene: mesh-room; acceleration=bvh; primitives=9518; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=64, height=64, primary=4096, hits=3095, shadows=4022, occluded=537, lit=2772, traceNanos=3054400]
+Trace throughput (primary + continuation + visibility): 4.25 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=7232, primaryTests=61743, shadowTests=49464, scene=mesh-room, depth=8, samplesPerPixel=1, continuationRays=5066, continuationTests=93310, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=279, dielectricTransmissions=670, absorptionSegments=606, areaLightSamples=4464, emitterHits=292, roughEvents=515, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 40.03 ms
+
+RUN p1-jfr
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=828d3646e57a1f6d795ed91ed833897fc457bece46db155fb2486021c3f8e5f2; args=glass size=quarter workers=14 warmup=50 frames=100 target=1 details output=out/cli/p1-jfr.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 25.89 ms, p95 37.22 ms
+TRACE: median 4.92 ms, p95 7.40 ms
+RESAMPLE: median 7.61 ms, p95 9.63 ms
+PAINT: median 11.45 ms, p95 20.84 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.33; frame allocated bytes/frame: 16241343; trace bytes/frame: 5188; GC count=3 time=9 ms; measured spp=100
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=150; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=50753, shadows=64144, occluded=9739, lit=41857, traceNanos=4922200]
+Trace throughput (primary + continuation + visibility): 46.11 Mrays/s
+Trace profile: Stats[cpuNanos=93750000, allocatedBytes=5232, primaryTests=1046388, shadowTests=657647, scene=glass, depth=8, samplesPerPixel=1, continuationRays=99946, continuationTests=1497996, accumulatedSamples=150, samplingStatus=converging, seed=1, dielectricReflections=6078, dielectricTransmissions=29847, absorptionSegments=19722, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=30, intersection=184, lighting=0, shadow=39, status=active]
+Stationary time to 1 spp (headless frame pipeline): 25.99 ms
+
+RUN p1-mesh-room-half
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=mesh-room size=half samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-mesh-room-half.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=720x450; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=mesh-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=2126; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 60.93 ms, p95 66.67 ms
+TRACE: median 43.15 ms, p95 48.38 ms
+RESAMPLE: median 6.94 ms, p95 10.39 ms
+PAINT: median 10.16 ms, p95 10.64 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 10.22; frame allocated bytes/frame: 16276069; trace bytes/frame: 5578; GC count=1 time=3 ms; measured spp=10
+Scene: mesh-room; acceleration=bvh; primitives=2126; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=720, height=450, primary=324000, hits=241983, shadows=307920, occluded=37236, lit=220155, traceNanos=43455600]
+Trace throughput (primary + continuation + visibility): 23.37 Mrays/s
+Trace profile: Stats[cpuNanos=656250000, allocatedBytes=5576, primaryTests=4850829, shadowTests=3785223, scene=mesh-room, depth=8, samplesPerPixel=1, continuationRays=389696, continuationTests=7118351, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=19959, dielectricTransmissions=51102, absorptionSegments=44160, areaLightSamples=340784, emitterHits=23101, roughEvents=35686, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 64.17 ms
+
+RUN p1-mesh-room-native
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=mesh-room size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-mesh-room-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=mesh-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=2126; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 209.25 ms, p95 241.97 ms
+TRACE: median 178.06 ms, p95 209.10 ms
+RESAMPLE: median 9.74 ms, p95 10.80 ms
+PAINT: median 20.13 ms, p95 21.26 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 11.98; frame allocated bytes/frame: 16276036; trace bytes/frame: 5544; GC count=1 time=1 ms; measured spp=10
+Scene: mesh-room; acceleration=bvh; primitives=2126; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=967955, shadows=1232412, occluded=147823, lit=880621, traceNanos=178920600]
+Trace throughput (primary + continuation + visibility): 22.36 Mrays/s
+Trace profile: Stats[cpuNanos=2609375000, allocatedBytes=5528, primaryTests=19403960, shadowTests=15157919, scene=mesh-room, depth=8, samplesPerPixel=1, continuationRays=1559874, continuationTests=28470647, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=78467, dielectricTransmissions=205867, absorptionSegments=175547, areaLightSamples=1363136, emitterHits=92700, roughEvents=142070, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 224.57 ms
+
+RUN p1-mesh-room-quarter
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=mesh-room size=quarter samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-mesh-room-quarter.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=mesh-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=2126; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 31.35 ms, p95 33.90 ms
+TRACE: median 13.02 ms, p95 14.40 ms
+RESAMPLE: median 7.11 ms, p95 9.73 ms
+PAINT: median 10.21 ms, p95 13.08 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 3.46; frame allocated bytes/frame: 16276088; trace bytes/frame: 5597; GC count=1 time=2 ms; measured spp=10
+Scene: mesh-room; acceleration=bvh; primitives=2126; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=60492, shadows=77414, occluded=9483, lit=55050, traceNanos=13024900]
+Trace throughput (primary + continuation + visibility): 19.31 Mrays/s
+Trace profile: Stats[cpuNanos=203125000, allocatedBytes=5576, primaryTests=1212799, shadowTests=951484, scene=mesh-room, depth=8, samplesPerPixel=1, continuationRays=97956, continuationTests=1789868, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=5011, dielectricTransmissions=12846, absorptionSegments=11081, areaLightSamples=85800, emitterHits=5778, roughEvents=9150, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 30.85 ms
+
+RUN p1-motion
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=glass size=quarter samples=1 seed=1 workers=14 warmup=10 frames=20 target=1 motion details output=out/cli/p1-motion.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=true
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 21.74 ms, p95 25.23 ms
+TRACE: median 4.64 ms, p95 5.96 ms
+RESAMPLE: median 6.83 ms, p95 8.78 ms
+PAINT: median 9.79 ms, p95 9.98 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.92; frame allocated bytes/frame: 16235762; trace bytes/frame: 5162; GC count=2 time=5 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=1; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=50752, shadows=64486, occluded=9866, lit=41805, traceNanos=4315700]
+Trace throughput (primary + continuation + visibility): 49.81 Mrays/s
+Trace profile: Stats[cpuNanos=187500000, allocatedBytes=5168, primaryTests=1045968, shadowTests=661090, scene=glass, depth=8, samplesPerPixel=1, continuationRays=100595, continuationTests=1508868, accumulatedSamples=1, samplingStatus=converging, seed=1, dielectricReflections=6295, dielectricTransmissions=29920, absorptionSegments=20001, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=unavailable: IllegalStateException]
+Stationary time to 1 spp (headless frame pipeline): 25.65 ms
+
+RUN p1-native-t16
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=native samples=1 seed=1 workers=14 tile=16 warmup=10 frames=20 target=1 output=out/cli/p1-native-t16.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=16; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 82.00 ms, p95 84.74 ms
+TRACE: median 64.43 ms, p95 66.68 ms
+RESAMPLE: median 5.93 ms, p95 10.57 ms
+PAINT: median 10.13 ms, p95 10.36 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 11.11; frame allocated bytes/frame: 16243671; trace bytes/frame: 5152; GC count=2 time=8 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=30; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812042, shadows=1029147, occluded=157037, lit=668853, traceNanos=63587300]
+Trace throughput (primary + continuation + visibility): 60.58 Mrays/s
+Trace profile: Stats[cpuNanos=875000000, allocatedBytes=5144, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 91.31 ms
+
+RUN p1-native-w1
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=glass size=native workers=1 warmup=10 frames=20 target=1 output=out/cli/p1-native-w1.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=1; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 627.45 ms, p95 713.83 ms
+TRACE: median 610.12 ms, p95 697.20 ms
+RESAMPLE: median 6.24 ms, p95 11.01 ms
+PAINT: median 10.30 ms, p95 19.59 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 0.99; frame allocated bytes/frame: 16239816; trace bytes/frame: 1296; GC count=2 time=4 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=30; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812042, shadows=1029147, occluded=157037, lit=668853, traceNanos=563498900]
+Trace throughput (primary + continuation + visibility): 6.29 Mrays/s
+Trace profile: Stats[cpuNanos=562500000, allocatedBytes=1312, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=1, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 761.16 ms
+
+RUN p1-native-w10
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=native samples=1 seed=1 workers=10 tile=32 warmup=10 frames=20 target=1 output=out/cli/p1-native-w10.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=10; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 91.64 ms, p95 96.19 ms
+TRACE: median 73.73 ms, p95 75.55 ms
+RESAMPLE: median 7.06 ms, p95 8.36 ms
+PAINT: median 10.19 ms, p95 10.42 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 7.93; frame allocated bytes/frame: 16242522; trace bytes/frame: 3969; GC count=2 time=5 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=30; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812042, shadows=1029147, occluded=157037, lit=668853, traceNanos=73619100]
+Trace throughput (primary + continuation + visibility): 53.03 Mrays/s
+Trace profile: Stats[cpuNanos=765625000, allocatedBytes=3976, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 101.88 ms
+
+RUN p1-native-w14
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=20 target=1 output=out/cli/p1-native-w14.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 84.05 ms, p95 88.52 ms
+TRACE: median 66.57 ms, p95 69.37 ms
+RESAMPLE: median 6.06 ms, p95 8.76 ms
+PAINT: median 10.14 ms, p95 10.47 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 11.08; frame allocated bytes/frame: 16243706; trace bytes/frame: 5152; GC count=2 time=5 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=30; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812042, shadows=1029147, occluded=157037, lit=668853, traceNanos=65871100]
+Trace throughput (primary + continuation + visibility): 59.06 Mrays/s
+Trace profile: Stats[cpuNanos=1093750000, allocatedBytes=5168, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 95.88 ms
+
+RUN p1-native-w20
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=native samples=1 seed=1 workers=20 tile=32 warmup=10 frames=20 target=1 output=out/cli/p1-native-w20.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=20; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 71.52 ms, p95 74.91 ms
+TRACE: median 54.66 ms, p95 56.20 ms
+RESAMPLE: median 6.29 ms, p95 7.69 ms
+PAINT: median 10.14 ms, p95 10.38 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 14.69; frame allocated bytes/frame: 16245423; trace bytes/frame: 6904; GC count=2 time=3 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=30; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812042, shadows=1029147, occluded=157037, lit=668853, traceNanos=55621000]
+Trace throughput (primary + continuation + visibility): 71.52 Mrays/s
+Trace profile: Stats[cpuNanos=921875000, allocatedBytes=6904, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 86.90 ms
+
+RUN p1-native-w6
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=glass size=native samples=1 seed=1 workers=6 tile=32 warmup=10 frames=20 target=1 output=out/cli/p1-native-w6.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=6; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 122.98 ms, p95 133.07 ms
+TRACE: median 104.82 ms, p95 116.49 ms
+RESAMPLE: median 5.94 ms, p95 8.22 ms
+PAINT: median 10.18 ms, p95 10.57 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 5.23; frame allocated bytes/frame: 16241427; trace bytes/frame: 2874; GC count=2 time=3 ms; measured spp=20
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=30; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=812042, shadows=1029147, occluded=157037, lit=668853, traceNanos=110393300]
+Trace throughput (primary + continuation + visibility): 37.12 Mrays/s
+Trace profile: Stats[cpuNanos=656250000, allocatedBytes=2888, primaryTests=16742652, shadowTests=10546068, scene=glass, depth=8, samplesPerPixel=1, continuationRays=1603238, continuationTests=24032688, accumulatedSamples=30, samplingStatus=converging, seed=1, dielectricReflections=98689, dielectricTransmissions=477093, absorptionSegments=316638, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 129.79 ms
+
+RUN p1-playground-half
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=playground size=half samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-playground-half.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=720x450; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=playground; depth=0; seed=1; requestedSpp=1; acceleration=true; instances=5; primitives=16; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 21.96 ms, p95 27.23 ms
+TRACE: median 3.92 ms, p95 4.81 ms
+RESAMPLE: median 7.24 ms, p95 12.89 ms
+PAINT: median 9.94 ms, p95 10.12 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 2.05; frame allocated bytes/frame: 16282408; trace bytes/frame: 4204; GC count=2 time=7 ms; measured spp=10
+Scene: playground; acceleration=bvh; primitives=16; depth=0; spp/batch max=1; accumulated=20; seed=1; pixel centers; rays: Rays[width=720, height=450, primary=324000, hits=207693, shadows=202578, occluded=6148, lit=196430, traceNanos=3886000]
+Trace throughput (primary + continuation + visibility): 130.98 Mrays/s
+Trace profile: Stats[cpuNanos=78125000, allocatedBytes=4176, primaryTests=1471524, shadowTests=752962, scene=playground, depth=0, samplesPerPixel=1, continuationRays=0, continuationTests=0, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 23.69 ms
+
+RUN p1-playground-native
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=playground size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-playground-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=playground; depth=0; seed=1; requestedSpp=1; acceleration=true; instances=5; primitives=16; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 31.21 ms, p95 36.27 ms
+TRACE: median 14.64 ms, p95 17.64 ms
+RESAMPLE: median 6.17 ms, p95 9.93 ms
+PAINT: median 9.90 ms, p95 10.29 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 4.27; frame allocated bytes/frame: 16282400; trace bytes/frame: 4197; GC count=1 time=3 ms; measured spp=10
+Scene: playground; acceleration=bvh; primitives=16; depth=0; spp/batch max=1; accumulated=20; seed=1; pixel centers; rays: Rays[width=1440, height=900, primary=1296000, hits=830583, shadows=810326, occluded=24609, lit=785717, traceNanos=14329800]
+Trace throughput (primary + continuation + visibility): 142.11 Mrays/s
+Trace profile: Stats[cpuNanos=218750000, allocatedBytes=4176, primaryTests=5885196, shadowTests=3013156, scene=playground, depth=0, samplesPerPixel=1, continuationRays=0, continuationTests=0, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 43.16 ms
+
+RUN p1-playground-quarter
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=playground size=quarter samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-playground-quarter.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=playground; depth=0; seed=1; requestedSpp=1; acceleration=true; instances=5; primitives=16; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 20.15 ms, p95 24.28 ms
+TRACE: median 1.45 ms, p95 2.50 ms
+RESAMPLE: median 7.58 ms, p95 11.12 ms
+PAINT: median 10.36 ms, p95 11.07 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.15; frame allocated bytes/frame: 16282412; trace bytes/frame: 4209; GC count=1 time=4 ms; measured spp=10
+Scene: playground; acceleration=bvh; primitives=16; depth=0; spp/batch max=1; accumulated=20; seed=1; pixel centers; rays: Rays[width=360, height=225, primary=81000, hits=51968, shadows=50740, occluded=1541, lit=49199, traceNanos=1429400]
+Trace throughput (primary + continuation + visibility): 84.88 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=4200, primaryTests=368184, shadowTests=188623, scene=playground, depth=0, samplesPerPixel=1, continuationRays=0, continuationTests=0, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 23.18 ms
+
+RUN p1-quality-bounce-room
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=bounce-room size=64 samples=1 seed=1 workers=14 warmup=5 frames=5 target=8 qualityMillis=100 reference=32 output=out/cli/p1-quality-bounce-room.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=bounce-room; depth=3; seed=1; requestedSpp=1; acceleration=true; instances=7; primitives=7; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 44.86 ms, p95 49.09 ms
+TRACE: median 1.36 ms, p95 2.12 ms
+RESAMPLE: median 29.16 ms, p95 32.19 ms
+PAINT: median 13.97 ms, p95 14.37 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 0.90; frame allocated bytes/frame: 16322552; trace bytes/frame: 4470; GC count=1 time=2 ms; measured spp=5
+Scene: bounce-room; acceleration=bvh; primitives=7; depth=3; spp/batch max=1; accumulated=10; seed=1; jittered progressive; rays: Rays[width=64, height=64, primary=4096, hits=4096, shadows=11663, occluded=452, lit=4016, traceNanos=1078200]
+Trace throughput (primary + continuation + visibility): 17.76 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=4440, primaryTests=28672, shadowTests=68113, scene=bounce-room, depth=3, samplesPerPixel=1, continuationRays=10124, continuationTests=70868, accumulatedSamples=10, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 8 spp (headless frame pipeline): 336.36 ms
+Quality: requested 100 ms, actual 132.98 ms (complete-pass overshoot), 3 spp; independent reference=32 spp; linear RMSE=0.630346, relative RMS=0.608765
+
+RUN p1-quality-glass
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=glass size=64 samples=1 seed=1 workers=14 warmup=5 frames=5 target=8 qualityMillis=100 reference=32 output=out/cli/p1-quality-glass.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 40.97 ms, p95 48.46 ms
+TRACE: median 1.36 ms, p95 2.46 ms
+RESAMPLE: median 26.06 ms, p95 32.03 ms
+PAINT: median 13.01 ms, p95 13.24 ms
+BACKGROUND: median 0.00 ms, p95 0.03 ms
+Aggregate CPU/wall cores: 0.89; frame allocated bytes/frame: 16272760; trace bytes/frame: 5155; GC count=1 time=4 ms; measured spp=5
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=10; seed=1; jittered progressive; rays: Rays[width=64, height=64, primary=4096, hits=2570, shadows=3236, occluded=502, lit=2118, traceNanos=1111400]
+Trace throughput (primary + continuation + visibility): 8.30 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5160, primaryTests=52944, shadowTests=33057, scene=glass, depth=8, samplesPerPixel=1, continuationRays=5145, continuationTests=77772, accumulatedSamples=10, samplingStatus=converging, seed=1, dielectricReflections=343, dielectricTransmissions=1573, absorptionSegments=1072, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 8 spp (headless frame pipeline): 314.70 ms
+Quality: requested 100 ms, actual 125.91 ms (complete-pass overshoot), 3 spp; independent reference=32 spp; linear RMSE=0.156481, relative RMS=0.198007
+
+RUN p1-quality-mesh-room
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=mesh-room size=64 samples=1 seed=1 workers=14 warmup=5 frames=5 target=8 qualityMillis=100 reference=32 output=out/cli/p1-quality-mesh-room.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=mesh-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=2126; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 45.19 ms, p95 50.18 ms
+TRACE: median 2.76 ms, p95 3.47 ms
+RESAMPLE: median 28.77 ms, p95 32.61 ms
+PAINT: median 13.24 ms, p95 13.56 ms
+BACKGROUND: median 0.00 ms, p95 0.03 ms
+Aggregate CPU/wall cores: 0.96; frame allocated bytes/frame: 16306920; trace bytes/frame: 5552; GC count=1 time=3 ms; measured spp=5
+Scene: mesh-room; acceleration=bvh; primitives=2126; depth=8; spp/batch max=1; accumulated=10; seed=1; jittered progressive; rays: Rays[width=64, height=64, primary=4096, hits=3056, shadows=3818, occluded=426, lit=2777, traceNanos=2514400]
+Trace throughput (primary + continuation + visibility): 4.57 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5552, primaryTests=61105, shadowTests=46801, scene=mesh-room, depth=8, samplesPerPixel=1, continuationRays=4847, continuationTests=87614, accumulatedSamples=10, samplingStatus=converging, seed=1, dielectricReflections=217, dielectricTransmissions=615, absorptionSegments=500, areaLightSamples=4194, emitterHits=284, roughEvents=385, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 8 spp (headless frame pipeline): 338.98 ms
+Quality: requested 100 ms, actual 134.08 ms (complete-pass overshoot), 3 spp; independent reference=32 spp; linear RMSE=0.382590, relative RMS=0.189058
+
+RUN p1-quality-playground
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=playground size=64 samples=1 seed=1 workers=14 warmup=5 frames=5 target=8 qualityMillis=100 reference=32 output=out/cli/p1-quality-playground.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=playground; depth=0; seed=1; requestedSpp=1; acceleration=true; instances=5; primitives=16; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 43.66 ms, p95 47.70 ms
+TRACE: median 1.01 ms, p95 1.38 ms
+RESAMPLE: median 29.00 ms, p95 32.18 ms
+PAINT: median 13.01 ms, p95 13.37 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.00; frame allocated bytes/frame: 16351540; trace bytes/frame: 4214; GC count=1 time=2 ms; measured spp=5
+Scene: playground; acceleration=bvh; primitives=16; depth=0; spp/batch max=1; accumulated=10; seed=1; pixel centers; rays: Rays[width=64, height=64, primary=4096, hits=2644, shadows=2586, occluded=78, lit=2508, traceNanos=442100]
+Trace throughput (primary + continuation + visibility): 6.66 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=4200, primaryTests=18568, shadowTests=9649, scene=playground, depth=0, samplesPerPixel=1, continuationRays=0, continuationTests=0, accumulatedSamples=10, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=0, absorptionSegments=0, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 8 spp (headless frame pipeline): 323.37 ms
+Quality: requested 100 ms, actual 127.35 ms (complete-pass overshoot), 3 spp; independent reference=32 spp; linear RMSE=0.00000, relative RMS=0.00000
+
+RUN p1-quality-rough-room
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=rough-room size=64 samples=1 seed=1 workers=14 warmup=5 frames=5 target=8 qualityMillis=100 reference=32 output=out/cli/p1-quality-rough-room.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=rough-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=40; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 41.56 ms, p95 45.53 ms
+TRACE: median 1.58 ms, p95 1.69 ms
+RESAMPLE: median 26.43 ms, p95 29.83 ms
+PAINT: median 13.34 ms, p95 13.41 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 0.97; frame allocated bytes/frame: 16353086; trace bytes/frame: 5552; GC count=1 time=3 ms; measured spp=5
+Scene: rough-room; acceleration=bvh; primitives=40; depth=8; spp/batch max=1; accumulated=10; seed=1; jittered progressive; rays: Rays[width=64, height=64, primary=4096, hits=3056, shadows=4020, occluded=555, lit=2772, traceNanos=1373200]
+Trace throughput (primary + continuation + visibility): 8.59 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5552, primaryTests=68908, shadowTests=52565, scene=rough-room, depth=8, samplesPerPixel=1, continuationRays=5151, continuationTests=94332, accumulatedSamples=10, samplingStatus=converging, seed=1, dielectricReflections=297, dielectricTransmissions=918, absorptionSegments=745, areaLightSamples=4466, emitterHits=270, roughEvents=757, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 8 spp (headless frame pipeline): 312.01 ms
+Quality: requested 100 ms, actual 124.54 ms (complete-pass overshoot), 3 spp; independent reference=32 spp; linear RMSE=0.332083, relative RMS=0.165291
+
+RUN p1-quality-volume-room
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e21910b77abdf8510095163fee575ff40870ee663a2493c6d268dd28375ddf2a; args=volume-room size=64 samples=1 seed=1 workers=14 warmup=5 frames=5 target=8 qualityMillis=100 reference=32 output=out/cli/p1-quality-volume-room.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=64x64; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=volume-room; depth=12; seed=1; requestedSpp=1; acceleration=true; instances=16; primitives=27; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 42.09 ms, p95 47.07 ms
+TRACE: median 1.99 ms, p95 2.57 ms
+RESAMPLE: median 26.21 ms, p95 30.19 ms
+PAINT: median 13.35 ms, p95 13.55 ms
+BACKGROUND: median 0.00 ms, p95 0.03 ms
+Aggregate CPU/wall cores: 0.88; frame allocated bytes/frame: 16332347; trace bytes/frame: 5307; GC count=1 time=3 ms; measured spp=5
+Scene: volume-room; acceleration=bvh; primitives=27; depth=12; spp/batch max=1; accumulated=10; seed=1; jittered progressive; rays: Rays[width=64, height=64, primary=4096, hits=3056, shadows=4830, occluded=0, lit=2926, traceNanos=1692000]
+Trace throughput (primary + continuation + visibility): 7.41 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5312, primaryTests=64644, shadowTests=130632, scene=volume-room, depth=12, samplesPerPixel=1, continuationRays=6499, continuationTests=118281, accumulatedSamples=10, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=1512, absorptionSegments=2088, areaLightSamples=5004, emitterHits=278, roughEvents=0, volumeSegments=2088, volumeEvents=1334, volumeVisibilitySegments=1709, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 8 spp (headless frame pipeline): 316.62 ms
+Quality: requested 100 ms, actual 124.82 ms (complete-pass overshoot), 3 spp; independent reference=32 spp; linear RMSE=0.291405, relative RMS=0.145802
+
+RUN p1-rectangular
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; working-tree source SHA256=e075720f9bb89451b451318f4c2f7e45331538769603653d0718045247f33e10; args=glass size=67x73 workers=2 tile=16 warmup=2 frames=3 target=2 qualityMillis=50 reference=4 output=out/cli/p1-rectangular.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=67x73; workers=2; tile=16; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=glass; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=13; primitives=24; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 43.88 ms, p95 44.96 ms
+TRACE: median 3.20 ms, p95 3.33 ms
+RESAMPLE: median 27.26 ms, p95 27.63 ms
+PAINT: median 13.04 ms, p95 13.19 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 1.08; frame allocated bytes/frame: 16410325; trace bytes/frame: 2392; GC count=0 time=0 ms; measured spp=3
+Scene: glass; acceleration=bvh; primitives=24; depth=8; spp/batch max=1; accumulated=5; seed=1; jittered progressive; rays: Rays[width=67, height=73, primary=4891, hits=3065, shadows=3938, occluded=596, lit=2518, traceNanos=2262100]
+Trace throughput (primary + continuation + visibility): 5.08 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=2384, primaryTests=63216, shadowTests=40361, scene=glass, depth=8, samplesPerPixel=1, continuationRays=6147, continuationTests=92112, accumulatedSamples=5, samplingStatus=converging, seed=1, dielectricReflections=404, dielectricTransmissions=1814, absorptionSegments=1232, areaLightSamples=0, emitterHits=0, roughEvents=0, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=2, tileSize=16]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 2 spp (headless frame pipeline): 88.03 ms
+Quality: requested 50 ms, actual 85.18 ms (complete-pass overshoot), 2 spp; independent reference=4 spp; linear RMSE=0.277653, relative RMS=0.358631
+
+RUN p1-rough-room-half
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=rough-room size=half samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-rough-room-half.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=720x450; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=rough-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=40; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 39.35 ms, p95 43.19 ms
+TRACE: median 22.15 ms, p95 25.58 ms
+RESAMPLE: median 5.75 ms, p95 11.07 ms
+PAINT: median 10.17 ms, p95 10.28 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 8.94; frame allocated bytes/frame: 16283984; trace bytes/frame: 5573; GC count=1 time=4 ms; measured spp=10
+Scene: rough-room; acceleration=bvh; primitives=40; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=720, height=450, primary=324000, hits=241983, shadows=318077, occluded=43685, lit=220968, traceNanos=21382700]
+Trace throughput (primary + continuation + visibility): 46.52 Mrays/s
+Trace profile: Stats[cpuNanos=218750000, allocatedBytes=5600, primaryTests=5442720, shadowTests=4163708, scene=rough-room, depth=8, samplesPerPixel=1, continuationRays=409051, continuationTests=7485760, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=22781, dielectricTransmissions=72514, absorptionSegments=57714, areaLightSamples=354529, emitterHits=22672, roughEvents=59137, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 43.02 ms
+
+RUN p1-rough-room-native
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=rough-room size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-rough-room-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=rough-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=40; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 105.81 ms, p95 115.72 ms
+TRACE: median 87.64 ms, p95 98.93 ms
+RESAMPLE: median 6.05 ms, p95 11.34 ms
+PAINT: median 10.22 ms, p95 10.72 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 11.54; frame allocated bytes/frame: 16283963; trace bytes/frame: 5552; GC count=1 time=4 ms; measured spp=10
+Scene: rough-room; acceleration=bvh; primitives=40; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=967955, shadows=1272054, occluded=175168, lit=883067, traceNanos=98923000]
+Trace throughput (primary + continuation + visibility): 47.70 Mrays/s
+Trace profile: Stats[cpuNanos=1343750000, allocatedBytes=5576, primaryTests=21772452, shadowTests=16649270, scene=rough-room, depth=8, samplesPerPixel=1, continuationRays=1637410, continuationTests=29989864, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=91728, dielectricTransmissions=291524, absorptionSegments=232283, areaLightSamples=1418472, emitterHits=90591, roughEvents=237204, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 121.43 ms
+
+RUN p1-rough-room-quarter
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=rough-room size=quarter samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-rough-room-quarter.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=rough-room; depth=8; seed=1; requestedSpp=1; acceleration=true; instances=18; primitives=40; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 24.09 ms, p95 26.46 ms
+TRACE: median 6.25 ms, p95 7.98 ms
+RESAMPLE: median 6.97 ms, p95 9.11 ms
+PAINT: median 10.22 ms, p95 10.37 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 3.57; frame allocated bytes/frame: 16283996; trace bytes/frame: 5585; GC count=1 time=3 ms; measured spp=10
+Scene: rough-room; acceleration=bvh; primitives=40; depth=8; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=60492, shadows=79886, occluded=10927, lit=55264, traceNanos=6265500]
+Trace throughput (primary + continuation + visibility): 40.59 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5552, primaryTests=1361040, shadowTests=1045205, scene=rough-room, depth=8, samplesPerPixel=1, continuationRays=102994, continuationTests=1886476, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=5820, dielectricTransmissions=18267, absorptionSegments=14618, areaLightSamples=89163, emitterHits=5724, roughEvents=14847, volumeSegments=0, volumeEvents=0, volumeVisibilitySegments=0, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 29.13 ms
+
+RUN p1-volume-room-half
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=volume-room size=half samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-volume-room-half.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=720x450; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=volume-room; depth=12; seed=1; requestedSpp=1; acceleration=true; instances=16; primitives=27; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 47.34 ms, p95 70.25 ms
+TRACE: median 30.91 ms, p95 49.91 ms
+RESAMPLE: median 5.72 ms, p95 9.77 ms
+PAINT: median 10.19 ms, p95 10.37 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 8.97; frame allocated bytes/frame: 16300184; trace bytes/frame: 5328; GC count=2 time=6 ms; measured spp=10
+Scene: volume-room; acceleration=bvh; primitives=27; depth=12; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=720, height=450, primary=324000, hits=241983, shadows=382953, occluded=0, lit=231921, traceNanos=30138900]
+Trace throughput (primary + continuation + visibility): 37.18 Mrays/s
+Trace profile: Stats[cpuNanos=234375000, allocatedBytes=5360, primaryTests=5113332, shadowTests=10219137, scene=volume-room, depth=12, samplesPerPixel=1, continuationRays=516742, continuationTests=9393102, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=122047, absorptionSegments=169414, areaLightSamples=396798, emitterHits=22895, roughEvents=0, volumeSegments=169414, volumeEvents=108631, volumeVisibilitySegments=137011, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 52.14 ms
+
+RUN p1-volume-room-native
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=volume-room size=native samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-volume-room-native.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=1440x900; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=volume-room; depth=12; seed=1; requestedSpp=1; acceleration=true; instances=16; primitives=27; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 152.75 ms, p95 175.87 ms
+TRACE: median 129.50 ms, p95 143.89 ms
+RESAMPLE: median 9.57 ms, p95 11.41 ms
+PAINT: median 10.48 ms, p95 21.17 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 11.65; frame allocated bytes/frame: 16300080; trace bytes/frame: 5292; GC count=1 time=4 ms; measured spp=10
+Scene: volume-room; acceleration=bvh; primitives=27; depth=12; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=1440, height=900, primary=1296000, hits=967955, shadows=1535680, occluded=0, lit=927592, traceNanos=143879400]
+Trace throughput (primary + continuation + visibility): 36.87 Mrays/s
+Trace profile: Stats[cpuNanos=1968750000, allocatedBytes=5288, primaryTests=20453748, shadowTests=41007336, scene=volume-room, depth=12, samplesPerPixel=1, continuationRays=2072960, continuationTests=37687992, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=490084, absorptionSegments=680005, areaLightSamples=1591347, emitterHits=91366, roughEvents=0, volumeSegments=680005, volumeEvents=435877, volumeVisibilitySegments=549813, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 187.01 ms
+
+RUN p1-volume-room-quarter
+revision=844b65e2e5699acd3618408fbeac322fc947e9c2; args=volume-room size=quarter samples=1 seed=1 workers=14 tile=32 warmup=10 frames=10 target=1 output=out/cli/p1-volume-room-quarter.csv
+JDK=23.0.1+11-39; VM=OpenJDK 64-Bit Server VM; OS=Windows 11 amd64; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; processors=20
+display=1440x900; sensor=360x225; workers=14; tile=32; camera=Vec3[x=0.0, y=0.0, z=-1.0]; sensorGeometry=Rect[origin=Vec3[x=-0.8, y=-0.5, z=0.0], edge1=Vec3[x=1.6, y=0.0, z=0.0], edge2=Vec3[x=0.0, y=1.0, z=0.0]]
+preset=volume-room; depth=12; seed=1; requestedSpp=1; acceleration=true; instances=16; primitives=27; exposure=0.0; raw uniform samples; reconstruction=off; motion=false
+Headless: excludes AWT presentation, scheduler idle, and real input delivery. Motion measures synchronous edit-to-render; generation age/cancellation apply in P2.
+Headless frame: median 27.00 ms, p95 34.90 ms
+TRACE: median 9.02 ms, p95 17.06 ms
+RESAMPLE: median 6.92 ms, p95 10.14 ms
+PAINT: median 10.15 ms, p95 10.35 ms
+BACKGROUND: median 0.00 ms, p95 0.00 ms
+Aggregate CPU/wall cores: 4.24; frame allocated bytes/frame: 16300130; trace bytes/frame: 5343; GC count=1 time=4 ms; measured spp=10
+Scene: volume-room; acceleration=bvh; primitives=27; depth=12; spp/batch max=1; accumulated=20; seed=1; jittered progressive; rays: Rays[width=360, height=225, primary=81000, hits=60492, shadows=96405, occluded=0, lit=57977, traceNanos=9832500]
+Trace throughput (primary + continuation + visibility): 30.88 Mrays/s
+Trace profile: Stats[cpuNanos=0, allocatedBytes=5336, primaryTests=1278312, shadowTests=2582457, scene=volume-room, depth=12, samplesPerPixel=1, continuationRays=130137, continuationTests=2365887, accumulatedSamples=20, samplingStatus=converging, seed=1, dielectricReflections=0, dielectricTransmissions=30773, absorptionSegments=43073, areaLightSamples=99887, emitterHits=5688, roughEvents=0, volumeSegments=43073, volumeEvents=27734, volumeVisibilitySegments=34888, workers=14, tileSize=32]
+Trace execution samples: Snapshot[generation=0, intersection=0, lighting=0, shadow=0, status=off]
+Stationary time to 1 spp (headless frame pipeline): 30.89 ms
+
+ORIGINAL SOURCE COMPARISON
+triangle: original revision agrees bit-for-bit at 3 spp, tests agree
+playground: original revision agrees bit-for-bit at 3 spp, tests agree
+bounce-room: original revision agrees bit-for-bit at 3 spp, tests agree
+glass: original revision agrees bit-for-bit at 3 spp, tests agree
+glass-inside: original revision agrees bit-for-bit at 3 spp, tests agree
+rough-room: original revision agrees bit-for-bit at 3 spp, tests agree
+mesh-room: original revision agrees bit-for-bit at 3 spp, tests agree
+volume-room: original revision agrees bit-for-bit at 3 spp, tests agree

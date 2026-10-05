@@ -135,6 +135,8 @@ public class Viewport implements
     public ViewportState state() {
         return state;
     }
+    /** Diagnostics for headless measurement; access only between completed renders. */
+    public DirectRgbTracer tracer() { return tracer; }
 
     @Override
     public void render() {

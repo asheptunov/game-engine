@@ -55,6 +55,8 @@ public final class ViewportCommand implements Command {
                     case "resolution" -> resolution(args);
                     case "depth" -> {require(args,3);state.pathDepth(Integer.parseInt(args[2]));}
                     case "samples" -> {require(args,3);state.samplesPerFrame(Integer.parseInt(args[2]));}
+                    case "workers" -> {require(args,3);state.workers(Integer.parseInt(args[2]));}
+                    case "tile" -> {require(args,3);state.tileSize(Integer.parseInt(args[2]));}
                     case "seed" -> {require(args,3);state.seed(Long.parseLong(args[2]));}
                     case "target" -> {require(args,3);state.sampleTarget(Long.parseLong(args[2]));}
                     case "restart" -> {require(args,2);state.restart();}
@@ -153,6 +155,7 @@ public final class ViewportCommand implements Command {
         String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()+" IOR="+o.material().ior()+" absorption="+o.material().absorption()+" scattering="+o.material().scattering()+" anisotropy="+o.material().anisotropy()+" roughness="+o.material().roughness()+" emission="+o.material().emission()).orElse("none");
         return "Preset="+state.preset()+" exposure="+state.exposure()+" stops; sensor="+state.sensorPixelsW()+"x"+state.sensorPixelsH()
                 +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
+                +"; workers="+state.workers()+"; tile="+state.tileSize()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint lights: "+state.lights()

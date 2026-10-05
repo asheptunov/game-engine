@@ -8,7 +8,9 @@ entries and answer those you can ground in the implementation or reliable source
 Preserve human wording, numbering, ordering, and follow-up threads. Define `TN <term>`
 with a separate `TN: <definition>` paragraph immediately below it, and answer
 `QN <question>` with `AN: <answer>` immediately below it. Do not invent new questions,
-renumber entries, or replace the human introduction.
+renumber entries, or replace the human introduction. Questions may use `QN:` and
+recursive follow-up identifiers such as `Q3.1.2:`; match the answer identifier
+(`A3.1.2:`) and preserve the thread's surrounding context.
 
 Keep answers concise, explain unfamiliar terms in plain language, and use a small
 example when helpful. Distinguish current implementation from proposed optimizations;
@@ -162,7 +164,7 @@ Shares describe sampled execution stacks, not exclusive wall-time durations; wai
 for sufficient samples after changing the camera. F4 off closes the recording.
 F3 only hides the panel; active collection continues. Hardware/JVM counters refresh
 at 4 Hz: machine-normalized CPU load, logical CPUs, heap/RAM, and GC deltas. Trace
-CPU time and allocated bytes are read once around each trace; CPU time has OS timer
+CPU time and allocated bytes aggregate coordinator and active worker costs; CPU time has OS timer
 granularity. Unsupported counters display n/a. The tracer does not use the GPU.
 The trace detail shows primary/continuation/shadow primitive-test counts, accumulated
 spp and sampling status. Primary throughput is labeled separately from all-ray throughput
@@ -178,7 +180,19 @@ near-full-screen triangle and `details` to enable JFR sampling. It warms up 50 f
 and measures 100; it excludes overlay drawing, AWT presentation, and scheduler idle.
 Pass `playground` for the material demo and `size=400` for an explicit sensor size.
 Pass `bounce-room depth=3 size=200 samples=1 seed=1` for progressive paths. Benchmark
-metadata includes requested/actual batch spp, total accumulated spp and sampling seed.
+accepts `size=1440x900`, `native`, `half`, `quarter`, `workers=14`, `tile=32`,
+`warmup=50`, `frames=100`, `target=8`, `qualityMillis=1000`, `reference=128`,
+`motion`, `instances=32` (mesh-room), and `output=out/cli/benchmark.csv`.
+CSV rows and a settings sidecar are saved when output is supplied. Timing runs are
+always continuous; target convergence is measured separately. Headless runs exclude
+AWT presentation and actual input delivery. See `benchmarks/p0-p1/README.md` for
+measurements and reproducible commands. Run `scenes.viewport.ParallelTraceTest` for
+seeded agreement across workers/tiles, lifecycle, commands and interrupted joins.
+`view workers <count>` and `view tile <pixels>` retain accumulation. Defaults are
+min(14, max(1, available CPUs - 2)) workers and 32-pixel square tiles. Workers share
+one lazy process-wide daemon pool, drained by a JVM shutdown hook; scene switches
+do not create pools. The coordinator retains the state lock until P2.
+Benchmark metadata includes requested/actual batch spp, total accumulated spp and sampling seed.
 It records dimensions, depth, samples per frame, deterministic sampling, throughput,
 trace allocations, and actual primitive tests. Compare matching settings.
 Run `scenes.viewport.MaterialPlaygroundTest` for phase 1 numeric/image/control checks;

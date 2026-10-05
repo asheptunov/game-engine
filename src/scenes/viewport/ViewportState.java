@@ -24,6 +24,19 @@ public class ViewportState {
     private long seed = 1, restartVersion, sampleTarget, accumulatedSamples;
     private boolean paused;
     private boolean acceleration=true;
+    private int workers = Integer.getInteger("renderer.workers", Math.min(14, Math.max(1, Runtime.getRuntime().availableProcessors()-2)));
+    private int tileSize = Integer.getInteger("renderer.tile", 32);
+    public int workers() { return workers; }
+    public void workers(int value) {
+        if (value < 1 || value > Math.min(32, Runtime.getRuntime().availableProcessors()))
+            throw new IllegalArgumentException("Workers must be 1.." + Math.min(32, Runtime.getRuntime().availableProcessors()));
+        workers = value;
+    }
+    public int tileSize() { return tileSize; }
+    public void tileSize(int value) {
+        if (value < 1 || value > 256) throw new IllegalArgumentException("Tile size must be 1..256");
+        tileSize = value;
+    }
     public boolean acceleration(){return acceleration;}
     public void acceleration(boolean enabled){if(acceleration!=enabled){acceleration=enabled;restart();}}
     public static final long SAMPLE_LIMIT = 1_000_000_000L;
@@ -79,6 +92,8 @@ public class ViewportState {
     }
 
     public ViewportState(Rect cameraSensor, int sensorPixelsW, int sensorPixelsH) {
+        workers(workers);
+        tileSize(tileSize);
         this.cameraSensor = cameraSensor;
         this.sensorPixelsW = sensorPixelsW;
         this.sensorPixelsH = sensorPixelsH;

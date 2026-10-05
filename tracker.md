@@ -299,6 +299,33 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   64² at the same depth: 25.48 / 50.00. Trace allocation is 1,424 bytes/batch.
   Live JFR succeeds with the same ray/event counters.
 
+## Renderer performance P0/P1 `[done]`
+
+- Delivered measurement and tiled CPU tracing together. Benchmark settings include
+  rectangular/scaled sensor grids, worker/tile controls, revision/source identity,
+  actual spp, per-stage distributions, aggregate CPU/allocation, GC, convergence,
+  optional timed image error, repeatable camera motion and many-instance meshes.
+- A shared persistent bounded platform-thread pool dynamically claims tiles. Each
+  worker owns scratch and counters; prepared geometry and camera/settings are fixed
+  for each pass. Every pixel preserves its seed/sample stream and accumulation order.
+  Only complete passes publish; failed/interrupted passes invalidate accumulation
+  after draining all workers. Input locking/cancellation remain P2 work.
+- Defaults: min(14, max(1, available CPUs - 2)) workers, 32-pixel square tiles.
+  `view workers` and `view tile` retain samples; F4 shows configuration and aggregate
+  CPU/allocation, and JFR classifies worker stacks. Shutdown drains the shared pool.
+- On the local 20-logical-CPU i5-13600KF, glass at 400² traces in 8.52 ms median
+  with fourteen workers versus 70.22 ms with one (~8.2×). Frame medians are 53.39
+  versus 117.30 ms (~2.2×). Native glass: 66.57 ms trace with fourteen versus
+  610.12 ms with one. Display costs now dominate smaller tracing grids.
+  A longer repeat retained ~7.6× trace improvement, but display-stage variation
+  reduced the frame gain to ~1.3×; both results are archived, without a FPS promise.
+  See [measurements, raw data and commands](benchmarks/p0-p1/README.md).
+- All eight preset images and primitive-test counts agree bit-for-bit with the
+  pre-change source at fixed seed/three spp. ParallelTraceTest covers scheduling,
+  uneven edges, edits, pause/restart, close and interrupted recovery. Twelve relevant
+  transport/profiling/input/console suites pass. AWT presentation and real event
+  latency remain live-only measurements; asynchronous generation metrics arrive in P2.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

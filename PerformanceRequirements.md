@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: proposed implementation roadmap. No optimization in this document is implemented by the act of writing it.
+Status: P0 and P1 implemented. P2 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -71,7 +71,7 @@ Start with P0 through P3. Review that result before committing to the later phas
 
 ## Shared completion requirements
 
-Each phase lands separately with its controls, documentation, relevant tests, and a before/after result in `tracker.md`. The status for each is initially pending. An experiment that shows no useful improvement may be marked evaluated and deferred, with evidence; do not retain complexity solely because it was planned.
+Each phase includes controls, documentation, relevant tests, and a before/after result in `tracker.md`. P0 and P1 were delivered together at the user's request; later phases are pending. An experiment that shows no useful improvement may be marked evaluated and deferred, with evidence; do not retain complexity solely because it was planned.
 
 For implementation-preserving changes, compare fixed seeds, camera, geometry, depth, resolution, and sample counts against the reference. Preserve exact images where arithmetic order is unchanged. Otherwise document justified tolerances and test transport invariants. For sampling changes, use multiple seeds and independent references to compare error at equal elapsed time; identical noisy pixels are not the criterion.
 
@@ -80,6 +80,12 @@ Preserve media containment, inside cameras, absorption, Fresnel/IOR weighting, r
 Keep F3/F4 useful, and distinguish profiling-on overhead from normal operation. Check applicable transport suites and scene/input integration. Inspect harness results because a successful process exit does not prove tests passed. Background verification must not open windows or steal focus. Hands-on GUI checks are separate from headless measurements.
 
 ## P0 Comparable performance and quality measurements
+
+Implemented: rectangular/scaled dimensions, configuration and revision/source fingerprint,
+stage distributions, aggregate CPU/allocation, GC, per-frame CSV/settings export,
+separate target convergence and optional timed quality comparisons, camera-motion
+and many-instance workloads. Actual AWT presentation and input delivery require
+live measurements; asynchronous generation age/cancellation metrics arrive with P2.
 
 Extend the benchmark to specify rectangular sensor dimensions and record display dimensions separately. Record revision, JDK, CPU, available processors, worker count, preset, camera, geometry detail, depth, seed, requested and actual spp, accumulated samples, acceleration mode, and all quality/reconstruction modes. Warm up before measuring; compare sequential runs under comparable machine load. Do not run competing benchmarks concurrently.
 
@@ -90,6 +96,12 @@ Use playground, bounce-room, glass, rough-room, mesh-room, and volume-room, incl
 Acceptance: reproduce the baseline from documented commands, distinguish trace from display cost, and avoid target-spp completion silently turning a tracing benchmark into an idle benchmark. Store results with their settings. No performance threshold is inferred from the exploratory run above.
 
 ## P1 Tiled multicore tracing
+
+Implemented: a shared persistent platform-thread pool, dynamically claimed tiles,
+worker-owned scratch/counters, fixed pass snapshots and complete-pass publication.
+`view workers` and `view tile` tune scheduling without discarding samples. The
+default is min(14, max(1, available CPUs - 2)) workers and 32-pixel tiles, selected
+from the local scaling measurements. P2 still owns responsive input/cancellation.
 
 Divide the sensor into tiles and dynamically assign them to a persistent, bounded platform-thread pool. Begin by benchmarking 16 by 16 and 32 by 32 tiles and worker counts such as 1, 2, 4, 6, 10, 14, and 20 where available. Tile size and worker count are experiments, not fixed promises. Avoid one task per pixel and per-ray atomics.
 

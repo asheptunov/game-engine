@@ -147,15 +147,15 @@ public final class PerformanceOverlay implements Renderer {
         if (trace == null) {
             text(g, "Trace CPU / allocations: n/a in this scene", 14, 412);
         } else {
-            text(g, format("Last trace: thread CPU %s ms / wall %.2f ms; allocated %s MiB",
+            text(g, format("Last trace: aggregate CPU %s ms / wall %.2f ms; allocated %s MiB",
                     trace.cpuNanos() < 0 ? "n/a" : format("%.2f", trace.cpuNanos() / 1e6),
                     latest.rays() == null ? 0 : latest.rays().traceNanos() / 1e6, mib(trace.allocatedBytes())), 14, 412);
         }
         text(g, trace != null && trace.scene() != null
-                ? format("%s: N=%d batch %d spp; total %,d spp %s; cont %,d",
+                ? format("%s: N=%d batch %d spp; total %,d spp %s; workers %d tile %d",
                         trace.scene(), trace.depth(), trace.samplesPerPixel(), trace.accumulatedSamples(),
-                        trace.samplingStatus(), trace.continuationRays())
-                : "CPU trace uses one render thread; hardware counters refresh at 4 Hz", 14, 432);
+                        trace.samplingStatus(), trace.workers(), trace.tileSize())
+                : "Hardware counters refresh at 4 Hz", 14, 432);
     }
 
     private void traceDetails(Graphics2D g, List<FrameProfiler.Frame> frames) {

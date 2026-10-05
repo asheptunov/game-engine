@@ -8,7 +8,18 @@ public final class TraceProfile {
                         long continuationTests, long accumulatedSamples, String samplingStatus, long seed,
                         long dielectricReflections, long dielectricTransmissions, long absorptionSegments,
                         long areaLightSamples, long emitterHits, long roughEvents,
-                        long volumeSegments, long volumeEvents, long volumeVisibilitySegments) {
+                        long volumeSegments, long volumeEvents, long volumeVisibilitySegments,
+                        int workers, int tileSize) {
+        public Stats(long cpuNanos, long allocatedBytes, long primaryTests, long shadowTests,
+                     String scene, int depth, int samplesPerPixel, long continuationRays,
+                     long continuationTests, long accumulatedSamples, String samplingStatus, long seed,
+                     long dielectricReflections, long dielectricTransmissions, long absorptionSegments,
+                     long areaLightSamples, long emitterHits, long roughEvents,
+                     long volumeSegments, long volumeEvents, long volumeVisibilitySegments) {
+            this(cpuNanos,allocatedBytes,primaryTests,shadowTests,scene,depth,samplesPerPixel,continuationRays,
+                    continuationTests,accumulatedSamples,samplingStatus,seed,dielectricReflections,dielectricTransmissions,
+                    absorptionSegments,areaLightSamples,emitterHits,roughEvents,volumeSegments,volumeEvents,volumeVisibilitySegments,1,0);
+        }
         public Stats(long cpuNanos, long allocatedBytes, long primaryTests, long shadowTests,
                      String scene, int depth, int samplesPerPixel, long continuationRays,
                      long continuationTests, long accumulatedSamples, String samplingStatus, long seed,
