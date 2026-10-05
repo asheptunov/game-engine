@@ -13,10 +13,12 @@ public final class ScenePresets {
         state.restart();
     }
     public static void load(ViewportState state,String name) {
-        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")&&!name.equals("rough-room")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside, rough-room");
+        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")&&!name.equals("rough-room")&&!name.equals("mesh-room")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside, rough-room, mesh-room");
         state.instances().clear();state.objects().clear();state.lights().clear();resetCamera(state);state.exposure(0);state.preset(name);
         state.pathDepth(name.equals("bounce-room") ? 3 : 0);
         state.paused(false);state.sampleTarget(0);
+        state.acceleration(true);
+        if(name.equals("mesh-room")) {meshRoom(state);return;}
         if(name.equals("rough-room")) {roughRoom(state);return;}
         if(name.startsWith("glass")) { glass(state,name.equals("glass-inside"));return; }
         if(name.equals("bounce-room")) { bounceRoom(state);return; }
@@ -36,6 +38,16 @@ public final class ScenePresets {
         state.instances().add(new SceneInstance("reference",List.of(new Sphere(Vec3.ZERO,1)),
                 new Transform(new Vec3(.1f,.5f,10),Vec3.ZERO,new Vec3(.6f,.6f,.6f)),Material.srgb("gold",0xeec447)));
         state.addLight(new PointLight(new Vec3(-2,3,3),new Vec3(1,1,1),160));
+    }
+    private static void meshRoom(ViewportState state) {
+        roughRoom(state);
+        var mesh=IndexedMesh.sphere(12);
+        String[] names={"mesh-diffuse","mesh-mirror","mesh-clear","mesh-frosted"};
+        Material[] materials={Material.srgb(names[0],0xe95638),Material.srgb(names[1],0xf5f5f5).withKind(Material.Kind.MIRROR),
+                new Material(names[2],new Vec3(1,1,1),Material.Kind.DIELECTRIC),
+                new Material(names[3],new Vec3(1,1,1),Material.Kind.DIELECTRIC).withRoughness(.25f)};
+        for(int i=0;i<4;i++)state.instances().set(i,new SceneInstance(names[i],mesh,
+                new Transform(new Vec3(-2.4f+i*1.6f,-.5f,6),new Vec3(0,15,0),new Vec3(.65f,.85f,.65f)),materials[i]));
     }
     private static void roughRoom(ViewportState state) {
         state.pathDepth(8);

@@ -96,6 +96,20 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   parameterized keys. Scenes and the display raster are shared singletons.
 - Logging uses `LogManager.instance().getThis()`; levels are configured in `src/logging.txt`.
 
+- `view preset mesh-room` demonstrates shared indexed closed meshes as diffuse/mirror/
+  clear/frosted instances at depth 8. `view mesh detail 4..64` regenerates a spherical
+  asset for all instances sharing the selected mesh; `view copy <name>` duplicates it
+  three units along +Z and selects the copy. `view remove <name>` removes an instance.
+  Copy material/geometry are shared; transforms are independent. Total instances cap
+  at 128. `view acceleration bvh/brute` restarts samples for deterministic comparison.
+  BVHs are cached per instance (16+ primitives), use median splits/leaves of four and
+  stackless escape traversal; the instance list remains linear with object bounds.
+  Brute mode bypasses all bounds. Camera edits reuse cached geometry. Mesh faces use
+  double ray-aligned edge functions to retain tiny faces/shared seams. Original triangle
+  IDs survive traversal sorting; glass uses whole-instance media and per-face source
+  skipping. Indexed boundaries must be closed/outward/connected and non-self-intersecting;
+  self intersections are not detected. Nested/nonintersecting and offset limits remain.
+
 ## Profiling
 
 Keep profiling horizontal: shared components in `src/profiling/`, pipeline/input
@@ -148,6 +162,12 @@ Run `scenes.viewport.RoughLightingTest` for phase 4 GGX/PDF/energy, area/MIS bri
 delta events, absorption, shadows, controls and convergence. It writes 240²
 `out/cli/rough-room-preview-128.png` and `rough-room-smooth-glass-128.png`.
 Benchmark `rough-room depth=8 size=200 samples=1 seed=1`, or explicit `size=400`.
+Run `scenes.viewport.MeshAccelerationTest` for mesh/topology/BVH/reference, same-object
+visibility, tiny faces/seams, transforms, nested/inside media, commands, cache reuse and
+seeded image agreement. It writes `out/cli/mesh-room-preview-64.png` (200 square).
+Benchmark `mesh-room depth=8 size=64 detail=12 samples=1 seed=1`, adding `brute` for
+reference traversal; use explicit `size=200` or `detail=32` for more work. Mode and total
+primitives are reported. Keep matching seed/spp/camera/geometry for comparisons.
 
 Run `./test profiling.FrameProfilerTest` and `./test ProfilingIntegrationTest` for
 headless timing, toggle, rendering, and scene/DI checks. The first writes synthetic

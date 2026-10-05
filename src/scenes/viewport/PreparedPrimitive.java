@@ -12,10 +12,13 @@ final class PreparedPrimitive {
     final Sphere sphere;
     final Sphere worldSphere;
     final Transform transform;
+    final MeshSurface mesh;
     PreparedPrimitive(SceneInstance object, int index) {
         objectId=object.name(); materialId=object.material().name(); primitiveId=index; material=object.material();
         transform=object.transform();
         var geometry=object.geometry().get(index);
+        mesh=object.geometry() instanceof IndexedMesh && geometry instanceof Tri t
+                ?new MeshSurface(transform.point(t.a()),transform.point(t.b()),transform.point(t.c())):null;
         sphere=geometry instanceof Sphere s ? s : null;
         worldSphere=sphere!=null && transform.scale.x()==transform.scale.y() && transform.scale.y()==transform.scale.z()
                 ? new Sphere(transform.point(sphere.center()),sphere.radius()*transform.scale.x()) : null;
@@ -26,6 +29,7 @@ final class PreparedPrimitive {
         };
     }
     float distance(float ox,float oy,float oz,float dx,float dy,float dz) {
+        if(mesh!=null)return mesh.distance(ox,oy,oz,dx,dy,dz);
         if(flat!=null) return flat.distance(ox,oy,oz,dx,dy,dz);
         if(worldSphere!=null) return worldSphere.distance(ox,oy,oz,dx,dy,dz);
         float x=ox-transform.position.x(),y=oy-transform.position.y(),z=oz-transform.position.z();

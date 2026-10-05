@@ -19,7 +19,8 @@ public class ViewportBenchmark {
         module.registerScenes(injector);
         var viewport = injector.get(Viewport.class);
         boolean close = Arrays.asList(args).contains("close");
-        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("rough-room") ? "rough-room"
+        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("mesh-room") ? "mesh-room"
+                : Arrays.asList(args).contains("rough-room") ? "rough-room"
                 : Arrays.asList(args).contains("glass-inside") ? "glass-inside"
                 : Arrays.asList(args).contains("glass") ? "glass"
                 : Arrays.asList(args).contains("bounce-room") ? "bounce-room"
@@ -29,6 +30,12 @@ public class ViewportBenchmark {
             if (arg.startsWith("depth=")) viewport.state().pathDepth(Integer.parseInt(arg.substring(6)));
             if (arg.startsWith("samples=")) viewport.state().samplesPerFrame(Integer.parseInt(arg.substring(8)));
             if (arg.startsWith("seed=")) viewport.state().seed(Long.parseLong(arg.substring(5)));
+            if (arg.equals("brute")) viewport.state().acceleration(false);
+            if (arg.startsWith("detail=")) {
+                var mesh=scenes.viewport.IndexedMesh.sphere(Integer.parseInt(arg.substring(7)));
+                var instances=viewport.state().instances();
+                for(int i=0;i<instances.size();i++){var o=instances.get(i);if(o.geometry() instanceof scenes.viewport.IndexedMesh)instances.set(i,new scenes.viewport.SceneInstance(o.name(),mesh,o.transform(),o.material()));}
+            }
         }
         if (close) {
             var state = viewport.state();
@@ -55,6 +62,8 @@ public class ViewportBenchmark {
         System.out.printf("Headless frame: median %.2f ms, p95 %.2f ms%n", times[50]/1e6, times[94]/1e6);
         var frame = profiler.snapshot().frames().getLast();
         System.out.println("Scene: " + viewport.state().preset() + (close ? " close" : "")
+                + "; acceleration="+(viewport.state().acceleration()?"bvh":"brute")
+                + "; primitives="+viewport.state().instances().stream().mapToInt(o->o.geometry().size()).sum()
                 + "; depth=" + viewport.state().pathDepth() + "; spp/batch max=" + viewport.state().samplesPerFrame()
                 + "; accumulated=" + viewport.state().accumulatedSamples() + "; seed=" + viewport.state().seed()
                 + (viewport.state().pathDepth() == 0 ? "; pixel centers" : "; jittered progressive") + "; rays: " + frame.rays());

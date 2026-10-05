@@ -3,8 +3,8 @@
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
 The next renderer requirements and six playable implementation phases are in
-[RenderingRequirements.md](RenderingRequirements.md). Phases 1–2 are implemented;
-phases 3–6 remain planned.
+[RenderingRequirements.md](RenderingRequirements.md). Phases 1–5 are implemented;
+phase 6 remains planned.
 
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
@@ -251,6 +251,31 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   Unchanged traces allocate 1,440 bytes/batch. Earlier presets: triangle depth 0 at
   1600² 61.60 / 81.72; bounce-room depth 3 at 200² 30.30 / 35.65; glass depth 8 at
   200² 30.19 / 31.69. Settings represent different quality/work; details in requirements.
+
+## Phase 5 — Closed meshes and acceleration `[done]`
+
+- Immutable indexed closed mesh assets with stable triangle identities, shared geometry,
+  independent instance transforms and coherent whole-object dielectric media. Procedural
+  faceted spheres support detail 4–64. No importer or smooth shading is required.
+- Cached per-instance median-split BVHs use conservative world bounds, leaves of four,
+  stackless escape traversal, deterministic ties and allocation-free ray queries. Brute
+  traversal bypasses bounds for reference comparisons. Camera edits reuse acceleration;
+  immutable scene edits rebuild it. The instance list itself remains linear.
+- Mesh-specific double edge functions preserve small/high-detail faces and shared seams.
+  Other triangles of an object can shadow it; source skipping applies to one flat face.
+  Closed meshes support glass entry/exit, inside cameras and nested absorption/IOR.
+- `mesh-room` provides diffuse/mirror/clear/frosted instances with stripes and an area
+  light. `view mesh detail`, `copy`, `remove` and `acceleration bvh/brute` expose live
+  geometry/performance comparisons; status and benchmark show total primitives/mode.
+- MeshAccelerationTest checks topology, immutable sharing, transforms/bounds/normals,
+  deterministic hit/visibility/image equivalence, tiny faces/seams, media, controls,
+  invalidation and caching. Five-spp seeded images agree exactly, with ~131× fewer
+  primitive tests in a comparison frame. All 26 suites pass; inspected 200²/64-spp
+  preview and hands-on instructions are in RenderingRequirements.md.
+- Sequential benchmarks, seed 1/depth 8/one spp and 800² display: at 64²/detail 12,
+  BVH measured 27.39 ms median / 56.27 p95 versus brute 495.62 / 603.82. Detail 32
+  at 64² measured 30.94 / 59.84; detail 12 at 200² measured 98.60 / 153.86. Ray/event
+  counts match in reference comparisons; unchanged traces allocate about 1.4 KiB/batch.
 
 ## Notes / Decisions
 

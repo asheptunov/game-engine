@@ -22,6 +22,9 @@ public class ViewportState {
     private int pathDepth, samplesPerFrame = 1;
     private long seed = 1, restartVersion, sampleTarget, accumulatedSamples;
     private boolean paused;
+    private boolean acceleration=true;
+    public boolean acceleration(){return acceleration;}
+    public void acceleration(boolean enabled){if(acceleration!=enabled){acceleration=enabled;restart();}}
     public static final long SAMPLE_LIMIT = 1_000_000_000L;
     public int pathDepth() { return pathDepth; }
     public void pathDepth(int n) {

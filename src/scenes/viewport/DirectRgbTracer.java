@@ -46,6 +46,7 @@ public final class DirectRgbTracer {
     public long traceNanos, primaryTests, continuationTests, shadowTests, continuationRays;
     public long dielectricReflections, dielectricTransmissions, absorptionSegments;
     public long areaLightSamples, emitterHits, roughEvents;
+    public long geometryBuilds;
     public TraceProfile.Stats profile;
 
     /** Retain the geometric normal and orientation; derive the shading normal separately. */
@@ -65,6 +66,7 @@ public final class DirectRgbTracer {
         var instances = List.copyOf(state.instances());
         var legacy = List.copyOf(state.objects());
         if (instances.equals(cachedInstances) && legacy.equals(cachedLegacyObjects)) return;
+        geometryBuilds++;
         var prepared = new java.util.ArrayList<PreparedObject>();
         var emitting = new java.util.ArrayList<PreparedEmitter>();
         for (var instance : instances) {
@@ -331,11 +333,23 @@ public final class DirectRgbTracer {
         PreparedPrimitive nearest = null;
         PreparedObject nearestObject = null;
         for (var object : objects) {
-            if (object.primitives.length > 1 && !object.overlaps(ox, oy, oz, dx, dy, dz, distance)) continue;
-            for (var primitive : object.primitives) {
-                if (continuation) continuationTests++; else primaryTests++;
-                float t = primitive.distance(ox, oy, oz, dx, dy, dz);
-                if (t < distance) { distance = t; nearest = primitive; nearestObject = object; }
+            if (state.acceleration() && object.primitives.length > 1 && !object.overlaps(ox, oy, oz, dx, dy, dz, distance)) continue;
+            var bvh=state.acceleration()?object.bvh:null;
+            for(int node=0;node<(bvh==null?1:bvh.nodes.length);) {
+                int from=0,to=object.primitives.length;
+                if(bvh!=null) {
+                    var n=bvh.nodes[node];
+                    if(!n.bounds.overlaps(ox,oy,oz,dx,dy,dz,distance)){node=n.escape;continue;}
+                    node++;if(!n.leaf())continue;from=n.from;to=n.to;
+                }else node++;
+                for(int i=from;i<to;i++) {
+                    var primitive=object.primitives[bvh==null?i:bvh.order[i]];
+                    if (continuation) continuationTests++; else primaryTests++;
+                    float t = primitive.distance(ox, oy, oz, dx, dy, dz);
+                    // Preserve original primitive order for exact shared-edge ties, independent of BVH order.
+                    if (t < distance || (t==distance && nearestObject==object && primitive.primitiveId<nearest.primitiveId))
+                        { distance = t; nearest = primitive; nearestObject = object; }
+                }
             }
         }
         if (nearest == null) return false;
@@ -396,7 +410,7 @@ public final class DirectRgbTracer {
                 ? hit : null;
     }
 
-    private boolean occluded(float ox, float oy, float oz, float dx, float dy, float dz,
+    boolean occluded(float ox, float oy, float oz, float dx, float dy, float dz,
                              float maxDistance, PreparedPrimitive source) {
         return occluded(ox,oy,oz,dx,dy,dz,maxDistance,source,null);
     }
@@ -404,12 +418,22 @@ public final class DirectRgbTracer {
                              float maxDistance, PreparedPrimitive source, PreparedObject target) {
         for (var object : objects) {
             if(object==target)continue; // Sampled endpoint is not a blocker; all other emitters remain opaque.
-            if (object.primitives.length > 1 && !object.overlaps(ox, oy, oz, dx, dy, dz, maxDistance)) continue;
-            for (var primitive : object.primitives) {
-                // Only flat source primitives can be skipped. A sphere can occlude its own interior rays.
-                if (primitive == source && primitive.flat != null) continue;
-                shadowTests++;
-                if (primitive.distance(ox, oy, oz, dx, dy, dz) < maxDistance) return true;
+            if (state.acceleration() && object.primitives.length > 1 && !object.overlaps(ox, oy, oz, dx, dy, dz, maxDistance)) continue;
+            var bvh=state.acceleration()?object.bvh:null;
+            for(int node=0;node<(bvh==null?1:bvh.nodes.length);) {
+                int from=0,to=object.primitives.length;
+                if(bvh!=null) {
+                    var n=bvh.nodes[node];
+                    if(!n.bounds.overlaps(ox,oy,oz,dx,dy,dz,maxDistance)){node=n.escape;continue;}
+                    node++;if(!n.leaf())continue;from=n.from;to=n.to;
+                }else node++;
+                for(int i=from;i<to;i++) {
+                    var primitive=object.primitives[bvh==null?i:bvh.order[i]];
+                    // Only flat source primitives can be skipped. A sphere can occlude its own interior rays.
+                    if (primitive == source && primitive.flat != null) continue;
+                    shadowTests++;
+                    if (primitive.distance(ox, oy, oz, dx, dy, dz) < maxDistance) return true;
+                }
             }
         }
         return false;

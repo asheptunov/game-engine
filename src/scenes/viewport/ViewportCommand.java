@@ -11,9 +11,11 @@ public final class ViewportCommand implements Command {
     private final ViewportState state;
     private String selected="sphere";
     public ViewportCommand(ViewportState state) { this.state=state; }
-    public static final String HELP="view status | preset playground/triangle/bounce-room/glass/glass-inside/rough-room | reset | camera reset\n"
+    public static final String HELP="view status | preset playground/triangle/bounce-room/glass/glass-inside/rough-room/mesh-room | reset | camera reset\n"
+            +"view mesh detail <4..64> (all instances sharing selected mesh) | copy <unique name> | remove <object>\n"
+            +"view acceleration bvh/brute (restarts samples for seeded comparisons)\n"
             +"view select <object> | material <name> | color <RRGGBB>\n"
-            +"view type diffuse/mirror/dielectric (glass requires a closed sphere/box)\n"
+            +"view type diffuse/mirror/dielectric (glass requires a closed sphere/box/indexed mesh)\n"
             +"view ior <1..3> | absorption <red> <green> <blue> (0..100 per scene unit)\n"
             +"view roughness <0..1> (mirror/glass; 0 ideal) | emission <r> <g> <b> (linear radiance 0..10000; rect only)\n"
             +"Glass uses distance absorption, not base color; nested nonintersecting solids supported.\n"
@@ -35,6 +37,22 @@ public final class ViewportCommand implements Command {
                 String op=args[1];
                 switch(op) {
                     case "status" -> require(args,2);
+                    case "acceleration" -> {require(args,3);if(!args[2].equals("bvh")&&!args[2].equals("brute"))throw new IllegalArgumentException("view acceleration bvh/brute");state.acceleration(args[2].equals("bvh"));}
+                    case "mesh" -> {
+                        require(args,4);if(!args[2].equals("detail"))throw new IllegalArgumentException("view mesh detail <4..64>");
+                        var geometry=state.instances().get(index(selected)).geometry();
+                        if(!(geometry instanceof IndexedMesh))throw new IllegalArgumentException("Select a procedural mesh instance");
+                        var mesh=IndexedMesh.sphere(Integer.parseInt(args[3]));
+                        var next=state.instances().stream().map(o->o.geometry()==geometry?new SceneInstance(o.name(),mesh,o.transform(),o.material()):o).toList();
+                        for(int i=0;i<next.size();i++)state.instances().set(i,next.get(i));
+                    }
+                    case "copy" -> {
+                        require(args,3);if(!args[2].matches("[a-zA-Z0-9_-]+")||state.instances().stream().anyMatch(o->o.name().equals(args[2])))throw new IllegalArgumentException("Copy needs a unique object name");
+                        if(state.instances().size()>=128)throw new IllegalArgumentException("Maximum 128 instances");
+                        var o=state.instances().get(index(selected));var t=o.transform();
+                        state.instances().add(new SceneInstance(args[2],o.geometry(),new Transform(t.position.add(new Vec3(0,0,3)),t.rotation,t.scale),o.material()));selected=args[2];
+                    }
+                    case "remove" -> {require(args,3);int i=index(args[2]);if(state.instances().size()==1)throw new IllegalArgumentException("Keep at least one instance");state.instances().remove(i);if(selected.equals(args[2]))selected=state.instances().getFirst().name();}
                     case "preset" -> {require(args,3);ScenePresets.load(state,args[2]);selected=state.instances().getFirst().name();}
                     case "reset" -> {require(args,2);ScenePresets.load(state,state.preset());selected=state.instances().getFirst().name();}
                     case "camera" -> {require(args,3);if(!args[2].equals("reset")) throw new IllegalArgumentException("view camera reset");ScenePresets.resetCamera(state);}
@@ -96,6 +114,7 @@ public final class ViewportCommand implements Command {
         var materials=state.instances().stream().map(o->o.material().name()).distinct().toList();
         String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()+" IOR="+o.material().ior()+" absorption="+o.material().absorption()+" roughness="+o.material().roughness()+" emission="+o.material().emission()).orElse("none");
         return "Preset="+state.preset()+" exposure="+state.exposure()+" stops; sensor="+state.sensorPixelsW()+"x"+state.sensorPixelsH()
+                +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint lights: "+state.lights()
