@@ -35,7 +35,7 @@ public final class PerformanceOverlay implements Renderer {
     public PerformanceOverlay(FrameProfiler profiler, Raster raster, @Named("frame_rate") int rate) {
         this.profiler = profiler;
         this.raster = raster;
-        panel = new BufferedImage(Math.max(1, Math.min(760, raster.width() - 24)), 620, BufferedImage.TYPE_INT_RGB);
+        panel = new BufferedImage(Math.max(1, Math.min(760, raster.width() - 24)), 640, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) panel.getRaster().getDataBuffer()).getData();
         cachedChannels = new byte[3][pixels.length];
         budgetMs = 1000. / rate;
@@ -56,7 +56,7 @@ public final class PerformanceOverlay implements Renderer {
         wasVisible = true;
         wereDetails = profiler.traceDetails();
         // The cached panel is opaque; copying channels avoids making the profiler a blending bottleneck.
-        int height = Math.min(wereDetails ? 620 : 446, raster.height() - 12);
+        int height = Math.min(wereDetails ? 640 : 446, raster.height() - 12);
         int width = Math.min(panel.getWidth(), raster.width() - 12);
         if (width <= 0) return;
         for (int y = 0; y < height; y++) {
@@ -168,6 +168,8 @@ public final class PerformanceOverlay implements Renderer {
         var trace = frames.getLast().trace();
         if (trace != null) text(g, format("Glass: reflect %,d / transmit %,d; medium segments %,d",
                 trace.dielectricReflections(), trace.dielectricTransmissions(), trace.absorptionSegments()), 14, 606);
+        if (trace != null) text(g, format("Area samples %,d / emitter hits %,d / rough events %,d",
+                trace.areaLightSamples(), trace.emitterHits(), trace.roughEvents()), 14, 624);
         long total = sampling.total();
         if (total == 0) { text(g, "Sampler: " + sampling.status(), 14, 485); return; }
         long[] totals = {sampling.generation(), sampling.intersection(), sampling.lighting(), sampling.shadow()};

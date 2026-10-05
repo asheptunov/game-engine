@@ -53,7 +53,8 @@ public final class TraceSampler implements AutoCloseable {
         if (!methods.contains(tracer + "trace")) return null;
         if (methods.contains(tracer + "occluded")) return Work.SHADOW;
         if (methods.contains(tracer + "nearestHit")) return Work.INTERSECTION;
-        if (methods.contains(tracer + "light") || methods.contains(tracer + "shade")) return Work.LIGHTING;
+        if (methods.contains(tracer + "light") || methods.contains(tracer + "shade")
+                || methods.contains(tracer + "areaLight") || methods.contains(tracer + "roughPointLight")) return Work.LIGHTING;
         return Work.GENERATION;
     }
 

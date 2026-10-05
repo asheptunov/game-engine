@@ -80,6 +80,17 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   before tracing. Elapsed steps cap at 250 ms after stalls. Console opening, camera reset,
   scene switching and window focus loss clear transient input. Mouse look preserves the
   sensor's size and pinhole distance; camera changes invalidate progressive samples.
+- `view preset rough-room` demonstrates GGX mirror/glass pairs and an emissive ceiling
+  rectangle at depth 8. `view roughness 0..1` uses the ideal path at zero; positive values
+  use single-scattering GGX/Smith, with lost masking energy retained as loss. Glass keeps
+  the earlier medium model. `view emission r g b` sets linear radiance on a single rect
+  (0..10000); it emits on edge1 × edge2's side and is opaque on the back. Area lights use
+  fixed radiance: larger area softens shadows and emits more power. In rough-room,
+  `view light position/color/intensity/size` edits the area emitter; earlier presets keep
+  point-light controls. MIS combines one area sample per emitter with BSDF continuation,
+  including full emission after delta events and full light estimates at terminal vertices.
+  Depth 0 keeps primary pixel centers but area-light sampling is stochastic. F4 counts
+  area samples, emitter hits and successful rough events; no per-path scratch allocation.
 - `src/di/` provides constructor injection (`@Inject` or a no-arg constructor), `@Provides`,
   qualifiers, singleton/prototype scopes, and list/map bindings. Use `GenericType<T>` for
   parameterized keys. Scenes and the display raster are shared singletons.
@@ -133,6 +144,10 @@ Run `scenes.viewport.DielectricPathTest` for phase 3 optics, nested/inside media
 absorption, validation, invalidation, convergence and image checks. It writes 240²
 `out/cli/glass-preview-64.png`, `glass-ior-1-preview.png`, and `glass-inside-preview-64.png`.
 Benchmark glass with `glass depth=8 size=200 samples=1 seed=1`, or `glass-inside`.
+Run `scenes.viewport.RoughLightingTest` for phase 4 GGX/PDF/energy, area/MIS brightness,
+delta events, absorption, shadows, controls and convergence. It writes 240²
+`out/cli/rough-room-preview-128.png` and `rough-room-smooth-glass-128.png`.
+Benchmark `rough-room depth=8 size=200 samples=1 seed=1`, or explicit `size=400`.
 
 Run `./test profiling.FrameProfilerTest` and `./test ProfilingIntegrationTest` for
 headless timing, toggle, rendering, and scene/DI checks. The first writes synthetic

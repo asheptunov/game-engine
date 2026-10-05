@@ -226,6 +226,32 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   Matching earlier demos: bounce-room depth 3 at 200² 29.49 / 36.22; triangle depth 0
   at 1600² 63.26 / 87.10. Different quality settings are not equivalent comparisons.
 
+## Phase 4 — Rough surfaces and extended lights `[done]`
+
+- Editable GGX mirror and dielectric roughness, with matched scattering evaluation,
+  direction PDF and radiance IOR weights. Zero roughness preserves ideal phase 3
+  behavior. Single-scattering Smith masking may lose energy at high roughness;
+  surface frost does not add fog. Earlier media/offset rules remain in effect.
+- One-sided emissive rectangles are visible geometry and direct-sampling sources.
+  Fixed radiance means larger area emits more power and softens shadows. Power-heuristic
+  MIS prevents double lighting; camera/delta hits and terminal vertices receive the
+  appropriate full contribution. Point lights remain available; rough materials use
+  their scattering evaluation for direct lighting rather than diffuse shading.
+- `rough-room` pairs polished/rough mirrors and clear/frosted boxes with stripes,
+  a floor and editable ceiling emitter. `view roughness`, `emission`, and emitter
+  `light position/color/intensity/size` are live; status/help expose their conventions.
+  F4 adds exact area sample, emitter hit and rough event counts alongside CPU samples.
+- RoughLightingTest verifies independent solid-angle integration/PDF mass, energy,
+  smooth/delta behavior, quadrature/MIS brightness, IOR/absorption, shadows, commands,
+  invalidation, batch equivalence and convergence. At 64 spp, error is ~1.1% of first
+  sample error against a 512-spp reference. Visually checked 240²/128-spp previews and
+  hands-on checklist are documented in RenderingRequirements.md. All 25 suites pass.
+- Sequential headless runs, seed 1, actual one spp/batch and 800² display: rough-room
+  depth 8 at 200² measured 38.69 ms median / 42.39 p95; 400² measured 125.18 / 144.96.
+  Unchanged traces allocate 1,440 bytes/batch. Earlier presets: triangle depth 0 at
+  1600² 61.60 / 81.72; bounce-room depth 3 at 200² 30.30 / 35.65; glass depth 8 at
+  200² 30.19 / 31.69. Settings represent different quality/work; details in requirements.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

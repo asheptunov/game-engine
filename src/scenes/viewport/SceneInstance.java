@@ -9,6 +9,8 @@ public record SceneInstance(String name, List<SceneObject> geometry, Transform t
     public SceneInstance {
         if (name == null || name.isBlank() || transform == null || material == null) throw new IllegalArgumentException("Invalid instance");
         geometry = List.copyOf(geometry);
+        if(material.emissive() && !(geometry.size()==1 && geometry.getFirst() instanceof Rect))
+            throw new IllegalArgumentException("Emission requires a rectangular surface");
         if (material.kind() == Material.Kind.DIELECTRIC &&
                 !(geometry.size() == 1 && geometry.getFirst() instanceof Sphere) && !geometry.equals(box()))
             throw new IllegalArgumentException("Glass requires a closed sphere or box");

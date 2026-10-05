@@ -8,13 +8,14 @@ import scenes.viewport.lights.PointLight;
 import scenes.viewport.objects.SceneObject;
 import java.util.List;
 
-/** Iterative diffuse/mirror/dielectric paths and progressive RGB means; no per-ray objects. */
+/** Iterative RGB paths, GGX/delta transport and area-light MIS; no per-ray objects. */
 public final class DirectRgbTracer {
     private static final float BIAS = 1e-3f;
     private final ViewportState state;
     private List<SceneInstance> cachedInstances = List.of();
     private List<SceneObject> cachedLegacyObjects = List.of();
     private PreparedObject[] objects = new PreparedObject[0];
+    private PreparedEmitter[] emitters = new PreparedEmitter[0];
     private float[][][] buffer;
     private double[][][] mean;
     private AccumulationKey accumulationKey;
@@ -44,6 +45,7 @@ public final class DirectRgbTracer {
     public int primaryRays, primaryHits, shadowRays, shadowsOccluded, litPixels;
     public long traceNanos, primaryTests, continuationTests, shadowTests, continuationRays;
     public long dielectricReflections, dielectricTransmissions, absorptionSegments;
+    public long areaLightSamples, emitterHits, roughEvents;
     public TraceProfile.Stats profile;
 
     /** Retain the geometric normal and orientation; derive the shading normal separately. */
@@ -64,13 +66,18 @@ public final class DirectRgbTracer {
         var legacy = List.copyOf(state.objects());
         if (instances.equals(cachedInstances) && legacy.equals(cachedLegacyObjects)) return;
         var prepared = new java.util.ArrayList<PreparedObject>();
-        for (var instance : instances) prepared.add(new PreparedObject(instance));
+        var emitting = new java.util.ArrayList<PreparedEmitter>();
+        for (var instance : instances) {
+            var object=new PreparedObject(instance);prepared.add(object);
+            if(instance.material().emissive()) emitting.add(new PreparedEmitter(object,instance));
+        }
         for (int i = 0; i < legacy.size(); i++) {
             var instance = new SceneInstance("primitive-" + i, List.of(legacy.get(i)), Transform.IDENTITY,
                     new Material("white", new Vec3(1, 1, 1)));
             prepared.add(new PreparedObject(instance));
         }
         objects = prepared.toArray(PreparedObject[]::new);
+        emitters = emitting.toArray(PreparedEmitter[]::new);
         cachedInstances = instances;
         cachedLegacyObjects = legacy;
     }
@@ -82,6 +89,7 @@ public final class DirectRgbTracer {
         primaryRays = primaryHits = shadowRays = shadowsOccluded = litPixels = 0;
         primaryTests = continuationTests = shadowTests = continuationRays = 0;
         dielectricReflections = dielectricTransmissions = absorptionSegments = 0;
+        areaLightSamples = emitterHits = roughEvents = 0;
         continuation = false;
         var lights = state.lights().stream().filter(PointLight.class::isInstance)
                 .map(PointLight.class::cast).toArray(PointLight[]::new);
@@ -92,6 +100,7 @@ public final class DirectRgbTracer {
         var lighting = new float[3];
         var sampler = new Sampler();
         var scattering = new Material.Sample();
+        var evaluation = new Material.Sample();
         var initialMedia = mediaAt(eye.x(), eye.y(), eye.z());
         var media = new PreparedObject[objects.length + 1];
         int width = state.sensorPixelsW(), height = state.sensorPixelsH();
@@ -117,7 +126,7 @@ public final class DirectRgbTracer {
             double inverseCount = 1.0 / (samples + 1);
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    if (state.pathDepth() > 0) sampler.reset(state.seed(), (long)y*width + x, samples);
+                    if(state.pathDepth()>0 || emitters.length>0) sampler.reset(state.seed(), (long)y*width + x, samples);
                     // Preserve the phase 1 pixel-center diagnostic exactly at depth zero.
                     float u = (x + (state.pathDepth() == 0 ? .5f : sampler.next())) / width;
                     float v = (y + (state.pathDepth() == 0 ? .5f : sampler.next())) / height;
@@ -127,7 +136,7 @@ public final class DirectRgbTracer {
                     float inverseLength = 1 / (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
                     dx *= inverseLength; dy *= inverseLength; dz *= inverseLength;
                     primaryRays++;
-                    path(eye.x(), eye.y(), eye.z(), dx, dy, dz, hit, lights, rgb, lighting, sampler, scattering, initialMedia, media);
+                    path(eye.x(), eye.y(), eye.z(), dx, dy, dz, hit, lights, rgb, lighting, sampler, scattering, evaluation, initialMedia, media);
                     for (int c = 0; c < 3; c++) {
                         mean[c][y][x] += (rgb[c] - mean[c][y][x]) * inverseCount;
                         buffer[c][y][x] = (float) mean[c][y][x];
@@ -145,15 +154,18 @@ public final class DirectRgbTracer {
         profile = new TraceProfile.Stats(RuntimeMetrics.delta(cpu, RuntimeMetrics.threadCpu()),
                 RuntimeMetrics.delta(bytes, RuntimeMetrics.allocatedBytes()), primaryTests, shadowTests,
                 state.preset(), state.pathDepth(), rendered, continuationRays, continuationTests,
-                samples, state.samplingStatus(), state.seed(), dielectricReflections, dielectricTransmissions, absorptionSegments);
+                samples, state.samplingStatus(), state.seed(), dielectricReflections, dielectricTransmissions, absorptionSegments,
+                areaLightSamples, emitterHits, roughEvents);
         return buffer;
     }
 
     private void path(float ox, float oy, float oz, float dx, float dy, float dz, Hit hit,
-                      PointLight[] lights, float[] rgb, float[] lighting, Sampler sampler, Material.Sample scattering,
+                      PointLight[] lights, float[] rgb, float[] lighting, Sampler sampler, Material.Sample scattering, Material.Sample evaluation,
                       PreparedObject[] initialMedia, PreparedObject[] media) {
         rgb[0] = rgb[1] = rgb[2] = 0;
         float red = 1, green = 1, blue = 1;
+        float previousPdf=0,previousX=0,previousY=0,previousZ=0;
+        boolean previousDelta=true;
         int mediumCount = initialMedia.length;
         System.arraycopy(initialMedia, 0, media, 0, mediumCount);
         for (int depth = 0; depth <= state.pathDepth(); depth++) {
@@ -168,9 +180,26 @@ public final class DirectRgbTracer {
                 blue *= (float)Math.exp(-medium.absorption().z()*hit.distance);
             }
             var material = hit.primitive.material;
+            if(material.emissive() && hit.frontFace) {
+                emitterHits++;
+                float weight=1;
+                if(depth>0 && !previousDelta) for(var emitter:emitters) if(emitter.object==hit.object) {
+                    weight=mis(previousPdf,emitter.pdf(previousX,previousY,previousZ,hit.x,hit.y,hit.z));break;
+                }
+                rgb[0]+=red*material.emission().x()*weight;rgb[1]+=green*material.emission().y()*weight;rgb[2]+=blue*material.emission().z()*weight;
+            }
+            float incident = medium == null ? 1 : medium.ior();
+            float exit = hit.frontFace ? material.ior() : mediumCount < 2 ? 1 : media[mediumCount-2].primitives[0].material.ior();
             if (material.kind() == Material.Kind.DIFFUSE) {
                 light(hit, lights, lighting, medium);
                 rgb[0] += red*lighting[0]; rgb[1] += green*lighting[1]; rgb[2] += blue*lighting[2];
+            } else if(!material.delta(incident,exit)) {
+                roughPointLight(hit,lights,lighting,medium,media,mediumCount,dx,dy,dz,incident,exit,evaluation);
+                rgb[0]+=red*lighting[0];rgb[1]+=green*lighting[1];rgb[2]+=blue*lighting[2];
+            }
+            if(!material.delta(incident,exit) && emitters.length>0) {
+                areaLight(hit,lighting,medium,media,mediumCount,dx,dy,dz,incident,exit,sampler,evaluation,depth<state.pathDepth());
+                rgb[0]+=red*lighting[0];rgb[1]+=green*lighting[1];rgb[2]+=blue*lighting[2];
             }
             // Evaluate direct lighting at the final vertex before stopping continuation.
             if (depth == state.pathDepth()) break;
@@ -180,15 +209,21 @@ public final class DirectRgbTracer {
             float sign = hit.frontFace ? 1 : -1;
             float nx = hit.nx*sign, ny = hit.ny*sign, nz = hit.nz*sign;
             if (material.kind() == Material.Kind.DIELECTRIC) {
-                float incident = medium == null ? 1 : medium.ior();
-                float exit = hit.frontFace ? material.ior() : mediumCount < 2 ? 1 : media[mediumCount-2].primitives[0].material.ior();
-                material.sampleDielectric(dx,dy,dz,nx,ny,nz,incident,exit,sampler.next(),scattering);
+                if(material.delta(incident,exit)) material.sampleDielectric(dx,dy,dz,nx,ny,nz,incident,exit,sampler.next(),scattering);
+                else material.scatter(dx,dy,dz,nx,ny,nz,incident,exit,sampler.next(),sampler.next(),sampler.next(),scattering);
+                if(scattering.red+scattering.green+scattering.blue==0)break;
                 if (scattering.transmitted) {
                     dielectricTransmissions++;
                     if (hit.frontFace) media[mediumCount++] = hit.object;
                     else if (mediumCount > 0) mediumCount--;
                 } else dielectricReflections++;
-            } else material.sample(dx, dy, dz, nx, ny, nz, sampler.next(), sampler.next(), scattering);
+            } else if(material.kind()==Material.Kind.MIRROR && material.roughness()>0)
+                material.scatter(dx,dy,dz,nx,ny,nz,incident,exit,sampler.next(),sampler.next(),sampler.next(),scattering);
+            else material.sample(dx, dy, dz, nx, ny, nz, sampler.next(), sampler.next(), scattering);
+            if(scattering.red+scattering.green+scattering.blue==0)break;
+            if(material.kind()!=Material.Kind.DIFFUSE && !scattering.delta) roughEvents++;
+            previousDelta=scattering.delta;previousPdf=scattering.probability;
+            previousX=hit.x;previousY=hit.y;previousZ=hit.z;
             red *= scattering.red; green *= scattering.green; blue *= scattering.blue;
             dx = scattering.dx; dy = scattering.dy; dz = scattering.dz;
             float offset = scattering.transmitted ? -BIAS : BIAS;
@@ -197,6 +232,63 @@ public final class DirectRgbTracer {
         }
     }
 
+    /** Power heuristic for one sample of each strategy, calculated in double to avoid overflow. */
+    static float mis(float a,float b) {
+        double aa=(double)a*a,bb=(double)b*b;return aa+bb>0?(float)(aa/(aa+bb)):0;
+    }
+    private Material outgoingMedium(Hit hit,boolean transmission,Material current,PreparedObject[] media,int count) {
+        return !transmission?current:hit.frontFace?hit.primitive.material:count<2?null:media[count-2].primitives[0].material;
+    }
+    private void areaLight(Hit hit,float[] rgb,Material medium,PreparedObject[] media,int count,
+                           float dx,float dy,float dz,float incident,float exit,Sampler sampler,Material.Sample evaluation,boolean canContinue) {
+        rgb[0]=rgb[1]=rgb[2]=0;
+        float sign=hit.frontFace?1:-1,nx=hit.nx*sign,ny=hit.ny*sign,nz=hit.nz*sign;
+        for(var emitter:emitters) {
+            if(emitter.object==hit.object)continue;
+            areaLightSamples++;
+            float u=sampler.next(),v=sampler.next();
+            float x=emitter.origin.x()+emitter.edge1.x()*u+emitter.edge2.x()*v;
+            float y=emitter.origin.y()+emitter.edge1.y()*u+emitter.edge2.y()*v;
+            float z=emitter.origin.z()+emitter.edge1.z()*u+emitter.edge2.z()*v;
+            float lx=x-hit.x,ly=y-hit.y,lz=z-hit.z,distance=(float)Math.sqrt(lx*lx+ly*ly+lz*lz);
+            if(distance<BIAS)continue;
+            lx/=distance;ly/=distance;lz/=distance;
+            float pdf=emitter.pdf(hit.x,hit.y,hit.z,x,y,z);if(pdf<=0)continue;
+            hit.primitive.material.evaluate(dx,dy,dz,lx,ly,lz,nx,ny,nz,incident,exit,evaluation);
+            if(evaluation.red+evaluation.green+evaluation.blue==0)continue;
+            boolean transmission=nx*lx+ny*ly+nz*lz<0;
+            float offset=transmission?-BIAS:BIAS;
+            shadowRays++;
+            if(occluded(hit.x+nx*offset,hit.y+ny*offset,hit.z+nz*offset,lx,ly,lz,distance-BIAS,hit.primitive,emitter.object)) {shadowsOccluded++;continue;}
+            float weight=(canContinue?mis(pdf,evaluation.probability):1)/pdf;
+            var absorption=outgoingMedium(hit,transmission,medium,media,count);
+            var emission=emitter.object.primitives[0].material.emission();
+            rgb[0]+=evaluation.red*emission.x()*weight*(absorption==null?1:(float)Math.exp(-absorption.absorption().x()*distance));
+            rgb[1]+=evaluation.green*emission.y()*weight*(absorption==null?1:(float)Math.exp(-absorption.absorption().y()*distance));
+            rgb[2]+=evaluation.blue*emission.z()*weight*(absorption==null?1:(float)Math.exp(-absorption.absorption().z()*distance));
+        }
+    }
+    private void roughPointLight(Hit hit,PointLight[] lights,float[] rgb,Material medium,PreparedObject[] media,int count,
+                                 float dx,float dy,float dz,float incident,float exit,Material.Sample evaluation) {
+        rgb[0]=rgb[1]=rgb[2]=0;
+        float sign=hit.frontFace?1:-1,nx=hit.nx*sign,ny=hit.ny*sign,nz=hit.nz*sign;
+        for(var light:lights) {
+            float lx=light.position().x()-hit.x,ly=light.position().y()-hit.y,lz=light.position().z()-hit.z;
+            float d2=lx*lx+ly*ly+lz*lz;if(d2<BIAS*BIAS || light.intensity()==0)continue;
+            float distance=(float)Math.sqrt(d2);lx/=distance;ly/=distance;lz/=distance;
+            hit.primitive.material.evaluate(dx,dy,dz,lx,ly,lz,nx,ny,nz,incident,exit,evaluation);
+            if(evaluation.red+evaluation.green+evaluation.blue==0)continue;
+            boolean transmission=nx*lx+ny*ly+nz*lz<0;
+            float offset=transmission?-BIAS:BIAS;
+            shadowRays++;
+            if(occluded(hit.x+nx*offset,hit.y+ny*offset,hit.z+nz*offset,lx,ly,lz,distance-BIAS,hit.primitive)) {shadowsOccluded++;continue;}
+            var absorption=outgoingMedium(hit,transmission,medium,media,count);
+            float weight=light.intensity()/d2;
+            rgb[0]+=evaluation.red*light.color().x()*weight*(absorption==null?1:(float)Math.exp(-absorption.absorption().x()*distance));
+            rgb[1]+=evaluation.green*light.color().y()*weight*(absorption==null?1:(float)Math.exp(-absorption.absorption().y()*distance));
+            rgb[2]+=evaluation.blue*light.color().z()*weight*(absorption==null?1:(float)Math.exp(-absorption.absorption().z()*distance));
+        }
+    }
     private void light(Hit hit, PointLight[] lights, float[] rgb, Material medium) {
         float red = 0, green = 0, blue = 0;
         float sign = hit.frontFace ? 1 : -1;
@@ -265,6 +357,7 @@ public final class DirectRgbTracer {
         var lights = state.lights().stream().filter(PointLight.class::isInstance).map(PointLight.class::cast).toArray(PointLight[]::new);
         path(origin.x(), origin.y(), origin.z(), direction.x(), direction.y(), direction.z(),
                 new Hit(), lights, rgb, new float[3], sampler, new Material.Sample(),
+                new Material.Sample(),
                 mediaAt(origin.x(),origin.y(),origin.z()), new PreparedObject[objects.length+1]);
         return rgb;
     }
@@ -305,7 +398,12 @@ public final class DirectRgbTracer {
 
     private boolean occluded(float ox, float oy, float oz, float dx, float dy, float dz,
                              float maxDistance, PreparedPrimitive source) {
+        return occluded(ox,oy,oz,dx,dy,dz,maxDistance,source,null);
+    }
+    private boolean occluded(float ox, float oy, float oz, float dx, float dy, float dz,
+                             float maxDistance, PreparedPrimitive source, PreparedObject target) {
         for (var object : objects) {
+            if(object==target)continue; // Sampled endpoint is not a blocker; all other emitters remain opaque.
             if (object.primitives.length > 1 && !object.overlaps(ox, oy, oz, dx, dy, dz, maxDistance)) continue;
             for (var primitive : object.primitives) {
                 // Only flat source primitives can be skipped. A sphere can occlude its own interior rays.

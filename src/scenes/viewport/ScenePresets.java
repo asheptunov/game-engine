@@ -13,10 +13,11 @@ public final class ScenePresets {
         state.restart();
     }
     public static void load(ViewportState state,String name) {
-        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside");
+        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")&&!name.equals("rough-room")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside, rough-room");
         state.instances().clear();state.objects().clear();state.lights().clear();resetCamera(state);state.exposure(0);state.preset(name);
         state.pathDepth(name.equals("bounce-room") ? 3 : 0);
         state.paused(false);state.sampleTarget(0);
+        if(name.equals("rough-room")) {roughRoom(state);return;}
         if(name.startsWith("glass")) { glass(state,name.equals("glass-inside"));return; }
         if(name.equals("bounce-room")) { bounceRoom(state);return; }
         if(name.equals("triangle")) {
@@ -35,6 +36,24 @@ public final class ScenePresets {
         state.instances().add(new SceneInstance("reference",List.of(new Sphere(Vec3.ZERO,1)),
                 new Transform(new Vec3(.1f,.5f,10),Vec3.ZERO,new Vec3(.6f,.6f,.6f)),Material.srgb("gold",0xeec447)));
         state.addLight(new PointLight(new Vec3(-2,3,3),new Vec3(1,1,1),160));
+    }
+    private static void roughRoom(ViewportState state) {
+        state.pathDepth(8);
+        var silver=Material.srgb("polished",0xf5f5f5).withKind(Material.Kind.MIRROR);
+        var glass=new Material("clear",new Vec3(1,1,1),Material.Kind.DIELECTRIC);
+        String[] names={"polished-sphere","rough-sphere","clear-box","frosted-box"};
+        Material[] materials={silver,silver.withRoughness(.45f),glass,glass.withRoughness(.35f)};
+        // Give the pairs independent material identities so edits remain directly comparable.
+        for(int j=0;j<4;j++) {
+            var m=materials[j];m=new Material(names[j],m.color(),m.kind(),m.ior(),m.absorption(),m.roughness(),m.emission());
+            state.instances().add(new SceneInstance(names[j],j<2?List.of(new Sphere(Vec3.ZERO,1)):SceneInstance.box(),
+                    new Transform(new Vec3(-2.4f+j*1.6f,-.5f,6),Vec3.ZERO,new Vec3(.65f,.85f,j<2?.65f:.35f)),m));
+        }
+        state.instances().add(new SceneInstance("floor",List.of(new Rect(new Vec3(-6,-1.5f,1),new Vec3(0,0,12),new Vec3(12,0,0))),Transform.IDENTITY,Material.srgb("floor",0xbdbdbd)));
+        for(int j=0;j<12;j++)state.instances().add(new SceneInstance("stripe-"+j,List.of(new Rect(new Vec3(-6+j,-1.5f,9),new Vec3(0,5,0),new Vec3(1,0,0))),Transform.IDENTITY,
+                Material.srgb(j%2==0?"red":"blue",j%2==0?0xe95638:0x388de9)));
+        state.instances().add(new SceneInstance("area-light",List.of(new Rect(new Vec3(-.5f,0,-.5f),new Vec3(1,0,0),new Vec3(0,0,1))),
+                new Transform(new Vec3(0,3,5),Vec3.ZERO,new Vec3(3,1,3)),new Material("emitter",Vec3.ZERO).withEmission(new Vec3(12,12,12))));
     }
     private static void glass(ViewportState state, boolean inside) {
         state.pathDepth(8);

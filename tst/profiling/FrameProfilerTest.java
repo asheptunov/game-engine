@@ -150,6 +150,8 @@ public class FrameProfilerTest {
         assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(rgb + "occluded", rgb + "light", rgb + "trace")));
         assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(rgb + "nearestHit", rgb + "trace")));
         assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(rgb + "light", rgb + "trace")));
+        assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(rgb + "areaLight", rgb + "trace")));
+        assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(rgb + "roughPointLight", rgb + "trace")));
         var sampler = new TraceSampler();
         for (int i = 0; i < 5000; i++) sampler.record(i, TraceSampler.Work.SHADOW);
         assertEquals(4096L, sampler.snapshot(5000).total());
