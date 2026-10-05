@@ -174,3 +174,29 @@ headless timing, toggle, rendering, and scene/DI checks. The first writes synthe
 previews to `out/cli/perf-viewport.png` and `out/cli/perf-editor.png`.
 
 `Goals.md` holds the broader roadmap; `tracker.md` records implementation milestones.
+
+## Volumetric transport
+
+`view preset volume-room` loads the phase 6 cloudy sphere/box demo at depth 12,
+preserving explicit resolution. `view scattering` edits scalar density (0..100 per
+world unit); `view anisotropy` edits HG g (-0.95..0.95). RGB absorption remains
+distance-based. Scattering requires dielectric sphere/box interiors; meshes are
+surface/glass only. Scaling changes optical thickness. Nested nonintersecting media
+use innermost coefficients; arbitrary overlaps/touching remain unsupported.
+
+Free-flight probabilities account for scattering extinction in the sampled path;
+do not multiply it again into throughput. Only absorption is a deterministic RGB
+flight weight. Light visibility integrates full absorption+scattering extinction
+through equal-IOR boundaries. Refractive boundaries block straight connections.
+Scattering scenes use NEE-only non-delta emitter connections without counting their
+continuation emitter hits twice; surface-only scenes retain MIS and the previous
+opaque glass visibility diagnostic. Zero density restores previous transport.
+
+Run `scenes.viewport.VolumePathTest` for free-flight/HG statistics, independent
+single-scattering integration, multiple-scattering energy, nested/inside visibility,
+Beer absorption, surface lighting, control invalidation and seeded convergence.
+Previews: `out/cli/volume-room-preview-128.png` and `volume-room-clear-128.png`
+(200² at 128 spp). Benchmark `volume-room size=200 depth=12 samples=1 seed=1`;
+`details` enables JFR. F4 adds volume flights/events/visibility segments. Containment
+tests are included in visibility primitive counts; volume shadow traversal is
+classified before nearest-hit frames in sampled CPU attribution.

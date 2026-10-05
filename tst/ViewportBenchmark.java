@@ -19,7 +19,8 @@ public class ViewportBenchmark {
         module.registerScenes(injector);
         var viewport = injector.get(Viewport.class);
         boolean close = Arrays.asList(args).contains("close");
-        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("mesh-room") ? "mesh-room"
+        ScenePresets.load(viewport.state(), Arrays.asList(args).contains("volume-room") ? "volume-room"
+                : Arrays.asList(args).contains("mesh-room") ? "mesh-room"
                 : Arrays.asList(args).contains("rough-room") ? "rough-room"
                 : Arrays.asList(args).contains("glass-inside") ? "glass-inside"
                 : Arrays.asList(args).contains("glass") ? "glass"

@@ -3,8 +3,7 @@
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
 The next renderer requirements and six playable implementation phases are in
-[RenderingRequirements.md](RenderingRequirements.md). Phases 1–5 are implemented;
-phase 6 remains planned.
+[RenderingRequirements.md](RenderingRequirements.md). All six phases are implemented.
 
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
@@ -276,6 +275,24 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   BVH measured 27.39 ms median / 56.27 p95 versus brute 495.62 / 603.82. Detail 32
   at 64² measured 30.94 / 59.84; detail 12 at 200² measured 98.60 / 153.86. Ray/event
   counts match in reference comparisons; unchanged traces allocate about 1.4 KiB/batch.
+
+## Phase 6 Homogeneous volumetric translucency `[done]`
+
+- `volume-room` supplies a cloudy sphere and box with independent editable density,
+  absorption and HG anisotropy. Free flights and phase continuations use the existing
+  iterative depth/throughput loop, with RGB Beer absorption and no per-path allocation.
+- Nested medium visibility integrates extinction through index-matched boundaries;
+  refractive boundaries remain blocked for straight light connections. Scattering scenes
+  use NEE-only non-delta emitter connections without double counting; zero scattering
+  preserves the preceding absorption-only transport and shadow diagnostic.
+- Live controls, accumulation invalidation, F4 volume counters/JFR categories and
+  the headless benchmark are extended. Tests and hands-on details are in
+  RenderingRequirements.md; cloudy/clear 200²/128-spp previews are in out/cli/.
+- All 27 suites pass, including eight volume checks. A single-scattering integral
+  matches within 0.1%; the multiple-scattering unit enclosure averages 0.998569.
+  Local volume-room benchmark at 200²/depth 12/one spp: 57.78 ms median / 98.22 p95;
+  64² at the same depth: 25.48 / 50.00. Trace allocation is 1,424 bytes/batch.
+  Live JFR succeeds with the same ray/event counters.
 
 ## Notes / Decisions
 

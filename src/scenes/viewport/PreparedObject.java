@@ -17,4 +17,7 @@ final class PreparedObject {
     boolean overlaps(float ox,float oy,float oz,float dx,float dy,float dz,float maxDistance) {
         return bounds.overlaps(ox,oy,oz,dx,dy,dz,maxDistance);
     }
+    boolean containsBounds(float x,float y,float z) {
+        return x>=bounds.minX && x<=bounds.maxX && y>=bounds.minY && y<=bounds.maxY && z>=bounds.minZ && z<=bounds.maxZ;
+    }
 }

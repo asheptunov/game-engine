@@ -3,12 +3,19 @@ package scenes.viewport;
 import math.Vec3;
 
 /** Linear RGB reflectance, GGX surface roughness, interior medium and emitted radiance. */
-public record Material(String name, Vec3 color, Kind kind, float ior, Vec3 absorption, float roughness, Vec3 emission) {
+public record Material(String name, Vec3 color, Kind kind, float ior, Vec3 absorption, float roughness, Vec3 emission,
+                       float scattering, float anisotropy) {
+    public Material(String name, Vec3 color, Kind kind, float ior, Vec3 absorption, float roughness, Vec3 emission) {
+        this(name,color,kind,ior,absorption,roughness,emission,0,0);
+    }
     public enum Kind { DIFFUSE, MIRROR, DIELECTRIC }
     public Material(String name, Vec3 color, Kind kind) { this(name, color, kind, 1.5f, Vec3.ZERO); }
     public Material(String name, Vec3 color, Kind kind, float ior, Vec3 absorption) { this(name,color,kind,ior,absorption,0,Vec3.ZERO); }
     public Material(String name, Vec3 color) { this(name, color, Kind.DIFFUSE); }
     public Material {
+        if (!Float.isFinite(scattering) || scattering < 0 || scattering > 100) throw new IllegalArgumentException("Scattering must be 0..100 per scene unit");
+        if (!Float.isFinite(anisotropy) || Math.abs(anisotropy) > .95f) throw new IllegalArgumentException("Anisotropy must be -0.95..0.95");
+        if (scattering > 0 && kind != Kind.DIELECTRIC) throw new IllegalArgumentException("Scattering requires a dielectric interior");
         if (name == null || name.isBlank() || color == null || kind == null) throw new IllegalArgumentException("Invalid material");
         for (float c : new float[]{color.x(), color.y(), color.z()})
             if (!Float.isFinite(c) || c < 0 || c > 1) throw new IllegalArgumentException("Reflectance must be 0..1");
@@ -21,12 +28,14 @@ public record Material(String name, Vec3 color, Kind kind, float ior, Vec3 absor
         for (float c : new float[]{emission.x(), emission.y(), emission.z()})
             if (!Float.isFinite(c) || c < 0 || c > 10000) throw new IllegalArgumentException("Emission must be 0..10000 linear radiance");
     }
-    public Material withKind(Kind next) { return new Material(name, color, next, ior, absorption,roughness,emission); }
-    public Material withColor(Vec3 next) { return new Material(name, next, kind, ior, absorption,roughness,emission); }
-    public Material withIor(float next) { return new Material(name, color, kind, next, absorption,roughness,emission); }
-    public Material withAbsorption(Vec3 next) { return new Material(name, color, kind, ior, next,roughness,emission); }
-    public Material withRoughness(float next) { return new Material(name,color,kind,ior,absorption,next,emission); }
-    public Material withEmission(Vec3 next) { return new Material(name,color,kind,ior,absorption,roughness,next); }
+    public Material withKind(Kind next) { return new Material(name, color, next, ior, absorption,roughness,emission,next==Kind.DIELECTRIC?scattering:0,anisotropy); }
+    public Material withColor(Vec3 next) { return new Material(name, next, kind, ior, absorption,roughness,emission,scattering,anisotropy); }
+    public Material withIor(float next) { return new Material(name, color, kind, next, absorption,roughness,emission,scattering,anisotropy); }
+    public Material withAbsorption(Vec3 next) { return new Material(name, color, kind, ior, next,roughness,emission,scattering,anisotropy); }
+    public Material withRoughness(float next) { return new Material(name,color,kind,ior,absorption,next,emission,scattering,anisotropy); }
+    public Material withEmission(Vec3 next) { return new Material(name,color,kind,ior,absorption,roughness,next,scattering,anisotropy); }
+    public Material withScattering(float next) { return new Material(name,color,kind,ior,absorption,roughness,emission,next,anisotropy); }
+    public Material withAnisotropy(float next) { return new Material(name,color,kind,ior,absorption,roughness,emission,scattering,next); }
     public boolean emissive() { return emission.x()+emission.y()+emission.z()>0; }
     public boolean delta(float incident, float exit) { return kind!=Kind.DIFFUSE && (roughness==0 || kind==Kind.DIELECTRIC && incident==exit); }
     /** Caller-owned scratch. Probability is solid-angle PDF for diffuse, discrete mass for delta events. */

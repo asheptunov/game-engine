@@ -9,6 +9,8 @@ public record SceneInstance(String name, List<SceneObject> geometry, Transform t
     public SceneInstance {
         if (name == null || name.isBlank() || transform == null || material == null) throw new IllegalArgumentException("Invalid instance");
         geometry = geometry instanceof IndexedMesh ? geometry : List.copyOf(geometry);
+        if(material.scattering()>0 && !(geometry.size()==1 && geometry.getFirst() instanceof Sphere) && !geometry.equals(box()))
+            throw new IllegalArgumentException("Scattering requires a closed sphere or box");
         if(material.emissive() && !(geometry.size()==1 && geometry.getFirst() instanceof Rect))
             throw new IllegalArgumentException("Emission requires a rectangular surface");
         if (material.kind() == Material.Kind.DIELECTRIC &&

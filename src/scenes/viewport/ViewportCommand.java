@@ -11,7 +11,9 @@ public final class ViewportCommand implements Command {
     private final ViewportState state;
     private String selected="sphere";
     public ViewportCommand(ViewportState state) { this.state=state; }
-    public static final String HELP="view status | preset playground/triangle/bounce-room/glass/glass-inside/rough-room/mesh-room | reset | camera reset\n"
+    public static final String HELP="view status | preset playground/triangle/bounce-room/glass/glass-inside/rough-room/mesh-room/volume-room | reset | camera reset\n"
+            +"view scattering <0..100 per scene unit> | anisotropy <-0.95..0.95> (dielectric interior)\n"
+            +"Scattering: homogeneous sphere/box only; +anisotropy forward, - backward; 0 density restores surface-only transport.\n"
             +"view mesh detail <4..64> (all instances sharing selected mesh) | copy <unique name> | remove <object>\n"
             +"view acceleration bvh/brute (restarts samples for seeded comparisons)\n"
             +"view select <object> | material <name> | color <RRGGBB>\n"
@@ -19,7 +21,7 @@ public final class ViewportCommand implements Command {
             +"view ior <1..3> | absorption <red> <green> <blue> (0..100 per scene unit)\n"
             +"view roughness <0..1> (mirror/glass; 0 ideal) | emission <r> <g> <b> (linear radiance 0..10000; rect only)\n"
             +"Glass uses distance absorption, not base color; nested nonintersecting solids supported.\n"
-            +"Glass blocks direct shadow queries; focused refractive caustics are not guaranteed.\n"
+            +"Refractive glass blocks straight light queries; scattering scenes transmit through index-matched boundaries with extinction.\n"
             +"view move/rotate/scale <x> <y> <z> (absolute; degrees; positive scale)\n"
             +"view light position <x> <y> <z> | light color <RRGGBB> | light intensity <n>\n"
             +"In rough-room these edit the area emitter; light size <width> <depth> (fixed radiance, more area = more power).\n"
@@ -78,6 +80,8 @@ public final class ViewportCommand implements Command {
                     }
                     case "ior" -> {require(args,3);editMaterial(state.instances().get(index(selected)).material().withIor(number(args[2])));}
                     case "absorption" -> {require(args,5);editMaterial(state.instances().get(index(selected)).material().withAbsorption(vector(args,2)));}
+                    case "scattering" -> {require(args,3);editMaterial(state.instances().get(index(selected)).material().withScattering(number(args[2])));}
+                    case "anisotropy" -> {require(args,3);editMaterial(state.instances().get(index(selected)).material().withAnisotropy(number(args[2])));}
                     case "roughness" -> {require(args,3);editMaterial(state.instances().get(index(selected)).material().withRoughness(number(args[2])));}
                     case "emission" -> {require(args,5);editMaterial(state.instances().get(index(selected)).material().withEmission(vector(args,2)));}
                     case "material" -> {
@@ -112,7 +116,7 @@ public final class ViewportCommand implements Command {
     private String status() {
         var names=state.instances().stream().map(SceneInstance::name).toList();
         var materials=state.instances().stream().map(o->o.material().name()).distinct().toList();
-        String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()+" IOR="+o.material().ior()+" absorption="+o.material().absorption()+" roughness="+o.material().roughness()+" emission="+o.material().emission()).orElse("none");
+        String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()+" IOR="+o.material().ior()+" absorption="+o.material().absorption()+" scattering="+o.material().scattering()+" anisotropy="+o.material().anisotropy()+" roughness="+o.material().roughness()+" emission="+o.material().emission()).orElse("none");
         return "Preset="+state.preset()+" exposure="+state.exposure()+" stops; sensor="+state.sensorPixelsW()+"x"+state.sensorPixelsH()
                 +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()

@@ -13,11 +13,12 @@ public final class ScenePresets {
         state.restart();
     }
     public static void load(ViewportState state,String name) {
-        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")&&!name.equals("rough-room")&&!name.equals("mesh-room")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside, rough-room, mesh-room");
+        if(!name.equals("playground")&&!name.equals("triangle")&&!name.equals("bounce-room")&&!name.equals("glass")&&!name.equals("glass-inside")&&!name.equals("rough-room")&&!name.equals("mesh-room")&&!name.equals("volume-room")) throw new IllegalArgumentException("Presets: playground, triangle, bounce-room, glass, glass-inside, rough-room, mesh-room, volume-room");
         state.instances().clear();state.objects().clear();state.lights().clear();resetCamera(state);state.exposure(0);state.preset(name);
         state.pathDepth(name.equals("bounce-room") ? 3 : 0);
         state.paused(false);state.sampleTarget(0);
         state.acceleration(true);
+        if(name.equals("volume-room")) {volumeRoom(state);return;}
         if(name.equals("mesh-room")) {meshRoom(state);return;}
         if(name.equals("rough-room")) {roughRoom(state);return;}
         if(name.startsWith("glass")) { glass(state,name.equals("glass-inside"));return; }
@@ -48,6 +49,17 @@ public final class ScenePresets {
                 new Material(names[3],new Vec3(1,1,1),Material.Kind.DIELECTRIC).withRoughness(.25f)};
         for(int i=0;i<4;i++)state.instances().set(i,new SceneInstance(names[i],mesh,
                 new Transform(new Vec3(-2.4f+i*1.6f,-.5f,6),new Vec3(0,15,0),new Vec3(.65f,.85f,.65f)),materials[i]));
+    }
+    private static void volumeRoom(ViewportState state) {
+        roughRoom(state);state.pathDepth(12);
+        state.instances().subList(0,4).clear();
+        var cloudy=new Material("cloudy",new Vec3(1,1,1),Material.Kind.DIELECTRIC)
+                .withIor(1).withScattering(1.5f).withAbsorption(new Vec3(.03f,.03f,.03f));
+        state.instances().addFirst(new SceneInstance("cloudy-box",SceneInstance.box(),
+                new Transform(new Vec3(1.3f,-.3f,6),new Vec3(0,20,0),new Vec3(.8f,1,.6f)),cloudy.withColor(new Vec3(1,1,1))));
+        state.instances().addFirst(new SceneInstance("cloudy-sphere",List.of(new Sphere(Vec3.ZERO,1)),
+                new Transform(new Vec3(-1.3f,-.3f,6),Vec3.ZERO,new Vec3(1,1,1)),
+                new Material("sphere-cloud",cloudy.color(),cloudy.kind(),cloudy.ior(),cloudy.absorption(),0,Vec3.ZERO,cloudy.scattering(),0)));
     }
     private static void roughRoom(ViewportState state) {
         state.pathDepth(8);
