@@ -37,11 +37,15 @@ scene files, general authoring transactions, or a scene editor exists yet.
 5. Parent transforms use a documented restricted composition policy if general affine
    support would change the tracer. Reject unsupported shear/reflection/singular cases,
    including invalid descendants, atomically instead of silently approximating them.
-6. Use a versioned explicit scene schema with embedded geometry (no external assets in
+6. Use a versioned explicit XML scene schema (`.scene.xml`, JDK parser with DTD/entities
+   disabled and bounded input) with embedded geometry (no external assets in
    v1). Preserve IDs, shared references, graph, materials, lights and cameras. Fully
    validate before replacing the active document; use temporary sibling + atomic replace
    for saving or fail safely if atomic replacement is unavailable. Never Java deserialize
-   arbitrary objects. Bound file/element sizes. Unknown versions are errors.
+   arbitrary objects. Bound file/element sizes. Unknown versions are errors. Duplicate
+   operations copy subtrees with fresh node IDs and shared assets. Runtime revisions are
+   not persisted; fresh publication epochs prevent old query/history revival. Document
+   a relative 1e-5 tolerance for orthogonality/uniform-scale checks in hierarchy composition.
 7. General surface meshes and closed boundaries have distinct validation contracts.
    Retain existing glass/volume restrictions. Spatial query results carry revision,
    node/primitive identity, world hit position/normal and distance with normalized rays.
