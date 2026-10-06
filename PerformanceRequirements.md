@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: P0 through P5 implemented. Decimal follow-up phases and P6 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), and [P5 results](benchmarks/p5/README.md).
+Status: P0 through P5 and P5.1 implemented. P5.2, P11.1 and P6 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), and [P5 results](benchmarks/p5/README.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -257,6 +257,10 @@ Begin with opaque diffuse surfaces and keep a raw reference mode. Reflected and 
 Acceptance: motion sequences include disocclusion, camera cuts, changing lights/materials, thin geometry, glass, mirrors, and volumes. Measure ghosting/trailing as well as error at equal frame time. History memory is bounded; disabling the feature restores raw output. Expansion beyond diffuse surfaces requires new evidence rather than applying the same rule everywhere.
 
 ## P5.1 Reduce temporal validation and memory cost
+
+Implemented: corner visibility is shared between adjacent pixels within each trace tile, using two rolling rows of worker-owned cached hit identities/normals. Rays sample exact pixel boundaries rather than the previous 0.001/0.999 inset positions. Center-hit and sampled-primary checks remain, as do front-face/normal checks, neighboring-surface validation and raw fallback. The small scratch cache is reused across tiles and released when temporal mode is disabled or volumes require fallback. Raw transport streams/counts are unchanged. See [P5.1 measurements](benchmarks/p5.1/README.md).
+
+Measured guide-ray reductions are 48–57% in the surface motion workloads, with under 0.5% change in one-spp reconstructed reference error. Native processing improved in these runs; quarter bounce-room showed no reliable timing improvement. Temporal remains an optional quality mode and still costs more than raw. Primary-hit substitution was not adopted because jittered hits do not supply equivalent center/corner coverage. Full-image copy elimination and automatic bypass remain candidates requiring separate evidence; immutable publication ownership is retained.
 
 Profile guide generation, reprojection/validation, clamping, publication copies and display conversion separately on the current implementation. Guide generation currently uses a center ray and up to four corner rays per sensor pixel, in addition to transport paths. First evaluate reusing actual primary-hit information and sharing correspondence data between tracing and reconstruction. A jittered primary hit does not automatically replace a pixel-center guide, and one hit does not establish that a pixel contains only one surface. Retain conservative edge and disocclusion checks; use targeted extra queries where evidence is insufficient rather than removing safeguards globally.
 

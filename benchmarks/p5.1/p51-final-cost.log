@@ -1,0 +1,10 @@
+Cost only, 18 warmup/18 measured motion, 1 raw spp, seed1, depth3/8, workers up to14, tile32
+preset,grid,mode,mean_ms,p95_ms,reconstruct_ms,history_MiB,extra_max_payload_MiB
+bounce-room,360x225,raw,6.742,26.915,0.000,0.00,0.00
+bounce-room,360x225,temporal,18.112,106.592,8.946,5.56,9.89
+bounce-room,1440x900,raw,83.453,86.688,0.000,0.00,0.00
+bounce-room,1440x900,temporal,140.363,147.299,34.638,88.99,158.20
+glass,360x225,raw,5.168,12.222,0.000,0.00,0.00
+glass,360x225,temporal,7.264,7.752,1.314,5.56,9.89
+glass,1440x900,raw,69.358,76.531,0.000,0.00,0.00
+glass,1440x900,temporal,122.979,134.257,23.085,88.99,158.20

@@ -1,0 +1,12 @@
+2026-10-06T00:08:54.842441900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-06T00:08:54.845930000  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.TemporalReconstructionTest [PT0.6625326S]
+2026-10-06T00:08:54.847433500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#oldRadianceFadesGraduallyAcrossTheFormerResetBoundary [PT0.0713416S]
+2026-10-06T00:08:54.848437700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#rejectsDisocclusionDepthNormalEdgesCutsEditsAndExpiredHistory [PT0.0040031S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#cornerCacheRejectsSilhouettesAndSeamsAcrossTileBoundaries [PT0.009826S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#sharedCornersReduceQueriesAndRemainIndependentOfTilesAndWorkers [PT0.0118922S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#sustainedForwardBackwardMotionKeepsStableHistoryAndBoundedStorage [PT0.0912922S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#parallelReconstructionMatchesScalarAndCancellationDiscardsPartialHistory [PT0.0687757S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#asyncTogglePauseLeaseAndSceneEditsPreserveRawOutput [PT0.0589303S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#guidesNeverChangeRawStreamsAndGuardThinSurfacesAndMedia [PT0.3384935S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#reprojectsReducesNoiseAndDoesNotCountStationaryHistoryTwice [PT0.007978S]
+2026-10-06T00:08:54.848762800  [INFO] harness.SuiteRunner: ========================

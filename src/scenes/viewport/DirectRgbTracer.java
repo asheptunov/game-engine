@@ -197,7 +197,10 @@ public final class DirectRgbTracer implements AutoCloseable {
             }
         }
         int batch = state.paused() ? 0 : (int)Math.min(state.samplesPerFrame(), Math.max(0, state.effectiveTarget()-samples));
-        if (!state.temporal() || volumeMode) { guide=null; guideKey=null; }
+        if (!state.temporal() || volumeMode) {
+            guide=null;guideKey=null;
+            for(var worker:workers) worker.clearCorners();
+        }
         boolean needsGuide=state.temporal() && !volumeMode && !key.equals(guideKey) && (batch>0 || samples>0);
         if(needsGuide && (guide==null || guide.width!=width || guide.height!=height)) guide=new SurfaceGuide(width,height);
         if(needsGuide && batch==0) batch=1; // A completed/paused raw image can acquire guides without new samples.
@@ -365,6 +368,11 @@ public final class DirectRgbTracer implements AutoCloseable {
         private long guideRays,guideTests;
         private final Hit visibilityHit = new Hit();
         private final Hit guideHit = new Hit();
+        // Two rolling rows of exact pixel corners, shared only within this worker's current tile.
+        private PreparedPrimitive[] cornerSurface;
+        private float[] cornerNx,cornerNy,cornerNz;
+        private boolean[] cornerFront,cornerQueried;
+        private int cornerStride,cornerX,cornerY;
         private PreparedPrimitive primarySurface;
         private PreparedObject[] visibilityMedia = new PreparedObject[0];
         private float[] visibilityDistances = new float[0];
@@ -444,9 +452,23 @@ public final class DirectRgbTracer implements AutoCloseable {
         }
         private void render(int x0,int y0,int x1,int y1) {
             int width=snapshot.width(),height=snapshot.height();
+            if(captureGuide) {
+                cornerStride=x1-x0+1;cornerX=x0;cornerY=y0;
+                int corners=2*cornerStride;
+                if(cornerQueried==null || cornerQueried.length<corners) {
+                    cornerSurface=new PreparedPrimitive[corners];
+                    cornerNx=new float[corners];cornerNy=new float[corners];cornerNz=new float[corners];
+                    cornerFront=new boolean[corners];cornerQueried=new boolean[corners];
+                } else java.util.Arrays.fill(cornerQueried,0,corners,false);
+            }
             var eye=snapshot.eye(); var sensor=snapshot.sensor(); var lights=snapshot.lights();
             double inverseCount=1.0/(snapshot.sample()+1);
-            for(int y=y0;y<y1;y++) for(int x=x0;x<x1;x++) {
+            for(int y=y0;y<y1;y++) {
+                if(captureGuide) {
+                    int bottom=((y-y0+1)&1)*cornerStride;
+                    java.util.Arrays.fill(cornerQueried,bottom,bottom+cornerStride,false);
+                }
+                for(int x=x0;x<x1;x++) {
                     if(captureGuide) captureSurface(x,y);
                     if(guideOnly) continue;
                     primarySurface=null;
@@ -467,10 +489,14 @@ public final class DirectRgbTracer implements AutoCloseable {
                         stagingMean[c][y][x] = mean[c][y][x] + (rgb[c] - mean[c][y][x]) * inverseCount;
                     }
                     if (rgb[0] + rgb[1] + rgb[2] > 0) litPixels++;
+                }
             }
         }
         private int surfaceId(PreparedPrimitive primitive) {
             return primitive==null?0:primitive.surfaceId;
+        }
+        private void clearCorners() {
+            cornerSurface=null;cornerNx=cornerNy=cornerNz=null;cornerFront=cornerQueried=null;
         }
         private boolean guideRay(float u,float v) {
             var e=snapshot.eye(); var s=snapshot.sensor();
@@ -494,9 +520,16 @@ public final class DirectRgbTracer implements AutoCloseable {
             boolean front=guideHit.frontFace;
             // Conservative corner guard; silhouettes, face seams and subpixel mixtures fall back to raw.
             for(int corner=0;corner<4;corner++) {
-                if(!guideRay((x+((corner&1)==0?.001f:.999f))/w,(y+((corner&2)==0?.001f:.999f))/h)
-                        || guideHit.primitive!=p || guideHit.frontFace!=front
-                        || nx*guideHit.nx+ny*guideHit.ny+nz*guideHit.nz<.995f) return;
+                int cx=x+(corner&1),cy=y+((corner>>1)&1);
+                int ci=((cy-cornerY)&1)*cornerStride+cx-cornerX;
+                if(!cornerQueried[ci]) {
+                    cornerQueried[ci]=true;
+                    cornerSurface[ci]=guideRay((float)cx/w,(float)cy/h)?guideHit.primitive:null;
+                    cornerFront[ci]=guideHit.frontFace;
+                    cornerNx[ci]=guideHit.nx;cornerNy[ci]=guideHit.ny;cornerNz[ci]=guideHit.nz;
+                }
+                if(cornerSurface[ci]!=p || cornerFront[ci]!=front
+                        || nx*cornerNx[ci]+ny*cornerNy[ci]+nz*cornerNz[ci]<.995f) return;
             }
             guide.surface[i]=surfaceId(p); guide.depth[i]=depth;
             guide.nx[i]=front?nx:-nx;guide.ny[i]=front?ny:-ny;guide.nz[i]=front?nz:-nz;

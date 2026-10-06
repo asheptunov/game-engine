@@ -9,6 +9,29 @@ import java.util.List;
 import static harness.Assertions.*;
 
 public class TemporalReconstructionTest {
+    @Test void sharedCornersReduceQueriesAndRemainIndependentOfTilesAndWorkers() {
+        SurfaceGuide expected=null;float[][][] expectedRgb=null;
+        for(int tile:new int[]{8,32,256}) for(int workers:new int[]{1,4}) {
+            var s=plane();s.temporal(true);s.tileSize(tile);s.workers(workers);
+            try(var tracer=new DirectRgbTracer(s)) {
+                var raw=copy(tracer.trace());var g=tracer.surfaceGuide();
+                // A full diffuse plane needs one center ray per pixel and one ray per tile vertex.
+                int tiles=(64+tile-1)/tile;
+                long vertices=(long)(64+tiles)*(64+tiles);
+                assertEquals(4096L+vertices,tracer.guideRays);
+                assertTrue(tracer.guideRays<3L*4096); // Previously five rays per suitable pixel.
+                if(expected==null) {expected=new SurfaceGuide(64,64);expected.copyFrom(g);expectedRgb=raw;}
+                else {
+                    assertEquals(expectedRgb,raw);
+                    for(int i=0;i<4096;i++) {
+                        assertEquals(expected.surface[i],g.surface[i]);assertEquals(expected.depth[i],g.depth[i]);
+                        assertEquals(expected.nx[i],g.nx[i]);assertEquals(expected.ny[i],g.ny[i]);assertEquals(expected.nz[i],g.nz[i]);
+                    }
+                }
+                s.temporal(false);tracer.trace();assertEquals(0L,tracer.guideRays);
+            }
+        }
+    }
     @Test void parallelReconstructionMatchesScalarAndCancellationDiscardsPartialHistory() {
         var s=plane();var serial=new TemporalReconstruction();var parallel=new TemporalReconstruction();
         int workers=Math.min(14,Runtime.getRuntime().availableProcessors());long now=1_000_000_000L;
@@ -21,6 +44,26 @@ public class TemporalReconstructionTest {
         assertSame(raw,parallel.reconstruct(raw,planeGuide(s),s.renderKey(),1,now,workers,()->checks.incrementAndGet()>2));
         assertEquals(0L,parallel.stats().bytes());
         assertEquals(raw,parallel.reconstruct(raw,planeGuide(s),s.renderKey(),1,now,workers));assertEquals(0,parallel.stats().reused());
+    }
+    @Test void cornerCacheRejectsSilhouettesAndSeamsAcrossTileBoundaries() {
+        SurfaceGuide expected=null;
+        for(int tile:new int[]{8,32,256}) for(int workers:new int[]{1,4}) {
+            var s=plane();s.temporal(true);s.pathDepth(0);s.tileSize(tile);s.workers(workers);
+            s.instances().addFirst(new SceneInstance("strip",List.of(new Rect(new Vec3(.035f,-1,4),
+                    new Vec3(.25f,2,0),new Vec3(.02f,0,0))),Transform.IDENTITY,new Material("strip",new Vec3(1,0,0))));
+            try(var tracer=new DirectRgbTracer(s)) {
+                tracer.trace();var g=tracer.surfaceGuide();int rejected=0,accepted=0;
+                for(int id:g.surface) {if(id==0) rejected++;else accepted++;}
+                assertTrue(rejected>0);assertTrue(accepted>3000);
+                if(expected==null) {expected=new SurfaceGuide(64,64);expected.copyFrom(g);}
+                else for(int i=0;i<4096;i++) {
+                    assertEquals(expected.surface[i],g.surface[i]);
+                    if(g.surface[i]!=0) {
+                        assertEquals(expected.depth[i],g.depth[i]);assertEquals(expected.nz[i],g.nz[i]);
+                    }
+                }
+            }
+        }
     }
     static ViewportState plane() {
         var s=new ViewportState(new Rect(new Vec3(-.5f,-.5f,0),new Vec3(1,0,0),new Vec3(0,1,0)),64,64);

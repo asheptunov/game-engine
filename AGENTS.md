@@ -114,7 +114,13 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   restores raw conversion, including while a job is pending. A separate mode revision
   prevents rapid off/on edits from reviving an old completed publication. The coordinator captures
   center/corner first-hit guides in existing trace tiles, then reprojects and validates
-  history using the same process-wide pool. No tracing/reconstruction is under the input
+  history. P5.1 shares exact pixel-corner queries within each tile using two rolling
+  rows of worker-local hit metadata; center and sampled-primary agreement still guard
+  each pixel. Cache rows reset at tile boundaries and release on temporal-off/volume
+  fallback. Never share mutable corner scratch across workers. Boundary rays replaced
+  inset corners, so reconstructed pixels need not match original P5 exactly; raw paths
+  and counts still must. See `benchmarks/p5.1/README.md` for cost/quality comparisons.
+  Reconstruction uses the same process-wide pool. No tracing/reconstruction is under the input
   monitor. Guides use stable prepared primitive identity and camera-facing normals;
   misses, emitters, mirrors/glass, mixed pixels and inside-media cameras reject reuse.
   Scattering anywhere in the scene disables history for the whole image. Reject surface

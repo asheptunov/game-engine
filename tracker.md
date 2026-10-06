@@ -473,6 +473,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   96 forward/backward updates and 32-step gradual decay; five affected suites pass.
   Dropping the age arrays also reduces history payload by two bytes per pixel.
 
+## Performance P5.1 — cheaper temporal correspondence
+
+- Shared exact pixel-corner visibility across adjacent pixels in each tile. Two rolling
+  cache rows per worker replace repeated corner queries; center/sampled-hit checks,
+  correspondence rejection, fading and immutable publication ownership remain.
+- Guide rays fall 48–57% on surface motion benchmarks. One-spp reconstructed error
+  changes by less than 0.5%; raw streams/counts, rejected pixels and cut output remain
+  exact. Native processing improves in these runs; quarter bounce-room is noisy.
+  Temporal remains off by default and more expensive than raw. Results and limits:
+  [P5.1 measurements](benchmarks/p5.1/README.md).
+- Six relevant suites pass. New tests cover exact guide agreement across worker/tile
+  configurations, query reduction, thin silhouettes and tile/row cache boundaries.
+  Cache storage is reused and released on temporal-off/volume fallback. No full-image
+  copy removal or automatic quality bypass was adopted without further evidence.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

@@ -1,0 +1,7 @@
+
+Algorithm Hash                                                             Path
+--------- ----                                                             ----
+SHA256    4312DED1F1D2AC505EB018C21F7F18868973211EBF8BDA359CA0CD8400AA5894 C:\Users\andri\Documents\RayTracingEngine\src\scenes\viewport\DirectRgbTracer.java
+SHA256    BFE43F65A08D57B4C5534B7099C7B0169FF948BA6026A7EF6AD02FDDE73CC5F2 C:\Users\andri\Documents\RayTracingEngine\tst\scenes\viewport\TemporalReconstructionTest.java
+
+
