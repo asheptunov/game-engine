@@ -1,0 +1,7 @@
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.TemporalBudgetTest [PT0.5874493S]
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalBudgetTest#smallGridsAndInteractiveBoundsRemainAuthoritative [PT0S]
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalBudgetTest#asyncMovingBatchAndGridRestoreThenConvergeExactly [PT0.5250137S]
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalBudgetTest#budgetPreflightRejectsMissingExpiredEditedAndCutHistory [PT0.0093467S]
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalBudgetTest#controlsSnapshotFallbackAndRequestedSettings [PT0.0530889S]
+2026-10-06T00:22:12.328260500  [INFO] harness.SuiteRunner: ========================

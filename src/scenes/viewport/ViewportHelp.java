@@ -30,7 +30,21 @@ final class ViewportHelp {
                     + "  Changes sampling density, not camera field of view or window size.\n"
                     + "Examples:\n  view resolution 800 500\n  view resolution 0.5x"),
             Map.entry("depth", page("depth <0..32>", "Maximum path continuations; 0 gives direct lighting only.")),
-            Map.entry("temporal", page("temporal on | off", "Diffuse-only presentation history, off by default. Off displays raw radiance immediately.\n  Raw spp stay unchanged. Reject edges, cuts, edits, mirrors/glass and volume scenes.\n  F3 shows reused/eligible pixels, mean history blend confidence and reconstruction cost.")),
+            Map.entry("temporal", page("temporal on | off", "Diffuse-only presentation history, off by default. Off displays raw radiance immediately.\n  Raw spp stay unchanged unless the separate motion budget is enabled.\n  Reject edges, cuts, edits, mirrors/glass and volume scenes.\n  F3 shows history blend and cost. Use view temporal budget help for tracing reductions.")),
+            Map.entry("temporal budget", "Temporal motion budget (off by default; requires temporal on):\n"
+                    + "  view temporal budget on | off\n"
+                    + "  view temporal budget samples <1..8>   Moving batch cap, default 1\n"
+                    + "  view temporal budget scale <0.25..1>  Moving grid cap, default 1\n"
+                    + "Caps work only during motion; restores requested grid/batch after 350ms.\n"
+                    + "Without compatible history, requested samples seed the image (P4 still caps at 1).\n"
+                    + "Scale reduces detail; history does not upscale it. Axes stay at least 64 pixels.\n"
+                    + "With interactive on, its bounds apply and moving batches already cap at 1.\n"
+                    + "Volume/no-diffuse scenes bypass this budget. Glass/mirror pixels remain raw.\n"
+                    + "At one sample and scale 1 there is no tracing reduction or promised FPS gain."),
+            Map.entry("temporal budget on",page("temporal budget on","Enable the separate motion tracing cap; requires temporal on and a supported scene.")),
+            Map.entry("temporal budget off",page("temporal budget off","Restore configured motion work at the next job boundary; P4 remains independent.")),
+            Map.entry("temporal budget samples",page("temporal budget samples <1..8>","Fresh samples per moving batch are capped by this and view samples. Default 1; never below 1.")),
+            Map.entry("temporal budget scale",page("temporal budget scale <0.25..1>","Default 1 (full grid). Lower values explicitly trade sharpness for speed; retain aspect and 64-pixel axes. P4 minimum bounds apply when interactive is on.")),
             Map.entry("interactive", "Interactive resolution commands (off by default):\n"
                     + "  on | off   Reduce sensor work during camera movement\n"
                     + "  target <ms>   Best-effort update budget, default 16.67ms\n"
@@ -86,7 +100,7 @@ final class ViewportHelp {
     static String usage(String[] args) {
         if (args.length < 2) return "Use view help.";
         String key = args[1];
-        if ((key.equals("light") || key.equals("camera") || key.equals("mesh") || key.equals("interactive")) && args.length > 2
+        if ((key.equals("light") || key.equals("camera") || key.equals("mesh") || key.equals("interactive") || key.equals("temporal")) && args.length > 2
                 && PAGES.containsKey(key + " " + args[2])) key += " " + args[2];
         return PAGES.getOrDefault(key, "Use view help.");
     }

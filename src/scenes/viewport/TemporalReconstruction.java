@@ -23,6 +23,13 @@ final class TemporalReconstruction {
     private History source, current;
     private Stats stats=new Stats(0,0,0,0,0,"off");
     Stats stats() { return stats; }
+    /** Coordinator-only preflight; pixel correspondence is still checked during reconstruction. */
+    boolean compatibleHistory(ViewportState.RenderKey key,long now) {
+        if(current==null || current.key==null || stats.eligible()==0) return false;
+        var previous=key.equals(current.key)?source:current;
+        return previous!=null && previous.key!=null && key.sameTransport(previous.key)
+                && now-previous.time<=500_000_000L && !new Camera(key).cut(previous.camera);
+    }
     void clear() { source=current=null;stats=new Stats(0,0,0,0,0,"off"); }
     float[][][] reconstruct(float[][][] raw,SurfaceGuide guide,ViewportState.RenderKey key,long samples,long now) {
         return reconstruct(raw,guide,key,samples,now,1);

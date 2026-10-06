@@ -488,6 +488,24 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   Cache storage is reused and released on temporal-off/volume fallback. No full-image
   copy removal or automatic quality bypass was adopted without further evidence.
 
+## Performance P5.2 — optional temporal motion tracing budget
+
+- Added `view temporal budget on/off`, `samples <1..8>` and `scale <0.25..1>`.
+  The independent mode is off by default and caps moving batches, optionally grids,
+  while retaining configured settings for restoration after 350 ms without motion.
+  History preflight restores requested batch maxima for cuts/edits/missing/expired
+  history. P4 still caps moving batches at one and honors its own minimum bounds.
+- Three independent-seed quality/cost comparisons show bounce-room one-spp history
+  matching or improving average four-spp raw error at less processing time. Glass
+  does not meet the same quality target. Lower grids trade spatial detail for work.
+  Fresh-image measurements compare the same elapsed camera path against P4 alone;
+  results and limitations are in [P5.2 measurements](benchmarks/p5.2/README.md).
+- Eight suites pass, including motion/restoration/reference accumulation,
+  commands/help, history preflight, cancellation, leases, input and F3 metadata.
+  F3 preview was inspected. Actual/chosen/requested batch counts are separate from
+  history blend; raw estimator and depth remain unchanged. Human GUI motion checks
+  remain separate from window-free software-submission measurements.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

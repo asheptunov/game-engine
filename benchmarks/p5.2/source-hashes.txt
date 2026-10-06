@@ -1,0 +1,12 @@
+
+Algorithm Hash                                                             Path
+--------- ----                                                             ----
+SHA256    4C56B3FE2E6EE74B8C14DD61F8050731F3AD9880208BA7B4477B7ED7299ABF30 C:\Users\andri\Documents\RayTracingEngine\src\scenes\viewport\AsyncViewportTrace.java
+SHA256    090C5C560B0230C5B00B0517D0D202F43F10186A2D7CB18225E56268B231FE43 C:\Users\andri\Documents\RayTracingEngine\src\scenes\viewport\InteractiveResolution.java
+SHA256    103A10B69D7CEA0D7847F0896850F242054ECB1D0DF13744C1760995B9A3FD12 C:\Users\andri\Documents\RayTracingEngine\src\scenes\viewport\TemporalReconstruction.java
+SHA256    7D9C3A9231DE788FFA56E5A6436B761F513D72A0F3CDAB822B0AE58F78674391 C:\Users\andri\Documents\RayTracingEngine\src\scenes\viewport\ViewportState.java
+SHA256    A3C2E8B3CA7424C47DE16B44E99A791ED1A32C1BCCE554EB15AE4821FD6B1CBD C:\Users\andri\Documents\RayTracingEngine\tst\scenes\viewport\TemporalBudgetTest.java
+SHA256    7A140ADD52F8362BE88394C8264A0B4338874EFDF1F1D4465E47F071E00D3095 C:\Users\andri\Documents\RayTracingEngine\tst\scenes\viewport\TemporalBudgetBenchmark.java
+SHA256    3BCDD42FD13C74660352C78340E539939D3F7C5EA908C090BFF5BBFD85C09EB7 C:\Users\andri\Documents\RayTracingEngine\tst\TemporalBudgetLiveBenchmark.java
+
+

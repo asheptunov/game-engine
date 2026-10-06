@@ -187,11 +187,14 @@ public class Viewport implements AutoCloseable,
                 profiler.viewportImage(image==null || image.samples()==0?-1:image.requestedNanos(),
                         image==null?-1:image.requestedNanos(),state.sensorPixelsW(),state.sensorPixelsH(),
                         state.preset(),state.samplingStatus());
-                profiler.viewportQuality("Grid shown " + (image==null ? "pending" : image.key().width()+"x"+image.key().height())
-                        + " / requested " + state.sensorPixelsW()+"x"+state.sensorPixelsH()
+                profiler.viewportQuality("Grid " + (image==null ? "pending" : image.key().width()+"x"+image.key().height())
+                        + " / req " + state.sensorPixelsW()+"x"+state.sensorPixelsH()
+                        +(image==null?"":" | batch actual/cap/req "+image.stats().samplesPerPixel()+"/"+image.plannedBatch()+"/"+image.requestedBatch())
+                        +(image!=null && image.motionBudget()?" motion":"")
                         + (state.interactive() ? "  auto, target " + String.format(java.util.Locale.ROOT,"%.2f",state.interactiveMillis())+"ms" : "  fixed"));
                 profiler.viewportHistory(!temporal?"History off (raw)":image!=null && image.temporalVersion()==temporalVersion
-                        ?image.history().label():"History on: waiting for guides (raw preview)");
+                        ?image.history().label()
+                        :"History on: waiting for guides (raw preview)");
             }
             renderUi(label,status);
         } finally { synchronized(state) { asyncTrace.release(image); } }

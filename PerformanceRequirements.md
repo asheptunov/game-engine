@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: P0 through P5 and P5.1 implemented. P5.2, P11.1 and P6 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), and [P5 results](benchmarks/p5/README.md).
+Status: P0 through P5, P5.1 and P5.2 implemented. P11.1 and P6 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), and [P5 results](benchmarks/p5/README.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -70,7 +70,7 @@ GPU work has the highest potential hardware ceiling but is a separate backend pr
 | S1 | GPU backend | Highest potential throughput ceiling; feasibility and achieved gain unverified | P0, hardware inventory, backend contract |
 | S2 | Native CPU backend | Uncertain gain; evaluate only against optimized Java | P0 and representative Java baseline |
 
-P0 through P5 are implemented. Evaluate P5.1 next if improving temporal mode is the priority, then attempt P5.2 where saved tracing work can exceed reconstruction cost. P7 remains the next direct geometry-throughput option, especially as object count grows; it also accelerates guide queries. P6 is a separate quality experiment. P11.1 has a higher potential ceiling than reducing history overhead alone, but follows per-pixel accounting because it changes which pixels receive fresh paths. Decimal identifiers preserve existing phase numbers; this ordering balances impact, confidence and prerequisites rather than implying a guaranteed speedup ranking.
+P0 through P5.2 are implemented. P5.1 reduces temporal overhead; P5.2 offers optional tracing reductions where they pay off at acceptable quality. P7 remains the next direct geometry-throughput option, especially as object count grows; it also accelerates guide queries. P6 is a separate quality experiment. P11.1 has a higher potential ceiling than reducing history overhead alone, but follows per-pixel accounting because it changes which pixels receive fresh paths. Decimal identifiers preserve existing phase numbers; this ordering balances impact, confidence and prerequisites rather than implying a guaranteed speedup ranking.
 
 ## Shared completion requirements
 
@@ -270,6 +270,25 @@ Acceptance: compare temporal off, current P5 and the optimized version at quarte
 
 ## P5.2 Trade temporal quality for less tracing
 
+Implemented as opt-in `view temporal budget on/off`, separate from `view temporal on/off`. `view temporal budget samples <1..8>` caps the moving batch (default 1); `view temporal budget scale <0.25..1>` optionally caps the moving grid (default 1, retaining full resolution). Requested settings are restored after 350 ms without motion. Missing/incompatible/cut/expired history uses the requested batch maximum to seed a new image, subject to existing pass/budget limits. P4 retains its independent one-spp cap and minimum grid bounds. Volume/no-diffuse scenes and deterministic depth-zero point-light scenes bypass this budget; unsupported pixels still receive fresh raw estimates. No samples are skipped below one per pixel, and there is no temporal upscaling.
+
+Three independent-seed comparisons show a useful bounce-room setting: one fresh spp with seeded history has about 8% lower average error than four raw spp and takes about 39% less headless processing time. Glass does not match three/four-spp raw quality with this setting. Low-grid noise/error improvements also involve loss of spatial detail. Live comparisons and P4 results are documented in [P5.2 measurements](benchmarks/p5.2/README.md); they do not establish a general FPS gain. F3 separates actual/chosen/requested batch counts, sampled dimensions and history blend. The mode remains off by default.
+
+### Outcome and priority after hands-on evaluation
+
+The user reports no significant difference between budget on/off, with both substantially slower than temporal off. This is consistent with the live scheduling limits: continuous camera changes already end a batch after its active sample pass, and P4 explicitly caps moving batches at one spp. P5.2's default sample cap therefore often removes no work, while guide generation, reconstruction and memory traffic remain. The fixed-view four-spp comparison demonstrates a quality/work tradeoff but overstates its relevance to continuous mouse movement; it must not be presented as the expected interactive speedup.
+
+Retain P5/P5.1/P5.2 as off-by-default quality experiments. Defer further temporal performance work for the current workload and use temporal off as the raw throughput baseline. Lowering the P5.2 grid can increase FPS by sacrificing detail, but P4 already offers that work reduction without temporal overhead. P11.1 remains a conditional, larger redesign that could remove work below one fresh spp; do not prioritize it without evidence that correspondence and reconstruction cost can be repaid by skipped transport paths.
+
+Next, profile representative raw motion workloads with temporal off and select an existing tracing phase from the measured bottleneck:
+
+- P7 targets the linear object scan; its value grows with object count and may be small in current rooms.
+- P8/P9 target traversal order and BVH quality, primarily in mesh/intersection-heavy scenes.
+- P10 targets pointer chasing, memory layout and accumulation traffic; cache/memory limits remain hypotheses until measured.
+- P15 targets box face-test cost; P13 targets long low-contribution paths, with energy/noise validation.
+
+These phases already cover the proposed intersection and memory directions. No additional optimization phase is justified yet. Reuse P0/F3/F4 measurements to choose or re-rank them; add a focused phase only if profiling identifies work outside their scope. Faster ray queries would also reduce temporal guide cost, but raw end-to-end throughput is the immediate acceptance target.
+
 Add an opt-in interaction policy that spends validated history's noise reduction on a smaller fresh tracing budget. Compare fewer fresh spp at the same sensor grid when the baseline uses more than one spp, then evaluate lower motion grids with P4. At one fresh spp per pixel, uniform sampling cannot go lower without P11.1 or another explicitly designed sparse scheme. Preserve depth, materials and lighting. Account for unsupported pixels and scenes: glass/mirrors still need fresh raw estimates, and volumes currently bypass temporal reuse entirely.
 
 Select settings using total cost: reduced tracing plus guides, reconstruction, copying and presentation must be cheaper than the raw baseline at acceptable comparable quality. Current temporal reuse operates at the sensor grid; it does not recover missing high-resolution detail. P4 grid changes discard history, so measure warmup and transition costs and avoid frequent grid oscillation. Temporal upscaling or cross-grid history transfer would require a separate specification and validation, not an assumption in this phase.
@@ -379,7 +398,7 @@ After each phase, record the achieved effect and remaining bottleneck. Use the f
 - If tracing dominates and workers scale well, finish P1/P2 and then target measured intersection or sampling costs.
 - If display work dominates at low resolution, prioritize P3 before additional transport work.
 - If raw throughput is acceptable but motion is poor, investigate P2/P4 and then reconstruction.
-- If temporal mode lowers FPS, evaluate P5.1 overhead first and P5.2's tracing reduction second. Cleaner one-spp output alone does not justify a performance claim; total cost must decrease at acceptable quality.
+- Following hands-on P5.2 evaluation, defer further temporal performance work for the current one-spp motion workload. Profile with temporal off and prioritize measured raw tracing costs in P7 through P10, P15 or P13. Cleaner one-spp output alone does not justify a performance claim.
 - If motion already uses one fresh spp per pixel, further path-count reduction requires P11.1's sparse updates and per-pixel accounting; lowering depth or treating history weight as raw samples is not a substitute.
 - If scene complexity raises primitive work sharply, prioritize P7 through P10.
 - If samples are fast but convergence is slow, prioritize P11 through P13 or explicitly enabled reconstruction.

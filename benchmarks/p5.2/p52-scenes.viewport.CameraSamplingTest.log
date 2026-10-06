@@ -1,0 +1,6 @@
+2026-10-06T00:22:20.432878700  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-06T00:22:20.438652800  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.CameraSamplingTest [PT0.1818273S]
+2026-10-06T00:22:20.440864600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.CameraSamplingTest#movingViewsReproduceAcrossWorkersBatchesAndDifferentVisitOrders [PT0.1484854S]
+2026-10-06T00:22:20.440864600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.CameraSamplingTest#capturedCameraScramblesSampleZeroWithoutTimeOrScheduling [PT0.0311409S]
+2026-10-06T00:22:20.440864600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.CameraSamplingTest#pointLightDepthZeroRemainsSeedIndependentPixelCenterDiagnostic [PT0.002201S]
+2026-10-06T00:22:20.441863800  [INFO] harness.SuiteRunner: ========================

@@ -28,12 +28,20 @@ final class InteractiveResolution {
     }
     void choose(ViewportState state, long now) {
         int w = state.sensorPixelsW(), h = state.sensorPixelsH();
-        if (!state.interactive() || !moving(now)) {
-            if (!state.paused() || !state.interactive()) state.sampledResolution(w,h);
+        boolean temporalBudget=state.temporalBudgetSupported();
+        boolean enabled=state.interactive() || temporalBudget;
+        if (!enabled || !moving(now)) {
+            if (!state.paused() || !enabled) state.sampledResolution(w,h);
             fastUpdates = 0;
             return;
         }
         if (state.paused()) return;
+        if(!state.interactive()) {
+            // Fixed opt-in ceiling: no feedback-driven grid oscillation or cross-grid reuse.
+            double scale=Math.max(state.motionScale(),Math.max(64./w,64./h));
+            state.sampledResolution((int)Math.round(w*scale),(int)Math.round(h*scale));
+            return;
+        }
         boolean freshCost = revision != consideredRevision;
         consideredRevision = revision;
         double min = state.minimumScale();
@@ -44,8 +52,9 @@ final class InteractiveResolution {
         double next = min;
         for (double scale : SCALES) if (scale >= min && scale <= wanted) { next = scale; break; }
         next = Math.clamp(next, min, 1);
+        if(temporalBudget) next=Math.min(next,Math.max(min,state.motionScale()));
         double predicted = nanosPerPixel * state.sampledWidth() * state.sampledHeight();
-        boolean outsideBounds = current < min;
+        boolean outsideBounds = current < min || (temporalBudget && current>Math.max(min,state.motionScale()));
         if (!outsideBounds && next < current && nanosPerPixel != 0 && predicted <= budget * 1.25) return;
         if (!outsideBounds && next > current) {
             if (predicted >= budget * .65) { fastUpdates = 0; return; }

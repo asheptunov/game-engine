@@ -110,6 +110,17 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   `DynamicResolutionBenchmark` compares the same elapsed-time camera path with
   automatic mode off/on; window-free results and commands: `benchmarks/p4/README.md`.
 - P5 adds optional diffuse temporal presentation: `view temporal on/off` (default off).
+  P5.2 adds a separate off-by-default `view temporal budget on/off`, with `samples
+  <1..8>` (default 1) and `scale <0.25..1>` (default 1) subcommands. It caps moving
+  batches and optionally grids only with temporal enabled and a stochastic diffuse
+  scene without scattering. Requested settings remain unchanged; restore them after
+  350 ms without motion. Missing/cut/edited/expired history uses the requested batch
+  maximum to seed history; P4's independent one-spp moving cap still takes precedence.
+  Guides still reject unsupported pixels; lowering the grid also lowers their detail.
+  F3 reports actual/chosen/requested batch maxima separately from history blend.
+  Grid transitions reset history; there is no cross-grid reuse or temporal upscaling.
+  Run `scenes.viewport.TemporalBudgetTest` for controls/preflight/bounds/lifecycle;
+  cost/quality and window-free fresh-image results are in `benchmarks/p5.2/README.md`.
   Raw estimator keys, RGB means, seed streams and spp remain independent. Off immediately
   restores raw conversion, including while a job is pending. A separate mode revision
   prevents rapid off/on edits from reviving an old completed publication. The coordinator captures

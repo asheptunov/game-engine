@@ -54,9 +54,20 @@ public final class ViewportCommand implements Command {
                     case "exposure" -> {require(args,3);state.exposure(number(args[2]));}
                     case "resolution" -> resolution(args);
                     case "temporal" -> {
-                        require(args,3);
-                        if(!args[2].equals("on") && !args[2].equals("off")) throw new IllegalArgumentException("view temporal on/off");
-                        state.temporal(args[2].equals("on"));
+                        if(args.length==2) return help("temporal");
+                        if(args[2].equals("budget")) {
+                            if(args.length==3) return help("temporal","budget");
+                            switch(args[3]) {
+                                case "on","off" -> {require(args,4);state.temporalBudget(args[3].equals("on"));}
+                                case "samples" -> {require(args,5);state.motionSamples(Integer.parseInt(args[4]));}
+                                case "scale" -> {require(args,5);state.motionScale(Double.parseDouble(args[4]));}
+                                default -> throw new IllegalArgumentException("view temporal budget on/off/samples/scale");
+                            }
+                        } else {
+                            require(args,3);
+                            if(!args[2].equals("on") && !args[2].equals("off")) throw new IllegalArgumentException("view temporal on/off");
+                            state.temporal(args[2].equals("on"));
+                        }
                     }
                     case "interactive" -> {
                         switch(args[2]) {
@@ -124,6 +135,7 @@ public final class ViewportCommand implements Command {
     private String confirmation(String[] args) {
         return switch(args[1]) {
             case "interactive" -> state.interactiveStatus();
+            case "temporal" -> "temporal="+(state.temporal()?"on":"off")+"; "+state.temporalBudgetStatus();
             case "resolution" -> "Updated resolution to " + state.sensorPixelsW() + "x" + state.sensorPixelsH() + ".";
             case "preset" -> "Loaded preset " + state.preset() + ".";
             case "reset" -> "Reset preset " + state.preset() + ".";
@@ -172,6 +184,7 @@ public final class ViewportCommand implements Command {
                 +"; workers="+state.workers()+"; tile="+state.tileSize()
                 +"; "+state.interactiveStatus()
                 +"; temporal="+(state.temporal()?"on":"off (raw)")
+                +"; "+state.temporalBudgetStatus()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint lights: "+state.lights()

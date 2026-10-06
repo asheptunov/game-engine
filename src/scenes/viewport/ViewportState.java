@@ -32,6 +32,7 @@ public class ViewportState {
         copy.acceleration=acceleration; copy.workers=workers; copy.tileSize=tileSize;
         copy.temporal=temporal;
         copy.temporalVersion=temporalVersion;
+        copy.temporalBudget=temporalBudget;copy.motionSamples=motionSamples;copy.motionScale=motionScale;
         return copy;
     }
     private       Rect              cameraSensor;
@@ -44,6 +45,35 @@ public class ViewportState {
     private boolean interactive;
     private boolean temporal;
     private long temporalVersion;
+    private boolean temporalBudget;
+    private int motionSamples=1;
+    private double motionScale=1;
+    public boolean temporalBudget() { return temporalBudget; }
+    public void temporalBudget(boolean value) { temporalBudget=value; }
+    public int motionSamples() { return motionSamples; }
+    public void motionSamples(int value) {
+        if(value<1 || value>8) throw new IllegalArgumentException("Motion samples must be 1..8");
+        motionSamples=value;
+    }
+    public double motionScale() { return motionScale; }
+    public void motionScale(double value) {
+        if(!Double.isFinite(value) || value<.25 || value>1) throw new IllegalArgumentException("Motion scale must be 0.25..1");
+        motionScale=value;
+    }
+    boolean temporalBudgetSupported() {
+        return temporal && temporalBudget && instances.stream().noneMatch(o->o.material().scattering()>0)
+                && (pathDepth>0 || instances.stream().anyMatch(o->o.material().emissive()))
+                && instances.stream().anyMatch(o->o.material().kind()==Material.Kind.DIFFUSE && !o.material().emissive());
+    }
+    public String temporalBudgetStatus() {
+        return "motion budget="+(temporalBudget?"on":"off")+" samples="+motionSamples
+                +" scale="+String.format(java.util.Locale.ROOT,"%.2f",motionScale)
+                +(temporalBudget && !temporalBudgetSupported()?" (inactive: needs temporal diffuse, no volumes)":"");
+    }
+    int movingBatch(boolean moving) {
+        if(moving && interactive) return 1;
+        return moving && temporalBudgetSupported()?Math.min(samplesPerFrame,motionSamples):samplesPerFrame;
+    }
     /** Presentation reconstruction only; deliberately excluded from the raw estimator key. */
     public boolean temporal() { return temporal; }
     public void temporal(boolean enabled) { if(temporal!=enabled) {temporal=enabled;temporalVersion++;} }

@@ -14,7 +14,7 @@ public class ProfilingIntegrationTest {
         var module=new MainModule();var injector=Injector.create(module);module.registerScenes(injector);
         try(var viewport=injector.get(Viewport.class);var profiler=injector.get(FrameProfiler.class)) {
             var state=viewport.state();state.resolution(160,100);scenes.viewport.ScenePresets.load(state,"bounce-room");
-            state.sampleTarget(1);state.temporal(true);
+            state.sampleTarget(1);state.temporal(true);state.temporalBudget(true);state.samplesPerFrame(4);
             var raster=injector.get(rendering.Raster.class);profiler.toggle();
             long deadline=System.nanoTime()+8_000_000_000L;
             while(state.accumulatedSamples()<1 && System.nanoTime()<deadline) {
@@ -31,6 +31,7 @@ public class ProfilingIntegrationTest {
             profiler.beginFrame();viewport.render();injector.get(PerformanceOverlay.class).render();profiler.endFrame();
             assertTrue(profiler.viewportHistory().contains("blend"));
             assertTrue(profiler.viewportQuality().contains("160x100"));
+            assertTrue(profiler.viewportQuality().contains("batch actual/cap/req 1/1/4"));
             var preview=new java.awt.image.BufferedImage(raster.width(),raster.height(),java.awt.image.BufferedImage.TYPE_INT_RGB);
             for(int y=0;y<raster.height();y++)for(int x=0;x<raster.width();x++)preview.setRGB(x,y,raster.pixel(x,y).rgbInt24());
             javax.imageio.ImageIO.write(preview,"png",new java.io.File("out/cli/p5-f3-preview.png"));

@@ -9,7 +9,8 @@ final class AsyncViewportTrace implements AutoCloseable {
                  long finishedNanos, long samples, TraceProfile.Stats stats, long traceNanos,
                  int primaryRays, int primaryHits, int shadowRays, int shadowsOccluded, int litPixels,
                  Slot slot, boolean interactiveMotion, boolean temporal,
-                 long temporalVersion, float[][][] reconstructed, TemporalReconstruction.Stats history) {}
+                 long temporalVersion, float[][][] reconstructed, TemporalReconstruction.Stats history,
+                 int requestedBatch, int plannedBatch, boolean motionBudget) {}
     private static final class Slot {
         float[][][] rgb;
         float[][][] reconstructed;
@@ -74,14 +75,24 @@ final class AsyncViewportTrace implements AutoCloseable {
         output.writing=true;
         output.owner=null;
         var snapshot=live.renderSnapshot();
-        boolean motion=live.interactive() && resolution.moving(System.nanoTime());
-        if(motion) snapshot.samplesPerFrame(1);
+        boolean moving=resolution.moving(System.nanoTime());
+        boolean budget=moving && live.temporalBudgetSupported();
+        boolean motion=moving && (live.interactive() || budget);
+        int requestedBatch=live.samplesPerFrame();
+        snapshot.samplesPerFrame(live.movingBatch(moving));
+        int plannedBatch=snapshot.samplesPerFrame();
+        boolean p4Motion=moving && live.interactive();
         long token=epoch, jobGeneration=generation, requested=System.nanoTime();
         var jobKey=key;
         running=true;
         coordinator.execute(() -> {
             boolean published=false;
             try {
+                if(historyEpoch!=token) { reconstruction.clear();historyEpoch=token; }
+                // Without compatible history, spend the requested samples to seed a useful image.
+                int chosenBatch=budget && !p4Motion && !reconstruction.compatibleHistory(jobKey,System.nanoTime())
+                        ?requestedBatch:plannedBatch;
+                snapshot.samplesPerFrame(chosenBatch);
                 var rgb=tracer.trace(snapshot, () -> closed || token != epoch,
                         () -> jobGeneration != generation);
                 maxTileNanos=Math.max(maxTileNanos,tracer.maxTileNanos);
@@ -92,7 +103,6 @@ final class AsyncViewportTrace implements AutoCloseable {
                 var owned=output.rgb;
                 for(int c=0;c<3;c++) for(int y=0;y<h;y++) System.arraycopy(rgb[c][y],0,owned[c][y],0,w);
                 float[][][] presentation=null;
-                if(historyEpoch!=token) { reconstruction.clear();historyEpoch=token; }
                 if(snapshot.temporal()) {
                     var result=reconstruction.reconstruct(rgb,tracer.surfaceGuide(),jobKey,snapshot.accumulatedSamples(),System.nanoTime(),snapshot.workers(),
                             ()->closed || token!=epoch);
@@ -108,7 +118,8 @@ final class AsyncViewportTrace implements AutoCloseable {
                     if (closed || token != epoch || !jobKey.sameTransport(liveKey)) return;
                     image=new Image(owned,jobKey,jobGeneration,requested,System.nanoTime(),snapshot.accumulatedSamples(),
                             tracer.profile,tracer.traceNanos,tracer.primaryRays,tracer.primaryHits,tracer.shadowRays,
-                            tracer.shadowsOccluded,tracer.litPixels,output,motion,snapshot.temporal(),snapshot.temporalVersion(),presentation,reconstruction.stats());
+                            tracer.shadowsOccluded,tracer.litPixels,output,motion,snapshot.temporal(),snapshot.temporalVersion(),presentation,reconstruction.stats(),
+                            requestedBatch,chosenBatch,budget);
                     output.owner=image;
                     output.writing=false; // Readers may acquire as soon as publication releases this lock.
                     // A lagging camera image is an explicit preview, not samples of the newest camera.
