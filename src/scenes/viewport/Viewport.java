@@ -6,11 +6,10 @@ import logging.LogManager;
 import logging.Logger;
 import math.Vec3;
 import rendering.Font;
-import rendering.Painter;
+import rendering.AwtPrinter;
+import rendering.Color;
 import rendering.Printer;
 import rendering.Raster;
-import rendering.RasterPainter;
-import rendering.RasterPrinter;
 import rendering.Renderer;
 import scenes.CmdScene;
 import scenes.Scene;
@@ -51,8 +50,7 @@ public class Viewport implements AutoCloseable,
     private final CameraControls cameraControls = new CameraControls();
 
     private final Raster             display;
-    private final Painter            painter;
-    private final Printer            printer;
+    private final AwtPrinter         printer;
     private final int                width;
     private final int                height;
     private final Console            console;
@@ -87,8 +85,7 @@ public class Viewport implements AutoCloseable,
                     AtomicReference<Scene> sceneRef, FrameProfiler profiler) {
         this.profiler = profiler;
         this.display = display;
-        this.painter = new RasterPainter(display);
-        this.printer = new RasterPrinter(display, font);
+        this.printer = new AwtPrinter(display, 16);
         this.width = width;
         this.height = height;
         this.displayConverter = new DisplayConverter(width,height);
@@ -221,10 +218,14 @@ public class Viewport implements AutoCloseable,
         if (consoleOpen) {
             console.render();
         } else {
-            if(status != null) printer.print(status,12,height-42,Printer.Size.of(12),Printer.Spacing.of(-3));
-            printer.print(label,
-                    12, height - 24, Printer.Size.of(12), Printer.Spacing.of(-3));
+            int y = height - printer.cellHeight() - 6;
+            if(status != null) printFooter(status, y - printer.cellHeight() - 3);
+            printFooter(label, y);
         }
+    }
+    private void printFooter(String text, int y) {
+        printer.print(text, 13, y + 1, Printer.Color.of(Color.NamedColor.BLACK));
+        printer.print(text, 12, y);
     }
 
     @Override
