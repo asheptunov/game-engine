@@ -2,6 +2,12 @@
 
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
+The proposed engine/application separation and scene/mesh authoring roadmap is in
+[EngineRequirements.md](EngineRequirements.md). E1–E6 are pending. The first delivery
+is E1–E2: migrate the playground to a public engine API and prove an independent
+headless consumer. Later milestones add persistent scenes, general meshes/queries,
+a scene editor, and editable mesh topology with face extrusion.
+
 The next renderer requirements and six playable implementation phases are in
 [RenderingRequirements.md](RenderingRequirements.md). All six phases are implemented.
 
