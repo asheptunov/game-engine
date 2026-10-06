@@ -77,8 +77,8 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
 - `Viewport` uses `DirectRgbTracer` for iterative diffuse/mirror/dielectric RGB paths with progressive
   accumulation, shadow visibility, and inverse-square point lights. Depth 0 preserves the
   deterministic pixel-center direct diagnostic; depth >0 jitters each pixel's primary ray.
-  `Resampler` filters averaged linear
-  RGB before fixed exposure, Reinhard tone mapping, and sRGB display encoding.
+  `DisplayConverter` fuses linear RGB box filtering, fixed exposure, Reinhard tone mapping,
+  and sRGB encoding into a reusable byte cache; `Resampler` remains the numeric reference.
   `BackwardRayTracer` retains scalar reference behavior; the forward `RayTracer` remains
   available but neither is used by the viewport.
 - The default viewport preset is `playground`; `/` then `view help` lists live controls.
@@ -100,7 +100,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   exposure, overlays, console, and batch-size edits retain samples. RGB means use double
   precision; counts cap at one billion spp. Live tracing uses `AsyncViewportTrace`:
   one background coordinator, no queued camera generations, immutable state snapshots
-  and owned completed RGB copies. Input and image conversion run outside the state
+  and leased completed RGB buffers. Input and image conversion run outside the state
   monitor. Tiles write a staged double mean; only complete passes swap into committed
   accumulation. Cancellation discards partial work without changing committed spp.
   Camera-only edits let the active pass finish as a complete preview of its captured
@@ -117,8 +117,15 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   first-image latency, cancelled jobs, wasted paths and max tile time. First-image
   latency ends at raster conversion and excludes physical input/AWT presentation.
   Display FPS/timeline describe the display thread; background trace CPU/ray/JFR
-  diagnostics describe the last completed job. Publication-copy reuse and conversion
-  caching remain P3. `Viewport.close()` cancels and shuts down its coordinator.
+  diagnostics describe the last completed job. P3 uses a bounded three-slot publication
+  pool: acquire/retain/release under the state monitor; never read RGB after releasing
+  its lease. The coordinator cannot overwrite the latest or leased image. Display cache
+  invalidation uses captured key, spp and exposure; restore its clean opaque background
+  every frame before UI/overlays, even on cache hits or re-entry from the editor.
+  RESAMPLE includes fused filtering/mapping; PAINT restores cached bytes. Equal grids
+  bypass filtering, integer enlargement encodes once per source pixel, and fractional
+  overlap weights are cached per dimension change. `RgbPacking` preserves partial alpha
+  and accelerates opaque AWT packing. `Viewport.close()` shuts down its coordinator.
 - `view preset glass` shows a clear sphere and absorbing box against colored stripes;
   `glass-inside` starts the camera inside the sphere. Both use depth 8. `view type dielectric`,
   `view ior 1..3`, and `view absorption r g b` (0..100 inverse scene units) edit materials.
@@ -174,8 +181,20 @@ decorators composed in `MainModule`, and small timing/metadata hooks in scene co
 F3 toggles the overlay in either scene; hidden at startup. Collection continues while
 hidden. Nested stage timings are exclusive wall time, not sampled CPU time. Frame
 intervals include idle/scheduler time between renders. History is capped at 10 seconds
-and 4096 frames; the panel refreshes at 4 Hz. Timeline columns show the slowest frame,
-with a white target-budget line.
+and 4096 frames; the panel refreshes at 4 Hz. Live viewport F3 leads with fresh-image
+FPS over two seconds: count each captured publication once at `endFrame`, after
+the complete pipeline (including AWT submission). Cached redraws never count.
+Update mean/p95 include an ongoing hold when it exceeds the last interval; current
+hold and snapshot-to-display age expose stalls/lag. Paused/complete status remains
+visible. Resolution/preset changes reset fresh history; editor entry clears it.
+The viewport timeline shows fresh-image intervals, tallest per column, with an
+orange current-hold bar and a white 60 FPS line. Display-loop FPS and exclusive
+stage averages remain secondary ten-second metrics; asynchronous TRACE is labeled
+background rather than displayed as zero-cost work. In the editor/blocking mode,
+the graph retains display-stage stacks and the configured target-budget line.
+These counters measure software submission, not monitor scanout or physical input
+latency. `FreshImageBenchmark` checks paced live motion at native/half/quarter without
+a window; settings/results are in `benchmarks/p3/README.md`.
 
 F4 toggles a tracing drilldown (and shows the overlay). It uses opt-in JFR execution
 sampling at 10 ms, with batched delivery and a bounded 10-second sample history.
@@ -220,7 +239,12 @@ pixels for their captured cameras, and correct stationary convergence afterward.
 `ResponsiveViewportBenchmark` posts synthetic AWT mouse events during concurrent
 native glass tracing/conversion without opening a window; `legacy-lock` emulates
 the former full-frame monitor. Use `-Djava.awt.headless=false`. Results and limitations
-are in `benchmarks/p2/README.md`.
+are in `benchmarks/p2/README.md` and `benchmarks/p3/README.md`.
+Run `scenes.viewport.DisplayConverterTest` for exact reference display bytes across grids/
+exposure/orientation, clean cache restoration, and exhaustive alpha/channel packing.
+`ResponsiveTraceTest` also checks leased-image stability and bounded buffer reuse.
+`DisplayPipelineBenchmark` compares reference, fused and cached display work without
+tracing or a window. P3 commands/results are in `benchmarks/p3/README.md`.
 Benchmark metadata includes requested/actual batch spp, total accumulated spp and sampling seed.
 It records dimensions, depth, samples per frame, deterministic sampling, throughput,
 trace allocations, and actual primitive tests. Compare matching settings.

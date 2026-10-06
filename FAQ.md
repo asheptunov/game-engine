@@ -68,7 +68,7 @@ A12: Each path starts a reproducible pseudorandom sequence from three identifier
 
 Q13: why is there a monitor around state in Viewport.java? is there parallelization around that component?
 
-A13: AWT delivers input on its event thread while the display loop and trace coordinator run on other threads. The monitor protects brief edits, snapshot capture, and publication of matching sample counts. P2 performs tracing and image conversion outside that lock, so input can proceed while workers trace. Workers use a fixed snapshot. Camera motion lets the active pass finish as a coherent, slightly older preview; the next job captures the latest camera. Scene or resolution edits still cancel between tiles. Preview samples do not count toward a different camera's accumulation. The display reads its own immutable completed image, and console drawing snapshots its text before drawing.
+A13: AWT delivers input on its event thread while the display loop and trace coordinator run on other threads. The monitor protects brief edits, snapshot capture, and publication of matching sample counts. P2 performs tracing and image conversion outside that lock, so input can proceed while workers trace. Workers use a fixed snapshot. Camera motion lets the active pass finish as a coherent, slightly older preview; the next job captures the latest camera. Scene or resolution edits still cancel between tiles. Preview samples do not count toward a different camera's accumulation. The display leases a completed image that remains immutable until the lease is released, and console drawing snapshots its text before drawing.
 
 Q14: why does the tracer have a budget if it's only checked after it's done?
 
@@ -104,8 +104,8 @@ A21: **Temporal reuse** uses information from earlier frames. Our stationary acc
 
 Q22: Define integer enlargement
 
-A22: Enlarging by a whole-number factor in both dimensions, such as 360×225 to 1440×900 at 4×. Each source pixel covers a 4×4 display block. With our box filter, all sixteen display pixels receive the same source value, so we can encode that value once and copy it across the block. This optimization is planned for P3.
+A22: Enlarging by a whole-number factor in both dimensions, such as 360×225 to 1440×900 at 4×. Each source pixel covers a 4×4 display block. With our box filter, all sixteen display pixels receive the same source value, so we can encode that value once and copy it across the block. P3 implements this in `DisplayConverter`.
 
 Q23: Define "filter linear radiance"
 
-A23: Combine neighboring light values while they are still proportional to physical brightness, before tone mapping and sRGB encoding. For example, equal contributions of radiance 0 and 4 average to 2; then we tone-map 2. Tone-mapping the inputs first and averaging their display values produces a different result. Our existing resampler already filters linear radiance; P3 must preserve that order.
+A23: Combine neighboring light values while they are still proportional to physical brightness, before tone mapping and sRGB encoding. For example, equal contributions of radiance 0 and 4 average to 2; then we tone-map 2. Tone-mapping the inputs first and averaging their display values produces a different result. Both the reference resampler and P3's fused display converter filter linear radiance before mapping and encoding.

@@ -42,6 +42,9 @@ public class AwtPrinterTest {
                 + "0123456789 /:[](){} <> +-= _ gjpq\n"
                 + Color.AnsiColor.RED.formatted() + "ERROR" + Color.AnsiColor.NONE.formatted() + " normal text\n"
                 + "Wrapping: " + "readable text ".repeat(9)));
+        // Blank submissions are intentionally ignored by Console; submit a command for the fixture.
+        console.accept(new KeyAction(KeyAction.Key.LOWER_V, KeyAction.Key.LOWER_V, KeyAction.Action.PRESS,
+                new KeyAction.Modifiers(false, false, false, false, false, false, false, false)));
         console.accept(new KeyAction(KeyAction.Key.ENTER, KeyAction.Key.ENTER, KeyAction.Action.PRESS,
                 new KeyAction.Modifiers(false, false, false, false, false, false, false, false)));
         console.render();

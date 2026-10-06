@@ -60,6 +60,10 @@ public class Viewport implements AutoCloseable,
     private final DirectRgbTracer  tracer;
     private final FrameProfiler profiler;
     private final AsyncViewportTrace asyncTrace;
+    private final DisplayConverter displayConverter;
+    private ViewportState.RenderKey convertedKey;
+    private long convertedSamples=-1;
+    private float convertedExposure;
     private final ActionRegistry<Runnable>             actions;
     private final InputBindings                        bindings;
     private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
@@ -87,6 +91,7 @@ public class Viewport implements AutoCloseable,
         this.printer = new RasterPrinter(display, font);
         this.width = width;
         this.height = height;
+        this.displayConverter = new DisplayConverter(width,height);
 
         this.state = defaultScene(width, height);
         this.state.presentationAspect((float) width / height);
@@ -155,23 +160,30 @@ public class Viewport implements AutoCloseable,
         String label, status;
         synchronized(state) {
             if (!consoleOpen) cameraControls.update(state,System.nanoTime());
-            asyncTrace.request(); image=asyncTrace.image();
+            asyncTrace.request(); image=asyncTrace.acquireImage();
             exposure=(float)Math.pow(2,state.exposure()); label=label(); status=asyncTrace.status();
         }
-        if (image != null) {
-            profiler.traceStats(image.stats());
-            profiler.rayStats(new FrameProfiler.Rays(image.key().width(),image.key().height(),
-                    image.primaryRays(),image.primaryHits(),image.shadowRays(),image.shadowsOccluded(),
-                    image.litPixels(),image.traceNanos()));
-            paintImage(image.rgb(),exposure);
-        } else {
-            java.util.Arrays.fill(display.alpha(),(byte)255);
-            java.util.Arrays.fill(display.red(),(byte)0);
-            java.util.Arrays.fill(display.green(),(byte)0);
-            java.util.Arrays.fill(display.blue(),(byte)0);
-        }
-        synchronized(state) { asyncTrace.presented(image); profiler.renderProgress(asyncTrace.progress(image)); }
-        renderUi(label,status);
+        try {
+            if (image != null) {
+                profiler.traceStats(image.stats());
+                profiler.rayStats(new FrameProfiler.Rays(image.key().width(),image.key().height(),
+                        image.primaryRays(),image.primaryHits(),image.shadowRays(),image.shadowsOccluded(),
+                        image.litPixels(),image.traceNanos()));
+                paintImage(image.rgb(),exposure,image.key(),image.samples());
+            } else {
+                java.util.Arrays.fill(display.alpha(),(byte)255);
+                java.util.Arrays.fill(display.red(),(byte)0);
+                java.util.Arrays.fill(display.green(),(byte)0);
+                java.util.Arrays.fill(display.blue(),(byte)0);
+            }
+            synchronized(state) {
+                asyncTrace.presented(image); profiler.renderProgress(asyncTrace.progress(image));
+                profiler.viewportImage(image==null || image.samples()==0?-1:image.requestedNanos(),
+                        image==null?-1:image.requestedNanos(),state.sensorPixelsW(),state.sensorPixelsH(),
+                        state.preset(),state.samplingStatus());
+            }
+            renderUi(label,status);
+        } finally { synchronized(state) { asyncTrace.release(image); } }
     }
     /** Deterministic full-pipeline measurement; never mix with asynchronous render on this instance. */
     public void renderBlocking() {
@@ -188,7 +200,7 @@ public class Viewport implements AutoCloseable,
         profiler.rayStats(new FrameProfiler.Rays(snapshot.sensorPixelsW(), snapshot.sensorPixelsH(),
                 tracer.primaryRays, tracer.primaryHits, tracer.shadowRays,
                 tracer.shadowsOccluded, tracer.litPixels, tracer.traceNanos));
-        paintImage(traced,exposure);
+        paintImage(traced,exposure,snapshot.renderKey(),snapshot.accumulatedSamples());
         String label;
         synchronized(state) { label=label(); }
         renderUi(label,null);
@@ -197,29 +209,13 @@ public class Viewport implements AutoCloseable,
         return "WASD Space/Ctrl | Mouse: look | /: view help | " + state.preset() + " | N=" + state.pathDepth()
                 + " | " + state.accumulatedSamples() + " spp " + state.samplingStatus();
     }
-    private void paintImage(float[][][] traced,float exposure) {
-        var resampled = profiler.measure(FrameProfiler.Stage.RESAMPLE,
-                () -> new float[][][]{Resampler.resample(traced[0], height, width).buf(),
-                        Resampler.resample(traced[1], height, width).buf(),
-                        Resampler.resample(traced[2], height, width).buf()});
-        // displayBuf row 0 follows the sensor's row-0-is-bottom convention; flip when reading.
-        profiler.measure(FrameProfiler.Stage.PAINT, () -> {
-            var a = display.alpha();
-            var r = display.red();
-            var g = display.green();
-            var b = display.blue();
-            for (int y = 0; y < height; y++) {
-                int sy = height - 1 - y;
-                for (int x = 0; x < width; x++) {
-                    int i = y * display.width() + x;
-                    a[i] = (byte) 255;
-                    r[i] = DisplayMapping.encode(resampled[0][sy][x], exposure);
-                    g[i] = DisplayMapping.encode(resampled[1][sy][x], exposure);
-                    b[i] = DisplayMapping.encode(resampled[2][sy][x], exposure);
-                }
-            }
-        });
-
+    private void paintImage(float[][][] traced,float exposure,ViewportState.RenderKey key,long samples) {
+        if(!key.equals(convertedKey) || samples!=convertedSamples || exposure!=convertedExposure) {
+            // Fused filtering/mapping is charged to RESAMPLE; PAINT restores the encoded cache.
+            profiler.measure(FrameProfiler.Stage.RESAMPLE, () -> displayConverter.convert(traced,exposure));
+            convertedKey=key; convertedSamples=samples; convertedExposure=exposure;
+        }
+        profiler.measure(FrameProfiler.Stage.PAINT, () -> displayConverter.paint(display));
     }
     private void renderUi(String label,String status) {
         if (consoleOpen) {

@@ -367,6 +367,44 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   trace time. A new sustained-motion regression checks preview correctness, separate
   latest-camera spp and exact settled convergence. Results are in the P2 archive.
 
+## Renderer performance P3 `[done]`
+
+- Fused RGB box filtering/exposure/tone mapping/sRGB encoding writes reusable byte
+  storage. Cached indices/weights rebuild on dimension changes; equal grids bypass
+  filtering and integer enlargement encodes each source pixel once. Unchanged key/
+  spp/exposure redisplays the encoded cache before UI/overlay drawing, including
+  re-entry after the editor. Reference arithmetic and linear-space filtering remain.
+- Three leased publication slots bound memory and reuse sensor RGB copies without
+  overwriting an active display reader. Allocation/copy/conversion runs outside the
+  input lock. AWT opaque packing is faster; partial alpha remains exact for the editor.
+- Glass headless complete-frame median: quarter 20.66 → 6.81 ms, 400² 52.76 →
+  28.18 ms, native 82.17 → 75.97 ms. Whole-frame allocation drops ~16.24 → 0.64 MB.
+  Isolated conversion and cached restoration allocate zero bytes after warmup.
+  Native tracing remains ~65 ms; no 60-fresh-native-FPS claim. Synthetic motion still
+  displays new previews (18 before / 19 after), with no cancellation waste.
+- Fifteen suites pass, including exact display/reference bytes, exhaustive alpha
+  packing, leased-buffer stability/reuse, sustained-motion and UI/scene checks. An
+  outdated console preview fixture now submits a nonempty command. Window-free
+  composed previews were inspected; actual GUI/presentation latency remains manual.
+  See [results, ownership details and commands](benchmarks/p3/README.md).
+
+## F3 fresh image measurements `[done]`
+
+- F3 now leads with distinct completed-image FPS over two seconds instead of
+  repeated cached display updates. Updates are timestamped after the whole pipeline;
+  snapshot age includes conversion and AWT submission in the live app. Update
+  interval mean/p95, current image hold and age expose stutter and camera lag.
+- The live viewport graph plots fresh-image intervals, the ongoing hold and a
+  60 FPS reference. Display-loop FPS/stage means remain secondary, explicitly
+  separate from last background trace cost. Dimension/preset changes reset fresh
+  history; scene exit clears it, and pause/complete states remain visible.
+- Synthetic clock tests distinguish 100 display FPS from 10 fresh-image FPS and
+  cover stalls, pause, resolution changes, scene exit and end-of-pipeline age.
+  Four profiling/input/async suites pass; F3/F4 previews were inspected. A paced,
+  window-free motion check reports fresh rates 10.5 / 30.0 / 44.0 FPS at native /
+  half / quarter with distinct display rates. These are synthetic workload results,
+  not user-run FPS or physical presentation measurements; see the P3 archive.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

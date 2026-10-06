@@ -19,7 +19,7 @@ public class ResponsiveTraceTest {
             synchronized(s) {
                 async.request(); var image=async.image();
                 if(image!=null && image.generation()==async.progress(image).generation()
-                        && image.key().equals(s.renderKey()) && image.samples()>=samples) return image;
+                        && image.key().equals(s.renderKey()) && image.samples()>=samples) return async.retain(image);
             }
             Thread.sleep(1);
         }
@@ -49,10 +49,11 @@ public class ResponsiveTraceTest {
             }
             var image=await(async,s,1); var retained=copy(image.rgb());
             synchronized(s) { s.paused(true); async.invalidate(); }
-            await(async,s,1);
+            var paused=await(async,s,1); synchronized(s) { async.release(paused); }
             synchronized(s) { s.paused(false); s.exposure(2); async.invalidate(); }
             var completed=await(async,s,4);
             assertEquals(retained,image.rgb()); assertEquals(4L,completed.samples());
+            synchronized(s) { async.release(image); }
             synchronized(s) {
                 var eye=s.eye(); s.eye(new Vec3(10,0,-1)); async.invalidate(); s.eye(eye); async.invalidate();
             }
@@ -64,11 +65,14 @@ public class ResponsiveTraceTest {
                 assertEquals(reference.radianceBuffer(),completed.rgb());
             }
             synchronized(s) {
+                async.release(completed); async.release(restored);
                 s.restart(); s.paused(true); async.invalidate();
             }
             var reset=await(async,s,0); assertEquals(0L,reset.samples());
+            synchronized(s) { async.release(reset); }
             synchronized(s) { s.paused(false); s.sampleTarget(1); async.invalidate(); }
-            assertEquals(1L,await(async,s,1).samples());
+            var finalImage=await(async,s,1); assertEquals(1L,finalImage.samples());
+            synchronized(s) { async.release(finalImage); }
         }
     }
     @Test void suspendAndCloseDrainWithoutPublishingOldWork() throws Exception {
@@ -77,7 +81,8 @@ public class ResponsiveTraceTest {
         synchronized(s) { async.request(); async.suspend(); }
         Thread.sleep(30); assertNull(async.image());
         synchronized(s) { s.resolution(64); s.sampleTarget(1); }
-        assertEquals(1L,await(async,s,1).samples());
+        var finalImage=await(async,s,1); assertEquals(1L,finalImage.samples());
+        synchronized(s) { async.release(finalImage); }
         async.close();
         synchronized(s) { async.request(); }
     }
@@ -98,6 +103,7 @@ public class ResponsiveTraceTest {
                         assertFalse(image.key().equals(s.renderKey()));
                         assertEquals(0L,s.accumulatedSamples());
                         assertEquals(1,image.stats().samplesPerPixel());
+                        if(previews.isEmpty()) async.retain(image);
                         previews.add(image);
                     }
                 }
@@ -110,12 +116,31 @@ public class ResponsiveTraceTest {
             try(var reference=new DirectRgbTracer(referenceState)) {
                 reference.trace(); assertEquals(reference.radianceBuffer(),preview.rgb());
             }
-            synchronized(s) { s.samplesPerFrame(1); s.sampleTarget(2); async.invalidate(); }
+            synchronized(s) { async.release(preview); s.samplesPerFrame(1); s.sampleTarget(2); async.invalidate(); }
             var settled=await(async,s,2);
             try(var reference=new DirectRgbTracer(s.renderSnapshot())) {
                 reference.trace(); reference.trace();
                 assertEquals(reference.radianceBuffer(),settled.rgb());
             }
+            synchronized(s) { async.release(settled); }
+        }
+    }
+    @Test void publicationPoolReusesStorageAndCannotOverwriteALeasedImage() throws Exception {
+        var s=state(); s.resolution(64); s.sampleTarget(1);
+        var storage=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<float[][][],Boolean>());
+        try(var async=new AsyncViewportTrace(s,new DirectRgbTracer(s))) {
+            var first=await(async,s,1); var retained=copy(first.rgb()); storage.add(first.rgb());
+            for(int spp=2;spp<=12;spp++) {
+                synchronized(s) { s.sampleTarget(spp); async.invalidate(); }
+                var next=await(async,s,spp); storage.add(next.rgb());
+                assertEquals(retained,first.rgb());
+                synchronized(s) { async.release(next); }
+            }
+            assertTrue(storage.size()<=3);
+            synchronized(s) { async.release(first); s.resolution(67,73); s.restart(); s.sampleTarget(1); }
+            var resized=await(async,s,1);
+            assertEquals(73,resized.rgb()[0].length); assertEquals(67,resized.rgb()[0][0].length);
+            synchronized(s) { async.release(resized); }
         }
     }
     private static float[][][] copy(float[][][] rgb) {

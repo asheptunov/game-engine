@@ -45,16 +45,7 @@ public class AwtViewer implements Renderer {
     public void render() {
         // Pack directly into the reusable image, avoiding a 3-channel int[] allocation and setPixels.
         var pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
-        var a = raster.alpha();
-        var r = raster.red();
-        var green = raster.green();
-        var b = raster.blue();
-        for (int p = 0; p < pixels.length; p++) {
-            double alpha = (a[p] & 255) / 255.;
-            pixels[p] = ((int) (alpha * (r[p] & 255)) << 16)
-                    | ((int) (alpha * (green[p] & 255)) << 8)
-                    | (int) (alpha * (b[p] & 255));
-        }
+        RgbPacking.copy(raster,pixels);
         int i = 0;
         do {
             LOG.debug("Render attempt %d...", i);

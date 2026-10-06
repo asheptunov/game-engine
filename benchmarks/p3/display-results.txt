@@ -1,0 +1,15 @@
+JDK=23.0.1+11-39; CPU=Intel64 Family 6 Model 183 Stepping 1, GenuineIntel; display=1440x900; warmup=50; frames=100; fixed RGB ramp, exposure=1; no AWT presentation
+sensor=1440x900 reference median/p95=16.015/17.784 ms; bytes/frame=15606120; checksum=-476018086
+sensor=1440x900 fused median/p95=11.368/12.668 ms; bytes/frame=0; checksum=-476018086
+sensor=1440x900 cached median/p95=0.150/0.174 ms; bytes/frame=0; checksum=-476018086
+sensor=360x225 reference median/p95=15.457/15.890 ms; bytes/frame=15606120; checksum=853285377
+sensor=360x225 fused median/p95=1.605/1.719 ms; bytes/frame=0; checksum=853285377
+sensor=360x225 cached median/p95=0.146/0.171 ms; bytes/frame=0; checksum=853285377
+sensor=400x400 reference median/p95=43.775/45.203 ms; bytes/frame=15606120; checksum=553898558
+sensor=400x400 fused median/p95=20.224/20.719 ms; bytes/frame=0; checksum=553898558
+sensor=400x400 cached median/p95=0.148/0.176 ms; bytes/frame=0; checksum=553898558
+sensor=1600x1000 reference median/p95=73.498/74.594 ms; bytes/frame=15606120; checksum=-849482023
+sensor=1600x1000 fused median/p95=25.137/25.734 ms; bytes/frame=0; checksum=-849482023
+sensor=1600x1000 cached median/p95=0.146/0.166 ms; bytes/frame=0; checksum=-849482023
+opaque AWT packing reference median/p95=2.867/3.107 ms; checksum=-1128648703
+opaque AWT packing P3 median/p95=0.507/0.613 ms; checksum=-1128648703

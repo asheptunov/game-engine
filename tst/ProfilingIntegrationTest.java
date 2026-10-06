@@ -72,5 +72,23 @@ public class ProfilingIntegrationTest {
         injector.get(TextureEditor.class).render();viewport.renderBlocking();assertEquals(3L,state.accumulatedSamples());
         profiler.close();
     }
+    @Test void cachedViewportRestoresComposedRasterAndExposureInvalidatesOnlyConversion() {
+        var module=new MainModule(); var injector=Injector.create(module); module.registerScenes(injector);
+        try(var viewport=injector.get(Viewport.class); var profiler=injector.get(FrameProfiler.class)) {
+            var state=viewport.state(); state.resolution(64); state.sampleTarget(1);
+            var raster=injector.get(rendering.Raster.class);
+            viewport.renderBlocking(); var saved=raster.clone();
+            profiler.toggle(); injector.get(PerformanceOverlay.class).render();
+            profiler.beginFrame(); viewport.renderBlocking(); profiler.endFrame(); profiler.beginFrame();
+            assertEquals(0L,profiler.latestFrame().stage(FrameProfiler.Stage.RESAMPLE));
+            assertEquals(saved,raster);
+            injector.get(TextureEditor.class).render(); viewport.renderBlocking();
+            assertEquals(saved,raster);
+            state.exposure(2);
+            profiler.beginFrame(); viewport.renderBlocking(); profiler.endFrame(); profiler.beginFrame();
+            assertTrue(profiler.latestFrame().stage(FrameProfiler.Stage.RESAMPLE)>0);
+            assertEquals(1L,state.accumulatedSamples()); assertFalse(saved.equals(raster));
+        }
+    }
     public static void main(String[] args) { SuiteRunner.runThis(); }
 }

@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: P0 through P2 implemented. P3 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md) and [P2 results](benchmarks/p2/README.md).
+Status: P0 through P3 implemented. P4 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), and [P3 results](benchmarks/p3/README.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -140,8 +140,8 @@ excluding AWT presentation and physical input delivery.
 
 `renderBlocking()` retains deterministic full-pipeline benchmark/test behavior;
 mixing it with asynchronous rendering on one viewport is rejected. Sensor-sized
-publication copies and an extra double mean staging buffer are bounded, but
-allocation reduction and cached display conversion remain P3 work. The previous
+publication copies and an extra double mean staging buffer are bounded. P3 adds
+leased publication reuse and cached display conversion. The previous
 image stays visible while a new generation is pending, with its generation shown.
 Headless race/integration tests and synthetic AWT input measurements pass; manual
 GUI checks and physical input-to-screen latency remain unverified. See the
@@ -156,6 +156,42 @@ Keep input responsive while a pass is unfinished. A 16.67 ms display budget does
 Acceptance: rapid camera movement, resolution changes, preset switches, pause/resume, console interaction, and window focus loss cannot mix generations, race buffers, or deadlock. Continuous camera movement must display newly completed previews before input stops; repeated presentation of one old image is not progress. Check previews against their captured camera and stationary convergence against the latest camera. Measure input latency and wasted obsolete work. Aim for p95 input handling within one 60 Hz interval on the baseline host; separately report time to a visible camera update. Long individual tiles must be visible in diagnostics and motivate smaller tiles.
 
 ## P3 Reuse and fuse display buffers
+
+Implemented: `DisplayConverter` caches overlap indices/weights and fuses RGB box
+filtering with exposure, Reinhard mapping and sRGB encoding into reusable byte
+storage. Equal grids bypass filtering; integer enlargement encodes each source
+pixel once and replicates encoded rows. Integer reduction and fractional filtering
+retain the reference float arithmetic and order. The original `Resampler` remains
+the comparison reference.
+
+The encoded cache is keyed by captured render key, completed spp and exposure.
+Repeated images restore the cache before drawing the UI/overlay; this also removes
+old console text or editor pixels on scene switches. RESAMPLE now includes fused
+filtering/mapping; PAINT measures restoration of the encoded cache. Background
+clears/checkerboards were already skipped for the opaque viewport. AWT packing
+uses an opaque fast path and preserves the editor's partial-alpha behavior.
+
+A bounded three-slot publication pool reuses sensor RGB storage. Display acquires
+an image lease under the state monitor and releases it in `finally`; the coordinator
+cannot overwrite the latest or leased image. Pixel allocation occurs at startup or
+dimension changes, outside the input lock. Images are immutable for their lease,
+not forever after release. There is still one coordinator and no generation queue.
+
+Local glass blocking-frame medians: quarter 20.66 → 6.81 ms, 400 square 52.76 →
+28.18 ms, native 82.17 → 75.97 ms. Whole-frame allocation falls from about 16.24 MB
+to 0.64 MB; isolated steady-state display conversion/restoration allocates zero bytes.
+These headless figures exclude AWT presentation. Native tracing remains about 65 ms
+per fresh pass. See [P3 measurements and verification](benchmarks/p3/README.md).
+
+F3 leads with fresh-image FPS over two seconds, counting each traced publication
+once after the complete display pipeline. Cached redraws do not increase it.
+Update interval mean/p95, current hold, and snapshot-to-display age accompany the
+rate; the live viewport graph shows fresh-image intervals and a 60 FPS reference.
+Display-loop FPS/stage averages remain secondary ten-second measurements, with
+background tracing labeled separately. Resolution/preset changes reset the fresh
+history; pause/completion status explains idle rendering. Software submission
+timing includes AWT work in the live pipeline, but does not measure monitor scanout
+or physical input-to-screen latency.
 
 Reuse display storage across unchanged dimensions. Fuse RGB resampling, exposure/tone mapping, encoding, and output where practical. Cache resampling indices and weights when dimensions change. Bypass resampling for equal grids; for integer enlargement, encode one source pixel and replicate the encoded value. For averaging, filter linear radiance before nonlinear display mapping.
 

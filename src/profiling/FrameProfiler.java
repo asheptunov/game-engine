@@ -23,6 +23,20 @@ public final class FrameProfiler implements AutoCloseable {
                                  long imageAgeNanos, long firstImageNanos, long cancelledJobs,
                                  long wastedPrimaryRays, long maxTileNanos, boolean running) {}
     private RenderProgress renderProgress;
+    public record ImageUpdate(long time, long intervalNanos, long ageNanos) {}
+    public record ImageSnapshot(List<ImageUpdate> updates, double fps, double meanMs, double p95Ms,
+                                double holdMs, double ageMs, double ageP95Ms, String status) {}
+    private final Deque<ImageUpdate> imageHistory=new ArrayDeque<>();
+    private long imageStart, lastImageTime, lastImageId=-1, capturedNanos=-1;
+    private long candidateId=-1, candidateCapture=-1;
+    private String imageContext, candidateContext, imageStatus="waiting";
+    private boolean viewportFrame;
+    /** Display-thread metadata only; the completed pipeline's endFrame timestamps visibility. */
+    public void viewportImage(long id,long captured,int width,int height,String preset,String status) {
+        viewportFrame=true; candidateId=id; candidateCapture=captured;
+        candidateContext=preset+":"+width+"x"+height;
+        imageStatus=status;
+    }
     public void renderProgress(RenderProgress value) { renderProgress=value; }
     public RenderProgress renderProgress() { return renderProgress; }
     private static final long WINDOW = 10_000_000_000L;
@@ -68,10 +82,44 @@ public final class FrameProfiler implements AutoCloseable {
         rays = null;
         trace = null;
         renderProgress = null;
+        viewportFrame=false; candidateId=-1; candidateCapture=-1;
         scopes.clear();
         pending = false;
     }
-    public void endFrame() { renderEnd = now(); pending = true; }
+    public void endFrame() {
+        renderEnd = now(); pending = true;
+        if(!viewportFrame) { resetImages(); return; }
+        if(!candidateContext.equals(imageContext)) {
+            imageHistory.clear(); imageStart=start;
+            if(imageContext==null) lastImageTime=start;
+            imageContext=candidateContext;
+        }
+        if(candidateId>=0 && candidateId!=lastImageId) {
+            imageHistory.addLast(new ImageUpdate(renderEnd,Math.max(0,renderEnd-lastImageTime),
+                    Math.max(0,renderEnd-candidateCapture)));
+            lastImageTime=renderEnd; lastImageId=candidateId; capturedNanos=candidateCapture;
+        }
+        while(!imageHistory.isEmpty() && (imageHistory.peekFirst().time()<renderEnd-WINDOW || imageHistory.size()>CAPACITY))
+            imageHistory.removeFirst();
+    }
+    private void resetImages() {
+        imageHistory.clear(); imageContext=null; lastImageId=-1; capturedNanos=-1;
+    }
+    /** Two-second headline responds to resolution changes and includes the ongoing held image. */
+    public ImageSnapshot imageSnapshot() {
+        long now=now(), span=Math.min(2_000_000_000L,Math.max(0,now-imageStart));
+        var recent=imageHistory.stream().filter(i->i.time()>now-2_000_000_000L).toList();
+        long hold=imageContext==null?0:Math.max(0,now-lastImageTime);
+        var intervals=new ArrayList<Double>();
+        for(var i:recent) intervals.add(i.intervalNanos()/1e6);
+        if(imageContext!=null && (intervals.isEmpty() || hold>intervals.getLast()*1e6)) intervals.add(hold/1e6);
+        double[] values=intervals.stream().mapToDouble(Double::doubleValue).sorted().toArray();
+        double[] ages=recent.stream().mapToDouble(i->i.ageNanos()/1e6).sorted().toArray();
+        return new ImageSnapshot(List.copyOf(imageHistory),span<250_000_000L?-1:recent.size()*1e9/span,
+                Arrays.stream(values).average().orElse(0),percentile(values),hold/1e6,
+                capturedNanos<0?-1:Math.max(0,now-capturedNanos)/1e6,percentile(ages),imageStatus);
+    }
+    private static double percentile(double[] sorted) { return sorted.length==0?0:sorted[(int)Math.ceil(sorted.length*.95)-1]; }
     public void rayStats(Rays stats) { rays = stats; }
     public void traceStats(TraceProfile.Stats stats) { trace = stats; }
     public void measure(Stage stage, Runnable action) {

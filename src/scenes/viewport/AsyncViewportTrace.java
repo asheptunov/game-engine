@@ -3,11 +3,20 @@ package scenes.viewport;
 import profiling.TraceProfile;
 import java.util.concurrent.*;
 
-/** One active coordinator, no queued snapshots. Publication buffers are never written again. */
+/** One active coordinator, no queued snapshots. Published storage is immutable while leased. */
 final class AsyncViewportTrace implements AutoCloseable {
     record Image(float[][][] rgb, ViewportState.RenderKey key, long generation, long requestedNanos,
                  long finishedNanos, long samples, TraceProfile.Stats stats, long traceNanos,
-                 int primaryRays, int primaryHits, int shadowRays, int shadowsOccluded, int litPixels) {}
+                 int primaryRays, int primaryHits, int shadowRays, int shadowsOccluded, int litPixels,
+                 Slot slot) {}
+    private static final class Slot {
+        float[][][] rgb;
+        int readers;
+        boolean writing;
+        Image owner;
+    }
+    // Latest publication, leased display image, and coordinator copy. Never grow with motion.
+    private final Slot[] slots={new Slot(),new Slot(),new Slot()};
     private final ViewportState live;
     private final DirectRgbTracer tracer;
     private final ExecutorService coordinator = Executors.newSingleThreadExecutor(r -> {
@@ -44,6 +53,14 @@ final class AsyncViewportTrace implements AutoCloseable {
         var current=image;
         if (current != null && current.generation()==generation && current.key().equals(key)
                 && (live.paused() || current.samples() >= live.effectiveTarget())) return;
+        Slot destination=null;
+        for(var slot:slots) if(!slot.writing && slot.readers==0 && (current==null || slot!=current.slot())) {
+            destination=slot; break;
+        }
+        if(destination==null) return; // A reader must release a lease before more work is useful.
+        final Slot output=destination;
+        output.writing=true;
+        output.owner=null;
         var snapshot=live.renderSnapshot();
         long token=epoch, jobGeneration=generation, requested=System.nanoTime();
         var jobKey=key;
@@ -55,17 +72,19 @@ final class AsyncViewportTrace implements AutoCloseable {
                         () -> jobGeneration != generation);
                 maxTileNanos=Math.max(maxTileNanos,tracer.maxTileNanos);
                 if (closed || token != epoch) return;
-                var owned=new float[3][][];
-                for(int c=0;c<3;c++) {
-                    owned[c]=new float[rgb[c].length][];
-                    for(int y=0;y<rgb[c].length;y++) owned[c][y]=rgb[c][y].clone();
-                }
+                int h=rgb[0].length,w=rgb[0][0].length;
+                if(output.rgb==null || output.rgb[0].length!=h || output.rgb[0][0].length!=w)
+                    output.rgb=new float[3][h][w];
+                var owned=output.rgb;
+                for(int c=0;c<3;c++) for(int y=0;y<h;y++) System.arraycopy(rgb[c][y],0,owned[c][y],0,w);
                 synchronized(live) {
                     var liveKey=live.renderKey();
                     if (closed || token != epoch || !jobKey.sameTransport(liveKey)) return;
                     image=new Image(owned,jobKey,jobGeneration,requested,System.nanoTime(),snapshot.accumulatedSamples(),
                             tracer.profile,tracer.traceNanos,tracer.primaryRays,tracer.primaryHits,tracer.shadowRays,
-                            tracer.shadowsOccluded,tracer.litPixels);
+                            tracer.shadowsOccluded,tracer.litPixels,output);
+                    output.owner=image;
+                    output.writing=false; // Readers may acquire as soon as publication releases this lock.
                     // A lagging camera image is an explicit preview, not samples of the newest camera.
                     if (jobKey.equals(liveKey)) live.accumulatedSamples(snapshot.accumulatedSamples());
                     published=true;
@@ -76,11 +95,30 @@ final class AsyncViewportTrace implements AutoCloseable {
                     cancelledJobs++;
                     wastedRays+=jobKey.equals(live.renderKey()) ? tracer.discardedPrimaryRays : tracer.primaryRays;
                 }
+                output.writing=false;
                 running=false; if(closed) tracer.close();
             } }
         });
     }
+    /** Metadata only unless retained under the live monitor; RGB must not escape its lease.
+     * acquireImage/retain/release must all be called under that monitor. */
     Image image() { return image; }
+    Image acquireImage() { return retain(image); }
+    Image retain(Image shown) {
+        if(shown!=null) {
+            if(shown.slot().owner!=shown || shown.slot().writing)
+                throw new IllegalStateException("Publication has already been recycled");
+            shown.slot().readers++;
+        }
+        return shown;
+    }
+    void release(Image shown) {
+        if(shown!=null) {
+            if(shown.slot().owner!=shown || shown.slot().readers==0)
+                throw new IllegalStateException("Unbalanced image lease");
+            shown.slot().readers--;
+        }
+    }
     void presented(Image shown) {
         if(shown != null && shown.generation()==generation && shown.samples()>0 && firstImageNanos<0)
             firstImageNanos=System.nanoTime()-requestedNanos;

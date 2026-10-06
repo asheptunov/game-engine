@@ -1,0 +1,25 @@
+Glass depth 8, seed 1, workers 14, tile 32, display 1440x900; nominal 144 Hz pacing
+Each case: 3s warmup + 3s continuous motion; no overlay, AWT submission, or physical input
+sensor 1440x900: fresh 10.5 FPS, interval avg/p95 96.5/105.1ms, hold 25.7ms, age 144.1ms; display 88.3 FPS
+sensor 720x450: fresh 30.0 FPS, interval avg/p95 33.3/46.0ms, hold 22.6ms, age 58.9ms; display 74.2 FPS
+sensor 360x225: fresh 44.0 FPS, interval avg/p95 22.7/36.9ms, hold 0.0ms, age 24.6ms; display 78.2 FPS
+
+Algorithm : SHA256
+Hash      : 252BAF38DBD3E4FFF1CFE4EE60F739E5D5F5883F5047144BE108B56083DDB120
+Path      : C:\Users\andri\Documents\RayTracingEngine\src\profiling\FrameProfiler.java
+
+Algorithm : SHA256
+Hash      : 538C61A65C26ADF37F6A45E99A05672371CE374F490C772D92198F02A8ABE538
+Path      : C:\Users\andri\Documents\RayTracingEngine\src\profiling\PerformanceOverlay.java
+
+Algorithm : SHA256
+Hash      : DB8151966480E6821D73C2DA51CB3A14934609261C86F1B8F1DD1332A5E338FF
+Path      : C:\Users\andri\Documents\RayTracingEngine\src\scenes\viewport\Viewport.java
+
+Algorithm : SHA256
+Hash      : 8293DF11D158DACF2FD1FA2E3A3987A54908EE41864ACCA0D85FDCC578751639
+Path      : C:\Users\andri\Documents\RayTracingEngine\tst\profiling\FrameProfilerTest.java
+
+Algorithm : SHA256
+Hash      : 4F11B64F66C18C86D381100BBC23F9927D486C06E98F43A0B06D3274ABFC03ED
+Path      : C:\Users\andri\Documents\RayTracingEngine\tst\FreshImageBenchmark.java

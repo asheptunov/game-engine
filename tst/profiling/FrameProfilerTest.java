@@ -66,6 +66,18 @@ public class FrameProfilerTest {
         p.beginFrame();
         assertEquals(1, p.snapshot().frames().size());
     }
+    @Test void freshHistoryIsBoundedEvenWithVeryFastPublications() {
+        try(var p=profiler()) {
+            for(int i=0;i<5000;i++) {
+                p.beginFrame(); p.viewportImage(i,time,64,64,"triangle","converging");
+                time++; p.endFrame();
+            }
+            assertEquals(4096,p.imageSnapshot().updates().size());
+            time+=11_000_000_000L;
+            p.beginFrame(); p.viewportImage(4999,4999,64,64,"triangle","complete"); p.endFrame();
+            assertEquals(0,p.imageSnapshot().updates().size()); assertEquals(0.,p.imageSnapshot().fps());
+        }
+    }
 
     @Test void exceptionalScopeStillUnwinds() {
         var p = profiler();
@@ -80,6 +92,36 @@ public class FrameProfilerTest {
         p.endFrame(); p.beginFrame();
         assertEquals(10L, p.snapshot().frames().getFirst().stage(FrameProfiler.Stage.TRACE));
         assertEquals(20L, p.snapshot().frames().getFirst().stage(FrameProfiler.Stage.PAINT));
+    }
+    @Test void freshImagesIgnoreRedisplaysAndIncludePresentationAndStalls() {
+        try(var p=profiler()) {
+            for(int frame=0;frame<200;frame++) {
+                p.beginFrame();
+                // 100 display updates/s, but only 10 new image publications/s.
+                long id=frame/10;
+                p.viewportImage(id,id*100_000_000L,1440,900,"glass","converging");
+                time+=10_000_000; p.endFrame();
+            }
+            var images=p.imageSnapshot();
+            assertEquals(10.,images.fps()); assertEquals(20,images.updates().size());
+            assertEquals(100.,images.p95Ms()); assertEquals(90.,images.holdMs());
+            assertEquals(100.,images.ageMs()); assertEquals(10.,images.ageP95Ms());
+            // No new image: a long hold must reduce the rate and appear in p95, not vanish.
+            time+=3_000_000_000L;
+            p.beginFrame(); p.viewportImage(19,1_900_000_000L,1440,900,"glass","paused"); p.endFrame();
+            images=p.imageSnapshot(); assertEquals(0.,images.fps());
+            assertEquals(3090.,images.p95Ms()); assertEquals("paused",images.status());
+            // Dimension changes reset the measurement window without counting the old image again.
+            p.beginFrame(); p.viewportImage(19,1_900_000_000L,720,450,"glass","converging"); p.endFrame();
+            assertEquals(0,p.imageSnapshot().updates().size());
+            time+=500_000_000L;
+            assertEquals(0.,p.imageSnapshot().fps());
+            p.beginFrame(); p.viewportImage(20,time-20_000_000L,720,450,"glass","converging");
+            time+=5_000_000; // includes the last presentation stage, after viewport conversion
+            p.endFrame(); assertEquals(25.,p.imageSnapshot().ageP95Ms());
+            p.beginFrame(); p.endFrame(); // editor scene
+            assertEquals(0,p.imageSnapshot().updates().size()); assertEquals(-1.,p.imageSnapshot().ageMs());
+        }
     }
 
     @Test void toggleDebouncesKeyRepeatAndPassesOtherKeys() {
@@ -128,6 +170,15 @@ public class FrameProfilerTest {
         p.toggle(); overlay.render();
         assertNotEquals(Color.NamedColor.BLACK.rgbInt24(), raster.pixel(12, 12).rgbInt24());
         save(raster, "out/cli/perf-viewport.png");
+        p.renderProgress(new FrameProfiler.RenderProgress(100,99,4,40_000_000,127_000_000,81,6_804_480,29_300_000,true));
+        long onset=time;
+        for(int i=0;i<300;i++) {
+            p.viewportImage(i/10,onset+(i/10)*100_000_000L-90_000_000L,1440,900,"glass","converging");
+            p.rayStats(new FrameProfiler.Rays(1440,900,1_296_000,210_000,210_000,12_000,198_000,90_000_000));
+            p.traceStats(new TraceProfile.Stats(50_000_000,8192,2_560_000,210_000));
+            p.measure(FrameProfiler.Stage.PAINT,()-> {time+=1_000_000;});
+            time+=9_000_000; p.endFrame(); p.beginFrame();
+        }
         p.renderProgress(new FrameProfiler.RenderProgress(100,99,4,40_000_000,127_000_000,81,6_804_480,29_300_000,true));
         time+=300_000_000; overlay.render();
         save(raster,"out/cli/perf-viewport-async.png");
