@@ -112,6 +112,7 @@ public final class PerformanceOverlay implements Renderer {
                         : format("%s %.2fms %2.0f%%", i==FrameProfiler.Stage.RESAMPLE.ordinal()?"filter/map":LABELS[i], means[i],
                         snapshot.meanMs() > 0 ? 100 * means[i] / snapshot.meanMs() : 0), x + 12, y);
             }
+            if(async && profiler.viewportHistory()!=null) text(g,profiler.viewportHistory(),14,218);
             int left = 54, top = 227, bottom = 359, width = panel.getWidth() - left - 16;
             double target=async?1000./60:budgetMs;
             double maxMs = Math.max(target*2, (async

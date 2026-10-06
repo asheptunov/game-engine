@@ -109,6 +109,41 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   sustained previews, exact captured-camera pixels, settled convergence and edits.
   `DynamicResolutionBenchmark` compares the same elapsed-time camera path with
   automatic mode off/on; window-free results and commands: `benchmarks/p4/README.md`.
+- P5 adds optional diffuse temporal presentation: `view temporal on/off` (default off).
+  Raw estimator keys, RGB means, seed streams and spp remain independent. Off immediately
+  restores raw conversion, including while a job is pending. A separate mode revision
+  prevents rapid off/on edits from reviving an old completed publication. The coordinator captures
+  center/corner first-hit guides in existing trace tiles, then reprojects and validates
+  history using the same process-wide pool. No tracing/reconstruction is under the input
+  monitor. Guides use stable prepared primitive identity and camera-facing normals;
+  misses, emitters, mirrors/glass, mixed pixels and inside-media cameras reject reuse.
+  Scattering anywhere in the scene disables history for the whole image. Reject surface
+  seams, depth/normal mismatches, scene/grid/seed/depth/restart edits, cuts and stale history.
+  P4 grid changes discard history. Pause/target/suspend/enable changes clear it conservatively.
+  `TemporalReconstruction` owns two bounded histories; repeated refinement uses a frozen
+  prior camera, so current spp never count twice. History is clamped to current local
+  radiance, capped at four nominal samples and 500 ms between images. Valid history
+  fades exponentially: each moving estimate includes at least 20% fresh radiance.
+  Do not restore the hard eight-transition age reset; it synchronized wall pixels
+  into a visible nine-image pulse. Sustained forward/backward and decay tests cover it.
+  Raw and reconstructed publications share the three-slot lease protocol; do not retain
+  either array after releasing its image. F3 shows reused/eligible pixels, mean history
+  blend (not a correctness probability or raw spp), reconstruction wall time and history
+  payload. Trace CPU/allocations include guides but exclude reconstruction; guide rays/tests
+  have separate tracer counters and do not inflate transport-ray counts.
+  Run `scenes.viewport.TemporalReconstructionTest` for correspondence, thin geometry,
+  fallback, raw equivalence, leases/toggles, cancellation and scalar/parallel agreement;
+  `ProfilingIntegrationTest` checks immediate raw display restoration and F3 composition.
+  `scenes.viewport.TemporalReuseBenchmark` measures motion quality against 128 spp and a
+  soft equal-time budget; `cost` measures quarter/native overhead. See `benchmarks/p5/README.md`.
+  Camera sampling now scrambles the user seed with a deterministic hash of the captured
+  eye and sensor float components, calculated once per tracing call. Movement changes
+  sample-zero grain; identical views reproduce it independently of job/visit order.
+  Workers still key paths by pixel/sample. Stationary refinement, batch equivalence
+  and the depth-zero point-light center diagnostic remain intact. Explicit ray-level
+  numeric adapters retain the old camera-independent seed. Run
+  `scenes.viewport.CameraSamplingTest` for changed streams and exact reproduction across
+  visits/workers/batches; earlier P5 benchmark numbers used the original static grain.
 - `view preset bounce-room` enables the phase 2 mirror/color-bleeding demo at depth 3.
   Select `view resolution 200` explicitly for faster editing. `view depth`, `samples`,
   `seed`, `restart`, `target`, `pause`, and `resume` control convergence; `view type`

@@ -1,0 +1,13 @@
+Volume white enclosure: 0.998569
+Volume single scatter: numeric 0.01747663 sampled 0.01746364
+2026-10-05T22:54:52.992509900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:54:52.998030700  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.VolumePathTest [PT6.0421569S]
+2026-10-05T22:54:53.002204200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#visibilityIntegratesNestedExtinctionAndBlocksRefractiveOrOpaqueObjects [PT0.0487525S]
+2026-10-05T22:54:53.002204200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#seededBatchesConvergeAndPreview [PT4.8320482S]
+2026-10-05T22:54:53.002204200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#uniformEmissionEnclosureConservesEnergyWithoutCountingEmitterTwice [PT0.7908929S]
+2026-10-05T22:54:53.002204200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#zeroScatteringKeepsBeerAndNoSampledEvents [PT0.001999S]
+2026-10-05T22:54:53.003202800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#exponentialAndPhaseStatistics [PT0.0443718S]
+2026-10-05T22:54:53.003202800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#singleScatteringMatchesIndependentIntegralAndFinalVertexLighting [PT0.1527515S]
+2026-10-05T22:54:53.003202800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#surfaceLightCrossesCloudWithFullExtinction [PT0.0020007S]
+2026-10-05T22:54:53.003202800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.VolumePathTest#controlsAreAtomicAndInvalidateSamples [PT0.1693403S]
+2026-10-05T22:54:53.004203300  [INFO] harness.SuiteRunner: ========================

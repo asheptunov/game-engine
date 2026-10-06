@@ -53,6 +53,11 @@ public final class ViewportCommand implements Command {
                     case "camera" -> {require(args,3);if(!args[2].equals("reset")) throw new IllegalArgumentException("view camera reset");ScenePresets.resetCamera(state);}
                     case "exposure" -> {require(args,3);state.exposure(number(args[2]));}
                     case "resolution" -> resolution(args);
+                    case "temporal" -> {
+                        require(args,3);
+                        if(!args[2].equals("on") && !args[2].equals("off")) throw new IllegalArgumentException("view temporal on/off");
+                        state.temporal(args[2].equals("on"));
+                    }
                     case "interactive" -> {
                         switch(args[2]) {
                             case "on", "off" -> { require(args,3); state.interactive(args[2].equals("on")); }
@@ -166,6 +171,7 @@ public final class ViewportCommand implements Command {
                 +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
                 +"; workers="+state.workers()+"; tile="+state.tileSize()
                 +"; "+state.interactiveStatus()
+                +"; temporal="+(state.temporal()?"on":"off (raw)")
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint lights: "+state.lights()

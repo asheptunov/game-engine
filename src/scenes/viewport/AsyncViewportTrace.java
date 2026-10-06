@@ -8,9 +8,11 @@ final class AsyncViewportTrace implements AutoCloseable {
     record Image(float[][][] rgb, ViewportState.RenderKey key, long generation, long requestedNanos,
                  long finishedNanos, long samples, TraceProfile.Stats stats, long traceNanos,
                  int primaryRays, int primaryHits, int shadowRays, int shadowsOccluded, int litPixels,
-                 Slot slot, boolean interactiveMotion) {}
+                 Slot slot, boolean interactiveMotion, boolean temporal,
+                 long temporalVersion, float[][][] reconstructed, TemporalReconstruction.Stats history) {}
     private static final class Slot {
         float[][][] rgb;
+        float[][][] reconstructed;
         int readers;
         boolean writing;
         Image owner;
@@ -33,11 +35,15 @@ final class AsyncViewportTrace implements AutoCloseable {
     private volatile long cancelledJobs, wastedRays, maxTileNanos;
     private final InteractiveResolution resolution = new InteractiveResolution();
     private long measuredNanos=-1;
+    private long temporalVersion;
+    private final TemporalReconstruction reconstruction=new TemporalReconstruction();
+    private long historyEpoch=-1;
 
     AsyncViewportTrace(ViewportState live, DirectRgbTracer tracer) { this.live=live; this.tracer=tracer; }
     /** Called under live state lock from input as well as presentation. */
     void invalidate() {
         resolution.observe(live,System.nanoTime());
+        if(temporalVersion!=live.temporalVersion()) { temporalVersion=live.temporalVersion();epoch++; }
         var next=live.renderKey();
         if (!next.equals(key)) {
             // Finishing one complete camera snapshot guarantees progress under sustained movement.
@@ -57,7 +63,7 @@ final class AsyncViewportTrace implements AutoCloseable {
         resolution.choose(live,System.nanoTime());
         invalidate();
         var current=image;
-        if (current != null && current.generation()==generation && current.key().equals(key)
+        if (current != null && current.temporalVersion()==live.temporalVersion() && current.generation()==generation && current.key().equals(key)
                 && (live.paused() || current.samples() >= live.effectiveTarget())) return;
         Slot destination=null;
         for(var slot:slots) if(!slot.writing && slot.readers==0 && (current==null || slot!=current.slot())) {
@@ -85,12 +91,24 @@ final class AsyncViewportTrace implements AutoCloseable {
                     output.rgb=new float[3][h][w];
                 var owned=output.rgb;
                 for(int c=0;c<3;c++) for(int y=0;y<h;y++) System.arraycopy(rgb[c][y],0,owned[c][y],0,w);
+                float[][][] presentation=null;
+                if(historyEpoch!=token) { reconstruction.clear();historyEpoch=token; }
+                if(snapshot.temporal()) {
+                    var result=reconstruction.reconstruct(rgb,tracer.surfaceGuide(),jobKey,snapshot.accumulatedSamples(),System.nanoTime(),snapshot.workers(),
+                            ()->closed || token!=epoch);
+                    if(result!=rgb) {
+                        if(output.reconstructed==null || output.reconstructed[0].length!=h || output.reconstructed[0][0].length!=w)
+                            output.reconstructed=new float[3][h][w];
+                        presentation=output.reconstructed;
+                        for(int c=0;c<3;c++) for(int y=0;y<h;y++) System.arraycopy(result[c][y],0,presentation[c][y],0,w);
+                    }
+                } else { reconstruction.clear(); for(var slot:slots) slot.reconstructed=null; }
                 synchronized(live) {
                     var liveKey=live.renderKey();
                     if (closed || token != epoch || !jobKey.sameTransport(liveKey)) return;
                     image=new Image(owned,jobKey,jobGeneration,requested,System.nanoTime(),snapshot.accumulatedSamples(),
                             tracer.profile,tracer.traceNanos,tracer.primaryRays,tracer.primaryHits,tracer.shadowRays,
-                            tracer.shadowsOccluded,tracer.litPixels,output,motion);
+                            tracer.shadowsOccluded,tracer.litPixels,output,motion,snapshot.temporal(),snapshot.temporalVersion(),presentation,reconstruction.stats());
                     output.owner=image;
                     output.writing=false; // Readers may acquire as soon as publication releases this lock.
                     // A lagging camera image is an explicit preview, not samples of the newest camera.

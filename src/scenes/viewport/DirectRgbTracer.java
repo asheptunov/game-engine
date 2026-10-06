@@ -27,6 +27,10 @@ public final class DirectRgbTracer implements AutoCloseable {
     private AccumulationKey accumulationKey;
     private long samples;
     private boolean volumeMode;
+    private SurfaceGuide guide;
+    private AccumulationKey guideKey;
+    private boolean captureGuide, guideOnly;
+    SurfaceGuide surfaceGuide() { return guide; }
     private int visibilityCrossingLimit;
     public long volumeSegments, volumeEvents, volumeVisibilitySegments;
     /** Snapshot mutable lists; display and sample-batch settings do not change the estimator. */
@@ -49,11 +53,27 @@ public final class DirectRgbTracer implements AutoCloseable {
         float next() { value += 0x9e3779b97f4a7c15L; return (mix(value) >>> 40) * 0x1.0p-24f; }
     }
 
+    /** Camera-local scrambling avoids repeating sample-zero grain at fixed screen coordinates during motion.
+     * Use captured float bits rather than elapsed time/job order so reference renders remain reproducible. */
+    static long cameraSeed(long seed, Vec3 eye, scenes.viewport.objects.Rect sensor) {
+        long camera=vectorHash(eye);
+        camera=Sampler.mix(camera ^ vectorHash(sensor.origin()));
+        camera=Sampler.mix(camera ^ vectorHash(sensor.edge1()));
+        camera=Sampler.mix(camera ^ vectorHash(sensor.edge2()));
+        return seed ^ camera;
+    }
+    private static long vectorHash(Vec3 vector) {
+        long value=Sampler.mix(Integer.toUnsignedLong(Float.floatToIntBits(vector.x())));
+        value=Sampler.mix(value ^ Integer.toUnsignedLong(Float.floatToIntBits(vector.y())));
+        return Sampler.mix(value ^ Integer.toUnsignedLong(Float.floatToIntBits(vector.z())));
+    }
+
     public int primaryRays, primaryHits, shadowRays, shadowsOccluded, litPixels;
     public long traceNanos, primaryTests, continuationTests, shadowTests, continuationRays;
     public long dielectricReflections, dielectricTransmissions, absorptionSegments;
     public long areaLightSamples, emitterHits, roughEvents;
     public long geometryBuilds;
+    public long guideRays, guideTests;
     public TraceProfile.Stats profile;
 
     /** Retain the geometric normal and orientation; derive the shading normal separately. */
@@ -86,6 +106,8 @@ public final class DirectRgbTracer implements AutoCloseable {
             prepared.add(new PreparedObject(instance));
         }
         objects = prepared.toArray(PreparedObject[]::new);
+        int surfaceId=1;
+        for(var object:objects) for(var primitive:object.primitives) primitive.surfaceId=surfaceId++;
         volumeMode=instances.stream().anyMatch(o->o.material().scattering()>0);
         visibilityCrossingLimit=2+prepared.stream().mapToInt(o->o.primitives.length+1).sum();
         emitters = emitting.toArray(PreparedEmitter[]::new);
@@ -109,6 +131,8 @@ public final class DirectRgbTracer implements AutoCloseable {
             catch (InterruptedException e) { EXECUTOR.shutdownNow(); Thread.currentThread().interrupt(); }
         }, "rgb-trace-shutdown")); }
     }
+    /** Completed tracing and reconstruction share the same bounded process-wide worker pool. */
+    static java.util.concurrent.Future<?> submitReconstruction(Runnable work) { return Pool.EXECUTOR.submit(work); }
     private record Snapshot(PreparedObject[] objects, PreparedEmitter[] emitters, PointLight[] lights,
                             Vec3 eye, scenes.viewport.objects.Rect sensor, int width, int height,
                             int depth, long seed, long sample, boolean acceleration,
@@ -139,6 +163,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         long cpu = RuntimeMetrics.threadCpu(), bytes = RuntimeMetrics.allocatedBytes(), start = System.nanoTime();
         prepare();
         primaryRays = 0;
+        guideRays=guideTests=0;
         primaryHits = 0;
         shadowRays = 0;
         shadowsOccluded = 0;
@@ -172,6 +197,10 @@ public final class DirectRgbTracer implements AutoCloseable {
             }
         }
         int batch = state.paused() ? 0 : (int)Math.min(state.samplesPerFrame(), Math.max(0, state.effectiveTarget()-samples));
+        if (!state.temporal() || volumeMode) { guide=null; guideKey=null; }
+        boolean needsGuide=state.temporal() && !volumeMode && !key.equals(guideKey) && (batch>0 || samples>0);
+        if(needsGuide && (guide==null || guide.width!=width || guide.height!=height)) guide=new SurfaceGuide(width,height);
+        if(needsGuide && batch==0) batch=1; // A completed/paused raw image can acquire guides without new samples.
         int count = state.workers();
         if (workers.size() != count) {
             var list = new java.util.ArrayList<Worker>();
@@ -179,10 +208,13 @@ public final class DirectRgbTracer implements AutoCloseable {
             workers = List.copyOf(list);
         }
         var lights = state.lights().stream().filter(PointLight.class::isInstance).map(PointLight.class::cast).toArray(PointLight[]::new);
+        long cameraSeed=cameraSeed(state.seed(),eye,sensor);
         int rendered = 0;
         for (int pass=0; pass<batch; pass++) {
+            captureGuide=needsGuide && pass==0;
+            guideOnly=state.paused() || samples>=state.effectiveTarget();
             var snapshot = new Snapshot(objects, emitters, lights, eye, sensor, width, height,
-                    state.pathDepth(), state.seed(), samples, state.acceleration(), volumeMode, visibilityCrossingLimit);
+                    state.pathDepth(), cameraSeed, samples, state.acceleration(), volumeMode, visibilityCrossingLimit);
             nextTile.set(0);
             completedTiles.set(0);
             for (var worker : workers) worker.configure(snapshot, state.tileSize());
@@ -215,6 +247,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             for (var worker : workers) {
                 maxTileNanos = Math.max(maxTileNanos, worker.maxTileNanos);
                 primaryRays += worker.primaryRays;
+                guideRays+=worker.guideRays;guideTests+=worker.guideTests;
                 primaryHits += worker.primaryHits;
                 shadowRays += worker.shadowRays;
                 shadowsOccluded += worker.shadowsOccluded;
@@ -240,10 +273,13 @@ public final class DirectRgbTracer implements AutoCloseable {
                 }
             }
             if (cancellation.getAsBoolean() || completedTiles.get() != workers.getFirst().tileCount) {
+                guideKey=null;
                 cancelled = true;
                 discardedPrimaryRays = workers.stream().mapToLong(w -> w.primaryRays).sum();
                 break;
             }
+            if(captureGuide) guideKey=key;
+            if(guideOnly) break;
             var previous = mean; mean = stagingMean; stagingMean = previous;
             for (int c=0;c<3;c++) for(int y=0;y<height;y++) for(int x=0;x<width;x++)
                 buffer[c][y][x]=(float)mean[c][y][x];
@@ -325,7 +361,11 @@ public final class DirectRgbTracer implements AutoCloseable {
         private long cpuNanos, allocatedBytes;
         private long maxTileNanos;
         private boolean continuation;
+        private boolean guiding;
+        private long guideRays,guideTests;
         private final Hit visibilityHit = new Hit();
+        private final Hit guideHit = new Hit();
+        private PreparedPrimitive primarySurface;
         private PreparedObject[] visibilityMedia = new PreparedObject[0];
         private float[] visibilityDistances = new float[0];
         private final float[] transmission = new float[3];
@@ -364,6 +404,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             tileSize=tile; tilesX=(value.width()+tile-1)/tile;
             tileCount=tilesX*((value.height()+tile-1)/tile);
             primaryRays = 0;
+            guideRays=guideTests=0;
             primaryHits = 0;
             shadowRays = 0;
             shadowsOccluded = 0;
@@ -406,6 +447,9 @@ public final class DirectRgbTracer implements AutoCloseable {
             var eye=snapshot.eye(); var sensor=snapshot.sensor(); var lights=snapshot.lights();
             double inverseCount=1.0/(snapshot.sample()+1);
             for(int y=y0;y<y1;y++) for(int x=x0;x<x1;x++) {
+                    if(captureGuide) captureSurface(x,y);
+                    if(guideOnly) continue;
+                    primarySurface=null;
                     if(snapshot.depth()>0 || emitters.length>0) sampler.reset(snapshot.seed(), (long)y*width + x, snapshot.sample());
                     // Preserve the phase 1 pixel-center diagnostic exactly at depth zero.
                     float u = (x + (snapshot.depth() == 0 ? .5f : sampler.next())) / width;
@@ -417,11 +461,45 @@ public final class DirectRgbTracer implements AutoCloseable {
                     dx *= inverseLength; dy *= inverseLength; dz *= inverseLength;
                     primaryRays++;
                     path(eye.x(), eye.y(), eye.z(), dx, dy, dz, hit, lights, rgb, lighting, sampler, scattering, evaluation, initialMedia, media);
+                    // A sampled subpixel disagreeing with the corner/center guard invalidates reuse.
+                    if(guide!=null && guide.surface[y*width+x]!=surfaceId(primarySurface)) guide.surface[y*width+x]=0;
                     for (int c = 0; c < 3; c++) {
                         stagingMean[c][y][x] = mean[c][y][x] + (rgb[c] - mean[c][y][x]) * inverseCount;
                     }
                     if (rgb[0] + rgb[1] + rgb[2] > 0) litPixels++;
             }
+        }
+        private int surfaceId(PreparedPrimitive primitive) {
+            return primitive==null?0:primitive.surfaceId;
+        }
+        private boolean guideRay(float u,float v) {
+            var e=snapshot.eye(); var s=snapshot.sensor();
+            float dx=s.origin().x()+s.edge1().x()*u+s.edge2().x()*v-e.x();
+            float dy=s.origin().y()+s.edge1().y()*u+s.edge2().y()*v-e.y();
+            float dz=s.origin().z()+s.edge1().z()*u+s.edge2().z()*v-e.z();
+            float inv=1/(float)Math.sqrt(dx*dx+dy*dy+dz*dz);
+            continuation=false;
+            guiding=true;guideRays++;
+            try { return nearestHit(e.x(),e.y(),e.z(),dx*inv,dy*inv,dz*inv,guideHit); }
+            finally { guiding=false; }
+        }
+        private void captureSurface(int x,int y) {
+            int w=snapshot.width(),h=snapshot.height(),i=y*w+x;
+            guide.surface[i]=0;
+            if(initialMedia.length>0) return; // Even clear absorption inside a medium depends on viewing distance.
+            if(!guideRay((x+.5f)/w,(y+.5f)/h)) return;
+            var p=guideHit.primitive;
+            if(p.material.kind()!=Material.Kind.DIFFUSE || p.material.emissive()) return;
+            float depth=guideHit.distance,nx=guideHit.nx,ny=guideHit.ny,nz=guideHit.nz;
+            boolean front=guideHit.frontFace;
+            // Conservative corner guard; silhouettes, face seams and subpixel mixtures fall back to raw.
+            for(int corner=0;corner<4;corner++) {
+                if(!guideRay((x+((corner&1)==0?.001f:.999f))/w,(y+((corner&2)==0?.001f:.999f))/h)
+                        || guideHit.primitive!=p || guideHit.frontFace!=front
+                        || nx*guideHit.nx+ny*guideHit.ny+nz*guideHit.nz<.995f) return;
+            }
+            guide.surface[i]=surfaceId(p); guide.depth[i]=depth;
+            guide.nx[i]=front?nx:-nx;guide.ny[i]=front?ny:-ny;guide.nz[i]=front?nz:-nz;
         }
         private void path(float ox, float oy, float oz, float dx, float dy, float dz, Hit hit,
                           PointLight[] lights, float[] rgb, float[] lighting, Sampler sampler, Material.Sample scattering, Material.Sample evaluation,
@@ -436,7 +514,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             for (int depth = 0; depth <= snapshot.depth(); depth++) {
                 continuation = depth != 0;
                 if (!nearestHit(ox, oy, oz, dx, dy, dz, hit)) break; // Black environment.
-                if (depth == 0) primaryHits++;
+                if (depth == 0) { primaryHits++; primarySurface=hit.primitive; }
                 Material medium = mediumCount == 0 ? null : media[mediumCount-1].primitives[0].material;
                 float travel=hit.distance;
                 boolean volumeEvent=false;
@@ -704,7 +782,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                     for(int i=from;i<to;i++) {
                         var primitive=object.primitives[bvh==null?i:bvh.order[i]];
                         if(primitive==source && primitive.flat!=null)continue;
-                        if(visibility)shadowTests++;else if (continuation) continuationTests++; else primaryTests++;
+                        if(guiding)guideTests++;else if(visibility)shadowTests++;else if (continuation) continuationTests++; else primaryTests++;
                         float t = primitive.distance(ox, oy, oz, dx, dy, dz);
                         // Preserve original primitive order for exact shared-edge ties, independent of BVH order.
                         if (t < distance || (t==distance && nearestObject==object && primitive.primitiveId<nearest.primitiveId))

@@ -1,0 +1,21 @@
+Rough glass inside=false area integral 0.619380 sampled 0.621247
+Rough glass inside=true area integral 2.960629 sampled 2.968746
+Large light center shadow 0.117039 vs unobstructed 0.150691
+Rough-room squared error: 1 spp 6024.180862; 64 spp 72.168495
+Area brightness integral 0.429222 direct 0.428285 MIS 0.427833
+GGX MIRROR inside=false: energy sampled 0.68770 integral 0.69031; PDF mass 0.76530 accepted 0.76370
+GGX MIRROR inside=true: energy sampled 0.68770 integral 0.69031; PDF mass 0.76530 accepted 0.76370
+GGX DIELECTRIC inside=false: energy sampled 0.94638 integral 0.95077; PDF mass 0.92675 accepted 0.92232
+GGX DIELECTRIC inside=true: energy sampled 0.70802 integral 0.70565; PDF mass 0.76948 accepted 0.77254
+2026-10-05T23:41:08.919632500  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T23:41:08.923708500  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.RoughLightingTest [PT4.2939329S]
+2026-10-05T23:41:08.924708100  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#controlsValidateAtomicEditsAndInvalidateTransportOnly [PT0.0495312S]
+2026-10-05T23:41:08.924708100  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#areaLightMisPreservesBrightnessAndFinalVertexLighting [PT0.0683043S]
+2026-10-05T23:41:08.925708300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#deltaMirrorCanSeeEmitterWithoutNeeAndRoughMirrorGetsDirectLight [PT0.0340275S]
+2026-10-05T23:41:08.925708300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#smoothLimitAndEqualIorRetainDeltaBehavior [PT0S]
+2026-10-05T23:41:08.925708300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#polishedMicrofacetsRemainFiniteAndConvergeToSmoothDirections [PT0.0052508S]
+2026-10-05T23:41:08.925708300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#dielectricDeltaEmitterPathsCarryIorWeightsAndRoughNeeUsesOutgoingMedium [PT0.4847209S]
+2026-10-05T23:41:08.926709700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#seededBatchesAgreeConvergeAndPreviewShowsMaterialPairs [PT3.4080707S]
+2026-10-05T23:41:08.926709700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#largerEmitterProducesPenumbraAndTransformsUpdateSampling [PT0.0384885S]
+2026-10-05T23:41:08.926709700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.RoughLightingTest#ggxSamplingMatchesIndependentSphereIntegrationAndIsEnergyBounded [PT0.205539S]
+2026-10-05T23:41:08.927758000  [INFO] harness.SuiteRunner: ========================

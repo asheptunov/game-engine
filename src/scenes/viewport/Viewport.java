@@ -62,6 +62,8 @@ public class Viewport implements AutoCloseable,
     private ViewportState.RenderKey convertedKey;
     private long convertedSamples=-1;
     private float convertedExposure;
+    private boolean convertedTemporal;
+    private long convertedPublication=-1;
     private final ActionRegistry<Runnable>             actions;
     private final InputBindings                        bindings;
     private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
@@ -154,11 +156,15 @@ public class Viewport implements AutoCloseable,
         mode(false);
         AsyncViewportTrace.Image image;
         float exposure;
+        boolean temporal;
+        long temporalVersion;
         String label, status;
         synchronized(state) {
             if (!consoleOpen) cameraControls.update(state,System.nanoTime());
             asyncTrace.request(); image=asyncTrace.acquireImage();
             exposure=(float)Math.pow(2,state.exposure()); label=label(); status=asyncTrace.status();
+            temporal=state.temporal();
+            temporalVersion=state.temporalVersion();
         }
         try {
             if (image != null) {
@@ -166,7 +172,10 @@ public class Viewport implements AutoCloseable,
                 profiler.rayStats(new FrameProfiler.Rays(image.key().width(),image.key().height(),
                         image.primaryRays(),image.primaryHits(),image.shadowRays(),image.shadowsOccluded(),
                         image.litPixels(),image.traceNanos()));
-                paintImage(image.rgb(),exposure,image.key(),image.samples());
+                boolean reconstructed=temporal && image.temporalVersion()==temporalVersion && image.reconstructed()!=null;
+                if(convertedTemporal!=reconstructed || (reconstructed && convertedPublication!=image.requestedNanos())) convertedKey=null;
+                convertedTemporal=reconstructed;convertedPublication=image.requestedNanos();
+                paintImage(reconstructed?image.reconstructed():image.rgb(),exposure,image.key(),image.samples());
             } else {
                 java.util.Arrays.fill(display.alpha(),(byte)255);
                 java.util.Arrays.fill(display.red(),(byte)0);
@@ -181,6 +190,8 @@ public class Viewport implements AutoCloseable,
                 profiler.viewportQuality("Grid shown " + (image==null ? "pending" : image.key().width()+"x"+image.key().height())
                         + " / requested " + state.sensorPixelsW()+"x"+state.sensorPixelsH()
                         + (state.interactive() ? "  auto, target " + String.format(java.util.Locale.ROOT,"%.2f",state.interactiveMillis())+"ms" : "  fixed"));
+                profiler.viewportHistory(!temporal?"History off (raw)":image!=null && image.temporalVersion()==temporalVersion
+                        ?image.history().label():"History on: waiting for guides (raw preview)");
             }
             renderUi(label,status);
         } finally { synchronized(state) { asyncTrace.release(image); } }

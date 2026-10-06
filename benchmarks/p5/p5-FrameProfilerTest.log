@@ -1,0 +1,12 @@
+2026-10-05T23:00:54.474607500  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T23:00:54.480136700  [INFO] harness.SuiteRunner: ? Suite profiling.FrameProfilerTest [PT1.0151912S]
+2026-10-05T23:00:54.483137800  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#samplesAreExclusiveBoundedAndUnsupportedMetricsStayUnavailable [PT0.0238184S]
+2026-10-05T23:00:54.483137800  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#overlayIsHiddenByDefaultAndRendersBothScenes [PT0.9175586S]
+2026-10-05T23:00:54.484136900  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#historyIsTimeBoundedAndCapacityBounded [PT0.0010044S]
+2026-10-05T23:00:54.484136900  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#freshImagesIgnoreRedisplaysAndIncludePresentationAndStalls [PT0.0391511S]
+2026-10-05T23:00:54.484136900  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#nestedStagesAreExclusiveAndIdleClosesAtNextFrame [PT0.0035059S]
+2026-10-05T23:00:54.485140300  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#exceptionalScopeStillUnwinds [PT0S]
+2026-10-05T23:00:54.485140300  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#toggleDebouncesKeyRepeatAndPassesOtherKeys [PT0.0055147S]
+2026-10-05T23:00:54.485140300  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#freshHistoryIsBoundedEvenWithVeryFastPublications [PT0.0200499S]
+2026-10-05T23:00:54.485140300  [INFO] harness.SuiteRunner: ? Test profiling.FrameProfilerTest#percentilesAndRayStatsDoNotLeakAcrossScenes [PT0.0045882S]
+2026-10-05T23:00:54.486137300  [INFO] harness.SuiteRunner: ========================

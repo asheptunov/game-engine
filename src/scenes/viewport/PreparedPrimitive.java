@@ -7,6 +7,8 @@ import scenes.viewport.objects.*;
 final class PreparedPrimitive {
     final String objectId, materialId;
     final int primitiveId;
+    // Assigned once during scene preparation, before sharing with tracing workers.
+    int surfaceId;
     final Material material;
     final TraceSurface flat;
     final Sphere sphere;

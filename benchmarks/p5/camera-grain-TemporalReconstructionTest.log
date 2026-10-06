@@ -1,0 +1,9 @@
+2026-10-05T23:41:02.148811900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T23:41:02.151986100  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.TemporalReconstructionTest [PT0.5106524S]
+2026-10-05T23:41:02.153986500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#rejectsDisocclusionDepthNormalEdgesCutsEditsAndExpiredHistory [PT0.0078476S]
+2026-10-05T23:41:02.153986500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#historyHasAnAgeLimitAndUnsupportedGuidesReleaseMemory [PT0.0232926S]
+2026-10-05T23:41:02.153986500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#parallelReconstructionMatchesScalarAndCancellationDiscardsPartialHistory [PT0.0733788S]
+2026-10-05T23:41:02.154987200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#asyncTogglePauseLeaseAndSceneEditsPreserveRawOutput [PT0.087983S]
+2026-10-05T23:41:02.154987200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#guidesNeverChangeRawStreamsAndGuardThinSurfacesAndMedia [PT0.3109589S]
+2026-10-05T23:41:02.154987200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.TemporalReconstructionTest#reprojectsReducesNoiseAndDoesNotCountStationaryHistoryTwice [PT0.0071915S]
+2026-10-05T23:41:02.155988500  [INFO] harness.SuiteRunner: ========================

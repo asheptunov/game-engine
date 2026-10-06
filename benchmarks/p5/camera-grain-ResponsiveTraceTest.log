@@ -1,0 +1,8 @@
+2026-10-05T23:41:03.469771100  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T23:41:03.472773500  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.ResponsiveTraceTest [PT1.5391096S]
+2026-10-05T23:41:03.473771600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ResponsiveTraceTest#cancellationPreservesCommittedMeanAndSampleStream [PT0.0130716S]
+2026-10-05T23:41:03.474772400  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ResponsiveTraceTest#suspendAndCloseDrainWithoutPublishingOldWork [PT0.0488519S]
+2026-10-05T23:41:03.474772400  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ResponsiveTraceTest#hardEditsAndPauseCannotPublishObsoleteOrMutableImages [PT0.1265049S]
+2026-10-05T23:41:03.475273600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ResponsiveTraceTest#sustainedCameraMotionPublishesCompletePreviewsWithoutBorrowingSamples [PT1.304883S]
+2026-10-05T23:41:03.475273600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ResponsiveTraceTest#publicationPoolReusesStorageAndCannotOverwriteALeasedImage [PT0.0457982S]
+2026-10-05T23:41:03.475273600  [INFO] harness.SuiteRunner: ========================

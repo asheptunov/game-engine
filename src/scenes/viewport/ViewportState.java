@@ -30,6 +30,8 @@ public class ViewportState {
         copy.pathDepth=pathDepth; copy.seed=seed; copy.restartVersion=restartVersion; copy.preset=preset;
         copy.samplesPerFrame=samplesPerFrame; copy.sampleTarget=sampleTarget; copy.paused=paused;
         copy.acceleration=acceleration; copy.workers=workers; copy.tileSize=tileSize;
+        copy.temporal=temporal;
+        copy.temporalVersion=temporalVersion;
         return copy;
     }
     private       Rect              cameraSensor;
@@ -40,6 +42,12 @@ public class ViewportState {
     // Requested grid stays authoritative. Only the async controller chooses a temporary grid.
     private int sampledW, sampledH;
     private boolean interactive;
+    private boolean temporal;
+    private long temporalVersion;
+    /** Presentation reconstruction only; deliberately excluded from the raw estimator key. */
+    public boolean temporal() { return temporal; }
+    public void temporal(boolean enabled) { if(temporal!=enabled) {temporal=enabled;temporalVersion++;} }
+    long temporalVersion() { return temporalVersion; }
     private double interactiveMillis = 1000. / 60;
     private int minimumW, minimumH;
     public boolean interactive() { return interactive; }

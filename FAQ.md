@@ -64,7 +64,7 @@ Each worker reuses its own storage across paths. Sharing mutable storage would l
 
 Q12: Can you explain the "seed/pixel/sample-based random stream"?
 
-A12: Each path starts a reproducible pseudorandom sequence from three identifiers: the chosen seed, the pixel's index (`y * width + x`), and that pixel's sample number. The sequence supplies choices such as subpixel jitter and bounce directions. The same three identifiers produce the same choices, regardless of which worker runs the path or when it runs. One path taking extra bounces does not consume another path's random numbers. This makes parallel scheduling and different batch sizes reproducible, provided the sampling algorithm stays the same. Changing resolution changes pixel indexing and starts new accumulation.
+A12: Each camera path starts a reproducible pseudorandom sequence from the chosen seed, captured camera position/sensor, pixel index (`y * width + x`), and sample number. These supply choices such as subpixel jitter and bounce directions. We now mix the camera into the seed so movement changes the noise instead of repeatedly using the same screen-anchored sample-zero grain. An identical captured view/seed/grid/sample reproduces the same choices regardless of workers, scheduling or earlier camera visits. Stationary samples advance normally and average away noise; cached redraws do not introduce new grain. One path taking extra bounces does not consume another path's random numbers. Resolution changes pixel indexing and restarts accumulation. The ray-level numeric test adapter retains its camera-independent stream.
 
 Q13: why is there a monitor around state in Viewport.java? is there parallelization around that component?
 
@@ -100,7 +100,7 @@ A20: Independent random samples can accidentally cluster, leaving gaps. **Strati
 
 Q21: what is Temporal reuse and denoising?
 
-A21: **Temporal reuse** uses information from earlier frames. Our stationary accumulation already averages past samples at an unchanged camera; the proposed extension maps useful history into a changed view and rejects history that no longer matches. **Denoising** estimates a cleaner image from noisy samples, often using nearby pixels plus depth, normals, and surface color to avoid blurring across boundaries. It can also use temporal history. Both can make a low-sample image more useful, but can introduce blur or ghosting. Glass and mirrors are difficult because the first visible surface does not identify the reflected or refracted scene. Keep raw samples separate and provide a raw-image view.
+A21: **Temporal reuse** uses information from earlier frames. P5 now adds optional `view temporal on`: map previous diffuse-surface information into a changed camera view, validate depth/normals/surface identity, then blend it with fresh radiance. Edges, cuts, scene edits, mirrors/glass and volumes reject history. It remains separate from raw accumulation; `view temporal off` immediately displays raw output. F3's history blend percentage describes reused presentation weight, not extra raw spp or a probability of correctness. **Denoising**, still proposed in P6, estimates a cleaner image using neighboring pixels and surface information. Both can reduce noise but introduce blur or ghosting, and their processing cost can outweigh the benefit. See [P5 measurements](benchmarks/p5/README.md).
 
 Q22: Define integer enlargement
 

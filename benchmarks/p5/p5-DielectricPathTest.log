@@ -1,0 +1,15 @@
+Glass squared error: 1 spp 1586.067265; 64 spp 21.135327
+2026-10-05T22:54:44.203257500  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:54:44.207300700  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.DielectricPathTest [PT3.0141411S]
+2026-10-05T22:54:44.208308800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#seededGlassConvergesAndBatchSizesAgree [PT0.8143467S]
+2026-10-05T22:54:44.209308800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#glassVisibilityDoesNotInventStraightThroughCaustics [PT0S]
+2026-10-05T22:54:44.209308800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#internalReflectionPreservesMediumAndTerminatesAtDepthLimit [PT0S]
+2026-10-05T22:54:44.209308800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#distanceAbsorptionAndCameraInsideSphere [PT0.0010006S]
+2026-10-05T22:54:44.209926500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#directLightSegmentInsideMediumAlsoAbsorbs [PT0.0009962S]
+2026-10-05T22:54:44.209926500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#transformedBoxAndEllipsoidExitTheirOwnBoundary [PT0S]
+2026-10-05T22:54:44.210308600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#glassRequiresTwoContinuationsAndDoesNotUseBaseTint [PT0.0252885S]
+2026-10-05T22:54:44.210308600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#fresnelSnellAndTotalInternalReflection [PT0.0040027S]
+2026-10-05T22:54:44.210308600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#glassPreviewConvergesAndIorChangesImage [PT1.9663533S]
+2026-10-05T22:54:44.210308600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#controlsPreserveParametersInvalidateAndRejectOpenGlassAtomically [PT0.2006486S]
+2026-10-05T22:54:44.210308600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#nestedMediaReplaceRatherThanAddAbsorptionAndRestoreOuterIor [PT0.0015045S]
+2026-10-05T22:54:44.211309700  [INFO] harness.SuiteRunner: ========================

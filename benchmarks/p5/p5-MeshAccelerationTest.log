@@ -1,0 +1,13 @@
+Mesh intersection tests: BVH 10977; brute 1617600
+Mesh image tests: BVH 239500; brute 31435924
+2026-10-05T22:54:51.564068200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:54:51.569083900  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.MeshAccelerationTest [PT5.2735908S]
+2026-10-05T22:54:51.571084900  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#glassMeshEntriesExitsAndInsideCameraKeepOneMedium [PT0.0105241S]
+2026-10-05T22:54:51.571084900  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#editsReuseIndexedGeometryUpdateBoundsAndInvalidateOnlyWhenNeeded [PT0.4263504S]
+2026-10-05T22:54:51.573085400  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#bvhMatchesBruteAndIndependentTrianglesIncludingInsideAndSharedEdges [PT0.202327S]
+2026-10-05T22:54:51.574084700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#boundedVisibilityMatchesBruteAndOtherTrianglesOfSameObjectBlock [PT0.06874S]
+2026-10-05T22:54:51.574084700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#nestedMeshMediaAndCentralSeamsPreserveAbsorptionAndIor [PT0.39383S]
+2026-10-05T22:54:51.574084700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#finestDetailSmallFacesAndSeamsRemainHittable [PT0.1922206S]
+2026-10-05T22:54:51.574084700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#indexedBoundaryIsClosedOutwardAndImmutable [PT0.0700721S]
+2026-10-05T22:54:51.574084700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.MeshAccelerationTest#seededImagesAgreeAndPreviewShowsMeshMaterials [PT3.9095266S]
+2026-10-05T22:54:51.575084000  [INFO] harness.SuiteRunner: ========================

@@ -1,0 +1,15 @@
+Glass squared error: 1 spp 1384.221145; 64 spp 22.864615
+2026-10-05T23:41:06.530533800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T23:41:06.533533400  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.DielectricPathTest [PT2.1467913S]
+2026-10-05T23:41:06.534533600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#seededGlassConvergesAndBatchSizesAgree [PT0.8522491S]
+2026-10-05T23:41:06.534533600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#glassVisibilityDoesNotInventStraightThroughCaustics [PT0.010861S]
+2026-10-05T23:41:06.535533700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#internalReflectionPreservesMediumAndTerminatesAtDepthLimit [PT0.0009975S]
+2026-10-05T23:41:06.535533700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#distanceAbsorptionAndCameraInsideSphere [PT0.0090157S]
+2026-10-05T23:41:06.535533700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#directLightSegmentInsideMediumAlsoAbsorbs [PT0S]
+2026-10-05T23:41:06.535533700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#transformedBoxAndEllipsoidExitTheirOwnBoundary [PT0.0005042S]
+2026-10-05T23:41:06.535533700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#fresnelSnellAndTotalInternalReflection [PT0.0050784S]
+2026-10-05T23:41:06.535533700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#glassRequiresTwoContinuationsAndDoesNotUseBaseTint [PT0.0009997S]
+2026-10-05T23:41:06.536534200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#glassPreviewConvergesAndIorChangesImage [PT1.2338667S]
+2026-10-05T23:41:06.536534200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#controlsPreserveParametersInvalidateAndRejectOpenGlassAtomically [PT0.033219S]
+2026-10-05T23:41:06.536534200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.DielectricPathTest#nestedMediaReplaceRatherThanAddAbsorptionAndRestoreOuterIor [PT0S]
+2026-10-05T23:41:06.537611000  [INFO] harness.SuiteRunner: ========================

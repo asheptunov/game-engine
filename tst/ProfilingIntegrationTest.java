@@ -10,6 +10,44 @@ import static harness.Assertions.*;
 
 /** Exercises the real DI graph and scene timing hooks without opening an AWT window. */
 public class ProfilingIntegrationTest {
+    @Test void temporalToggleChangesPresentationImmediatelyAndReportsSeparateHistory() throws Exception {
+        var module=new MainModule();var injector=Injector.create(module);module.registerScenes(injector);
+        try(var viewport=injector.get(Viewport.class);var profiler=injector.get(FrameProfiler.class)) {
+            var state=viewport.state();state.resolution(160,100);scenes.viewport.ScenePresets.load(state,"bounce-room");
+            state.sampleTarget(1);state.temporal(true);
+            var raster=injector.get(rendering.Raster.class);profiler.toggle();
+            long deadline=System.nanoTime()+8_000_000_000L;
+            while(state.accumulatedSamples()<1 && System.nanoTime()<deadline) {
+                profiler.beginFrame();viewport.render();profiler.endFrame();Thread.sleep(2);
+            }
+            assertEquals(1L,state.accumulatedSamples());
+            // Move once, wait for a complete matching camera, then save the composed F3 preview.
+            state.eye(state.eye().add(new math.Vec3(.02f,0,0)));
+            profiler.beginFrame();viewport.render();profiler.endFrame();
+            deadline=System.nanoTime()+8_000_000_000L;
+            while(state.accumulatedSamples()<1 && System.nanoTime()<deadline) {
+                profiler.beginFrame();viewport.render();profiler.endFrame();Thread.sleep(2);
+            }
+            profiler.beginFrame();viewport.render();injector.get(PerformanceOverlay.class).render();profiler.endFrame();
+            assertTrue(profiler.viewportHistory().contains("blend"));
+            assertTrue(profiler.viewportQuality().contains("160x100"));
+            var preview=new java.awt.image.BufferedImage(raster.width(),raster.height(),java.awt.image.BufferedImage.TYPE_INT_RGB);
+            for(int y=0;y<raster.height();y++)for(int x=0;x<raster.width();x++)preview.setRGB(x,y,raster.pixel(x,y).rgbInt24());
+            javax.imageio.ImageIO.write(preview,"png",new java.io.File("out/cli/p5-f3-preview.png"));
+            var key=state.renderKey();state.temporal(false);
+            profiler.beginFrame();viewport.render();profiler.endFrame();
+            assertEquals("History off (raw)",profiler.viewportHistory());assertEquals(key,state.renderKey());assertEquals(1L,state.accumulatedSamples());
+            var snapshot=state.renderSnapshot();snapshot.temporal(false);
+            try(var reference=new scenes.viewport.DirectRgbTracer(snapshot)) {
+                var expected=raster.clone();var converter=new scenes.viewport.DisplayConverter(raster.width(),raster.height());
+                converter.convert(reference.trace(),1);converter.paint(expected);
+                for(int i=0;i<(raster.height()-60)*raster.width();i++) {
+                    assertEquals(expected.red()[i],raster.red()[i]);assertEquals(expected.green()[i],raster.green()[i]);assertEquals(expected.blue()[i],raster.blue()[i]);
+                }
+            }
+            var editor=injector.get(TextureEditor.class);profiler.beginFrame();editor.render();profiler.endFrame();assertNull(profiler.viewportHistory());
+        }
+    }
     @Test void cameraMatchesWindowAcrossPresetsAndResolutionChanges() {
         var module = new MainModule(); var injector = Injector.create(module); module.registerScenes(injector);
         var state = injector.get(Viewport.class).state();

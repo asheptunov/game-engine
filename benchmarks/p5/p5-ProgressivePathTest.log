@@ -1,0 +1,13 @@
+Room squared error: 1 spp 13055.803555; 64 spp 168.445726; floor color difference 53.121511
+2026-10-05T22:54:43.382911300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:54:43.388423500  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.ProgressivePathTest [PT2.9511797S]
+2026-10-05T22:54:43.390424300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#materialSamplingReportsCorrectDensityDirectionAndWeight [PT0.0065248S]
+2026-10-05T22:54:43.390424300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#roomViewportPreview [PT1.7764507S]
+2026-10-05T22:54:43.391423700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#mirrorLoopHasBoundedDepthAndNoInventedLight [PT0.0494194S]
+2026-10-05T22:54:43.391423700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#seededRunsAndBatchSizesProduceExactlyTheSameAverage [PT0.0417259S]
+2026-10-05T22:54:43.391423700  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#displayAndBatchEditsKeepSamplesButTransportEditsReset [PT0.018199S]
+2026-10-05T22:54:43.392423500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#diffuseThroughputAndDepthMatchAnalyticEnclosure [PT0.0030071S]
+2026-10-05T22:54:43.392423500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#roomConvergesAndShowsColoredIndirectLight [PT0.9671745S]
+2026-10-05T22:54:43.392423500  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#mirrorNeedsContinuationAndFinalDiffuseVertexStillGetsLight [PT0S]
+2026-10-05T22:54:43.393422800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ProgressivePathTest#commandControlsValidateAndPreserveMirrorColorEdits [PT0.0886783S]
+2026-10-05T22:54:43.394424600  [INFO] harness.SuiteRunner: ========================

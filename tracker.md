@@ -427,6 +427,52 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   footer rendering. F3 composed preview inspected; physical GUI latency remains
   manual. See [P4 results and commands](benchmarks/p4/README.md).
 
+## Renderer performance P5 `[done]`
+
+- Optional `view temporal on/off` reprojects validated opaque diffuse history into
+  camera previews. Raw estimator keys, seeded samples and spp remain unchanged;
+  off immediately restores raw display. F3 reports reused/eligible pixels, mean
+  blend confidence, separate reconstruction cost and bounded history payload.
+- Center/corner guides, sampled-hit disagreement, neighborhood identity, normal
+  and world-depth checks reject disocclusion, seams and mixed surfaces. Cuts,
+  edits, grid changes and expired history reset reuse. Mirrors/glass/emission and
+  inside-media cameras stay raw; volume scenes use whole-frame raw fallback.
+  Local clamping and exponentially fading capped history limit trails without claiming perfect
+  correspondence or unbiased reconstructed output.
+- Guides use trace tiles; reconstruction uses disjoint rows on the same bounded
+  worker pool. Both run outside the input lock. Partial hard cancellation drops
+  history, and raw/reconstructed publications obey the existing three-slot leases.
+  Two histories cost 72 bytes/pixel; maximum additional payload including guides
+  and reconstructed publications is 128 bytes/pixel (158.20 MiB at native).
+- In the initial static-grain run at 160×100, one-spp linear error falls about 45% in bounce-room, 14% in glass,
+  and 7% in the diffuse area-light room. At a soft equal 16.67 ms processing budget,
+  bounce-room error falls about 23%; glass/diffuse worsen about 10%/24%. Rejected
+  pixels and camera-cut frames match raw exactly. Native one-spp processing cost
+  roughly doubles with history enabled. Keep the feature off by default; this is
+  a quality option with substantial cost, not a general FPS improvement.
+- Fourteen suites pass, including exact raw streams/counters across transport
+  presets, parallel/scalar reconstruction, cancellation, thin geometry, toggles,
+  lease immutability, immediate raw raster restoration and readable F3 metadata.
+  Composed images were inspected; physical GUI motion/scanout remains manual.
+  A P4/disabled-P5 check shows no consistent default-mode slowdown. See
+  [P5 results and reproduction commands](benchmarks/p5/README.md).
+- Follow-up: camera position/sensor now deterministically scramble the configured
+  seed, so sample-zero grain changes during motion instead of sticking to screen
+  pixels. Identical captured views reproduce independently of camera visit order,
+  worker scheduling and batch sizes. Stationary refinement and the depth-zero
+  point-light diagnostic remain intact. Twelve suites were rechecked, including
+  the new CameraSamplingTest. The rerun shows one-spp error reductions of 65% in
+  bounce-room and 26% in glass; soft equal-budget reductions were 18% and 8%.
+  Diffuse-room equal-budget error rose about 4%. Reprojection/clamping remain
+  unchanged, so this is a sampling experiment rather than proof of artifact-free
+  history. Original measurements remain labeled separately in the P5 archive.
+- Follow-up: removed the hard eight-transition history cutoff that synchronized
+  wall noise into a nine-image pulse (about 2.5–3 Hz at 23–27 fresh FPS). Capped
+  blending now continuously fades old contributions with at least 20% fresh
+  radiance. Surface/cut/edit/expiry rejection remains. Regression tests cover
+  96 forward/backward updates and 32-step gradual decay; five affected suites pass.
+  Dropping the age arrays also reduces history payload by two bytes per pixel.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

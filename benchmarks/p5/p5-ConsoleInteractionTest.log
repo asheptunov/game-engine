@@ -1,0 +1,6 @@
+2026-10-05T22:54:59.865040200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:54:59.872126900  [INFO] harness.SuiteRunner: ? Suite ui.console.ConsoleInteractionTest [PT0.3919476S]
+2026-10-05T22:54:59.874128500  [INFO] harness.SuiteRunner: ? Test ui.console.ConsoleInteractionTest#helpRoutingNeverExecutesCommandsAndHasFocusedPages [PT0.0847539S]
+2026-10-05T22:54:59.874128500  [INFO] harness.SuiteRunner: ? Test ui.console.ConsoleInteractionTest#historyCapacityAndFailedCommandsAreRecallable [PT0.3051963S]
+2026-10-05T22:54:59.874128500  [INFO] harness.SuiteRunner: ? Test ui.console.ConsoleInteractionTest#historyRestoresDraftAndEditsDoNotOverwriteSubmittedCommands [PT0.0019974S]
+2026-10-05T22:54:59.875126100  [INFO] harness.SuiteRunner: ========================

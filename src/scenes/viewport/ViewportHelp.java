@@ -9,7 +9,7 @@ final class ViewportHelp {
             + "  Scene     preset, reset, camera, status\n"
             + "  Sampling  resolution, depth, samples, seed, target, restart, pause, resume\n"
             + "  Tracing   workers, tile, interactive\n"
-            + "  Display   exposure, acceleration\n"
+            + "  Display   exposure, acceleration, temporal\n"
             + "  Objects   select, copy, remove, move, rotate, scale, mesh\n"
             + "  Material  material, color, type, ior, absorption, roughness, emission\n"
             + "  Volume    scattering, anisotropy\n"
@@ -30,6 +30,7 @@ final class ViewportHelp {
                     + "  Changes sampling density, not camera field of view or window size.\n"
                     + "Examples:\n  view resolution 800 500\n  view resolution 0.5x"),
             Map.entry("depth", page("depth <0..32>", "Maximum path continuations; 0 gives direct lighting only.")),
+            Map.entry("temporal", page("temporal on | off", "Diffuse-only presentation history, off by default. Off displays raw radiance immediately.\n  Raw spp stay unchanged. Reject edges, cuts, edits, mirrors/glass and volume scenes.\n  F3 shows reused/eligible pixels, mean history blend confidence and reconstruction cost.")),
             Map.entry("interactive", "Interactive resolution commands (off by default):\n"
                     + "  on | off   Reduce sensor work during camera movement\n"
                     + "  target <ms>   Best-effort update budget, default 16.67ms\n"
