@@ -1,0 +1,7 @@
+2026-10-05T22:06:15.906130600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:06:15.910645700  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.ParallelTraceTest [PT1.3974201S]
+2026-10-05T22:06:15.916155300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ParallelTraceTest#interruptedCoordinatorDrainsWorkersBeforeRestart [PT0.0195651S]
+2026-10-05T22:06:15.916155300  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ParallelTraceTest#tileAndWorkerSchedulingPreserveEveryTransportPreset [PT1.3324858S]
+2026-10-05T22:06:15.918162600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ParallelTraceTest#tracingCommandsValidateAndRetainAccumulation [PT0.0151925S]
+2026-10-05T22:06:15.919666800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.ParallelTraceTest#settingsAndLifecycleKeepCompletePasses [PT0.0301767S]
+2026-10-05T22:06:15.921672400  [INFO] harness.SuiteRunner: ========================

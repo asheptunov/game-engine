@@ -1,0 +1,8 @@
+2026-10-05T22:09:33.687871900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:09:33.694512700  [INFO] harness.SuiteRunner: ? Suite scenes.viewport.InteractiveResolutionTest [PT0.7497789S]
+2026-10-05T22:09:33.698057200  [INFO] harness.SuiteRunner: ? Test scenes.viewport.InteractiveResolutionTest#growthRequiresNewMeasurementsAndDeadbandDoesNotOscillate [PT0.0025104S]
+2026-10-05T22:09:33.699052800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.InteractiveResolutionTest#automaticModeHonorsExplicitEditsPauseAndOff [PT0.1262184S]
+2026-10-05T22:09:33.699052800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.InteractiveResolutionTest#optInAspectBoundsHysteresisAndSettle [PT0.000999S]
+2026-10-05T22:09:33.699052800  [INFO] harness.SuiteRunner: ? Test scenes.viewport.InteractiveResolutionTest#movingPreviewsAreExactAndStationaryFullGridConverges [PT0.5810489S]
+2026-10-05T22:09:33.700051600  [INFO] harness.SuiteRunner: ? Test scenes.viewport.InteractiveResolutionTest#commandHelpAndValidation [PT0.0390022S]
+2026-10-05T22:09:33.701273100  [INFO] harness.SuiteRunner: ========================

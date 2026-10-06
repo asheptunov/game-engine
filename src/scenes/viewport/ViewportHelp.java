@@ -8,7 +8,7 @@ final class ViewportHelp {
     static final String INDEX = "View commands (use view <command> help):\n"
             + "  Scene     preset, reset, camera, status\n"
             + "  Sampling  resolution, depth, samples, seed, target, restart, pause, resume\n"
-            + "  Tracing   workers, tile\n"
+            + "  Tracing   workers, tile, interactive\n"
             + "  Display   exposure, acceleration\n"
             + "  Objects   select, copy, remove, move, rotate, scale, mesh\n"
             + "  Material  material, color, type, ior, absorption, roughness, emission\n"
@@ -30,6 +30,17 @@ final class ViewportHelp {
                     + "  Changes sampling density, not camera field of view or window size.\n"
                     + "Examples:\n  view resolution 800 500\n  view resolution 0.5x"),
             Map.entry("depth", page("depth <0..32>", "Maximum path continuations; 0 gives direct lighting only.")),
+            Map.entry("interactive", "Interactive resolution commands (off by default):\n"
+                    + "  on | off   Reduce sensor work during camera movement\n"
+                    + "  target <ms>   Best-effort update budget, default 16.67ms\n"
+                    + "  min <width> <height>   Minimum grid bounds, default quarter\n"
+                    + "Maximum and stationary grid: view resolution. Aspect and depth stay fixed.\n"
+                    + "Returns to requested quality after 350ms without camera changes.\n"
+                    + "Minimum bounds are capped by the requested grid; both axes retain its aspect."),
+            Map.entry("interactive on", page("interactive on", "Enable automatic resolution during motion; spatial detail is reduced.")),
+            Map.entry("interactive off", page("interactive off", "Restore requested resolution at the next job boundary.")),
+            Map.entry("interactive target", page("interactive target <1..1000 ms>", "Best-effort budget for completed moving images; not a promised FPS.")),
+            Map.entry("interactive min", page("interactive min <width> <height>", "64..1600 per axis. Fit requested aspect above these bounds, capped at requested resolution.")),
             Map.entry("samples", page("samples <1..8>", "Maximum samples per background batch; retains accumulated samples.\n  The display can repeat the previous complete image while tracing.")),
             Map.entry("workers", page("workers <count>", "Persistent tracing workers: 1..min(32, available CPUs). Retains samples.")),
             Map.entry("tile", page("tile <1..256>", "Square tracing tile size in pixels; default 32. Retains samples.\n  Smaller tiles allow earlier cancellation after scene edits or pause.\n  Camera motion finishes the active pass as a preview.")),
@@ -74,7 +85,7 @@ final class ViewportHelp {
     static String usage(String[] args) {
         if (args.length < 2) return "Use view help.";
         String key = args[1];
-        if ((key.equals("light") || key.equals("camera") || key.equals("mesh")) && args.length > 2
+        if ((key.equals("light") || key.equals("camera") || key.equals("mesh") || key.equals("interactive")) && args.length > 2
                 && PAGES.containsKey(key + " " + args[2])) key += " " + args[2];
         return PAGES.getOrDefault(key, "Use view help.");
     }

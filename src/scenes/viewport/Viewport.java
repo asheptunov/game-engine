@@ -178,6 +178,9 @@ public class Viewport implements AutoCloseable,
                 profiler.viewportImage(image==null || image.samples()==0?-1:image.requestedNanos(),
                         image==null?-1:image.requestedNanos(),state.sensorPixelsW(),state.sensorPixelsH(),
                         state.preset(),state.samplingStatus());
+                profiler.viewportQuality("Grid shown " + (image==null ? "pending" : image.key().width()+"x"+image.key().height())
+                        + " / requested " + state.sensorPixelsW()+"x"+state.sensorPixelsH()
+                        + (state.interactive() ? "  auto, target " + String.format(java.util.Locale.ROOT,"%.2f",state.interactiveMillis())+"ms" : "  fixed"));
             }
             renderUi(label,status);
         } finally { synchronized(state) { asyncTrace.release(image); } }

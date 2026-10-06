@@ -97,7 +97,7 @@ public final class PerformanceOverlay implements Renderer {
                         rays.width(), rays.height(), rays.primary(),
                         rays.traceNanos() > 0 ? rays.primary() * 1000. / rays.traceNanos() : 0,
                         rays.traceNanos() / 1e6), 14, 124);
-                text(g, async ? "Display-thread work per update (includes cached redraws)"
+                text(g, async ? (profiler.viewportQuality()==null ? "Display-thread work per update (includes cached redraws)" : profiler.viewportQuality())
                         : format("Primary hits %,d    blocked %,d / %,d visibility    lit samples %,d",
                         rays.hits(), rays.occluded(), rays.shadows(), rays.lit()), 14, 142);
             }
@@ -159,7 +159,7 @@ public final class PerformanceOverlay implements Renderer {
             text(g, "0", 28, bottom);
             text(g, "-10s", left, 378);
             text(g, "now", left + width - 24, 378);
-            text(g,async ? "Fresh-image intervals / orange = current hold / white = 60 FPS" :
+            text(g,async ? "Fresh intervals; stages include cached redraws / orange hold / white 60 FPS" :
                     "Display-thread stages; tallest interval per column / white = target",14,395);
             hardware(g, latest, metrics.sample());
             if (profiler.traceDetails()) traceDetails(g, frames);

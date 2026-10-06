@@ -91,6 +91,24 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   Resolution changes leave the camera field of view unchanged; presets retain the grid.
   Immutable named `SceneInstance` edits share the state monitor with brief snapshot/publication work.
   Prepared geometry and per-object bounds are cached until edits.
+- P4 interactive resolution is opt-in: `view interactive on/off`, `view interactive
+  target <1..1000 ms>` (default 16.67), `view interactive min <width> <height>`.
+  `view resolution` remains the maximum/stationary grid; default minimum is quarter
+  with at least 64 pixels per axis. Fit minimum bounds to the requested grid aspect,
+  capped by its maximum. Eye/sensor changes trigger motion; after 350 ms quiet,
+  restore requested quality at the next completed-job boundary. Pause holds the grid.
+  `InteractiveResolution` uses smoothed snapshot-to-raster cost, discrete scales,
+  a 500 ms cooldown and fresh-measurement hysteresis. Camera motion never cancels
+  every pass. Moving batches cap at one spp; path depth and field of view stay fixed.
+  Live `sensorPixelsW/H` are requested dimensions; `sampledWidth/Height`, render keys
+  and owned snapshots use the actual grid. Do not mix samples between grids.
+  Automatic grid choices allocate no pixels under the state lock; tracer/publication
+  buffers resize outside it. F3/footer distinguish shown/requested grids. Keep the
+  fresh-image context keyed to requested dimensions so adaptation does not erase
+  its window. Run `scenes.viewport.InteractiveResolutionTest` for policy, commands,
+  sustained previews, exact captured-camera pixels, settled convergence and edits.
+  `DynamicResolutionBenchmark` compares the same elapsed-time camera path with
+  automatic mode off/on; window-free results and commands: `benchmarks/p4/README.md`.
 - `view preset bounce-room` enables the phase 2 mirror/color-bleeding demo at depth 3.
   Select `view resolution 200` explicitly for faster editing. `view depth`, `samples`,
   `seed`, `restart`, `target`, `pause`, and `resume` control convergence; `view type`

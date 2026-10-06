@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: P0 through P3 implemented. P4 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), and [P3 results](benchmarks/p3/README.md).
+Status: P0 through P4 implemented. P5 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), and [P4 results](benchmarks/p4/README.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -200,6 +200,36 @@ Avoid clears and checkerboard draws only where full opaque viewport coverage mak
 Acceptance: compare equal-size, integer enlargement, integer reduction, and fractional resampling against reference images, including orientation, exposure, clipping, console and overlays. Show lower whole-frame allocation and display stage cost. No display-sized allocation should recur in steady state; dimension changes may allocate. Do not compromise the texture editor's alpha behavior.
 
 ## P4 Dynamic resolution while moving
+
+Implemented: `view interactive on` enables automatic sensor resolution; it is off
+by default. `view resolution` sets the maximum and stationary grid. The controller
+preserves that grid's aspect and the camera field of view, reduces only spatial
+resolution, and caps moving batches at one complete sample. `view interactive
+target <ms>` sets a best-effort update budget (default 16.67 ms). `view interactive
+min <width> <height>` sets lower bounds fitted to the requested aspect and capped
+by its maximum. The default minimum is quarter resolution, with at least 64 pixels
+on each axis. Footer and F3 report shown and requested dimensions separately.
+
+`InteractiveResolution` observes actual eye/sensor changes, including held-key
+motion. It chooses from discrete scales using smoothed snapshot-to-raster cost per
+pixel and reserves 20% for additional display/presentation overhead. Grid changes
+wait for the current job to finish; camera input never repeatedly cancels previews.
+A 500 ms cooldown, 25% over-budget threshold and three fresh cheap measurements
+before enlargement limit oscillation. Repeated cached redraws do not provide new
+cost evidence. After 350 ms without camera changes, the next job restores the
+requested grid and starts fresh coherent accumulation. Pause holds its grid;
+disabling the mode restores fixed resolution at the next job boundary.
+
+Requested dimensions stay separate from the live sampled grid. Snapshot capture
+and render keys use the actual sampled dimensions; no samples cross grid changes.
+Automatic transitions do not reset F3's fresh-image window, so it measures the
+whole interaction. Explicit requested-resolution and preset changes still reset it.
+Pixel allocation for automatic changes happens in the coordinator, outside the
+input lock. The existing three publication slots remain bounded; grid changes may
+allocate, so this phase does not promise zero allocation during adaptation.
+
+See [P4 results and verification](benchmarks/p4/README.md) for the repeatable glass
+camera path, grid stability, update age, and full-quality recovery measurements.
 
 Add an explicitly enabled interactive resolution mode with a target update time, minimum and maximum sensor dimensions, and displayed actual resolution. Reduce sensor work during sustained movement; restore requested quality after movement settles. Use hysteresis so dimensions do not oscillate. Preserve aspect ratio and field of view. Existing fixed-resolution commands remain authoritative when automatic mode is off.
 

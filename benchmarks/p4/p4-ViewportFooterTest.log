@@ -1,0 +1,79 @@
+2026-10-05T22:04:23.478083000  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\nil.tx in PT0.0045123S
+2026-10-05T22:04:23.483594300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\space.tx in PT0S
+2026-10-05T22:04:23.484685800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\bang.tx in PT0.0010915S
+2026-10-05T22:04:23.484685800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\quotation.tx in PT0S
+2026-10-05T22:04:23.485686600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\hash.tx in PT0.0010008S
+2026-10-05T22:04:23.486287200  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\dollar.tx in PT0.0006006S
+2026-10-05T22:04:23.486287200  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\percent.tx in PT0S
+2026-10-05T22:04:23.486287200  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\ampersand.tx in PT0S
+2026-10-05T22:04:23.487291800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\apostrophe.tx in PT0.0010046S
+2026-10-05T22:04:23.487291800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\left_paren.tx in PT0S
+2026-10-05T22:04:23.487291800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\right_paren.tx in PT0S
+2026-10-05T22:04:23.488298800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\star.tx in PT0S
+2026-10-05T22:04:23.488298800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\plus.tx in PT0S
+2026-10-05T22:04:23.489803400  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\comma.tx in PT0.0015046S
+2026-10-05T22:04:23.489803400  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\hyphen.tx in PT0S
+2026-10-05T22:04:23.490808500  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\dot.tx in PT0.0010051S
+2026-10-05T22:04:23.490808500  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\slash.tx in PT0S
+2026-10-05T22:04:23.491813200  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\0.tx in PT0.0010047S
+2026-10-05T22:04:23.491813200  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\1.tx in PT0S
+2026-10-05T22:04:23.491813200  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\2.tx in PT0S
+2026-10-05T22:04:23.492812800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\3.tx in PT0S
+2026-10-05T22:04:23.492812800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\4.tx in PT0S
+2026-10-05T22:04:23.492812800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\5.tx in PT0S
+2026-10-05T22:04:23.493813000  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\6.tx in PT0S
+2026-10-05T22:04:23.494814700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\7.tx in PT0.0010017S
+2026-10-05T22:04:23.494814700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\8.tx in PT0S
+2026-10-05T22:04:23.495821700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\9.tx in PT0S
+2026-10-05T22:04:23.496821900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\colon.tx in PT0.0010002S
+2026-10-05T22:04:23.496821900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\semicolon.tx in PT0S
+2026-10-05T22:04:23.497823800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\less_than.tx in PT0.0010019S
+2026-10-05T22:04:23.497823800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\equal.tx in PT0S
+2026-10-05T22:04:23.497823800  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\greater_than.tx in PT0S
+2026-10-05T22:04:23.498820900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\question.tx in PT0S
+2026-10-05T22:04:23.498820900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\at.tx in PT0S
+2026-10-05T22:04:23.499819600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\left_square_bracket.tx in PT0.0009987S
+2026-10-05T22:04:23.499819600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\backslash.tx in PT0S
+2026-10-05T22:04:23.499819600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\right_square_bracket.tx in PT0S
+2026-10-05T22:04:23.499819600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\caret.tx in PT0S
+2026-10-05T22:04:23.501126500  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\underscore.tx in PT0S
+2026-10-05T22:04:23.502126400  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\grave.tx in PT0.0009999S
+2026-10-05T22:04:23.502126400  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\a.tx in PT0S
+2026-10-05T22:04:23.503126900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\b.tx in PT0.0010005S
+2026-10-05T22:04:23.503126900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\c.tx in PT0S
+2026-10-05T22:04:23.503126900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\d.tx in PT0S
+2026-10-05T22:04:23.503126900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\e.tx in PT0S
+2026-10-05T22:04:23.504124600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\f.tx in PT0S
+2026-10-05T22:04:23.504124600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\g.tx in PT0S
+2026-10-05T22:04:23.504124600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\h.tx in PT0S
+2026-10-05T22:04:23.504124600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\i.tx in PT0S
+2026-10-05T22:04:23.504124600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\j.tx in PT0S
+2026-10-05T22:04:23.504124600  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\k.tx in PT0S
+2026-10-05T22:04:23.505634700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\l.tx in PT0S
+2026-10-05T22:04:23.505634700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\m.tx in PT0S
+2026-10-05T22:04:23.505634700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\n.tx in PT0S
+2026-10-05T22:04:23.506641400  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\o.tx in PT0S
+2026-10-05T22:04:23.507641700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\p.tx in PT0.0010003S
+2026-10-05T22:04:23.507641700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\q.tx in PT0S
+2026-10-05T22:04:23.507641700  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\r.tx in PT0S
+2026-10-05T22:04:23.508640900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\s.tx in PT0.0009992S
+2026-10-05T22:04:23.508640900  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\t.tx in PT0S
+2026-10-05T22:04:23.509641300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\u.tx in PT0.0010004S
+2026-10-05T22:04:23.509641300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\v.tx in PT0S
+2026-10-05T22:04:23.509641300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\w.tx in PT0S
+2026-10-05T22:04:23.509641300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\x.tx in PT0S
+2026-10-05T22:04:23.509641300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\y.tx in PT0S
+2026-10-05T22:04:23.510876300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\z.tx in PT0.001235S
+2026-10-05T22:04:23.510876300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\left_curly_brace.tx in PT0S
+2026-10-05T22:04:23.510876300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\pipe.tx in PT0S
+2026-10-05T22:04:23.510876300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\right_curly_brace.tx in PT0S
+2026-10-05T22:04:23.510876300  [INFO] rendering.FileSystemRasterRepository: Loaded from assets\fonts\test\standard\tilde.tx in PT0S
+2026-10-05T22:04:23.528780600  [INFO] rendering.FsFontLoader: Loaded font assets\fonts\test in PT0.0552099S
+2026-10-05T22:04:23.834596000  [INFO] ui.BindingsLoader: Loaded 15 binding(s)
+2026-10-05T22:04:23.851652500  [INFO] ui.BindingsLoader: Loaded 15 binding(s)
+2026-10-05T22:04:23.904921000  [INFO] ui.BindingsLoader: Loaded 9 binding(s)
+2026-10-05T22:04:23.905921600  [INFO] ui.BindingsLoader: Loaded 3 binding(s)
+2026-10-05T22:04:24.026716300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-05T22:04:24.028716500  [INFO] harness.SuiteRunner: ? Suite ViewportFooterTest [PT0.6531395S]
+2026-10-05T22:04:24.029717000  [INFO] harness.SuiteRunner: ? Test ViewportFooterTest#bothFooterLinesHaveGlyphsAndTransparentGaps [PT0.6531395S]
+2026-10-05T22:04:24.030881700  [INFO] harness.SuiteRunner: ========================

@@ -21,11 +21,11 @@ public class ViewportState {
     }
     public RenderKey renderKey() {
         return new RenderKey(List.copyOf(instances), List.copyOf(objects), List.copyOf(lights), eye,
-                cameraSensor, sensorPixelsW, sensorPixelsH, pathDepth, seed, restartVersion);
+                cameraSensor, sampledWidth(), sampledHeight(), pathDepth, seed, restartVersion);
     }
     /** Caller holds this state's monitor. The copy belongs exclusively to the trace coordinator. */
     public ViewportState renderSnapshot() {
-        var copy = new ViewportState(cameraSensor, sensorPixelsW, sensorPixelsH, false);
+        var copy = new ViewportState(cameraSensor, sampledWidth(), sampledHeight(), false);
         copy.eye=eye; copy.instances.addAll(instances); copy.objects.addAll(objects); copy.lights.addAll(lights);
         copy.pathDepth=pathDepth; copy.seed=seed; copy.restartVersion=restartVersion; copy.preset=preset;
         copy.samplesPerFrame=samplesPerFrame; copy.sampleTarget=sampleTarget; copy.paused=paused;
@@ -37,6 +37,38 @@ public class ViewportState {
     private       Vec3              eye             = new Vec3(0, 0, -1);
     private int                     sensorPixelsW;
     private int                     sensorPixelsH;
+    // Requested grid stays authoritative. Only the async controller chooses a temporary grid.
+    private int sampledW, sampledH;
+    private boolean interactive;
+    private double interactiveMillis = 1000. / 60;
+    private int minimumW, minimumH;
+    public boolean interactive() { return interactive; }
+    public void interactive(boolean enabled) { interactive = enabled; }
+    public double interactiveMillis() { return interactiveMillis; }
+    public void interactiveMillis(double value) {
+        if (!Double.isFinite(value) || value < 1 || value > 1000)
+            throw new IllegalArgumentException("Interactive target must be 1..1000 milliseconds");
+        interactiveMillis = value;
+    }
+    public void interactiveMinimum(int width, int height) {
+        if (width < 64 || width > 1600 || height < 64 || height > 1600)
+            throw new IllegalArgumentException("Minimum dimensions must each be 64..1600");
+        minimumW = width; minimumH = height;
+    }
+    double minimumScale() {
+        // Default quarter grid, respecting the existing 64-pixel minimum on both axes.
+        double scale = minimumW == 0 ? .25 : Math.max((double)minimumW / sensorPixelsW, (double)minimumH / sensorPixelsH);
+        return Math.min(1, Math.max(scale, Math.max(64. / sensorPixelsW, 64. / sensorPixelsH)));
+    }
+    public int sampledWidth() { return sampledW == 0 ? sensorPixelsW : sampledW; }
+    public int sampledHeight() { return sampledH == 0 ? sensorPixelsH : sampledH; }
+    /** Called under the live monitor between jobs; no pixel storage is allocated here. */
+    void sampledResolution(int width, int height) { sampledW = width; sampledH = height; }
+    public String interactiveStatus() {
+        return "interactive=" + (interactive ? "on" : "off") + " target=" + String.format(java.util.Locale.ROOT,"%.2f",interactiveMillis)
+                + "ms min=" + Math.round(sensorPixelsW * minimumScale()) + "x" + Math.round(sensorPixelsH * minimumScale())
+                + " max=" + sensorPixelsW + "x" + sensorPixelsH + " sampled=" + sampledWidth() + "x" + sampledHeight();
+    }
     private final List<SceneObject> objects         = new ArrayList<>();
     private final List<Light>       lights          = new ArrayList<>();
     private final List<SceneInstance> instances = new ArrayList<>();
@@ -111,6 +143,7 @@ public class ViewportState {
         var next = new float[height][width];
         sensorPixelsW = width;
         sensorPixelsH = height;
+        sampledW = sampledH = 0;
         accumulator = next;
     }
 

@@ -1,0 +1,15 @@
+P4 final source/validation hashes; Java 23 preview; Windows; 20 logical CPUs
+Baseline HEAD: 3945680ace371ad0ac48040de6183d6392237d92
+Motion: glass 1440x900; depth=8 seed=1 workers=14 tile=32 batchMax=8 target=8; nominal144Hz; 3s warmup + 4s motion + settle; fixed/auto/auto/fixed
+Automatic: target=16.6667ms default minimum=quarter; moving batch=1; no AWT/window during timing
+Hashes identify final validation sources. Timing capture preceded timestamp-only feedback retention; resolution policy is unchanged.
+src/scenes/viewport/InteractiveResolution.java SHA256 F3BFE362F7BA82D303ED07D73E9B6A4519CA4FAD7AE1D5C1264484AED4ECECB2
+src/scenes/viewport/AsyncViewportTrace.java SHA256 F9766CF41E8D9452D975ECA97AE22D1E5038B0B241319FE35EE8CE9F10C06A82
+src/scenes/viewport/ViewportState.java SHA256 3BE3897FD00C52C0C88ABEADE41464A2A5C9DEDF2CD070EDDD356864F3EA16EC
+src/scenes/viewport/Viewport.java SHA256 DC846580FE7F32C36E379C92F5C36DDA94DB75F8748AE73A313B82F4709C65C0
+src/scenes/viewport/ViewportCommand.java SHA256 AD0EB11A44B453E5F058CAEF7BF78F090B9E2B3BDB33314B3AB6D8D62B221CF7
+src/scenes/viewport/ViewportHelp.java SHA256 C1F3A35ED957106B87A96BAD36F42C77B2566EA96ECE3FC16B2BB658F9AA4CCA
+src/profiling/FrameProfiler.java SHA256 0C9DC0310355B7B183F76BF4F92AF962C4EDD2E498F7497BC910D05A776BD931
+src/profiling/PerformanceOverlay.java SHA256 303A40B17D29063F75C4BAA98E0D59B466FFD2D9F48AAE5BD2D37E00AD06920D
+tst/scenes/viewport/InteractiveResolutionTest.java SHA256 FDD7ED241BF5DF7331C5042A0B304F26F8EC930C460120B52C80D2252C91C59A
+tst/DynamicResolutionBenchmark.java SHA256 B087FDBA3CE7F56D3C328B9ACB1B5C1CAAE1A8934E469303A06CB6F560519A19

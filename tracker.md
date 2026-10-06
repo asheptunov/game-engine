@@ -405,6 +405,28 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   half / quarter with distinct display rates. These are synthetic workload results,
   not user-run FPS or physical presentation measurements; see the P3 archive.
 
+## Renderer performance P4 `[done]`
+
+- Opt-in interactive resolution selects a smaller grid during actual camera
+  movement using smoothed completed-image cost. Requested resolution remains
+  the maximum/stationary quality. Commands expose enable/off, update budget and
+  minimum bounds; footer/F3 show shown/requested dimensions. Depth and FOV stay fixed.
+- Complete moving jobs publish before automatic grid changes. A cooldown and
+  fresh-feedback hysteresis limit oscillation; no repeated camera cancellation.
+  After 350 ms quiet, restore requested quality with independent accumulation.
+  Snapshot/grid allocation remains outside the input lock; publication slots stay
+  bounded. Fixed mode is the default; pause retains its grid.
+- Repeatable glass native camera path: fixed 9.5 fresh FPS versus automatic
+  112–114 at quarter dimensions. Update p95 119–123 → 11–12 ms; snapshot age p95
+  145–152 → 22 ms. Automatic mode made two warmup changes, held quarter during
+  measured motion, and displayed a current full-grid image 499–650 ms after stop.
+  All runs reached full-grid 8 spp. This is reduced spatial quality during motion,
+  measured without window/AWT presentation, not a native tracing throughput gain.
+- Nine relevant suites pass, including exact moving/settled reference pixels,
+  cancellation/ownership, all-preset worker scheduling, input/console/profiling and
+  footer rendering. F3 composed preview inspected; physical GUI latency remains
+  manual. See [P4 results and commands](benchmarks/p4/README.md).
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

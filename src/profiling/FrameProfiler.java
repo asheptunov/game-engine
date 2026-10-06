@@ -23,6 +23,9 @@ public final class FrameProfiler implements AutoCloseable {
                                  long imageAgeNanos, long firstImageNanos, long cancelledJobs,
                                  long wastedPrimaryRays, long maxTileNanos, boolean running) {}
     private RenderProgress renderProgress;
+    private String viewportQuality;
+    public void viewportQuality(String value) { viewportQuality=value; }
+    public String viewportQuality() { return viewportQuality; }
     public record ImageUpdate(long time, long intervalNanos, long ageNanos) {}
     public record ImageSnapshot(List<ImageUpdate> updates, double fps, double meanMs, double p95Ms,
                                 double holdMs, double ageMs, double ageP95Ms, String status) {}
@@ -82,6 +85,7 @@ public final class FrameProfiler implements AutoCloseable {
         rays = null;
         trace = null;
         renderProgress = null;
+        viewportQuality = null;
         viewportFrame=false; candidateId=-1; candidateCapture=-1;
         scopes.clear();
         pending = false;

@@ -76,7 +76,7 @@ A14: The 50 ms limit still stops a batch between complete image samples. P2 addi
 
 Q15: is how does rendering snapshots asynchronously "enable automatic resolution reduction during movement and refinement when stationary"
 
-A15: It makes the policy responsive; it does not implement the policy itself. Input can mark a camera change immediately, cancel stale work, and request a new snapshot with a smaller sensor grid. A separate controller detects movement, chooses resolution, and restores the requested grid after movement settles. While stationary, we accumulate more samples to reduce noise. A resolution change restarts raw accumulation. We could implement automatic resolution with the current synchronous renderer, but reacting would still wait for the current expensive frame to finish.
+A15: It lets input and display continue while an expensive pass finishes. P4 now adds the separate policy: `view interactive on` chooses a smaller grid during camera movement using measured completed-image cost, then restores the requested grid after 350 ms without camera changes. Grid changes wait for completed jobs so continuous movement still publishes coherent previews. Each grid starts its own accumulation; stationary rendering then adds samples to reduce noise. Path depth and camera field of view remain unchanged. Automatic mode is off by default, and F3 shows the sampled dimensions alongside FPS. See [InteractiveResolution.java](src/scenes/viewport/InteractiveResolution.java).
 
 Q16: what is top-level BVH over objects and how is it different from how we're using a BVH now?
 

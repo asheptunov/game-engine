@@ -8,7 +8,7 @@ final class AsyncViewportTrace implements AutoCloseable {
     record Image(float[][][] rgb, ViewportState.RenderKey key, long generation, long requestedNanos,
                  long finishedNanos, long samples, TraceProfile.Stats stats, long traceNanos,
                  int primaryRays, int primaryHits, int shadowRays, int shadowsOccluded, int litPixels,
-                 Slot slot) {}
+                 Slot slot, boolean interactiveMotion) {}
     private static final class Slot {
         float[][][] rgb;
         int readers;
@@ -31,10 +31,13 @@ final class AsyncViewportTrace implements AutoCloseable {
     private volatile long generation;
     private long requestedNanos, firstImageNanos=-1, target;
     private volatile long cancelledJobs, wastedRays, maxTileNanos;
+    private final InteractiveResolution resolution = new InteractiveResolution();
+    private long measuredNanos=-1;
 
     AsyncViewportTrace(ViewportState live, DirectRgbTracer tracer) { this.live=live; this.tracer=tracer; }
     /** Called under live state lock from input as well as presentation. */
     void invalidate() {
+        resolution.observe(live,System.nanoTime());
         var next=live.renderKey();
         if (!next.equals(key)) {
             // Finishing one complete camera snapshot guarantees progress under sustained movement.
@@ -50,6 +53,9 @@ final class AsyncViewportTrace implements AutoCloseable {
         invalidate();
         if (failure != null) throw new IllegalStateException("Background trace failed", failure);
         if (closed || running) return;
+        // Change grids only after the active pass has published. Mouse events never cancel it.
+        resolution.choose(live,System.nanoTime());
+        invalidate();
         var current=image;
         if (current != null && current.generation()==generation && current.key().equals(key)
                 && (live.paused() || current.samples() >= live.effectiveTarget())) return;
@@ -62,6 +68,8 @@ final class AsyncViewportTrace implements AutoCloseable {
         output.writing=true;
         output.owner=null;
         var snapshot=live.renderSnapshot();
+        boolean motion=live.interactive() && resolution.moving(System.nanoTime());
+        if(motion) snapshot.samplesPerFrame(1);
         long token=epoch, jobGeneration=generation, requested=System.nanoTime();
         var jobKey=key;
         running=true;
@@ -82,7 +90,7 @@ final class AsyncViewportTrace implements AutoCloseable {
                     if (closed || token != epoch || !jobKey.sameTransport(liveKey)) return;
                     image=new Image(owned,jobKey,jobGeneration,requested,System.nanoTime(),snapshot.accumulatedSamples(),
                             tracer.profile,tracer.traceNanos,tracer.primaryRays,tracer.primaryHits,tracer.shadowRays,
-                            tracer.shadowsOccluded,tracer.litPixels,output);
+                            tracer.shadowsOccluded,tracer.litPixels,output,motion);
                     output.owner=image;
                     output.writing=false; // Readers may acquire as soon as publication releases this lock.
                     // A lagging camera image is an explicit preview, not samples of the newest camera.
@@ -120,6 +128,11 @@ final class AsyncViewportTrace implements AutoCloseable {
         }
     }
     void presented(Image shown) {
+        if(shown != null && shown.requestedNanos() != measuredNanos && shown.samples()>0) {
+            measuredNanos=shown.requestedNanos();
+            if(shown.interactiveMotion()) resolution.completed(shown.key().width(),shown.key().height(),
+                    System.nanoTime()-shown.requestedNanos());
+        }
         if(shown != null && shown.generation()==generation && shown.samples()>0 && firstImageNanos<0)
             firstImageNanos=System.nanoTime()-requestedNanos;
     }
@@ -130,7 +143,9 @@ final class AsyncViewportTrace implements AutoCloseable {
     }
     String status() {
         var current=image;
-        return "gen " + generation + " shown " + (current==null ? "none" : current.generation())
+        return "sampled " + (current==null ? "pending" : current.key().width()+"x"+current.key().height())
+                + " / requested " + live.sensorPixelsW()+"x"+live.sensorPixelsH()
+                + (live.interactive() ? " auto" : " fixed") + " | gen " + generation + " shown " + (current==null ? "none" : current.generation())
                 + " | age " + (current==null ? "n/a" : (System.nanoTime()-current.requestedNanos())/1_000_000+"ms")
                 + " | cancelled " + cancelledJobs + " waste " + wastedRays + " paths"
                 + " | tile max " + maxTileNanos/1_000_000 + "ms"

@@ -29,7 +29,7 @@ public final class ViewportCommand implements Command {
                 if(args[args.length-1].equals("help") || args[args.length-1].equals("--help"))
                     return help(Arrays.copyOfRange(args,1,args.length-1));
                 String op=args[1];
-                if(args.length==2 && (op.equals("light") || op.equals("mesh") || op.equals("camera"))) return help(op);
+                if(args.length==2 && (op.equals("light") || op.equals("mesh") || op.equals("camera") || op.equals("interactive"))) return help(op);
                 switch(op) {
                     case "status" -> require(args,2);
                     case "acceleration" -> {require(args,3);if(!args[2].equals("bvh")&&!args[2].equals("brute"))throw new IllegalArgumentException("view acceleration bvh/brute");state.acceleration(args[2].equals("bvh"));}
@@ -53,6 +53,14 @@ public final class ViewportCommand implements Command {
                     case "camera" -> {require(args,3);if(!args[2].equals("reset")) throw new IllegalArgumentException("view camera reset");ScenePresets.resetCamera(state);}
                     case "exposure" -> {require(args,3);state.exposure(number(args[2]));}
                     case "resolution" -> resolution(args);
+                    case "interactive" -> {
+                        switch(args[2]) {
+                            case "on", "off" -> { require(args,3); state.interactive(args[2].equals("on")); }
+                            case "target" -> { require(args,4); state.interactiveMillis(Double.parseDouble(args[3])); }
+                            case "min" -> { require(args,5); state.interactiveMinimum(Integer.parseInt(args[3]),Integer.parseInt(args[4])); }
+                            default -> throw new IllegalArgumentException("view interactive on/off/target/min; view interactive help");
+                        }
+                    }
                     case "depth" -> {require(args,3);state.pathDepth(Integer.parseInt(args[2]));}
                     case "samples" -> {require(args,3);state.samplesPerFrame(Integer.parseInt(args[2]));}
                     case "workers" -> {require(args,3);state.workers(Integer.parseInt(args[2]));}
@@ -110,6 +118,7 @@ public final class ViewportCommand implements Command {
     }
     private String confirmation(String[] args) {
         return switch(args[1]) {
+            case "interactive" -> state.interactiveStatus();
             case "resolution" -> "Updated resolution to " + state.sensorPixelsW() + "x" + state.sensorPixelsH() + ".";
             case "preset" -> "Loaded preset " + state.preset() + ".";
             case "reset" -> "Reset preset " + state.preset() + ".";
@@ -156,6 +165,7 @@ public final class ViewportCommand implements Command {
         return "Preset="+state.preset()+" exposure="+state.exposure()+" stops; sensor="+state.sensorPixelsW()+"x"+state.sensorPixelsH()
                 +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
                 +"; workers="+state.workers()+"; tile="+state.tileSize()
+                +"; "+state.interactiveStatus()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint lights: "+state.lights()
