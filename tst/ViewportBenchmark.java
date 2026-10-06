@@ -57,6 +57,15 @@ public class ViewportBenchmark {
             }
         }
         int instances=option(args,"instances",0);
+        // Configure mode before its dependent optics, regardless of argument order.
+        for(String arg:args)if(arg.startsWith("camera="))viewport.state().camera(viewport.state().camera().withMode(arg.substring(7)));
+        for(String arg:args) {
+            var camera=viewport.state().camera();
+            if(arg.startsWith("fov="))viewport.state().camera(camera.withFov(Float.parseFloat(arg.substring(4))));
+            if(arg.startsWith("height="))viewport.state().camera(camera.withHeight(Float.parseFloat(arg.substring(7))));
+            if(arg.startsWith("focus="))viewport.state().camera(camera.withFocus(Float.parseFloat(arg.substring(6))));
+            if(arg.startsWith("aperture="))viewport.state().camera(camera.withAperture(Float.parseFloat(arg.substring(9))));
+        }
         if(instances>0) {
             var state=viewport.state();
             if(instances<state.instances().size() || instances>128)throw new IllegalArgumentException("instances must be initial count..128");
@@ -98,7 +107,7 @@ public class ViewportBenchmark {
                 +"; CPU="+System.getenv("PROCESSOR_IDENTIFIER")+"; processors="+Runtime.getRuntime().availableProcessors()
                 +"\ndisplay="+displayWidth+"x"+displayHeight+"; sensor="+viewport.state().sensorPixelsW()+"x"+viewport.state().sensorPixelsH()
                 +"; workers="+viewport.state().workers()+"; tile="+viewport.state().tileSize()
-                +"; camera="+originalEye+"; sensorGeometry="+originalSensor
+                +"; "+viewport.state().camera().summary()+"; camera="+originalEye+"; sensorGeometry="+originalSensor
                 +"\npreset="+viewport.state().preset()+"; depth="+viewport.state().pathDepth()+"; seed="+viewport.state().seed()
                 +"; requestedSpp="+viewport.state().samplesPerFrame()+"; acceleration="+viewport.state().acceleration()
                 +"; instances="+viewport.state().instances().size()+"; primitives="+viewport.state().instances().stream().mapToInt(o->o.geometry().size()).sum()

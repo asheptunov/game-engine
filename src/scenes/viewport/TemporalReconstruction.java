@@ -13,7 +13,7 @@ final class TemporalReconstruction {
         final float[][][] rgb;
         final float[] weight;
         ViewportState.RenderKey key;
-        Camera camera;
+        CameraProjection camera;
         long time;
         History(int w,int h) {
             guide=new SurfaceGuide(w,h);rgb=new float[3][h][w];weight=new float[w*h];
@@ -28,7 +28,7 @@ final class TemporalReconstruction {
         if(current==null || current.key==null || stats.eligible()==0) return false;
         var previous=key.equals(current.key)?source:current;
         return previous!=null && previous.key!=null && key.sameTransport(previous.key)
-                && now-previous.time<=500_000_000L && !new Camera(key).cut(previous.camera);
+                && now-previous.time<=500_000_000L && !new CameraProjection(key).cut(previous.camera);
     }
     void clear() { source=current=null;stats=new Stats(0,0,0,0,0,"off"); }
     float[][][] reconstruct(float[][][] raw,SurfaceGuide guide,ViewportState.RenderKey key,long samples,long now) {
@@ -49,7 +49,7 @@ final class TemporalReconstruction {
         } else if(!key.equals(current.key)) {
             var swap=source;source=current;current=swap;
         }
-        var camera=new Camera(key);
+        var camera=new CameraProjection(key);
         String reason=source.key==null?"new history":!key.sameTransport(source.key)?"scene/grid edit"
                 :now-source.time>500_000_000L?"expired":camera.cut(source.camera)?"camera cut":"diffuse";
         boolean compatible=reason.equals("diffuse");
@@ -95,7 +95,7 @@ final class TemporalReconstruction {
             this.cancel=cancel;
         }
         @Override public void run() {
-            int w=key.width();var camera=new Camera(key);var oldCamera=compatible?new Camera(source.key):null;
+            int w=key.width();var camera=new CameraProjection(key);var oldCamera=compatible?new CameraProjection(source.key):null;
             for(int y=from;y<to;y++) {
                 if(cancel.getAsBoolean()) return;
                 for(int x=0;x<w;x++) {
@@ -140,7 +140,7 @@ final class TemporalReconstruction {
             if(guide.surface[yy*guide.width+xx]!=id) return false;
         return true;
     }
-    private static boolean matches(SurfaceGuide a,int i,SurfaceGuide b,int j,Camera camera,Camera old) {
+    private static boolean matches(SurfaceGuide a,int i,SurfaceGuide b,int j,CameraProjection camera,CameraProjection old) {
         if(a.nx[i]*b.nx[j]+a.ny[i]*b.ny[j]+a.nz[i]*b.nz[j]<.995f) return false;
         old.point(j%b.width,j/b.width,b.depth[j]);
         double dx=camera.px-old.px,dy=camera.py-old.py,dz=camera.pz-old.pz;
@@ -148,46 +148,5 @@ final class TemporalReconstruction {
         // Tangent displacement may span neighboring pixel centers; separation off the surface may not.
         return dx*dx+dy*dy+dz*dz<=2.25*footprint*footprint
                 && Math.abs(dx*a.nx[i]+dy*a.ny[i]+dz*a.nz[i])<=.1*footprint+1e-4;
-    }
-    /** General pinhole plane projection, supporting nonorthogonal sensor edges; scalar scratch per frame. */
-    private static final class Camera {
-        final int w,h;
-        final double ex,ey,ez,ox,oy,oz,ax,ay,az,bx,by,bz,nx,ny,nz,plane,aa,ab,bb,det,focal,pixel;
-        double px,py,pz;
-        Camera(ViewportState.RenderKey key) {
-            w=key.width();h=key.height();var e=key.eye();var s=key.sensor();
-            ex=e.x();ey=e.y();ez=e.z();ox=s.origin().x();oy=s.origin().y();oz=s.origin().z();
-            ax=s.edge1().x();ay=s.edge1().y();az=s.edge1().z();
-            bx=s.edge2().x();by=s.edge2().y();bz=s.edge2().z();
-            double cx=ay*bz-az*by,cy=az*bx-ax*bz,cz=ax*by-ay*bx,inv=1/Math.sqrt(cx*cx+cy*cy+cz*cz);
-            nx=cx*inv;ny=cy*inv;nz=cz*inv;
-            plane=nx*(ox-ex)+ny*(oy-ey)+nz*(oz-ez);focal=Math.abs(plane);
-            aa=ax*ax+ay*ay+az*az;ab=ax*bx+ay*by+az*bz;bb=bx*bx+by*by+bz*bz;det=aa*bb-ab*ab;
-            pixel=Math.max(Math.sqrt(aa)/w,Math.sqrt(bb)/h);
-        }
-        void point(int x,int y,float depth) {
-            double u=(x+.5)/w,v=(y+.5)/h,dx=ox+ax*u+bx*v-ex,dy=oy+ay*u+by*v-ey,dz=oz+az*u+bz*v-ez;
-            double scale=depth/Math.sqrt(dx*dx+dy*dy+dz*dz);
-            px=ex+dx*scale;py=ey+dy*scale;pz=ez+dz*scale;
-        }
-        int project(double x,double y,double z) {
-            double dx=x-ex,dy=y-ey,dz=z-ez,denominator=nx*dx+ny*dy+nz*dz;
-            if(plane*denominator<=0 || det<=0) return -1;
-            double t=plane/denominator;
-            double qx=ex+dx*t-ox,qy=ey+dy*t-oy,qz=ez+dz*t-oz;
-            double qa=qx*ax+qy*ay+qz*az,qb=qx*bx+qy*by+qz*bz;
-            double u=(qa*bb-qb*ab)/det,v=(qb*aa-qa*ab)/det;
-            if(u<0 || u>=1 || v<0 || v>=1) return -1;
-            return (int)(v*h)*w+(int)(u*w);
-        }
-        double footprint(float depth) { return depth*pixel/Math.max(1e-8,focal); }
-        boolean cut(Camera old) {
-            double dx=ex-old.ex,dy=ey-old.ey,dz=ez-old.ez;
-            return dx*dx+dy*dy+dz*dz>.0625*Math.min(focal*focal,old.focal*old.focal)
-                    || nx*old.nx+ny*old.ny+nz*old.nz<.98
-                    || Math.abs(focal-old.focal)>focal*.01
-                    || Math.abs(aa-old.aa)>aa*.01 || Math.abs(bb-old.bb)>bb*.01
-                    || (ax*old.ax+ay*old.ay+az*old.az)/Math.sqrt(aa*old.aa)<.98;
-        }
     }
 }

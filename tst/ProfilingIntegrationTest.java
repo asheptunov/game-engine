@@ -10,6 +10,33 @@ import static harness.Assertions.*;
 
 /** Exercises the real DI graph and scene timing hooks without opening an AWT window. */
 public class ProfilingIntegrationTest {
+    @Test void autofocusRunsAfterRenderTargetAndReportsCapturedOptics() throws Exception {
+        var module=new MainModule();var injector=Injector.create(module);module.registerScenes(injector);
+        try(var viewport=injector.get(Viewport.class);var profiler=injector.get(FrameProfiler.class)) {
+            var state=viewport.state();state.resolution(64);scenes.viewport.ScenePresets.load(state,"triangle");state.sampleTarget(2);
+            var command=new scenes.viewport.ViewportCommand(state);profiler.toggle();
+            long deadline=System.nanoTime()+5_000_000_000L;
+            while(state.accumulatedSamples()<2 && System.nanoTime()<deadline) {profiler.beginFrame();viewport.render();profiler.endFrame();Thread.sleep(2);}
+            assertEquals(2L,state.accumulatedSamples());
+            assertTrue(command.run("view","camera","aperture",".2").isSuccess());
+            assertTrue(command.run("view","camera","focus","transition","duration","0").isSuccess());
+            assertTrue(command.run("view","camera","focus","auto","delay","0").isSuccess());
+            assertTrue(command.run("view","camera","focus","mode","auto").isSuccess());
+            deadline=System.nanoTime()+5_000_000_000L;
+            while((state.camera().focus()!=11 || state.accumulatedSamples()<2) && System.nanoTime()<deadline) {
+                profiler.beginFrame();viewport.render();profiler.endFrame();Thread.sleep(2);
+            }
+            assertEquals(11f,state.camera().focus());assertEquals(2L,state.accumulatedSamples());
+            for(int i=0;i<3;i++) {profiler.beginFrame();viewport.render();profiler.endFrame();}
+            assertEquals(2L,state.accumulatedSamples());assertTrue(profiler.viewportFocus()[0].contains("auto"));
+            assertTrue(profiler.viewportFocus()[2].contains("focus 11.000"));assertTrue(profiler.viewportFocus()[2].contains("aperture 0.20000"));
+            profiler.beginFrame();viewport.render();injector.get(PerformanceOverlay.class).render();profiler.endFrame();
+            var raster=injector.get(rendering.Raster.class);
+            var preview=new java.awt.image.BufferedImage(raster.width(),raster.height(),java.awt.image.BufferedImage.TYPE_INT_RGB);
+            for(int y=0;y<raster.height();y++)for(int x=0;x<raster.width();x++)preview.setRGB(x,y,raster.pixel(x,y).rgbInt24());
+            javax.imageio.ImageIO.write(preview,"png",new java.io.File("out/cli/focus-f3-preview.png"));
+        }
+    }
     @Test void temporalToggleChangesPresentationImmediatelyAndReportsSeparateHistory() throws Exception {
         var module=new MainModule();var injector=Injector.create(module);module.registerScenes(injector);
         try(var viewport=injector.get(Viewport.class);var profiler=injector.get(FrameProfiler.class)) {

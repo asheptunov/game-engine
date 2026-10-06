@@ -29,6 +29,9 @@ public final class FrameProfiler implements AutoCloseable {
     private String viewportHistory;
     public void viewportHistory(String value) { viewportHistory=value; }
     public String viewportHistory() { return viewportHistory; }
+    private String[] viewportFocus;
+    public void viewportFocus(String... lines) {viewportFocus=lines;}
+    public String[] viewportFocus() {return viewportFocus;}
     public record ImageUpdate(long time, long intervalNanos, long ageNanos) {}
     public record ImageSnapshot(List<ImageUpdate> updates, double fps, double meanMs, double p95Ms,
                                 double holdMs, double ageMs, double ageP95Ms, String status) {}
@@ -90,6 +93,7 @@ public final class FrameProfiler implements AutoCloseable {
         renderProgress = null;
         viewportQuality = null;
         viewportHistory = null;
+        viewportFocus = null;
         viewportFrame=false; candidateId=-1; candidateCapture=-1;
         scopes.clear();
         pending = false;

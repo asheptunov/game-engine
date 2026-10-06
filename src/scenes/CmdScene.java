@@ -27,8 +27,11 @@ public class CmdScene implements Command {
             return Result.failure("no scene: " + name + "; available: " + scenesByName.keySet());
         }
         var previous = activeScene.get();
+        boolean focused=previous==null||previous.windowFocused();
         if (previous != null) previous.suspendInput();
         activeScene.set(target);
+        target.windowFocus(focused);
+        target.resumeInput();
         return Result.success("switched to " + name);
     }
 }

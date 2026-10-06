@@ -95,6 +95,22 @@ public class ViewportKeyBindingsTest {
         viewport.keyPressed(new KeyEvent(source,KeyEvent.KEY_PRESSED,0,0,KeyEvent.VK_W,'w'));
         viewport.renderBlocking();assertNotEquals(eye,state.eye());assertEquals(1L,state.accumulatedSamples());
     }
+    @Test void focusControllerConsoleWindowAndSceneLifecycle() {
+        try(var viewport=viewport()) {
+            var state=viewport.state();var command=new scenes.viewport.ViewportCommand(state);
+            assertTrue(command.run("view","camera","focus","mode","auto").isSuccess());
+            viewport.keyPressed(key(KeyEvent.KEY_PRESSED,KeyEvent.VK_SLASH,0,KeyEvent.KEY_LOCATION_STANDARD));
+            assertFalse(state.focusStatus().contains("suspended"));
+            var other=new Scene() {};var active=new AtomicReference<Scene>(viewport);
+            var switcher=new SceneSwitcher(List.of(viewport,other),active,viewport);
+            switcher.focusLost(new FocusEvent(new Canvas(),FocusEvent.FOCUS_LOST));assertTrue(state.focusStatus().contains("suspended"));
+            var scene=new CmdScene(Map.of("viewport",viewport,"other",other),active);
+            assertTrue(scene.run("scene","viewport").isSuccess());assertTrue(state.focusStatus().contains("suspended"));
+            switcher.focusGained(new FocusEvent(new Canvas(),FocusEvent.FOCUS_GAINED));assertFalse(state.focusStatus().contains("suspended"));
+            assertTrue(scene.run("scene","other").isSuccess());assertTrue(state.focusStatus().contains("suspended"));
+            assertTrue(scene.run("scene","viewport").isSuccess());assertFalse(state.focusStatus().contains("suspended"));
+        }
+    }
     @Test void asynchronousConsoleEditsAndFocusSwitchesKeepStateCoherent() throws Exception {
         try(var viewport=viewport()) {
             var state=viewport.state(); state.resolution(900); ScenePresets.load(state,"glass");

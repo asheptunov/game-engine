@@ -1,23 +1,20 @@
 package scenes.viewport;
 
-import math.Vec3;
-import scenes.viewport.objects.Rect;
-
 /** Live-monitor-owned policy. It never changes the camera or borrows samples from another grid. */
 final class InteractiveResolution {
     static final long SETTLE_NANOS = 350_000_000L;
     static final long CHANGE_NANOS = 500_000_000L;
     private static final double[] SCALES = {1, .75, .5, .375, .25, .1875, .125, .09375, .0625};
-    private Vec3 eye;
-    private Rect sensor;
+    private Camera.Identity camera;
     private long lastMotion = Long.MIN_VALUE, lastChange;
     private double nanosPerPixel;
     private int fastUpdates;
     private long revision, consideredRevision;
 
     void observe(ViewportState state, long now) {
-        if (eye != null && (!eye.equals(state.eye()) || !sensor.equals(state.cameraSensor()))) lastMotion = now;
-        eye = state.eye(); sensor = state.cameraSensor();
+        var next=state.camera().identity();
+        if(camera!=null && !camera.equals(next))lastMotion=now;
+        camera=next;
     }
     boolean moving(long now) { return lastMotion != Long.MIN_VALUE && now - lastMotion < SETTLE_NANOS; }
     void completed(int width, int height, long elapsed) {

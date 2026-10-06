@@ -11,6 +11,7 @@ public final class ViewportCommand implements Command {
     private final ViewportState state;
     private final int referenceWidth, referenceHeight;
     private String selected="sphere";
+    private Runnable clearCameraInput=()->{};
     /** Headless callers use their initial sampling grid as the scale reference. */
     public ViewportCommand(ViewportState state) { this(state, state.sensorPixelsW(), state.sensorPixelsH()); }
     public ViewportCommand(ViewportState state, int displayWidth, int displayHeight) {
@@ -18,10 +19,16 @@ public final class ViewportCommand implements Command {
         this.referenceWidth=displayWidth;
         this.referenceHeight=displayHeight;
     }
+    ViewportCommand(ViewportState state,int width,int height,Runnable clearCameraInput) {
+        this(state,width,height);this.clearCameraInput=clearCameraInput;
+    }
     public static final String HELP = ViewportHelp.INDEX;
     @Override public Result<String, String> help(String... path) { return ViewportHelp.help(path); }
     @Override public Result<String,String> run(String... raw) {
         var args=Arrays.stream(raw).filter(s->!s.isBlank()).toArray(String[]::new);
+        if(Arrays.equals(args,new String[]{"view","camera","focus","center"}))return focusQuery(false,true);
+        if(args.length==5 && args[1].equals("camera") && args[2].equals("focus") && args[3].equals("pull")
+                && (args[4].equals("center")||args[4].equals("source")))return focusQuery(true,args[4].equals("center"));
         synchronized(state) {
             try {
                 if(args.length<2) return help();
@@ -50,7 +57,7 @@ public final class ViewportCommand implements Command {
                     case "remove" -> {require(args,3);int i=index(args[2]);if(state.instances().size()==1)throw new IllegalArgumentException("Keep at least one instance");state.instances().remove(i);if(selected.equals(args[2]))selected=state.instances().getFirst().name();}
                     case "preset" -> {require(args,3);ScenePresets.load(state,args[2]);selected=state.instances().getFirst().name();}
                     case "reset" -> {require(args,2);ScenePresets.load(state,state.preset());selected=state.instances().getFirst().name();}
-                    case "camera" -> {require(args,3);if(!args[2].equals("reset")) throw new IllegalArgumentException("view camera reset");ScenePresets.resetCamera(state);}
+                    case "camera" -> {return camera(args);}
                     case "exposure" -> {require(args,3);state.exposure(number(args[2]));}
                     case "resolution" -> resolution(args);
                     case "temporal" -> {
@@ -139,7 +146,6 @@ public final class ViewportCommand implements Command {
             case "resolution" -> "Updated resolution to " + state.sensorPixelsW() + "x" + state.sensorPixelsH() + ".";
             case "preset" -> "Loaded preset " + state.preset() + ".";
             case "reset" -> "Reset preset " + state.preset() + ".";
-            case "camera" -> "Reset camera.";
             case "restart" -> "Restarted sampling.";
             case "pause" -> "Paused sampling.";
             case "resume" -> "Resumed sampling.";
@@ -183,12 +189,81 @@ public final class ViewportCommand implements Command {
                 +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
                 +"; workers="+state.workers()+"; tile="+state.tileSize()
                 +"; "+state.interactiveStatus()
-                +"; temporal="+(state.temporal()?"on":"off (raw)")
+                +"; "+state.camera().summary()+"; "+state.temporalStatus()+"; "+state.focusStatus()
                 +"; "+state.temporalBudgetStatus()
                 +"; depth="+state.pathDepth()+"; spp/batch max="+state.samplesPerFrame()+"; accumulated="+state.accumulatedSamples()
                 +"; "+state.samplingStatus()+"; target="+state.sampleTarget()+"; seed="+state.seed()
                 +"\nObjects="+names+" materials="+materials+"\nSelected: "+object+"\nPoint lights: "+state.lights()
                 +"\nEmitters: "+state.instances().stream().filter(o->o.material().emissive()).map(o->o.name()+" "+o.transform()+" radiance="+o.material().emission()).toList()+"\nview help for controls";
+    }
+    private Result<String,String> camera(String[] args) {
+        var current=state.camera();
+        switch(args[2]) {
+            case "status" -> {require(args,3);return Result.success(current.summary()+" eye="+current.eye()+" forward="+current.forward()+"; "+state.temporalStatus()+"; "+state.focusStatus());}
+            case "reset" -> {require(args,3);clearCameraInput.run();ScenePresets.resetCamera(state);return Result.success("Reset camera.");}
+            case "mode" -> {
+                require(args,4);var next=current.withMode(args[3]);state.camera(next);
+                if(current.projection()!=next.projection())state.focusController().framingChanged();
+                return Result.success(next.summary()+(next.mode()==Camera.Mode.ORTHOGRAPHIC && current.height()==0?
+                        "; matched at focus distance "+current.focus()+" units":""));
+            }
+            case "projection" -> {require(args,4);var next=current.withProjection(args[3]);state.camera(next);if(current.projection()!=next.projection())state.focusController().framingChanged();}
+            case "fov" -> {require(args,4);var next=current.withFov(number(args[3]));state.camera(next);if(!next.equals(current))state.focusController().framingChanged();}
+            case "height" -> {require(args,4);var next=current.withHeight(number(args[3]));state.camera(next);if(!next.equals(current))state.focusController().framingChanged();}
+            case "aperture" -> {require(args,4);state.camera(current.withAperture(number(args[3])));}
+            case "focus" -> {
+                if(args.length==3)return help("camera","focus");
+                var focus=state.focusController();
+                switch(args[3]) {
+                    case "distance" -> {require(args,5);focus.manual(number(args[4]),false);}
+                    case "mode" -> {require(args,5);focus.mode(args[4]);}
+                    case "source" -> {require(args,7);if(!args[4].equals("screen"))throw new IllegalArgumentException("Focus source must be screen <u> <v>");focus.source(new FocusTargetSource.Screen(number(args[5]),number(args[6])));}
+                    case "pull" -> {require(args,6);if(!args[4].equals("distance"))throw new IllegalArgumentException("Focus pull distance <units> | center | source");focus.manual(number(args[5]),true);}
+                    case "transition" -> {
+                        require(args,6);
+                        if(args[4].equals("duration"))focus.duration(Double.parseDouble(args[5]));
+                        else if(args[4].equals("curve"))focus.curve(args[5]);
+                        else throw new IllegalArgumentException("Focus transition duration <ms> | curve linear/smooth");
+                    }
+                    case "auto" -> {
+                        require(args,6);
+                        if(args[4].equals("delay"))focus.delay(Double.parseDouble(args[5]));
+                        else if(args[4].equals("tolerance"))focus.tolerance(Double.parseDouble(args[5]));
+                        else throw new IllegalArgumentException("Focus auto delay <ms> | tolerance <percent>");
+                    }
+                    default -> throw new IllegalArgumentException("Unknown focus control; view camera focus help");
+                }
+                return Result.success(state.focusStatus());
+            }
+            default -> throw new IllegalArgumentException("Unknown camera control; view camera help");
+        }
+        return Result.success(state.camera().summary());
+    }
+    private Result<String,String> focusQuery(boolean pull,boolean center) {
+        ViewportState snapshot;
+        FocusTargetSource source;long epoch;
+        synchronized(state) {
+            var focus=state.focusController();source=center?FocusTargetSource.CENTER:focus.source();
+            if(focus.request(source,pull))return Result.success("Focus query queued; view camera status shows result.");
+            snapshot=state.renderSnapshot();epoch=focus.epoch();
+        }
+        var measured=new CameraFocus().resolve(source,snapshot.camera(),CameraFocus.Scene.capture(snapshot),epoch,0,System::nanoTime);
+        if(measured.error()!=null)return Result.failure(measured.error());
+        synchronized(state) {
+            if(epoch!=state.focusController().epoch())return Result.failure("Focus selection changed; retry");
+            return publishFocus(snapshot,measured.distance(),pull);
+        }
+    }
+    Result<String,String> publishFocus(ViewportState captured,float distance) {
+        return publishFocus(captured,distance,false);
+    }
+    private Result<String,String> publishFocus(ViewportState captured,float distance,boolean pull) {
+        synchronized(state) {
+            if(!captured.camera().equals(state.camera()) || !captured.renderKey().sameTransport(state.renderKey()))
+                return Result.failure("View changed during center focus; retry view camera focus center");
+            state.focusController().manual(distance,pull);
+            return Result.success("Focus distance="+distance+" units (first surface)");
+        }
     }
     private void editAreaLight(String[] args) {
         int index=index("area-light");var object=state.instances().get(index);var t=object.transform();var m=object.material();

@@ -34,7 +34,7 @@ public final class PerformanceOverlay implements Renderer {
     public PerformanceOverlay(FrameProfiler profiler, Raster raster, @Named("frame_rate") int rate) {
         this.profiler = profiler;
         this.raster = raster;
-        panel = new BufferedImage(Math.max(1, Math.min(760, raster.width() - 24)), 720, BufferedImage.TYPE_INT_RGB);
+        panel = new BufferedImage(Math.max(1, Math.min(760, raster.width() - 24)), 774, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) panel.getRaster().getDataBuffer()).getData();
         cachedChannels = new byte[3][pixels.length];
         budgetMs = 1000. / rate;
@@ -55,7 +55,7 @@ public final class PerformanceOverlay implements Renderer {
         wasVisible = true;
         wereDetails = profiler.traceDetails();
         // The cached panel is opaque; copying channels avoids making the profiler a blending bottleneck.
-        int height = Math.min(wereDetails ? 720 : 524, raster.height() - 12);
+        int height = Math.min((wereDetails ? 720 : 524)+(profiler.viewportFocus()==null?0:54), raster.height() - 12);
         int width = Math.min(panel.getWidth(), raster.width() - 12);
         if (width <= 0) return;
         for (int y = 0; y < height; y++) {
@@ -163,6 +163,10 @@ public final class PerformanceOverlay implements Renderer {
             text(g,async ? "Fresh intervals; stages include cached redraws / orange hold / white 60 FPS" :
                     "Display-thread stages; tallest interval per column / white = target",14,395);
             hardware(g, latest, metrics.sample());
+            if(profiler.viewportFocus()!=null) {
+                var lines=profiler.viewportFocus();for(int i=0;i<lines.length;i++)text(g,lines[i],14,528+i*18);
+                g.translate(0,54);
+            }
             if (profiler.traceDetails()) traceDetails(g, frames);
         } finally { g.dispose(); }
     }

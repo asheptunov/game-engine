@@ -12,9 +12,14 @@ public final class ScenePresets {
     private ScenePresets() {}
 
     public static void resetCamera(ViewportState state) {
+        state.camera(new Camera(state.eye(),state.cameraSensor()));
         state.eye(new Vec3(0, 0, -1));
         state.cameraSensor(new Rect(new Vec3(-.5f, -.5f, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0)));
-        state.restart();
+        if(state.preset().equals("glass-inside")) {
+            state.eye(new Vec3(-1.15f,0,5));
+            state.cameraSensor(new Rect(new Vec3(-1.65f,-.5f,6),new Vec3(1,0,0),new Vec3(0,1,0)));
+        }
+        state.focusController().reset();
     }
 
     public static void load(ViewportState state, String name) {
@@ -23,7 +28,9 @@ public final class ScenePresets {
         state.instances().clear();
         state.objects().clear();
         state.lights().clear();
+        state.preset(name);
         resetCamera(state);
+        state.restart();
         state.exposure(0);
         state.preset(name);
         state.pathDepth(name.equals("bounce-room") ? 3 : 0);

@@ -24,6 +24,7 @@ public class SceneSwitcher
     private final MouseListener          ml;
     private final MouseMotionListener    mml;
     private final MouseWheelListener     mwl;
+    private boolean windowFocused=true;
 
     public SceneSwitcher(List<Scene> scenes, AtomicReference<Scene> activeScene, Object delegate) {
         if (scenes == null || scenes.isEmpty()) {
@@ -52,14 +53,18 @@ public class SceneSwitcher
         var next = scenes.get(((idx < 0 ? -1 : idx) + 1) % scenes.size());
         if (current != null) current.suspendInput();
         activeScene.set(next);
+        next.windowFocus(windowFocused);
+        next.resumeInput();
         LOG.info("Switched scene: %s -> %s", current, next);
     }
 
     @Override public void keyTyped(KeyEvent e) { kl.keyTyped(e); }
-    @Override public void focusGained(java.awt.event.FocusEvent e) {}
+    @Override public void focusGained(java.awt.event.FocusEvent e) {
+        windowFocused=true;var scene=activeScene.get();if(scene!=null)scene.windowFocus(true);
+    }
     @Override public void focusLost(java.awt.event.FocusEvent e) {
         var scene = activeScene.get();
-        if (scene != null) scene.suspendInput();
+        windowFocused=false;if (scene != null) scene.windowFocus(false);
     }
     @Override public void keyReleased(KeyEvent e) { kl.keyReleased(e); }
 

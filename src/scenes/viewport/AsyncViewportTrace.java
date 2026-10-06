@@ -5,11 +5,11 @@ import java.util.concurrent.*;
 
 /** One active coordinator, no queued snapshots. Published storage is immutable while leased. */
 final class AsyncViewportTrace implements AutoCloseable {
-    record Image(float[][][] rgb, ViewportState.RenderKey key, long generation, long requestedNanos,
+    record Image(float[][][] rgb, ViewportState.RenderKey key, Camera camera, long generation, long requestedNanos,
                  long finishedNanos, long samples, TraceProfile.Stats stats, long traceNanos,
                  int primaryRays, int primaryHits, int shadowRays, int shadowsOccluded, int litPixels,
                  Slot slot, boolean interactiveMotion, boolean temporal,
-                 long temporalVersion, float[][][] reconstructed, TemporalReconstruction.Stats history,
+                 long temporalVersion, long cameraHistoryVersion, float[][][] reconstructed, TemporalReconstruction.Stats history,
                  int requestedBatch, int plannedBatch, boolean motionBudget) {}
     private static final class Slot {
         float[][][] rgb;
@@ -39,6 +39,7 @@ final class AsyncViewportTrace implements AutoCloseable {
     private long temporalVersion;
     private final TemporalReconstruction reconstruction=new TemporalReconstruction();
     private long historyEpoch=-1;
+    private long historyCameraVersion=-1;
 
     AsyncViewportTrace(ViewportState live, DirectRgbTracer tracer) { this.live=live; this.tracer=tracer; }
     /** Called under live state lock from input as well as presentation. */
@@ -64,7 +65,8 @@ final class AsyncViewportTrace implements AutoCloseable {
         resolution.choose(live,System.nanoTime());
         invalidate();
         var current=image;
-        if (current != null && current.temporalVersion()==live.temporalVersion() && current.generation()==generation && current.key().equals(key)
+        if (current != null && current.temporalVersion()==live.temporalVersion() && current.cameraHistoryVersion()==live.cameraHistoryVersion()
+                && current.generation()==generation && current.key().equals(key)
                 && (live.paused() || current.samples() >= live.effectiveTarget())) return;
         Slot destination=null;
         for(var slot:slots) if(!slot.writing && slot.readers==0 && (current==null || slot!=current.slot())) {
@@ -88,7 +90,9 @@ final class AsyncViewportTrace implements AutoCloseable {
         coordinator.execute(() -> {
             boolean published=false;
             try {
-                if(historyEpoch!=token) { reconstruction.clear();historyEpoch=token; }
+                if(historyEpoch!=token || historyCameraVersion!=snapshot.cameraHistoryVersion()) {
+                    reconstruction.clear();historyEpoch=token;historyCameraVersion=snapshot.cameraHistoryVersion();
+                }
                 // Without compatible history, spend the requested samples to seed a useful image.
                 int chosenBatch=budget && !p4Motion && !reconstruction.compatibleHistory(jobKey,System.nanoTime())
                         ?requestedBatch:plannedBatch;
@@ -103,7 +107,7 @@ final class AsyncViewportTrace implements AutoCloseable {
                 var owned=output.rgb;
                 for(int c=0;c<3;c++) for(int y=0;y<h;y++) System.arraycopy(rgb[c][y],0,owned[c][y],0,w);
                 float[][][] presentation=null;
-                if(snapshot.temporal()) {
+                if(snapshot.temporalEffective()) {
                     var result=reconstruction.reconstruct(rgb,tracer.surfaceGuide(),jobKey,snapshot.accumulatedSamples(),System.nanoTime(),snapshot.workers(),
                             ()->closed || token!=epoch);
                     if(result!=rgb) {
@@ -116,9 +120,9 @@ final class AsyncViewportTrace implements AutoCloseable {
                 synchronized(live) {
                     var liveKey=live.renderKey();
                     if (closed || token != epoch || !jobKey.sameTransport(liveKey)) return;
-                    image=new Image(owned,jobKey,jobGeneration,requested,System.nanoTime(),snapshot.accumulatedSamples(),
+                    image=new Image(owned,jobKey,snapshot.camera(),jobGeneration,requested,System.nanoTime(),snapshot.accumulatedSamples(),
                             tracer.profile,tracer.traceNanos,tracer.primaryRays,tracer.primaryHits,tracer.shadowRays,
-                            tracer.shadowsOccluded,tracer.litPixels,output,motion,snapshot.temporal(),snapshot.temporalVersion(),presentation,reconstruction.stats(),
+                            tracer.shadowsOccluded,tracer.litPixels,output,motion,snapshot.temporalEffective(),snapshot.temporalVersion(),snapshot.cameraHistoryVersion(),presentation,reconstruction.stats(),
                             requestedBatch,chosenBatch,budget);
                     output.owner=image;
                     output.writing=false; // Readers may acquire as soon as publication releases this lock.

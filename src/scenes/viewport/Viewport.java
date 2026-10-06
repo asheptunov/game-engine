@@ -70,13 +70,17 @@ public class Viewport implements AutoCloseable,
     private final MouseBindings                        mouseBindings;
 
     private volatile boolean consoleOpen = false;
+    private boolean sceneActive=true,windowFocused=true;
     private Boolean blockingMode;
     private synchronized void mode(boolean blocking) {
         if(blockingMode != null && blockingMode != blocking)
             throw new IllegalStateException("Do not mix blocking and asynchronous rendering on one viewport");
         blockingMode=blocking;
     }
-    @Override public void close() { asyncTrace.close(); }
+    @Override public void close() {
+        synchronized(state) {state.focusController().close();}
+        asyncTrace.close();
+    }
 
     @Inject
     public Viewport(Raster display,
@@ -96,8 +100,9 @@ public class Viewport implements AutoCloseable,
         this.state.presentationAspect((float) width / height);
         this.tracer = new DirectRgbTracer(state);
         this.asyncTrace = new AsyncViewportTrace(state, tracer);
+        state.focusController().enableLive();
         var rootCmd = new TrimmingCommand(DelegatingCommand.builder()
-                .withCommand("view", new ViewportCommand(state, width, height))
+                .withCommand("view", new ViewportCommand(state, width, height,cameraControls::clear))
                 .withCommand("scene", new CmdScene(scenes, sceneRef))
                 .withCommand("exit", new CmdExit())
                 .build());
@@ -109,7 +114,7 @@ public class Viewport implements AutoCloseable,
 
 
         this.actions = new ActionRegistry<Runnable>()
-                .register("console.open", () -> { suspendInput(); consoleOpen = true; })
+                .register("console.open", () -> { cameraControls.clear(); asyncTrace.suspend(); consoleOpen = true; })
                 // Movement actions are held by CameraControls instead of dispatched on repeat.
                 .register("camera.move.forward", () -> {})
                 .register("camera.move.back", () -> {})
@@ -161,9 +166,10 @@ public class Viewport implements AutoCloseable,
         String label, status;
         synchronized(state) {
             if (!consoleOpen) cameraControls.update(state,System.nanoTime());
+            state.focusController().tick();
             asyncTrace.request(); image=asyncTrace.acquireImage();
             exposure=(float)Math.pow(2,state.exposure()); label=label(); status=asyncTrace.status();
-            temporal=state.temporal();
+            temporal=state.temporalEffective();
             temporalVersion=state.temporalVersion();
         }
         try {
@@ -172,7 +178,9 @@ public class Viewport implements AutoCloseable,
                 profiler.rayStats(new FrameProfiler.Rays(image.key().width(),image.key().height(),
                         image.primaryRays(),image.primaryHits(),image.shadowRays(),image.shadowsOccluded(),
                         image.litPixels(),image.traceNanos()));
-                boolean reconstructed=temporal && image.temporalVersion()==temporalVersion && image.reconstructed()!=null;
+                boolean reconstructed;
+                synchronized(state) { reconstructed=temporal && image.temporalVersion()==temporalVersion
+                        && image.cameraHistoryVersion()==state.cameraHistoryVersion() && image.reconstructed()!=null; }
                 if(convertedTemporal!=reconstructed || (reconstructed && convertedPublication!=image.requestedNanos())) convertedKey=null;
                 convertedTemporal=reconstructed;convertedPublication=image.requestedNanos();
                 paintImage(reconstructed?image.reconstructed():image.rgb(),exposure,image.key(),image.samples());
@@ -192,7 +200,9 @@ public class Viewport implements AutoCloseable,
                         +(image==null?"":" | batch actual/cap/req "+image.stats().samplesPerPixel()+"/"+image.plannedBatch()+"/"+image.requestedBatch())
                         +(image!=null && image.motionBudget()?" motion":"")
                         + (state.interactive() ? "  auto, target " + String.format(java.util.Locale.ROOT,"%.2f",state.interactiveMillis())+"ms" : "  fixed"));
-                profiler.viewportHistory(!temporal?"History off (raw)":image!=null && image.temporalVersion()==temporalVersion
+                profiler.viewportFocus(state.focusController().overlay(image==null?null:image.camera()));
+                profiler.viewportHistory(!temporal?(state.temporal()?"History unavailable: finite aperture (raw)":"History off (raw)"):image!=null && image.temporalVersion()==temporalVersion
+                        && image.cameraHistoryVersion()==state.cameraHistoryVersion()
                         ?image.history().label()
                         :"History on: waiting for guides (raw preview)");
             }
@@ -220,7 +230,7 @@ public class Viewport implements AutoCloseable,
         renderUi(label,null);
     }
     private String label() {
-        return "WASD Space/Ctrl | Mouse: look | /: view help | " + state.preset() + " | N=" + state.pathDepth()
+        return "WASD Space/Ctrl | Mouse: look | /: view help | " + state.preset() + " | " +state.camera().mode().name().toLowerCase(java.util.Locale.ROOT)+" | N=" + state.pathDepth()
                 + " | " + state.accumulatedSamples() + " spp " + state.samplingStatus();
     }
     private void paintImage(float[][][] traced,float exposure,ViewportState.RenderKey key,long samples) {
@@ -247,6 +257,11 @@ public class Viewport implements AutoCloseable,
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if(consoleOpen) {
+            console.accept(KeyAction.fromAwt(e));
+            synchronized(state) {asyncTrace.invalidate();}
+            return;
+        }
         synchronized (state) { handleKeyPressed(e); asyncTrace.invalidate(); }
     }
     private void handleKeyPressed(KeyEvent e) {
@@ -276,7 +291,17 @@ public class Viewport implements AutoCloseable,
         synchronized (state) { cameraControls.release(e.getKeyCode(), e.getKeyLocation()); }
     }
     @Override public void suspendInput() {
-        synchronized (state) { cameraControls.clear(); asyncTrace.suspend(); }
+        synchronized (state) {sceneActive=false;cameraControls.clear();state.focusController().suspend(true);asyncTrace.suspend();}
+    }
+    @Override public void resumeInput() {
+        synchronized(state) {sceneActive=true;state.focusController().suspend(!windowFocused);}
+    }
+    @Override public boolean windowFocused() {synchronized(state) {return windowFocused;}}
+    @Override public void windowFocus(boolean focused) {
+        synchronized(state) {
+            windowFocused=focused;cameraControls.clear();state.focusController().suspend(!focused||!sceneActive);
+            if(!focused)asyncTrace.suspend();
+        }
     }
 
     @Override public void mouseClicked(MouseEvent e)         { LOG.trace("Handling %s", e); }
@@ -299,6 +324,7 @@ public class Viewport implements AutoCloseable,
     @Override public void mouseWheelMoved(MouseWheelEvent e) { route(MouseGesture.WHEEL, e); }
 
     private void route(MouseGesture gesture, MouseEvent e) {
+        if(consoleOpen && gesture==MouseGesture.WHEEL) { console.acceptScroll(e);return; }
         synchronized (state) {
             LOG.trace("Handling %s", e);
             var chord = MouseChord.from(gesture, e, consoleOpen ? "console" : "");

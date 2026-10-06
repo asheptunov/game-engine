@@ -506,6 +506,47 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   history blend; raw estimator and depth remain unchanged. Human GUI motion checks
   remain separate from window-free software-submission measurements.
 
+## C1–C3 — Camera models and controls `[implemented; user accepted]`
+
+- One immutable camera description supplies pinhole, orthographic, and thin-lens rays.
+  Existing raw float-bit image fixtures and seed streams remain exact; zero aperture
+  shares pinhole identity/output. Projection, guides, keys and motion policy use the model.
+- Console mode/FOV/height/aperture/focus/status/reset controls, remembered settings,
+  first-entry scale matching, and camera-only glass-inside reset are implemented.
+  Center focus queries prepared geometry outside the state monitor and rejects stale edits.
+- Per-origin reusable medium scratch supports orthographic/lens origins across boundaries.
+  Orthographic temporal geometry is implemented; finite aperture falls back to raw output
+  with requested settings preserved, budget restoration and stale-history protection.
+- Eighteen affected suites pass, including three camera suites. Analytic/statistical checks
+  cover focus rays, uniform disk sampling, exposure, depth-zero blur, medium membership,
+  exact compatibility, deterministic parallel/cancellation paths, previews and P4 transitions.
+  Four generated previews were visually inspected. Matching pinhole benchmark trace median
+  was 22.53 ms before and 22.41 ms after; trace allocation remained approximately 1.1 KiB/job.
+- The user reported that the viewport looked good. Commands, previews, measurements
+  and limitations: [camera verification](benchmarks/camera/README.md). Specification:
+  [CameraRequirements.md](CameraRequirements.md).
+
+## C4–C5 — Independent optics and parameterized focus `[implemented; user accepted]`
+
+- Independent authoritative projection and active aperture, preserved mode shortcuts and remembered
+  optics; translated orthographic pupils preserve mean framing while producing finite depth of field.
+- Separate source/resolver/query/controller boundaries; normalized screen-point selection, manual
+  reciprocal-distance pulls, continuous autofocus, smooth/linear curves, duration, subject dwell and
+  accepted-depth tolerance. Exact endpoints allow stationary progressive convergence.
+- Query-owned prepared geometry/BVH cache; one in-flight query and one completion mailbox, capped
+  at 20Hz. Scene/control/source revisions, bounded age and reference reprojection reject stale results.
+  Live one-shot focus queries are asynchronous and report eventual success/failure through status.
+- Suspension distinguishes scene activation, window focus and console navigation. F3 shows focus
+  policy/source/actual/target and shown captured optics. Zero aperture autofocus preserves estimator
+  and temporal identity; finite focus updates retain coherent async previews and P4 settling.
+- Original pinhole fixtures plus pre-C4 finite-perspective/zero-orthographic raw fixtures remain exact.
+  Twenty-three affected suites pass; numeric optics, fake-clock replay, latched query lifecycle and
+  live target-complete autofocus checks supplement existing transport/temporal regressions.
+- Warm cached query medians: playground 0.0025ms, mesh-room 0.0026ms; 1,000 measured queries each,
+  zero additional preparations and zero observations older than 100ms in the cost run. These are
+  small window-free query measurements, not GUI latency or tracking-lag promises. Details and
+  manual commands: [camera verification](benchmarks/camera/README.md).
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

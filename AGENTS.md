@@ -81,6 +81,51 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   and sRGB encoding into a reusable byte cache; `Resampler` remains the numeric reference.
   `BackwardRayTracer` retains scalar reference behavior; the forward `RayTracer` remains
   available but neither is used by the viewport.
+- Camera state is one immutable `Camera` description, compiled outside the state monitor into
+  allocation-free primary/reference ray generation. `view camera projection perspective/orthographic`
+  selects projection and retains active aperture. Legacy `mode perspective/orthographic` closes
+  the aperture; `mode lens` restores perspective with remembered radius. Perspective remains the exact legacy
+  eye/plane path; `cameraSensor()` is a derived compatibility accessor for its remembered plane.
+  `view camera fov <1..179 degrees>` changes vertical framing in perspective/lens; `height <units>`
+  changes orthographic vertical span. First orthographic entry matches scale at the focus distance;
+  subsequent visits restore height. Off-center/skewed legacy planes retain exact rays but reject
+  conversion to orthographic/lens. Navigation moves pose while preserving optics in every mode.
+  `view camera focus distance <units>` sets positive axial distance (default 5); `focus center`
+  queries the first surface, including glass, and rejects stale results. Live queries are asynchronous;
+  status reports their outcome, and failures preserve focus policy/pulls.
+  `view camera aperture <radius>` applies in either projection, finite/nonnegative, default 0. Zero is the exact reference path;
+  positive radius samples area uniformly using an independent deterministic aperture domain even at
+  depth 0. Aperture averaging changes blur without physical exposure or focus breathing.
+  Orthographic pupils translate with each image point, preserving mean parallel framing and avoiding
+  focus breathing; this is an ideal camera model, not a physical lens assembly.
+  Varying origins use worker-local per-origin medium membership. `CameraProjection` implements
+  orthographic/pinhole temporal projection; finite aperture keeps requested temporal settings but
+  displays raw output and disables dependent budgets. A separate camera-history revision prevents
+  aperture/mode toggles reviving old history without cancelling coherent camera-only previews.
+  `view camera status` reports pose/optics/DOF/fallback; `reset` restores the preset camera (including
+  glass-inside), clears input, and retains edited scene/resolution. Identical effective camera edits
+  and inactive focus edits retain accumulation. Run `scenes.viewport.CameraCompatibilityTest`,
+  `CameraFollowupCompatibilityTest`, `CameraModelTest`, `CameraOpticsTest`, and `CameraLifecycleTest`; see `benchmarks/camera/README.md` for previews,
+  measurements and human test steps.
+- `FocusController` separates realized camera focus, immutable `FocusTargetSource` selection and
+  transition/acquisition policy. `view camera focus mode auto/manual` acquires or freezes;
+  `source screen <u> <v>` selects normalized 0..1 coordinates (v=0 bottom), default center.
+  `focus center` and `focus pull center` always use (0.5,0.5); `pull source` uses the selected point once.
+  `pull distance <units>` takes manual control and interpolates reciprocal distance. `transition
+  duration <0..10000 ms>` defaults 300; `curve linear/smooth` defaults smooth. `auto delay
+  <0..2000 ms>` defaults 150 for a new subject; `auto tolerance <0..25 percent>` defaults 1 and
+  compares reciprocal depth against the accepted target. Segments reach exact endpoints and stop writes.
+  One daemon query thread owns a cached immutable geometry/BVH layer and separate scratch/counters;
+  at most one query and one completion mailbox, maximum 20Hz. Accept auto results only with current
+  scene/control/source revisions, <=100ms capture age and <=2% reprojection displacement; recompute
+  axial distance from the world hit. Geometry edit-and-undo still invalidates old results. Focus/aperture
+  writes do not self-invalidate reference queries; zero aperture focus changes retain raw/history/P4 keys.
+  Live render ticks advance focus before snapshots. Blocking tracing does not advance autofocus.
+  Render pause, scene hiding, window focus loss and close suspend/cancel query work; active time excludes
+  suspension. Console opening clears navigation without suspending focus. Reset restores defaults.
+  F3 separates actual/target focus from shown captured optics. Run `FocusControllerTest`,
+  `FocusLifecycleTest`, `ViewportKeyBindingsTest` and `ProfilingIntegrationTest`; window-free
+  `scenes.viewport.FocusQueryBenchmark` measures query cost/preparation separately from transport.
 - The default viewport preset is `playground`; `/` then `view help` lists live controls.
   `view preset triangle` selects the original geometry with the new lighting model.
   Default tracing resolution follows the window aspect with a 1600-pixel long edge

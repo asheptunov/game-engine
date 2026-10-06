@@ -11,7 +11,9 @@ import java.util.List;
 public class ViewportState {
     /** Immutable estimator identity; display and scheduling settings intentionally excluded. */
     public record RenderKey(List<SceneInstance> instances, List<SceneObject> objects, List<Light> lights,
-                            Vec3 eye, Rect sensor, int width, int height, int depth, long seed, long restart) {
+                            Camera.Identity camera, int width, int height, int depth, long seed, long restart) {
+        public Vec3 eye() { return camera.eye(); }
+        public Rect sensor() { return camera.sensor(); }
         /** Camera-only differences can finish as a coherent preview, never as current accumulation. */
         public boolean sameTransport(RenderKey other) {
             return other != null && instances.equals(other.instances) && objects.equals(other.objects)
@@ -20,13 +22,15 @@ public class ViewportState {
         }
     }
     public RenderKey renderKey() {
-        return new RenderKey(List.copyOf(instances), List.copyOf(objects), List.copyOf(lights), eye,
-                cameraSensor, sampledWidth(), sampledHeight(), pathDepth, seed, restartVersion);
+        return new RenderKey(List.copyOf(instances), List.copyOf(objects), List.copyOf(lights), camera.identity(),
+                sampledWidth(), sampledHeight(), pathDepth, seed, restartVersion);
     }
     /** Caller holds this state's monitor. The copy belongs exclusively to the trace coordinator. */
     public ViewportState renderSnapshot() {
-        var copy = new ViewportState(cameraSensor, sampledWidth(), sampledHeight(), false);
-        copy.eye=eye; copy.instances.addAll(instances); copy.objects.addAll(objects); copy.lights.addAll(lights);
+        var copy = new ViewportState(camera.sensor(), sampledWidth(), sampledHeight(), false);
+        copy.camera=camera; copy.cameraHistoryVersion=cameraHistoryVersion;
+        copy.instances.addAll(instances); copy.objects.addAll(objects); copy.lights.addAll(lights);
+        copy.focusSceneRevision=focusSceneRevision;
         copy.pathDepth=pathDepth; copy.seed=seed; copy.restartVersion=restartVersion; copy.preset=preset;
         copy.samplesPerFrame=samplesPerFrame; copy.sampleTarget=sampleTarget; copy.paused=paused;
         copy.acceleration=acceleration; copy.workers=workers; copy.tileSize=tileSize;
@@ -35,9 +39,16 @@ public class ViewportState {
         copy.temporalBudget=temporalBudget;copy.motionSamples=motionSamples;copy.motionScale=motionScale;
         return copy;
     }
-    private       Rect              cameraSensor;
+    private Camera camera;
+    private FocusController focusController;
+    FocusController focusController() {
+        if(focusController==null)focusController=new FocusController(this);
+        return focusController;
+    }
+    public String focusStatus() {return focusController().status();}
+    private long cameraHistoryVersion;
+    long cameraHistoryVersion() { return cameraHistoryVersion; }
     private float presentationAspect;
-    private       Vec3              eye             = new Vec3(0, 0, -1);
     private int                     sensorPixelsW;
     private int                     sensorPixelsH;
     // Requested grid stays authoritative. Only the async controller chooses a temporary grid.
@@ -61,14 +72,15 @@ public class ViewportState {
         motionScale=value;
     }
     boolean temporalBudgetSupported() {
-        return temporal && temporalBudget && instances.stream().noneMatch(o->o.material().scattering()>0)
+        return temporalEffective() && temporalBudget && instances.stream().noneMatch(o->o.material().scattering()>0)
                 && (pathDepth>0 || instances.stream().anyMatch(o->o.material().emissive()))
                 && instances.stream().anyMatch(o->o.material().kind()==Material.Kind.DIFFUSE && !o.material().emissive());
     }
     public String temporalBudgetStatus() {
         return "motion budget="+(temporalBudget?"on":"off")+" samples="+motionSamples
                 +" scale="+String.format(java.util.Locale.ROOT,"%.2f",motionScale)
-                +(temporalBudget && !temporalBudgetSupported()?" (inactive: needs temporal diffuse, no volumes)":"");
+                +(temporalBudget && !temporalBudgetSupported()?(camera.temporalSupported()?
+                " (inactive: needs temporal diffuse, no volumes)":" (inactive: finite aperture)"):"");
     }
     int movingBatch(boolean moving) {
         if(moving && interactive) return 1;
@@ -76,6 +88,12 @@ public class ViewportState {
     }
     /** Presentation reconstruction only; deliberately excluded from the raw estimator key. */
     public boolean temporal() { return temporal; }
+    public boolean temporalEffective() { return temporal && camera.temporalSupported(); }
+    public String temporalStatus() {
+        return !temporal?"temporal=off (raw)":!camera.temporalSupported()?
+                "temporal=on (inactive: finite aperture; raw)":instances.stream().anyMatch(o->o.material().scattering()>0)?
+                "temporal=on (inactive: volume scattering; raw)":"temporal=on";
+    }
     public void temporal(boolean enabled) { if(temporal!=enabled) {temporal=enabled;temporalVersion++;} }
     long temporalVersion() { return temporalVersion; }
     private double interactiveMillis = 1000. / 60;
@@ -107,9 +125,22 @@ public class ViewportState {
                 + "ms min=" + Math.round(sensorPixelsW * minimumScale()) + "x" + Math.round(sensorPixelsH * minimumScale())
                 + " max=" + sensorPixelsW + "x" + sensorPixelsH + " sampled=" + sampledWidth() + "x" + sampledHeight();
     }
-    private final List<SceneObject> objects         = new ArrayList<>();
+    private long focusSceneRevision;
+    long focusSceneRevision() {return focusSceneRevision;}
+    /** Track edits even when a scene is edited and restored before the next display tick. */
+    private final class QueryList<E> extends java.util.AbstractList<E> {
+        private final ArrayList<E> values=new ArrayList<>();
+        private final java.util.function.BiPredicate<E,E> equivalent;
+        QueryList(java.util.function.BiPredicate<E,E> equivalent) {this.equivalent=equivalent;}
+        @Override public E get(int i) {return values.get(i);}
+        @Override public int size() {return values.size();}
+        @Override public E set(int i,E value) {var old=values.set(i,value);if(!equivalent.test(old,value))focusSceneRevision++;return old;}
+        @Override public void add(int i,E value) {values.add(i,value);focusSceneRevision++;modCount++;}
+        @Override public E remove(int i) {var old=values.remove(i);focusSceneRevision++;modCount++;return old;}
+    }
+    private final List<SceneObject> objects = new QueryList<>((a,b)->a==b);
     private final List<Light>       lights          = new ArrayList<>();
-    private final List<SceneInstance> instances = new ArrayList<>();
+    private final List<SceneInstance> instances = new QueryList<>((a,b)->a.name().equals(b.name()) && a.geometry()==b.geometry() && a.transform()==b.transform());
     private float exposure;
     private String preset = "custom";
     // Active backward path settings are independent of the legacy forward tracer's maxBounces.
@@ -153,7 +184,12 @@ public class ViewportState {
         sampleTarget = n;
     }
     public boolean paused() { return paused; }
-    public void paused(boolean value) { paused = value; }
+    public void paused(boolean value) {
+        if(paused==value)return;
+        if(focusController!=null)focusController.tick();
+        paused=value;
+        if(focusController!=null)focusController.pauseChanged();
+    }
     public long accumulatedSamples() { return accumulatedSamples; }
     void accumulatedSamples(long n) { accumulatedSamples = n; }
     public long effectiveTarget() { return sampleTarget == 0 ? SAMPLE_LIMIT : sampleTarget; }
@@ -191,7 +227,7 @@ public class ViewportState {
     private ViewportState(Rect cameraSensor, int sensorPixelsW, int sensorPixelsH, boolean legacyBuffer) {
         workers(workers);
         tileSize(tileSize);
-        this.cameraSensor = cameraSensor;
+        this.camera = new Camera(new Vec3(0,0,-1),cameraSensor);
         this.sensorPixelsW = sensorPixelsW;
         this.sensorPixelsH = sensorPixelsH;
         this.accumulator = legacyBuffer ? new float[sensorPixelsH][sensorPixelsW] : null;
@@ -205,12 +241,21 @@ public class ViewportState {
         }
     }
 
-    public Rect cameraSensor() { return cameraSensor; }
+    public Camera camera() { return camera; }
+    public void camera(Camera value) {
+        if(camera.effectiveMode()!=value.effectiveMode() || camera.temporalSupported()!=value.temporalSupported()) cameraHistoryVersion++;
+        if(focusController!=null && (camera.projection()!=value.projection() || camera.height()!=value.height()
+                || Math.abs(camera.sensor().edge1().length()-value.sensor().edge1().length())>camera.sensor().edge1().length()*1e-5
+                || Math.abs(camera.sensor().edge2().length()-value.sensor().edge2().length())>camera.sensor().edge2().length()*1e-5))
+            focusController.framingChanged();
+        camera=value;
+    }
+    public Rect cameraSensor() { return camera.sensor(); }
     /** Set the display aspect without changing the sampling grid or vertical field of view. */
     public void presentationAspect(float aspect) {
         if (!Float.isFinite(aspect) || aspect <= 0) throw new IllegalArgumentException("Aspect must be positive");
         presentationAspect = aspect;
-        cameraSensor(cameraSensor);
+        cameraSensor(camera.sensor());
     }
 
     public void cameraSensor(Rect r) {
@@ -223,10 +268,10 @@ public class ViewportState {
                 r = new Rect(r.origin().add(r.edge1().sub(horizontal).scale(.5f)), horizontal, r.edge2());
             }
         }
-        this.cameraSensor = r;
+        camera(camera.withPose(camera.eye(),r));
     }
-    public Vec3 eye() { return eye; }
-    public void eye(Vec3 e) { this.eye = e; }
+    public Vec3 eye() { return camera.eye(); }
+    public void eye(Vec3 e) { camera(camera.withPose(e,camera.sensor())); }
     public int sensorPixelsW() { return sensorPixelsW; }
     public int sensorPixelsH() { return sensorPixelsH; }
     public List<SceneObject> objects() { return objects; }
