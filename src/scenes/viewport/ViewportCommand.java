@@ -1,8 +1,9 @@
 package scenes.viewport;
 
+import engine.*;
+import engine.lights.PointLight;
 import math.Vec3;
 import misc.monads.Result;
-import scenes.viewport.lights.PointLight;
 import ui.console.Command;
 import java.util.Arrays;
 
@@ -254,7 +255,7 @@ public final class ViewportCommand implements Command {
             return publishFocus(snapshot,measured.distance(),pull);
         }
     }
-    Result<String,String> publishFocus(ViewportState captured,float distance) {
+    public Result<String,String> publishFocus(ViewportState captured,float distance) {
         return publishFocus(captured,distance,false);
     }
     private Result<String,String> publishFocus(ViewportState captured,float distance,boolean pull) {

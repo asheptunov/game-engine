@@ -66,7 +66,7 @@ public class ProfilingIntegrationTest {
             profiler.beginFrame();viewport.render();profiler.endFrame();
             assertEquals("History off (raw)",profiler.viewportHistory());assertEquals(key,state.renderKey());assertEquals(1L,state.accumulatedSamples());
             var snapshot=state.renderSnapshot();snapshot.temporal(false);
-            try(var reference=new scenes.viewport.DirectRgbTracer(snapshot)) {
+            try(var reference=new engine.DirectRgbTracer(snapshot)) {
                 var expected=raster.clone();var converter=new scenes.viewport.DisplayConverter(raster.width(),raster.height());
                 converter.convert(reference.trace(),1);converter.paint(expected);
                 for(int i=0;i<(raster.height()-60)*raster.width();i++) {

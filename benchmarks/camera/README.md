@@ -39,20 +39,20 @@ Run `./build`, then `./test <suite>` from WSL/Bash with JDK 23. On this host the
 $cameraSources = @(rg --files src tst -g '*.java')
 Set-Content out/cli/.sources $cameraSources
 & "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\javac.exe" -d out/cli --enable-preview --release 23 '@out/cli/.sources'
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.CameraModelTest
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.CameraModelTest
 ```
 
-All eighteen affected suites completed with no logged failures: `scenes.viewport.CameraCompatibilityTest`, `CameraModelTest`, `CameraLifecycleTest`, `CameraSamplingTest`, `CameraControlsTest`, `ProgressivePathTest`, `DielectricPathTest`, `VolumePathTest`, `RoughLightingTest`, `MeshAccelerationTest`, `ParallelTraceTest`, `ResponsiveTraceTest`, `InteractiveResolutionTest`, `TemporalReconstructionTest`, `TemporalBudgetTest`, plus `ViewportKeyBindingsTest`, `ProfilingIntegrationTest`, and `ui.console.ConsoleInteractionTest`. Unqualified camera/rendering suites in this list are in `scenes.viewport`. AWT-dependent suites used `'-Djava.awt.headless=false'` without opening windows. Inspect logs: the harness does not reliably return failing exit codes.
+All eighteen affected suites completed with no logged failures: `engine.CameraCompatibilityTest`, `CameraModelTest`, `CameraLifecycleTest`, `CameraSamplingTest`, `CameraControlsTest`, `ProgressivePathTest`, `DielectricPathTest`, `VolumePathTest`, `RoughLightingTest`, `MeshAccelerationTest`, `ParallelTraceTest`, `ResponsiveTraceTest`, `InteractiveResolutionTest`, `TemporalReconstructionTest`, `TemporalBudgetTest`, plus `ViewportKeyBindingsTest`, `ProfilingIntegrationTest`, and `ui.console.ConsoleInteractionTest`. Unqualified camera/rendering suites in this list are in `engine`. AWT-dependent suites used `'-Djava.awt.headless=false'` without opening windows. Inspect logs: the harness does not reliably return failing exit codes.
 
 `CameraCompatibilityTest` contains five raw RGB float-bit hashes captured before extraction: triangle depth 0, bounce-room depth 3, glass-inside depth 8, volume-room depth 12, and a skewed/off-center bounce-room camera. All match after extraction. New tests cover orthographic origins/directions/scale, world-image round trips, guide depth/footprint/cuts/reuse, mode memory, validation/no-ops, lens focus convergence, uniform disk statistics, defocus growth, normalized brightness, depth-zero aperture sampling, axial first-surface focus/misses/staleness, varying-origin glass media, deterministic workers/tiles/batches/cancellation, exact captured asynchronous previews, settling, P4 optics and temporal-budget restoration. Camera ray sampling allocates no per-ray objects.
 
 ## Reproducible previews
 
 ```text
-./test scenes.viewport.CameraPreview perspective 7 0.5
-./test scenes.viewport.CameraPreview orthographic 7 0.5
-./test scenes.viewport.CameraPreview lens 7 0.5
-./test scenes.viewport.CameraPreview lens 11 0.5
+./test engine.CameraPreview perspective 7 0.5
+./test engine.CameraPreview orthographic 7 0.5
+./test engine.CameraPreview lens 7 0.5
+./test engine.CameraPreview lens 11 0.5
 ```
 
 These render playground at 400×250, depth 0, seed 1, 128 spp, display aspect 1.6 and default exposure. Output is in `out/cli/camera-<mode>-focus-<distance>.png`. All four images were inspected; foreground/background sharpness changes as expected without changed framing. Outputs are generated artifacts, not checked-in binary fixtures.
@@ -133,8 +133,8 @@ passing rerun. The focus-specific controller/lifecycle/live integration checks p
 Two finite orthographic previews hold height 7 constant while changing focus:
 
 ```text
-./test scenes.viewport.CameraPreview orthographic 7 0.5 7
-./test scenes.viewport.CameraPreview orthographic 11 0.5 7
+./test engine.CameraPreview orthographic 7 0.5 7
+./test engine.CameraPreview orthographic 11 0.5 7
 ```
 
 Outputs are `out/cli/camera-orthographic-focus-<distance>-aperture-0.5-height-7.0.png`.
@@ -143,7 +143,7 @@ at 11 with unchanged framing. F3 composition preview: `out/cli/focus-f3-preview.
 
 ## Query cost
 
-`./test scenes.viewport.FocusQueryBenchmark` warms 100 queries and measures 1,000 selected-point
+`./test engine.FocusQueryBenchmark` warms 100 queries and measures 1,000 selected-point
 queries per preset with unchanged default geometry on OpenJDK 23.0.1, the same Windows host as
 the earlier camera check. Normalized points span u=0.25..0.75, v=0.5. Time includes cached lookup,
 reference-ray generation, bounds/BVH intersection, focus validation and measurement construction;

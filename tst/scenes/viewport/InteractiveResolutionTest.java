@@ -1,9 +1,10 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 import static harness.Assertions.*;
 
 public class InteractiveResolutionTest {

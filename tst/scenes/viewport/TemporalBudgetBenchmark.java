@@ -1,7 +1,8 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 import java.util.*;
 
 /** Fixed captured-view quality/cost comparison; live scheduling is measured separately. */

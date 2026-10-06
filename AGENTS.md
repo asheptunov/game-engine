@@ -104,7 +104,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   aperture/mode toggles reviving old history without cancelling coherent camera-only previews.
   `view camera status` reports pose/optics/DOF/fallback; `reset` restores the preset camera (including
   glass-inside), clears input, and retains edited scene/resolution. Identical effective camera edits
-  and inactive focus edits retain accumulation. Run `scenes.viewport.CameraCompatibilityTest`,
+  and inactive focus edits retain accumulation. Run `engine.CameraCompatibilityTest`,
   `CameraFollowupCompatibilityTest`, `CameraModelTest`, `CameraOpticsTest`, and `CameraLifecycleTest`; see `benchmarks/camera/README.md` for previews,
   measurements and human test steps.
 - `FocusController` separates realized camera focus, immutable `FocusTargetSource` selection and
@@ -125,7 +125,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   suspension. Console opening clears navigation without suspending focus. Reset restores defaults.
   F3 separates actual/target focus from shown captured optics. Run `FocusControllerTest`,
   `FocusLifecycleTest`, `ViewportKeyBindingsTest` and `ProfilingIntegrationTest`; window-free
-  `scenes.viewport.FocusQueryBenchmark` measures query cost/preparation separately from transport.
+  `engine.FocusQueryBenchmark` measures query cost/preparation separately from transport.
 - The default viewport preset is `playground`; `/` then `view help` lists live controls.
   `view preset triangle` selects the original geometry with the new lighting model.
   Default tracing resolution follows the window aspect with a 1600-pixel long edge
@@ -150,7 +150,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   Automatic grid choices allocate no pixels under the state lock; tracer/publication
   buffers resize outside it. F3/footer distinguish shown/requested grids. Keep the
   fresh-image context keyed to requested dimensions so adaptation does not erase
-  its window. Run `scenes.viewport.InteractiveResolutionTest` for policy, commands,
+  its window. Run `engine.InteractiveResolutionTest` for policy, commands,
   sustained previews, exact captured-camera pixels, settled convergence and edits.
   `DynamicResolutionBenchmark` compares the same elapsed-time camera path with
   automatic mode off/on; window-free results and commands: `benchmarks/p4/README.md`.
@@ -164,7 +164,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   Guides still reject unsupported pixels; lowering the grid also lowers their detail.
   F3 reports actual/chosen/requested batch maxima separately from history blend.
   Grid transitions reset history; there is no cross-grid reuse or temporal upscaling.
-  Run `scenes.viewport.TemporalBudgetTest` for controls/preflight/bounds/lifecycle;
+  Run `engine.TemporalBudgetTest` for controls/preflight/bounds/lifecycle;
   cost/quality and window-free fresh-image results are in `benchmarks/p5.2/README.md`.
   Raw estimator keys, RGB means, seed streams and spp remain independent. Off immediately
   restores raw conversion, including while a job is pending. A separate mode revision
@@ -193,10 +193,10 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   blend (not a correctness probability or raw spp), reconstruction wall time and history
   payload. Trace CPU/allocations include guides but exclude reconstruction; guide rays/tests
   have separate tracer counters and do not inflate transport-ray counts.
-  Run `scenes.viewport.TemporalReconstructionTest` for correspondence, thin geometry,
+  Run `engine.TemporalReconstructionTest` for correspondence, thin geometry,
   fallback, raw equivalence, leases/toggles, cancellation and scalar/parallel agreement;
   `ProfilingIntegrationTest` checks immediate raw display restoration and F3 composition.
-  `scenes.viewport.TemporalReuseBenchmark` measures motion quality against 128 spp and a
+  `engine.TemporalReuseBenchmark` measures motion quality against 128 spp and a
   soft equal-time budget; `cost` measures quarter/native overhead. See `benchmarks/p5/README.md`.
   Camera sampling now scrambles the user seed with a deterministic hash of the captured
   eye and sensor float components, calculated once per tracing call. Movement changes
@@ -204,7 +204,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   Workers still key paths by pixel/sample. Stationary refinement, batch equivalence
   and the depth-zero point-light center diagnostic remain intact. Explicit ray-level
   numeric adapters retain the old camera-independent seed. Run
-  `scenes.viewport.CameraSamplingTest` for changed streams and exact reproduction across
+  `engine.CameraSamplingTest` for changed streams and exact reproduction across
   visits/workers/batches; earlier P5 benchmark numbers used the original static grain.
 - `view preset bounce-room` enables the phase 2 mirror/color-bleeding demo at depth 3.
   Select `view resolution 200` explicitly for faster editing. `view depth`, `samples`,
@@ -339,14 +339,14 @@ accepts `size=1440x900`, `native`, `half`, `quarter`, `workers=14`, `tile=32`,
 CSV rows and a settings sidecar are saved when output is supplied. Timing runs are
 always continuous; target convergence is measured separately. Headless runs exclude
 AWT presentation and actual input delivery. See `benchmarks/p0-p1/README.md` for
-measurements and reproducible commands. Run `scenes.viewport.ParallelTraceTest` for
+measurements and reproducible commands. Run `engine.ParallelTraceTest` for
 seeded agreement across workers/tiles, lifecycle, commands and interrupted joins.
 `view workers <count>` and `view tile <pixels>` retain accumulation. Defaults are
 min(14, max(1, available CPUs - 2)) workers and 32-pixel square tiles. Workers share
 one lazy process-wide daemon pool, drained by a JVM shutdown hook; scene switches
 do not create pools. `ViewportBenchmark` calls `renderBlocking()` for comparable
 complete-pass timings; never mix blocking and asynchronous rendering on one viewport.
-Run `scenes.viewport.ResponsiveTraceTest` for staged cancellation recovery, immutable
+Run `engine.ResponsiveTraceTest` for staged cancellation recovery, immutable
 publication, rapid generation edits, pause/restart/target and suspension/close checks.
 It also requires completed previews during sustained camera edits, exact preview
 pixels for their captured cameras, and correct stationary convergence afterward.
@@ -355,7 +355,7 @@ pixels for their captured cameras, and correct stationary convergence afterward.
 native glass tracing/conversion without opening a window; `legacy-lock` emulates
 the former full-frame monitor. Use `-Djava.awt.headless=false`. Results and limitations
 are in `benchmarks/p2/README.md` and `benchmarks/p3/README.md`.
-Run `scenes.viewport.DisplayConverterTest` for exact reference display bytes across grids/
+Run `engine.DisplayConverterTest` for exact reference display bytes across grids/
 exposure/orientation, clean cache restoration, and exhaustive alpha/channel packing.
 `ResponsiveTraceTest` also checks leased-image stability and bounded buffer reuse.
 `DisplayPipelineBenchmark` compares reference, fused and cached display work without
@@ -363,23 +363,23 @@ tracing or a window. P3 commands/results are in `benchmarks/p3/README.md`.
 Benchmark metadata includes requested/actual batch spp, total accumulated spp and sampling seed.
 It records dimensions, depth, samples per frame, deterministic sampling, throughput,
 trace allocations, and actual primitive tests. Compare matching settings.
-Run `scenes.viewport.MaterialPlaygroundTest` for phase 1 numeric/image/control checks;
+Run `engine.MaterialPlaygroundTest` for phase 1 numeric/image/control checks;
 it writes `out/cli/material-playground.png`. Texture editor key tests need a non-headless
 AWT toolkit (they query keyboard lock state), but do not open a window.
-Run `scenes.viewport.ProgressivePathTest` for sampling probability/weight, depth,
+Run `engine.ProgressivePathTest` for sampling probability/weight, depth,
 reflection, seeded convergence, batch equivalence and invalidation checks. It writes
 `out/cli/bounce-room-preview-1.png` and `bounce-room-preview-128.png` (320 square).
 `ViewportKeyBindingsTest` also requires `-Djava.awt.headless=false`, without opening
 a window; it exercises console opening/closing and camera invalidation.
-Run `scenes.viewport.DielectricPathTest` for phase 3 optics, nested/inside media,
+Run `engine.DielectricPathTest` for phase 3 optics, nested/inside media,
 absorption, validation, invalidation, convergence and image checks. It writes 240²
 `out/cli/glass-preview-64.png`, `glass-ior-1-preview.png`, and `glass-inside-preview-64.png`.
 Benchmark glass with `glass depth=8 size=200 samples=1 seed=1`, or `glass-inside`.
-Run `scenes.viewport.RoughLightingTest` for phase 4 GGX/PDF/energy, area/MIS brightness,
+Run `engine.RoughLightingTest` for phase 4 GGX/PDF/energy, area/MIS brightness,
 delta events, absorption, shadows, controls and convergence. It writes 240²
 `out/cli/rough-room-preview-128.png` and `rough-room-smooth-glass-128.png`.
 Benchmark `rough-room depth=8 size=200 samples=1 seed=1`, or explicit `size=400`.
-Run `scenes.viewport.MeshAccelerationTest` for mesh/topology/BVH/reference, same-object
+Run `engine.MeshAccelerationTest` for mesh/topology/BVH/reference, same-object
 visibility, tiny faces/seams, transforms, nested/inside media, commands, cache reuse and
 seeded image agreement. It writes `out/cli/mesh-room-preview-64.png` (200 square).
 Benchmark `mesh-room depth=8 size=64 detail=12 samples=1 seed=1`, adding `brute` for
@@ -409,7 +409,7 @@ Scattering scenes use NEE-only non-delta emitter connections without counting th
 continuation emitter hits twice; surface-only scenes retain MIS and the previous
 opaque glass visibility diagnostic. Zero density restores previous transport.
 
-Run `scenes.viewport.VolumePathTest` for free-flight/HG statistics, independent
+Run `engine.VolumePathTest` for free-flight/HG statistics, independent
 single-scattering integration, multiple-scattering energy, nested/inside visibility,
 Beer absorption, surface lighting, control invalidation and seeded convergence.
 Previews: `out/cli/volume-room-preview-128.png` and `volume-room-clear-128.png`

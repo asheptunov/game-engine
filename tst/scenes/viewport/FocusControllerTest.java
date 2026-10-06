@@ -1,12 +1,13 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 import java.util.List;
 import static harness.Assertions.*;
-import static scenes.viewport.CameraOpticsTest.near;
+import static engine.CameraOpticsTest.near;
 
 public class FocusControllerTest {
     static final class Clock implements java.util.function.LongSupplier {
@@ -90,7 +91,7 @@ public class FocusControllerTest {
             assertEquals(a,resolver.resolve(source,s.camera(),scene,0,0,()->0));
         }
         ScenePresets.load(s,"glass");
-        s.instances().add(new SceneInstance("first-glass",List.of(new scenes.viewport.objects.Sphere(new Vec3(0,0,2),.4f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("first-glass",List.of(new engine.objects.Sphere(new Vec3(0,0,2),.4f)),Transform.IDENTITY,
                 new Material("first-glass",new Vec3(1,1,1)).withKind(Material.Kind.DIELECTRIC)));
         var glass=resolver.resolve(FocusTargetSource.CENTER,s.camera(),CameraFocus.Scene.capture(s),0,0,()->0);near(2.6,glass.distance(),1e-5);assertEquals("first-glass",glass.subject().name());
         ScenePresets.load(s,"mesh-room");var scene=CameraFocus.Scene.capture(s);

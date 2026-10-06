@@ -128,7 +128,7 @@ inspected and remains readable. Verification opens no windows.
 After compiling with JDK23 preview features:
 
 ```powershell
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.TemporalBudgetBenchmark seed=1
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.TemporalBudgetBenchmark seed=1
 # Repeat sequentially with seed=2 and seed=3.
 & "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview '-Djava.awt.headless=false' -cp out/cli TemporalBudgetLiveBenchmark
 ```

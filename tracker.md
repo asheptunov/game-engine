@@ -3,10 +3,19 @@
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
 The proposed engine/application separation and scene/mesh authoring roadmap is in
-[EngineRequirements.md](EngineRequirements.md). E1–E6 are pending. The first delivery
-is E1–E2: migrate the playground to a public engine API and prove an independent
-headless consumer. Later milestones add persistent scenes, general meshes/queries,
+[EngineRequirements.md](EngineRequirements.md). E1–E2 are complete: the playground uses
+the public render-session boundary, and an independently compiled headless consumer plus
+two-session/fixed-update tests prove reuse. See [EngineApi.md](EngineApi.md). E3–E6 add
+persistent scenes, general meshes/queries,
 a scene editor, and editable mesh topology with face extrusion.
+
+## E1–E2 — Engine extraction `[done]`
+
+- Immutable `WorldSnapshot`, `RenderView`, and `RenderSettings` inputs.
+- Independent `RenderSession` state with bounded explicit image leases.
+- Engine-only PowerShell compilation boundary and window-free PNG consumer.
+- Two-view, timed-update, atomic validation, seeded-equivalence, cancellation, focus,
+  temporal, and full 54-suite regression evidence in `EngineRequirements.md`.
 
 The next renderer requirements and six playable implementation phases are in
 [RenderingRequirements.md](RenderingRequirements.md). All six phases are implemented.
@@ -36,7 +45,7 @@ Tests for each: hits, misses, parallel-ray, behind-ray, reflection identity (nor
 
 ## M3 — SceneObject: Tri, Rect `[done]` (20/20 tests pass)
 
-Sealed interface `scenes.viewport.objects.SceneObject` with `Optional<Intersection> intersect(Ray)`.
+Sealed interface `engine.objects.SceneObject` with `Optional<Intersection> intersect(Ray)`.
 
 - `Tri(a, b, c)` — Möller–Trumbore.
 - `Rect(origin, edge1, edge2)` — same algorithm, bounds `[0,1] × [0,1]`. `uv(point)` maps a hit point to `(u,v) ∈ [0,1]²`.
@@ -45,7 +54,7 @@ Tests: front/back hit, miss outside bounds, parallel ray, t > 0 only, normal dir
 
 ## M4 — Light + PointLight `[done]` (6/6 tests pass)
 
-Interface `scenes.viewport.lights.Light` with `List<Ray> sample(int n, Random)`.
+Interface `engine.lights.Light` with `List<Ray> sample(int n, Random)`.
 
 `PointLight(position)` emits uniformly on the unit sphere.
 
@@ -53,11 +62,11 @@ Tests: sample count == N; origins all at position; directions are unit length; s
 
 ## M5 — Viewport state `[done]`
 
-`scenes.viewport.ViewportState` holds: `List<Light>`, `List<SceneObject>`, camera sensor `Rect`, settings (samplesPerLight, maxBounces, pixel accumulator dims).
+`engine.ViewportState` holds: `List<Light>`, `List<SceneObject>`, camera sensor `Rect`, settings (samplesPerLight, maxBounces, pixel accumulator dims).
 
 ## M6 — RayTracer `[done]` (7/7 tests pass)
 
-`scenes.viewport.RayTracer` orchestrates one frame:
+`engine.RayTracer` orchestrates one frame:
 1. For each light, cast N samples.
 2. For each ray: find nearest non-light intersection. If none → discard. If bounces > B_max → discard. If it hit the camera sensor's sensing side → map to pixel and accumulate. Else spawn reflection ray, recurse.
 3. After all rays, return an accumulator buffer.

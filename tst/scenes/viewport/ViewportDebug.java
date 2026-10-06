@@ -1,9 +1,10 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import math.Vec3;
-import scenes.viewport.lights.PointLight;
-import scenes.viewport.objects.Rect;
-import scenes.viewport.objects.Tri;
+import engine.lights.PointLight;
+import engine.objects.Rect;
+import engine.objects.Tri;
 
 /** One-off debug harness — backward ray-trace the default viewport scene and ASCII-render it. */
 public class ViewportDebug {

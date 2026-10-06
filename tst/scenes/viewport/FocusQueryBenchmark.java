@@ -1,5 +1,6 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 /** Window-free query/cache cost, separate from transport profiling. */
 public final class FocusQueryBenchmark {
     public static void main(String[] args) {

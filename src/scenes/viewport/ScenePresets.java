@@ -1,10 +1,11 @@
 package scenes.viewport;
 
+import engine.*;
+import engine.lights.PointLight;
+import engine.objects.Rect;
+import engine.objects.Sphere;
+import engine.objects.Tri;
 import math.Vec3;
-import scenes.viewport.lights.PointLight;
-import scenes.viewport.objects.Rect;
-import scenes.viewport.objects.Sphere;
-import scenes.viewport.objects.Tri;
 
 import java.util.List;
 

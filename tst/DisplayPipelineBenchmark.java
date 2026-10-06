@@ -1,6 +1,7 @@
 import scenes.viewport.DisplayConverter;
-import scenes.viewport.DisplayMapping;
-import scenes.viewport.Resampler;
+import engine.DisplayMapping;
+import engine.RgbPixels;
+import engine.Resampler;
 import rendering.PixelRaster;
 import rendering.RgbPacking;
 import profiling.RuntimeMetrics;
@@ -15,7 +16,8 @@ public class DisplayPipelineBenchmark {
             int w=size[0],h=size[1]; var rgb=new float[3][h][w];
             for(int c=0;c<3;c++) for(int y=0;y<h;y++) for(int x=0;x<w;x++) rgb[c][y][x]=(x+y+c)%127*.125f;
             var raster=new PixelRaster(1440,900); var converter=new DisplayConverter(1440,900);
-            for(String mode:new String[]{"reference","fused","cached"}) {
+            var leased=new ArrayPixels(rgb);
+            for(String mode:new String[]{"reference","fused","leased","cached"}) {
                 converter.convert(rgb,1);
                 var times=new long[100]; long allocated=0;
                 for(int i=-50;i<100;i++) {
@@ -23,6 +25,7 @@ public class DisplayPipelineBenchmark {
                     switch(mode) {
                         case "reference" -> reference(rgb,raster);
                         case "fused" -> { converter.convert(rgb,1); converter.paint(raster); }
+                        case "leased" -> { converter.convert(leased,1); converter.paint(raster); }
                         case "cached" -> converter.paint(raster);
                     }
                     long elapsed=System.nanoTime()-start,delta=RuntimeMetrics.delta(bytes,RuntimeMetrics.allocatedBytes());
@@ -45,6 +48,15 @@ public class DisplayPipelineBenchmark {
             Arrays.sort(times);
             System.out.printf("opaque AWT packing %s median/p95=%.3f/%.3f ms; checksum=%d%n",
                     optimized?"P3":"reference",times[49]/1e6,times[94]/1e6,Arrays.hashCode(pixels));
+        }
+    }
+    private record ArrayPixels(float[][][] rgb) implements RgbPixels {
+        @Override public int width(){return rgb[0][0].length;}
+        @Override public int height(){return rgb[0].length;}
+        @Override public float value(int channel,int x,int y){return rgb[channel][y][x];}
+        @Override public void copyTo(float[][][] destination) {
+            for(int c=0;c<3;c++)for(int y=0;y<height();y++)
+                System.arraycopy(rgb[c][y],0,destination[c][y],0,width());
         }
     }
     private static void reference(float[][][] rgb,PixelRaster raster) {

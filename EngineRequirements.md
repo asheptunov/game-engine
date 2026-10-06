@@ -1,6 +1,6 @@
 # Engine and authoring tools specification
 
-Status: proposed; E1–E6 are pending. Recorded 2026-10-06.
+Status: E1–E2 complete; E3–E6 are pending. Recorded 2026-10-06.
 
 ## Intent
 
@@ -116,8 +116,8 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 
 | ID | Deliverable | Depends on | Status |
 | --- | --- | --- | --- |
-| E1 | Public engine scene/render boundary and migrated playground | Existing renderer | Pending |
-| E2 | Independent headless consumer and multiple-view proof | E1 | Pending |
+| E1 | Public engine scene/render boundary and migrated playground | Existing renderer | Complete |
+| E2 | Independent headless consumer and multiple-view proof | E1 | Complete |
 | E3 | Stable scene graph/assets and versioned persistence | E2 | Pending |
 | E4 | General mesh assets and reusable scene queries | E3 | Pending |
 | E5 | Initial scene-authoring application | E4 | Pending |
@@ -125,14 +125,14 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 
 ### E1 — Extract the engine boundary
 
-- [ ] Define public world snapshot, camera/view, render settings, session, and image APIs.
-- [ ] Move reusable scene/geometry/render functionality out of application ownership;
+- [x] Define public world snapshot, camera/view, render settings, session, and image APIs.
+- [x] Move reusable scene/geometry/render functionality out of application ownership;
       retain transitional adapters as needed, with removal criteria recorded.
-- [ ] Adapt the playground and its commands to the APIs. Keep defaults and input behavior.
-- [ ] Keep AWT, console, presets, and application-screen lifecycle outside engine core.
-- [ ] Add an executable dependency/compilation check preventing application imports from
+- [x] Adapt the playground and its commands to the APIs. Keep defaults and input behavior.
+- [x] Keep AWT, console, presets, and application-screen lifecycle outside engine core.
+- [x] Add an executable dependency/compilation check preventing application imports from
       engine code. Merely moving files without removing coupling does not complete E1.
-- [ ] Verify representative seeded renders and camera/transport invalidation, asynchronous
+- [x] Verify representative seeded renders and camera/transport invalidation, asynchronous
       cancellation, lease stability, and close behavior against the pre-extraction baseline.
 
 Gate: the existing playground operates through the public boundary without renderer-owned
@@ -140,13 +140,13 @@ knowledge of playground screens or presets. No rendering algorithm change is req
 
 ### E2 — Prove a second consumer
 
-- [ ] Add a separate executable that constructs geometry, material, camera, and light via
+- [x] Add a separate executable that constructs geometry, material, camera, and light via
       public APIs and writes a rendered image without creating a window or console.
-- [ ] Build/run that consumer against the engine without application implementation sources
+- [x] Build/run that consumer against the engine without application implementation sources
       on its classpath. Document commands using the current Java 23 build conventions.
-- [ ] Exercise two cameras/sessions over the same world; edits reach both while session
+- [x] Exercise two cameras/sessions over the same world; edits reach both while session
       accumulation, resolution, history, and image leases remain independent.
-- [ ] Demonstrate timed application updates while a render is pending, independent of
+- [x] Demonstrate timed application updates while a render is pending, independent of
       completed samples; verify final scene state and eventual matching publication.
 
 Gate: a new application can build and render its own world without importing playground
@@ -227,6 +227,41 @@ related implementation; do not invent questions. Preserve existing documentation
 Compare matching scenes/seeds/resolutions/spp before and after extraction. Record any
 preparation/allocation or interaction regression; optimizations must not mask changed
 transport or broken identity. No new FPS promise is made by this specification.
+
+### E1–E2 evidence (2026-10-06)
+
+- API and ownership guide: [EngineApi.md](EngineApi.md). Reusable sources are under
+  `src/engine`; `Viewport`, presets, commands, controls, and display conversion remain
+  application-owned. The playground opens its coordinator through `RenderSession`.
+- Executable boundary: `./engine-build.ps1 -OutputDirectory out/engine-extraction/boundary`.
+  This compiled engine/math/logging/profiling support without application sources, then
+  compiled the independent `HeadlessEngineDemo` against only those classes.
+- Independent result: `headless.png`, 160×100 at 4 spp, SHA-256
+  `7D55D9DDE7EAB440FE23F89C9D83DCF5A678095F2E156A0AFFA9BD4F3474BA9C`.
+- Contract proof: `engine.EngineSessionTest` covers immutable copies and atomic rejected
+  inputs; temporal/minimum reset semantics; two sessions with different cameras, grids,
+  sample counts, leases, and independent temporal histories; semantic same-value world
+  republication; and five fixed updates during a pending trace followed by an exact seeded
+  match to a fresh final-state session. `WorldSnapshot` rejects unsupported custom/mutable
+  light implementations; `RgbPixels` prevents mutation of pooled publication arrays and
+  checks lease lifetime.
+- The display adapter copies a fresh lease into reusable storage and performs no cached-redraw
+  copy. `DisplayPipelineBenchmark` measured 1600x1000 leased/raw-array conversion medians of
+  28.311/25.701 ms (2.610 ms overhead) and zero steady-state bytes per frame; log:
+  `out/engine-extraction/pixel-copy.log`.
+- Baseline/post-extraction playground preview SHA-256 remained
+  `37874155A3700CE7ACAA6C7280D609D403D9DE96CD0DE96A2C809B2B3C533ACE`.
+  An initial post-extraction sweep passed all 54 harness suites under
+  `out/engine-extraction/full-regression`. The final product sweep passed 53/54 under
+  `out/engine-extraction/final-full-regression`; `ViewportKeyBindingsTest` reproduced the
+  same Caps-on synthetic-lowercase failure three times against untouched baseline classes
+  (`out/engine-extraction/baseline/ViewportKeyBindingsTest-caps-*.log`). Its test-only
+  Caps-on branch prints an explicit skip for that keyboard path, exercises the same
+  `ViewportCommand` updates directly without changing production input or operator state,
+  and passed three focused reruns under `out/engine-extraction/final`.
+- Transitional limitation: `ViewportState` and `openLegacySession` preserve playground
+  commands/focus/profiling until E3 transactions replace direct state mutation. Stable
+  node/asset identity and general open meshes remain E3–E4 work.
 
 ## Deferred scope and coordination
 

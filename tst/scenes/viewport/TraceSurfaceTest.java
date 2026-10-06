@@ -1,12 +1,13 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Ray;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
-import scenes.viewport.objects.SceneObject;
-import scenes.viewport.objects.Tri;
+import engine.objects.Rect;
+import engine.objects.SceneObject;
+import engine.objects.Tri;
 import java.util.Random;
 import static harness.Assertions.*;
 

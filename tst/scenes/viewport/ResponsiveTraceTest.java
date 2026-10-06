@@ -1,9 +1,10 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.ArrayList;
 import static harness.Assertions.*;
@@ -18,7 +19,7 @@ public class ResponsiveTraceTest {
         while(System.nanoTime()<deadline) {
             synchronized(s) {
                 async.request(); var image=async.image();
-                if(image!=null && image.generation()==async.progress(image).generation()
+                if(image!=null && image.generation()==async.progress(image).requestedGeneration()
                         && image.key().equals(s.renderKey()) && image.samples()>=samples) return async.retain(image);
             }
             Thread.sleep(1);

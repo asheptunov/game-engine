@@ -1,5 +1,6 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Vec3;
@@ -54,10 +55,10 @@ public class CameraLifecycleTest {
                     AsyncViewportTrace.Image image;
                     synchronized(s) {
                         var camera=s.camera();var delta=new Vec3(.001f,0,0);
-                        s.camera(camera.withPose(camera.eye().add(delta),new scenes.viewport.objects.Rect(camera.sensor().origin().add(delta),camera.sensor().edge1(),camera.sensor().edge2())));
+                        s.camera(camera.withPose(camera.eye().add(delta),new engine.objects.Rect(camera.sensor().origin().add(delta),camera.sensor().edge1(),camera.sensor().edge2())));
                         captured.put(s.renderKey(),s.renderSnapshot());async.request();
                         camera=s.camera();
-                        s.camera(camera.withPose(camera.eye().add(delta),new scenes.viewport.objects.Rect(camera.sensor().origin().add(delta),camera.sensor().edge1(),camera.sensor().edge2())));
+                        s.camera(camera.withPose(camera.eye().add(delta),new engine.objects.Rect(camera.sensor().origin().add(delta),camera.sensor().edge1(),camera.sensor().edge2())));
                         async.invalidate();edits++;
                         image=async.acquireImage();
                     }

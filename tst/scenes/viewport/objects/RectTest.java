@@ -1,4 +1,4 @@
-package scenes.viewport.objects;
+package engine.objects;
 
 import harness.SuiteRunner;
 import harness.Test;

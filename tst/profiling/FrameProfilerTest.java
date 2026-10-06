@@ -195,18 +195,18 @@ public class FrameProfilerTest {
         assertEquals(Color.NamedColor.BLACK.rgbInt24(), raster.pixel(12, 12).rgbInt24());
     }
     @Test void samplesAreExclusiveBoundedAndUnsupportedMetricsStayUnavailable() {
-        String prefix = "scenes.viewport.BackwardRayTracer.";
+        String prefix = "engine.BackwardRayTracer.";
         assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(prefix + "occluded", prefix + "light", prefix + "trace")));
         assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(prefix + "nearestHit", prefix + "shade", prefix + "trace")));
         assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(prefix + "light", prefix + "trace")));
         assertEquals(TraceSampler.Work.GENERATION, TraceSampler.classify(java.util.List.of(prefix + "trace")));
         assertNull(TraceSampler.classify(java.util.List.of("other.Work.render")));
-        String worker = "scenes.viewport.DirectRgbTracer$Worker.";
+        String worker = "engine.DirectRgbTracer$Worker.";
         assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(worker+"volumeVisibility",worker+"nearestHit",worker+"call")));
         assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(worker+"nearestHit",worker+"call")));
         assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(worker+"areaLight",worker+"call")));
         assertEquals(TraceSampler.Work.GENERATION, TraceSampler.classify(java.util.List.of(worker+"render",worker+"call")));
-        String rgb = "scenes.viewport.DirectRgbTracer.";
+        String rgb = "engine.DirectRgbTracer.";
         assertEquals(TraceSampler.Work.SHADOW, TraceSampler.classify(java.util.List.of(rgb + "occluded", rgb + "light", rgb + "trace")));
         assertEquals(TraceSampler.Work.INTERSECTION, TraceSampler.classify(java.util.List.of(rgb + "nearestHit", rgb + "trace")));
         assertEquals(TraceSampler.Work.LIGHTING, TraceSampler.classify(java.util.List.of(rgb + "light", rgb + "trace")));

@@ -78,8 +78,8 @@ motion assessment remains separate.
 Compile normally, then run with JDK23 preview features from the repository root:
 
 ```powershell
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.TemporalReuseBenchmark cost
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.TemporalReuseBenchmark
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.TemporalReuseBenchmark cost
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.TemporalReuseBenchmark
 ```
 
 For the P5 reference, compile only `DirectRgbTracer.java` from `fa46be2` to a separate

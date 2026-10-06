@@ -1,5 +1,6 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import math.Vec3;
 import java.util.*;
 import java.nio.file.*;
@@ -23,7 +24,7 @@ public class TemporalReuseBenchmark {
         // Translation + a direction reversal + cut; the cuts deliberately invalidate history.
         float x=frame<10?frame*.03f:(18.5f-frame)*.03f;
         if(frame>=15)x+=1;
-        s.eye(new Vec3(x,0,-1));s.cameraSensor(new scenes.viewport.objects.Rect(new Vec3(-.8f+x,-.5f,0),new Vec3(1.6f,0,0),new Vec3(0,1,0)));
+        s.eye(new Vec3(x,0,-1));s.cameraSensor(new engine.objects.Rect(new Vec3(-.8f+x,-.5f,0),new Vec3(1.6f,0,0),new Vec3(0,1,0)));
     }
     private record Run(float[][][][] images,double[] millis,double[] spp,double reconstruction,double confidence,long memory,long guides,int reused,double rejectedDelta) {}
     private static Run run(String preset,boolean temporal,double budget) {

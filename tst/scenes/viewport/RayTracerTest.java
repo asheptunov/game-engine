@@ -1,12 +1,13 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Ray;
 import math.Vec3;
-import scenes.viewport.lights.PointLight;
-import scenes.viewport.objects.Rect;
-import scenes.viewport.objects.Tri;
+import engine.lights.PointLight;
+import engine.objects.Rect;
+import engine.objects.Tri;
 
 import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertTrue;

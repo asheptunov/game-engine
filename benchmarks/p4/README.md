@@ -101,7 +101,7 @@ From the repository root, compile sources/tests with Java 23 preview (see
 `AGENTS.md`), then in PowerShell:
 
 ```powershell
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.InteractiveResolutionTest
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.InteractiveResolutionTest
 & "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview '-Djava.awt.headless=false' -cp out/cli DynamicResolutionBenchmark preview
 ```
 

@@ -92,9 +92,9 @@ Fourteen suites pass: TemporalReconstructionTest, ResponsiveTraceTest, ParallelT
 After compiling all sources/tests with Java 23 preview:
 
 ```powershell
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.TemporalReconstructionTest
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.TemporalReuseBenchmark
-& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli scenes.viewport.TemporalReuseBenchmark cost
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.TemporalReconstructionTest
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.TemporalReuseBenchmark
+& "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli engine.TemporalReuseBenchmark cost
 & "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview '-Djava.awt.headless=false' -cp out/cli ProfilingIntegrationTest
 ```
 

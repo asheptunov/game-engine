@@ -1,5 +1,7 @@
 package scenes.viewport;
 
+import engine.DisplayMapping;
+import engine.RgbPixels;
 import rendering.Raster;
 import java.util.Arrays;
 
@@ -9,10 +11,20 @@ public final class DisplayConverter {
     private final byte[][] encoded;
     private int sensorW, sensorH;
     private Axis xAxis, yAxis;
+    private float[][][] leaseCopy;
 
     public DisplayConverter(int width, int height) {
         this.width=width; this.height=height;
         encoded=new byte[3][width*height];
+    }
+
+    /** Copy leased engine storage into a reusable display-owned buffer before conversion. */
+    public void convert(RgbPixels rgb,float exposure) {
+        int h=rgb.height(),w=rgb.width();
+        if(leaseCopy==null || leaseCopy[0].length!=h || leaseCopy[0][0].length!=w)
+            leaseCopy=new float[3][h][w];
+        rgb.copyTo(leaseCopy);
+        convert(leaseCopy,exposure);
     }
 
     /** Keeps the reference's float arithmetic and source iteration order, including Y orientation. */

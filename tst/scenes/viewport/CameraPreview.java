@@ -1,7 +1,8 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 
 /** Reproducible window-free previews of the live playground camera controls. */
 public final class CameraPreview {

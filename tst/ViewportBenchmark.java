@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import scenes.Scene;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 import scenes.viewport.ScenePresets;
 import profiling.RuntimeMetrics;
 import java.nio.file.Files;
@@ -51,9 +51,9 @@ public class ViewportBenchmark {
             if (arg.startsWith("seed=")) viewport.state().seed(Long.parseLong(arg.substring(5)));
             if (arg.equals("brute")) viewport.state().acceleration(false);
             if (arg.startsWith("detail=")) {
-                var mesh=scenes.viewport.IndexedMesh.sphere(Integer.parseInt(arg.substring(7)));
+                var mesh=engine.IndexedMesh.sphere(Integer.parseInt(arg.substring(7)));
                 var instances=viewport.state().instances();
-                for(int i=0;i<instances.size();i++){var o=instances.get(i);if(o.geometry() instanceof scenes.viewport.IndexedMesh)instances.set(i,new scenes.viewport.SceneInstance(o.name(),mesh,o.transform(),o.material()));}
+                for(int i=0;i<instances.size();i++){var o=instances.get(i);if(o.geometry() instanceof engine.IndexedMesh)instances.set(i,new engine.SceneInstance(o.name(),mesh,o.transform(),o.material()));}
             }
         }
         int instances=option(args,"instances",0);
@@ -69,11 +69,11 @@ public class ViewportBenchmark {
         if(instances>0) {
             var state=viewport.state();
             if(instances<state.instances().size() || instances>128)throw new IllegalArgumentException("instances must be initial count..128");
-            var model=state.instances().stream().filter(o->o.geometry() instanceof scenes.viewport.IndexedMesh).findFirst().orElseThrow();
+            var model=state.instances().stream().filter(o->o.geometry() instanceof engine.IndexedMesh).findFirst().orElseThrow();
             while(state.instances().size()<instances) {
                 int index=state.instances().size(); var t=model.transform();
-                state.instances().add(new scenes.viewport.SceneInstance("benchmark-copy-"+index,model.geometry(),
-                        new scenes.viewport.Transform(t.position.add(new Vec3((index%8)*3,0,6+(index/8)*3)),t.rotation,t.scale),model.material()));
+                state.instances().add(new engine.SceneInstance("benchmark-copy-"+index,model.geometry(),
+                        new engine.Transform(t.position.add(new Vec3((index%8)*3,0,6+(index/8)*3)),t.rotation,t.scale),model.material()));
             }
         }
         if (close) {

@@ -22,7 +22,7 @@ public class TemporalBudgetLiveBenchmark {
                     long before=System.nanoTime();double seconds=(before-start)/1e9;
                     if(seconds<5) synchronized(s) {
                         var delta=new Vec3((float)Math.sin(seconds*1.5)*.1f,0,0);s.eye(initial.add(delta));
-                        s.cameraSensor(new scenes.viewport.objects.Rect(sensor.origin().add(delta),sensor.edge1(),sensor.edge2()));
+                        s.cameraSensor(new engine.objects.Rect(sensor.origin().add(delta),sensor.edge1(),sensor.edge2()));
                     }
                     profiler.beginFrame();viewport.render();profiler.endFrame();
                     if(seconds<5) {

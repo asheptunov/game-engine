@@ -1,12 +1,14 @@
 package scenes.viewport;
 
+import engine.Camera;
+import engine.ViewportState;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
+import engine.objects.Rect;
 import java.util.HashMap;
 import java.util.Map;
 
 /** Held movement is integrated by the render loop, independently of OS key repeat. */
-final class CameraControls {
+public final class CameraControls {
     private static final float SPEED = 3f;
     private static final double SENSITIVITY = .003;
     private final Map<Long, Vec3> held = new HashMap<>();
@@ -15,7 +17,7 @@ final class CameraControls {
     private int mouseX, mouseY;
     private double yawDelta, pitchDelta;
 
-    boolean press(int code, int location, String action, long now) {
+    public boolean press(int code, int location, String action, long now) {
         var direction = switch (action) {
             case "camera.move.forward" -> new Vec3(0, 0, 1);
             case "camera.move.back" -> new Vec3(0, 0, -1);
@@ -31,23 +33,23 @@ final class CameraControls {
         return true;
     }
 
-    void release(int code, int location) { held.remove(key(code, location)); }
+    public void release(int code, int location) { held.remove(key(code, location)); }
     private static long key(int code, int location) { return ((long) code << 32) | location; }
-    void clear() { held.clear(); lastUpdate = 0; dragging = false; yawDelta = pitchDelta = 0; }
-    void startLook(int x, int y) { dragging = true; mouseX = x; mouseY = y; }
-    void stopLook() { dragging = false; }
-    void look(int x, int y) {
+    public void clear() { held.clear(); lastUpdate = 0; dragging = false; yawDelta = pitchDelta = 0; }
+    public void startLook(int x, int y) { dragging = true; mouseX = x; mouseY = y; }
+    public void stopLook() { dragging = false; }
+    public void look(int x, int y) {
         if (!dragging) startLook(x, y);
         else drag(x, y);
     }
-    void drag(int x, int y) {
+    public void drag(int x, int y) {
         if (!dragging) return;
         yawDelta += (x - mouseX) * SENSITIVITY;
         pitchDelta -= (y - mouseY) * SENSITIVITY;
         mouseX = x; mouseY = y;
     }
 
-    void update(ViewportState state, long now) {
+    public void update(ViewportState state, long now) {
         var sensor = state.cameraSensor();
         if (yawDelta != 0 || pitchDelta != 0) {
             var forward = sensor.edge1().cross(sensor.edge2()).normalized();

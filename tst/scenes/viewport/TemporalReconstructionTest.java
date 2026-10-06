@@ -1,10 +1,11 @@
-package scenes.viewport;
+package engine;
 
+import scenes.viewport.*;
 import harness.SuiteRunner;
 import harness.Test;
 import math.Vec3;
-import scenes.viewport.objects.Rect;
-import scenes.viewport.lights.PointLight;
+import engine.objects.Rect;
+import engine.lights.PointLight;
 import java.util.List;
 import static harness.Assertions.*;
 

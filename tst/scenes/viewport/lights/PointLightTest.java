@@ -1,4 +1,4 @@
-package scenes.viewport.lights;
+package engine.lights;
 
 import harness.SuiteRunner;
 import harness.Test;
