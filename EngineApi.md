@@ -79,14 +79,15 @@ validation, and file I/O to this engine API while retaining their old `MouseEven
 and buttonless drag lookup, so existing viewport and texture-editor property maps keep their
 meaning.
 
-An editor can register `undo`, `redo`, `orbit`, `pan`, and `zoom`, then load these chords:
+The scene editor registers its concrete history, gesture, and view actions and loads these chords:
 
 ```properties
-ctrl+z = undo
-ctrl+shift+z = redo
-right+drag+viewport = orbit
-shift+right+drag+viewport = pan
-wheel+viewport = zoom
+ctrl+z = history.undo
+ctrl+shift+z = history.redo
+escape = gesture.cancel
+right+drag+viewport = view.orbit
+shift+right+drag+viewport = view.pan
+wheel+viewport = view.zoom
 ```
 
 Run `./input-check.ps1` for the engine-only boundary, all-source compilation, shared input

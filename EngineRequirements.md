@@ -215,14 +215,20 @@ E5 implementation evidence (2026-10-06):
   EDT-painted frame, captured camera, scene revision, and prepared `SpatialQuery`; stale or
   unmatched clicks are rejected. `RenderProgress.activeGeneration` exposes the coordinator's
   captured generation so rapid camera updates retain coherent lagging publications safely.
+- The views draw bounded x-ray wireframes, light/camera markers, and local-axis move/rotate
+  handles from the exact painted camera. A handle drag publishes live previews but records one
+  history entry; Escape or focus loss restores the drag-start snapshot. File-backed editor
+  bindings define right-drag orbit, Shift+right-drag pan, wheel zoom, undo, redo, and cancel.
+  Camera navigation retains projection, off-center/skew framing, focus, and aperture, and can
+  atomically copy the displayed view back to a selected camera below a supported parent.
 - `./editor-check.ps1 -OutputDirectory out/editor-check-active` passed controller/history/
   async-file/command/stale-pick tests, a real window-free two-view Swing render/pick test,
   and the E3–E4 document/persistence/query plus E1 session suites. The generated layout is
   `out/editor-check-active/scene-editor-preview.png`; no automated check opened a window.
 - Manual native-window expectations and exact PowerShell/Git Bash launch commands are in
   `benchmarks/editor/README.md`. Human GUI interaction remains pending before merge; automated
-  checks do not claim physical input, window-manager, or scanout verification. E6 topology,
-  gizmos, and mesh modelling remain deferred.
+  checks do not claim physical input, window-manager, or scanout verification. E6 topology and
+  mesh modelling remain deferred.
 
 ### E6 — Mesh editing
 

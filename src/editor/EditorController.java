@@ -2,6 +2,7 @@ package editor;
 
 import engine.*;
 import math.Vec3;
+import engine.objects.Rect;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
@@ -31,7 +32,9 @@ public final class EditorController implements AutoCloseable {
     private String status = "Ready";
     private boolean busy;
     private boolean loading;
+    private NodeId transformGesture;
     private long fileToken;
+    private long selectionIntent;
     private boolean closed;
 
     public EditorController() {
@@ -61,14 +64,28 @@ public final class EditorController implements AutoCloseable {
 
     public boolean select(NodeId id) {
         requireEdt();
+        selectionIntent++;
+        if (transformGesture != null) return fail("Finish or cancel the transform first");
         if (id != null && document.snapshot().findNode(id).isEmpty()) return fail("Selection is no longer in the scene");
         selection = id; status = id == null ? "Selection cleared" : "Selected " + document.snapshot().requireNode(id).label(); publish(); return true;
     }
     public boolean acceptPick(RayHit hit, long displayedRevision) {
+        requireEdt(); long intent = beginPick(displayedRevision); return intent >= 0 && acceptPick(hit, displayedRevision, intent);
+    }
+    public long beginPick(long displayedRevision) {
+        requireEdt(); long intent = ++selectionIntent;
+        if (displayedRevision != document.snapshot().revision()) { fail("View changed; click again"); return -1; }
+        return intent;
+    }
+    public boolean acceptPick(RayHit hit, long displayedRevision, long intent) {
         requireEdt();
+        if (intent != selectionIntent) return false;
         if (displayedRevision != document.snapshot().revision() || hit != null && hit.sceneRevision() != displayedRevision)
             return fail("View changed; click again");
         return select(hit == null ? null : hit.nodeId());
+    }
+    public boolean acceptOverlayPick(NodeId id, long displayedRevision) {
+        requireEdt(); if (displayedRevision != document.snapshot().revision()) return fail("View changed; click again"); return select(id);
     }
 
     public boolean create(Primitive primitive) {
@@ -119,16 +136,84 @@ public final class EditorController implements AutoCloseable {
     public boolean makeMaterialUnique(NodeId id) { return edit("Make material unique", e -> e.makeMaterialUnique(id)); }
     public boolean setPointLight(NodeId id, PointLightComponent light) { return edit(light == null ? "Remove point light" : "Apply point light", e -> e.setPointLight(id, light)); }
     public boolean setCamera(NodeId id, CameraComponent camera) { return edit(camera == null ? "Remove camera" : "Apply camera", e -> e.setCamera(id, camera)); }
+    public boolean setCameraFromView(NodeId id, Camera worldCamera) {
+        requireEdt(); Objects.requireNonNull(worldCamera);
+        var snapshot = document.snapshot(); var node = snapshot.requireNode(id);
+        if (node.camera() == null) return fail("Selected node has no camera component");
+        var parentWorld = node.parentId() == null ? Transform.IDENTITY : snapshot.worldTransform(node.parentId());
+        try {
+            float parentScale = parentWorld.uniformScale();
+            var worldRight = worldCamera.sensor().edge1().normalized();
+            var worldForward = worldCamera.forward();
+            var worldUp = worldForward.cross(worldRight).normalized();
+            var right = parentWorld.inverseVector(worldRight).normalized();
+            var up = parentWorld.inverseVector(worldUp).normalized();
+            var forward = parentWorld.inverseVector(worldForward).normalized();
+            var localTransform = cameraPose(parentWorld.inversePoint(worldCamera.eye()), right, up, forward);
+            var toOrigin = worldCamera.sensor().origin().sub(worldCamera.eye());
+            var sensor = new Rect(inBasis(toOrigin, worldRight, worldUp, worldForward, parentScale),
+                    inBasis(worldCamera.sensor().edge1(), worldRight, worldUp, worldForward, parentScale),
+                    inBasis(worldCamera.sensor().edge2(), worldRight, worldUp, worldForward, parentScale));
+            var localCamera = new Camera(Vec3.ZERO, sensor, worldCamera.projection(), worldCamera.mode(),
+                    worldCamera.focus() / parentScale, worldCamera.aperture() / parentScale,
+                    worldCamera.height() / parentScale, worldCamera.rememberedAperture() / parentScale).validated();
+            return edit("Set camera from view", e -> { e.setLocalTransform(id, localTransform); e.setCamera(id, new CameraComponent(localCamera)); });
+        } catch (RuntimeException error) { return fail(message(error)); }
+    }
 
-    public boolean undo() { requireEdt(); return loading ? fail("Wait for the scene load to finish") : !history.canUndo() ? fail("Nothing to undo") : fromHistory("Undid edit", history::undo); }
-    public boolean redo() { requireEdt(); return loading ? fail("Wait for the scene load to finish") : !history.canRedo() ? fail("Nothing to redo") : fromHistory("Redid edit", history::redo); }
+    private static Vec3 inBasis(Vec3 value, Vec3 right, Vec3 up, Vec3 forward, float scale) {
+        return new Vec3(value.dot(right) / scale, value.dot(up) / scale, value.dot(forward) / scale);
+    }
+
+    private static Transform cameraPose(Vec3 position, Vec3 right, Vec3 up, Vec3 forward) {
+        float ru = Math.abs(right.dot(up)), rf = Math.abs(right.dot(forward)), uf = Math.abs(up.dot(forward));
+        if (ru > Transform.COMPOSITION_TOLERANCE || rf > Transform.COMPOSITION_TOLERANCE || uf > Transform.COMPOSITION_TOLERANCE)
+            throw new IllegalArgumentException("View camera axes are not orthogonal");
+        double y = Math.asin(Math.clamp(-right.z(), -1, 1)), cy = Math.cos(y), x, z;
+        if (Math.abs(cy) > 1e-7) { x = Math.atan2(up.z(), forward.z()); z = Math.atan2(right.y(), right.x()); }
+        else { z = 0; x = y > 0 ? Math.atan2(up.x(), up.y()) : Math.atan2(-up.x(), up.y()); }
+        return new Transform(position, new Vec3((float) Math.toDegrees(x), (float) Math.toDegrees(y), (float) Math.toDegrees(z)), new Vec3(1, 1, 1));
+    }
+
+    public boolean beginTransformGesture(NodeId id, String label) {
+        requireEdt();
+        return beginTransformGesture(id, label, document.snapshot().revision());
+    }
+    public boolean beginTransformGesture(NodeId id, String label, long displayedRevision) {
+        requireEdt();
+        if (loading || busy) return fail("Wait for file work to finish");
+        if (transformGesture != null) return fail("A transform gesture is already active");
+        if (displayedRevision != document.snapshot().revision()) return fail("View changed; click again");
+        if (!Objects.equals(selection, id)) return fail("Selection changed; drag the current selection");
+        try { document.snapshot().requireNode(id); history.beginGroup(label); transformGesture = id; status = label; publish(); return true; }
+        catch (RuntimeException error) { return fail(message(error)); }
+    }
+    public boolean updateTransformGesture(NodeId id, Transform transform) {
+        requireEdt(); if (!Objects.equals(transformGesture, id)) return fail("Transform gesture no longer matches the selection");
+        try { history.updateGroup(e -> e.setLocalTransform(id, transform)); status = "Adjusting transform"; publish(); return true; }
+        catch (RuntimeException error) { return fail(message(error)); }
+    }
+    public boolean commitTransformGesture() {
+        requireEdt(); if (transformGesture == null) return false;
+        try { history.commitGroup(); transformGesture = null; status = "Applied transform"; publish(); return true; }
+        catch (RuntimeException error) { return fail(message(error)); }
+    }
+    public boolean cancelTransformGesture() {
+        requireEdt(); if (transformGesture == null) return false;
+        try { history.cancelGroup(); transformGesture = null; status = "Cancelled transform"; publish(); return true; }
+        catch (RuntimeException error) { return fail(message(error)); }
+    }
+    public boolean transformGestureActive() { requireEdt(); return transformGesture != null; }
+
+    public boolean undo() { requireEdt(); return loading ? fail("Wait for the scene load to finish") : transformGesture != null ? fail("Finish or cancel the transform first") : !history.canUndo() ? fail("Nothing to undo") : fromHistory("Undid edit", history::undo); }
+    public boolean redo() { requireEdt(); return loading ? fail("Wait for the scene load to finish") : transformGesture != null ? fail("Finish or cancel the transform first") : !history.canRedo() ? fail("Nothing to redo") : fromHistory("Redid edit", history::redo); }
     private boolean fromHistory(String text, Callable<SceneSnapshot> operation) {
         try { operation.call(); if (selection != null && document.snapshot().findNode(selection).isEmpty()) selection = null; status = text; publish(); return true; }
         catch (Exception error) { return fail(message(error)); }
     }
 
     public void newScene() {
-        requireEdt(); if (busy) { fail("Wait for file work to finish"); return; }
+        requireEdt(); if (busy) { fail("Wait for file work to finish"); return; } if (transformGesture != null) { fail("Finish or cancel the transform first"); return; }
         var fresh = StarterScene.create().snapshot(); history.replace("New scene", fresh); history.clear();
         file = null; fileToken++; clean = document.snapshot();
         selection = document.snapshot().nodes().stream().filter(n -> n.geometry() != null).map(SceneNode::id).findFirst().orElse(null);
@@ -136,7 +221,7 @@ public final class EditorController implements AutoCloseable {
     }
 
     public CompletableFuture<Boolean> load(Path path) {
-        requireEdt(); if (busy) return CompletableFuture.completedFuture(false);
+        requireEdt(); if (busy || transformGesture != null) return CompletableFuture.completedFuture(false);
         busy = loading = true; status = "Loading " + path.getFileName() + "…"; publish(); long token = ++fileToken;
         var result = new CompletableFuture<Boolean>();
         io.submit(() -> {
@@ -158,7 +243,7 @@ public final class EditorController implements AutoCloseable {
     }
 
     public CompletableFuture<Boolean> save(Path path) {
-        requireEdt(); if (busy) return CompletableFuture.completedFuture(false);
+        requireEdt(); if (busy || transformGesture != null) return CompletableFuture.completedFuture(false);
         var captured = document.snapshot(); var absolute = path.toAbsolutePath();
         long token = ++fileToken; busy = true; status = "Saving " + path.getFileName() + "…"; publish();
         var result = new CompletableFuture<Boolean>();
@@ -189,5 +274,5 @@ public final class EditorController implements AutoCloseable {
     private static String pretty(Primitive value) { var s = value.name().toLowerCase(Locale.ROOT).replace('_', ' '); return Character.toUpperCase(s.charAt(0)) + s.substring(1); }
     private static String message(Throwable error) { return error.getMessage() == null || error.getMessage().isBlank() ? error.getClass().getSimpleName() : error.getMessage(); }
     private static void requireEdt() { if (!SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("EditorController belongs to the Swing event thread"); }
-    @Override public void close() { requireEdt(); if (!closed) { closed = true; fileToken++; listeners.clear(); io.shutdownNow(); } }
+    @Override public void close() { requireEdt(); if (!closed) { if (transformGesture != null) { cancelTransformGesture(); if (transformGesture != null) return; } closed = true; fileToken++; listeners.clear(); io.shutdownNow(); } }
 }

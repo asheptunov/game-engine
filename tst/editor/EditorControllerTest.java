@@ -1,8 +1,11 @@
 package editor;
 
 import engine.*;
+import editor.overlay.GizmoMath;
+import editor.overlay.OverlayGeometry;
 import harness.Test;
 import math.Vec3;
+import engine.objects.Rect;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
@@ -54,6 +57,12 @@ public class EditorControllerTest {
             for (int y = 1; y < 9 && hit == null; y++) for (int x = 1; x < 9 && hit == null; x++) hit = query.pick(snapshot.camera(cameraId), x / 10f, y / 10f).orElse(null);
             assertNotNull(hit); var accepted = hit;
             assertTrue(onEdt(() -> controller.acceptPick(accepted, snapshot.revision()))); assertEquals(hit.nodeId(), onEdt(controller::selection));
+            var other = snapshot.nodes().stream().map(SceneNode::id).filter(id -> !id.equals(accepted.nodeId())).findFirst().orElseThrow();
+            long supersededByTree = onEdt(() -> controller.beginPick(snapshot.revision())); onEdt(() -> controller.select(other));
+            assertFalse(onEdt(() -> controller.acceptPick(accepted, snapshot.revision(), supersededByTree))); assertEquals(other, onEdt(controller::selection));
+            long firstView = onEdt(() -> controller.beginPick(snapshot.revision())); long secondView = onEdt(() -> controller.beginPick(snapshot.revision()));
+            assertFalse(onEdt(() -> controller.acceptPick(accepted, snapshot.revision(), firstView)));
+            assertTrue(onEdt(() -> controller.acceptPick(accepted, snapshot.revision(), secondView))); assertEquals(hit.nodeId(), onEdt(controller::selection));
             var selected = hit.nodeId(); long before = onEdt(() -> controller.snapshot().revision());
             assertFalse(onEdt(() -> controller.reparent(selected, selected))); assertEquals(before, onEdt(() -> controller.snapshot().revision())); assertEquals(selected, onEdt(controller::selection));
             onEdt(() -> controller.rename(selected, "Edited after publication")); assertFalse(onEdt(() -> controller.acceptPick(accepted, snapshot.revision()))); assertEquals(selected, onEdt(controller::selection));
@@ -85,12 +94,77 @@ public class EditorControllerTest {
         assertFalse(first.sameContent(second));
     }
 
+    @Test public void cameraCaptureKeepsParentAndWorldOpticsInOneUndoableEdit() throws Exception {
+        var controller = onEdt(EditorController::new);
+        try {
+            onEdt(() -> controller.select(null)); assertTrue(onEdt(() -> controller.create(EditorController.Primitive.GROUP)));
+            var parent = onEdt(controller::selection);
+            assertTrue(onEdt(() -> controller.applyTransform(parent, new Transform(new Vec3(2, -1, 4), new Vec3(12, -24, 7), new Vec3(2, 2, 2)))));
+            assertTrue(onEdt(() -> controller.create(EditorController.Primitive.CAMERA))); var cameraId = onEdt(controller::selection);
+            var before = onEdt(controller::snapshot);
+            var localOptics = new Camera(Vec3.ZERO, new Rect(new Vec3(-1.2f, -.8f, 1), new Vec3(3.2f, 0, 0), new Vec3(.4f, 2, 0)),
+                    Camera.Projection.ORTHOGRAPHIC, Camera.Mode.ORTHOGRAPHIC, 8, .35f, 3.5f, .55f).validated();
+            var desired = localOptics.transformed(new Transform(new Vec3(-3, 5, -6), new Vec3(-18, 37, 11), new Vec3(1, 1, 1)));
+            assertTrue(onEdt(() -> controller.setCameraFromView(cameraId, desired)));
+            var capturedSnapshot = onEdt(controller::snapshot); var capturedNode = capturedSnapshot.requireNode(cameraId);
+            assertEquals(parent, capturedNode.parentId()); assertCameraNear(desired, capturedSnapshot.camera(cameraId));
+            assertTrue(onEdt(controller::undo)); assertTrue(onEdt(controller::snapshot).sameContent(before));
+            assertTrue(onEdt(controller::redo)); assertCameraNear(desired, onEdt(controller::snapshot).camera(cameraId));
+        } finally { onEdt(() -> { controller.close(); return null; }); }
+    }
+
+    @Test public void transformGesturePublishesLiveButCommitsOneUndoAndCancelsExactly() throws Exception {
+        var controller = onEdt(EditorController::new);
+        try {
+            var selected = onEdt(controller::selection); var original = onEdt(() -> controller.snapshot().requireNode(selected).localTransform());
+            assertTrue(onEdt(() -> controller.beginTransformGesture(selected, "Move X")));
+            assertFalse(onEdt(() -> controller.select(null))); assertEquals(selected, onEdt(controller::selection));
+            for (int i = 1; i <= 12; i++) {
+                int step = i; assertTrue(onEdt(() -> controller.updateTransformGesture(selected,
+                        new Transform(new Vec3(step * .1f, 0, 0), Vec3.ZERO, new Vec3(1, 1, 1)))));
+            }
+            var moved = onEdt(() -> controller.snapshot().requireNode(selected).localTransform()); assertFalse(moved.equals(original));
+            assertTrue(onEdt(controller::commitTransformGesture)); assertTrue(onEdt(controller::undo));
+            assertEquals(original, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
+            assertFalse(onEdt(controller::undo)); assertTrue(onEdt(controller::redo));
+            assertEquals(moved, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
+
+            assertTrue(onEdt(() -> controller.beginTransformGesture(selected, "Rotate Z")));
+            assertTrue(onEdt(() -> controller.updateTransformGesture(selected,
+                    new Transform(new Vec3(9, 8, 7), new Vec3(0, 0, 35), new Vec3(1, 1, 1)))));
+            assertTrue(onEdt(controller::cancelTransformGesture));
+            assertEquals(moved, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
+        } finally { onEdt(() -> { controller.close(); return null; }); }
+    }
+
+    @Test public void invalidGizmoCandidateKeepsPreviousWorldAndCanCancel() throws Exception {
+        var controller = onEdt(EditorController::new);
+        try {
+            onEdt(() -> controller.select(null)); assertTrue(onEdt(() -> controller.create(EditorController.Primitive.GROUP))); var parent = onEdt(controller::selection);
+            assertTrue(onEdt(() -> controller.applyTransform(parent, new Transform(Vec3.ZERO, Vec3.ZERO, new Vec3(2, 1, 1)))));
+            assertTrue(onEdt(() -> controller.create(EditorController.Primitive.BOX))); var child = onEdt(controller::selection);
+            var before = onEdt(controller::snapshot); var candidate = GizmoMath.rotated(before, child, OverlayGeometry.Axis.Z, 35);
+            assertTrue(onEdt(() -> controller.beginTransformGesture(child, "Rotate Z", before.revision())));
+            assertFalse(onEdt(() -> controller.updateTransformGesture(child, candidate))); assertSame(before, onEdt(controller::snapshot));
+            assertTrue(onEdt(controller::cancelTransformGesture)); assertTrue(onEdt(controller::snapshot).sameContent(before));
+        } finally { onEdt(() -> { controller.close(); return null; }); }
+    }
+
     private static SceneSnapshot meshScene(GeometryId geometry, MaterialId material, NodeId node, long face) {
         var document = new SceneDocument(); document.transact(e -> {
             e.createGeometry(geometry, "mesh", TriangleMesh.surface(List.of(new Vec3(0, 0, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0)), new int[]{0, 1, 2}, new long[]{face}));
             e.createMaterial(material, "mat", Material.srgb("mat", 0xffffff)); e.createNode(node, "node", null, Transform.IDENTITY); e.assignGeometry(node, geometry, material);
         }); return document.snapshot();
     }
+
+    private static void assertCameraNear(Camera expected, Camera actual) {
+        assertEquals(expected.projection(), actual.projection()); assertEquals(expected.mode(), actual.mode());
+        near(expected.eye(), actual.eye()); near(expected.sensor().origin(), actual.sensor().origin());
+        near(expected.sensor().edge1(), actual.sensor().edge1()); near(expected.sensor().edge2(), actual.sensor().edge2());
+        assertTrue(Math.abs(expected.focus() - actual.focus()) < 2e-4f); assertTrue(Math.abs(expected.aperture() - actual.aperture()) < 2e-4f);
+        assertTrue(Math.abs(expected.height() - actual.height()) < 2e-4f); assertTrue(Math.abs(expected.rememberedAperture() - actual.rememberedAperture()) < 2e-4f);
+    }
+    private static void near(Vec3 expected, Vec3 actual) { assertTrue(expected.sub(actual).length() < 3e-4f); }
 
     private static final class MemoryStorage implements EditorController.Storage {
         volatile SceneSnapshot loaded, saved; volatile boolean failLoad;

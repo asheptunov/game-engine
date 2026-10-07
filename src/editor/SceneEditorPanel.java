@@ -1,18 +1,28 @@
 package editor;
 
 import engine.*;
+import editor.overlay.OverlayGeometry;
 import math.Vec3;
 
 import javax.swing.*;
 import javax.swing.event.TreeSelectionEvent;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.text.DefaultCaret;
 import javax.swing.tree.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
 
 /** Complete native Swing authoring surface; safe to construct and paint headlessly. */
 public final class SceneEditorPanel extends JPanel implements EditorController.Listener, AutoCloseable {
+    private static final int MAX_COMMAND_LOG_CHARS = 32_000;
+    private static final class SelectionOnlyCaret extends DefaultCaret {
+        SelectionOnlyCaret() { setBlinkRate(0); }
+        @Override public void paint(Graphics graphics) { }
+    }
     private record NodeChoice(NodeId id, String label) { @Override public String toString() { return label; } }
     private static final class TreeNode extends DefaultMutableTreeNode {
         final NodeId id;
@@ -29,26 +39,35 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     private final JTextField commandEntry = new JTextField();
     private final Inspector inspector;
     private final RenderViewPanel viewA, viewB;
+    private final EditorInputBindings inputBindings;
     private final JButton undo = new JButton("Undo"), redo = new JButton("Redo");
     private boolean updatingTree;
     private boolean closed;
 
     public SceneEditorPanel(EditorController controller) {
+        this(controller, Path.of("assets", "bindings", "scene-editor.properties"),
+                Path.of("assets", "bindings", "scene-editor-mouse.properties"));
+    }
+
+    SceneEditorPanel(EditorController controller, Path keyFile, Path mouseFile) {
         super(new BorderLayout(6, 6));
         if (!SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("SceneEditorPanel belongs to EDT");
         this.controller = Objects.requireNonNull(controller); commands = new EditorCommandProcessor(controller);
+        inputBindings = new EditorInputBindings(this, controller, keyFile, mouseFile);
         setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6)); setBackground(new Color(32, 37, 44));
         add(toolbar(), BorderLayout.NORTH);
         hierarchy.setRootVisible(true); hierarchy.setShowsRootHandles(true); hierarchy.addTreeSelectionListener(this::treeSelected);
         var hierarchyPane = new JPanel(new BorderLayout()); hierarchyPane.setBorder(BorderFactory.createTitledBorder("Scene hierarchy"));
         hierarchyPane.add(new JScrollPane(hierarchy)); hierarchyPane.setPreferredSize(new Dimension(230, 600));
-        viewA = new RenderViewPanel(controller, "View A", .58f, .28f, 12);
-        viewB = new RenderViewPanel(controller, "View B", -.72f, .42f, 11);
+        viewA = new RenderViewPanel(controller, inputBindings, "View A", .58f, .28f, 12);
+        viewB = new RenderViewPanel(controller, inputBindings, "View B", -.72f, .42f, 11);
         var views = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, viewA, viewB); views.setResizeWeight(.5); views.setDividerSize(5);
         inspector = new Inspector(controller); inspector.setPreferredSize(new Dimension(310, 600));
         var left = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, hierarchyPane, views); left.setResizeWeight(.16); left.setDividerLocation(230);
         var body = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, inspector); body.setResizeWeight(.79); body.setDividerLocation(1050);
-        add(body, BorderLayout.CENTER); add(commandPanel(), BorderLayout.SOUTH);
+        body.setMinimumSize(new Dimension(500, 300));
+        var workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, body, commandPanel()); workspace.setResizeWeight(.72); workspace.setDividerLocation(.72); workspace.setDividerSize(7);
+        add(workspace, BorderLayout.CENTER); add(statusStrip(), BorderLayout.SOUTH);
         controller.addListener(this);
     }
 
@@ -70,14 +89,31 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
 
     private JComponent commandPanel() {
         var panel = new JPanel(new BorderLayout(5, 4)); panel.setBorder(BorderFactory.createTitledBorder("Commands (type help)"));
-        commandLog.setEditable(false); commandLog.setLineWrap(true); commandLog.setWrapStyleWord(true);
+        commandLog.setEditable(false); commandLog.setLineWrap(true); commandLog.setWrapStyleWord(true); commandLog.setCaret(new SelectionOnlyCaret());
         commandEntry.addActionListener(_ -> {
             var text = commandEntry.getText(); if (text.isBlank()) return;
-            commandLog.append("> " + text + "\n" + commands.execute(text) + "\n"); commandEntry.setText("");
+            appendCommandOutput("> " + text + "\n" + commands.execute(text) + "\n"); commandEntry.setText("");
         });
-        panel.add(new JScrollPane(commandLog), BorderLayout.CENTER); panel.add(commandEntry, BorderLayout.SOUTH);
-        var footer = new JPanel(new BorderLayout()); footer.add(status); footer.add(dirtyFooter, BorderLayout.EAST); panel.add(footer, BorderLayout.NORTH);
+        var output = new JPanel(new BorderLayout()); output.setBorder(BorderFactory.createTitledBorder("Output")); output.add(new JScrollPane(commandLog));
+        var input = new JPanel(new BorderLayout()); input.setBorder(BorderFactory.createTitledBorder("Input")); input.add(commandEntry);
+        panel.add(output, BorderLayout.CENTER); panel.add(input, BorderLayout.SOUTH); panel.setMinimumSize(new Dimension(300, 110)); panel.setPreferredSize(new Dimension(900, 210));
         return panel;
+    }
+
+    private JComponent statusStrip() {
+        var footer = new JPanel(new BorderLayout(8, 0)); footer.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(96, 104, 114)), BorderFactory.createEmptyBorder(3, 6, 3, 6)));
+        footer.add(status); footer.add(dirtyFooter, BorderLayout.EAST); return footer;
+    }
+
+    private void appendCommandOutput(String text) {
+        commandLog.append(text);
+        int extra = commandLog.getDocument().getLength() - MAX_COMMAND_LOG_CHARS;
+        if (extra > 0) try {
+            String prefix = commandLog.getText(0, Math.min(commandLog.getDocument().getLength(), extra + 1024));
+            int newline = prefix.indexOf('\n', extra); commandLog.getDocument().remove(0, newline < 0 ? extra : newline + 1);
+        } catch (javax.swing.text.BadLocationException impossible) { throw new AssertionError(impossible); }
+        commandLog.setCaretPosition(commandLog.getDocument().getLength());
     }
 
     private static void addButton(JToolBar bar, String label, java.awt.event.ActionListener action) { var button = new JButton(label); button.addActionListener(action); bar.add(button); }
@@ -139,8 +175,15 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             if (controller.dirty()) guardUnsaved(continuation); else continuation.run();
         }));
     }
-    private JFileChooser chooser() { var chooser = new JFileChooser(); chooser.setDialogTitle("Ray tracing scene (.scene.xml)"); return chooser; }
-    private static Path scenePath(Path path) { return path.toString().endsWith(".scene.xml") ? path : Path.of(path + ".scene.xml"); }
+    private JFileChooser chooser() {
+        var chooser = new JFileChooser(); chooser.setDialogTitle("Ray tracing scene (.scene.xml)"); chooser.setAcceptAllFileFilterUsed(false);
+        chooser.setFileFilter(new FileFilter() {
+            @Override public boolean accept(File file) { return file.isDirectory() || file.getName().toLowerCase(Locale.ROOT).endsWith(".scene.xml"); }
+            @Override public String getDescription() { return "Ray tracing scenes (*.scene.xml)"; }
+        });
+        return chooser;
+    }
+    private static Path scenePath(Path path) { return path.toString().toLowerCase(Locale.ROOT).endsWith(".scene.xml") ? path : Path.of(path + ".scene.xml"); }
     private void guardUnsaved(Runnable action) {
         if (!controller.dirty()) { action.run(); return; }
         Object[] options = {"Save", "Discard", "Cancel"}; int result = JOptionPane.showOptionDialog(this,
@@ -155,9 +198,30 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     public long[] displayedRevisions() { return new long[]{viewA.displayedRevision(), viewB.displayedRevision()}; }
     void pickInViewForTest(int view, float u, float v) { (view == 0 ? viewA : viewB).pickNormalizedForTest(u, v); }
     void navigateViewForTest(int view, float yawDelta) { (view == 0 ? viewA : viewB).navigateForTest(yawDelta); }
+    void resetViewForTest(int view) { (view == 0 ? viewA : viewB).resetForTest(); }
+    void gizmoModeForTest(int view, OverlayGeometry.GizmoMode mode) { (view == 0 ? viewA : viewB).gizmoModeForTest(mode); }
+    void useSceneCameraForTest(int view, NodeId id) { (view == 0 ? viewA : viewB).useSceneCameraForTest(id); }
+    void mouseDragForTest(int view, int button, int modifiers, int dx, int dy) { (view == 0 ? viewA : viewB).mouseDragForTest(button, modifiers, dx, dy); }
+    void mouseWheelForTest(int view, double rotation) { (view == 0 ? viewA : viewB).mouseWheelForTest(rotation); }
+    void setSelectedCameraFromViewForTest(int view) { (view == 0 ? viewA : viewB).setSelectedCameraFromViewForTest(); }
+    Camera viewCameraForTest(int view) { return (view == 0 ? viewA : viewB).currentCameraForTest(); }
+    OverlayGeometry.Frame overlayForTest(int view) { return (view == 0 ? viewA : viewB).overlayForTest(); }
+    boolean pickMarkerForTest(int view, NodeId node) { return (view == 0 ? viewA : viewB).pickMarkerForTest(node); }
+    boolean dragHandleForTest(int view, OverlayGeometry.Axis axis, int pixels, boolean commit) { return (view == 0 ? viewA : viewB).dragHandleForTest(axis, pixels, commit); }
+    boolean beginHandleDragForTest(int view, OverlayGeometry.Axis axis, int pixels) { return (view == 0 ? viewA : viewB).beginHandleDragForTest(axis, pixels); }
+    void executeCommandForTest(String text) { commandEntry.setText(text); commandEntry.postActionEvent(); }
+    int commandOutputLengthForTest() { return commandLog.getDocument().getLength(); }
+    JTextArea commandOutputForTest() { return commandLog; }
+    JTextField commandInputForTest() { return commandEntry; }
+    boolean hasInspectorTabForTest(String title) { return inspector.hasTab(title); }
+    void selectInspectorTabForTest(String title) { inspector.selectTab(title); }
+    JFileChooser chooserForTest() { return chooser(); }
+    static Path scenePathForTest(Path path) { return scenePath(path); }
+    boolean dispatchKeyForTest(KeyEvent event) { return inputBindings.handleKeyForTest(event); }
+    void cancelActiveGesture() { if (viewA != null) viewA.cancelGizmo(); if (viewB != null) viewB.cancelGizmo(); }
 
     @Override public void close() {
-        if (closed) return; closed = true; controller.removeListener(this); viewA.close(); viewB.close(); controller.close();
+        if (closed) return; closed = true; inputBindings.close(); controller.removeListener(this); viewA.close(); viewB.close(); controller.close();
     }
 
     private static final class Inspector extends JTabbedPane {
@@ -174,7 +238,10 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private final JTextField[] light = fields(4, "1");
         private final JComboBox<Camera.Projection> projection = new JComboBox<>(Camera.Projection.values());
         private final JTextField framing = new JTextField("50"), focus = new JTextField("5"), aperture = new JTextField("0");
-        private final JLabel componentNote = new JLabel("No components");
+        private final JPanel componentPanel = stack();
+        private final JComponent transformPanel;
+        private final JComponent materialPanel;
+        private final JComponent componentsPanel;
 
         Inspector(EditorController controller) {
             this.controller = controller;
@@ -184,11 +251,12 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                     if (value instanceof MaterialAsset asset) setText(asset.label()); return component;
                 }
             });
-            addTab("Transform", transformTab()); addTab("Material", materialTab()); addTab("Components", componentTab());
+            transformPanel = transformTab(); materialPanel = materialTab(); componentsPanel = componentTab();
+            addTab("Transform", transformPanel);
         }
 
         void update(EditorController.State state) {
-            this.state = state; var node = selected(); setEnabledAt(0, node != null); setEnabledAt(1, node != null && node.geometry() != null); setEnabledAt(2, node != null);
+            this.state = state; var node = selected(); rebuildTabs(node);
             if (node == null) return;
             name.setText(node.label()); var t = node.localTransform(); put(transform, t.position, 0); put(transform, t.rotation, 3); put(transform, t.scale, 6);
             parent.removeAllItems(); parent.addItem(new NodeChoice(null, "Scene root")); int parentIndex = 0, index = 1;
@@ -201,9 +269,16 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                 long uses = state.snapshot().nodes().stream().filter(n -> n.geometry() != null && n.geometry().materialId().equals(asset.id())).count();
                 materialNote.setText(uses + " node" + (uses == 1 ? " uses" : "s use") + " this shared material");
             }
-            if (node.light() != null) { put(light, node.light().color(), 0); light[3].setText(Float.toString(node.light().intensity())); componentNote.setText("Point light selected"); }
-            if (node.camera() != null) { var c = node.camera().camera(); projection.setSelectedItem(c.projection()); framing.setText(Float.toString(c.projection() == Camera.Projection.ORTHOGRAPHIC ? c.height() : c.fov())); focus.setText(Float.toString(c.focus())); aperture.setText(Float.toString(c.aperture())); componentNote.setText("Camera selected"); }
-            if (node.light() == null && node.camera() == null) componentNote.setText("Add a point light or camera component");
+            rebuildComponents(node);
+        }
+
+        private void rebuildTabs(SceneNode node) {
+            String selectedTitle = getSelectedIndex() < 0 ? "Transform" : getTitleAt(getSelectedIndex());
+            removeAll(); addTab("Transform", transformPanel); setEnabledAt(0, node != null);
+            if (node != null && node.geometry() != null) addTab("Material", materialPanel);
+            if (node != null && (node.light() != null || node.camera() != null)) addTab("Components", componentsPanel);
+            for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(selectedTitle)) { setSelectedIndex(i); return; }
+            setSelectedIndex(0);
         }
 
         private JComponent transformTab() {
@@ -218,11 +293,22 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             var shared = new JButton("Apply to shared material"); shared.addActionListener(_ -> applyMaterial()); var unique = new JButton("Make unique"); unique.addActionListener(_ -> { var n = selected(); if (n != null) controller.makeMaterialUnique(n.id()); }); panel.add(shared); panel.add(unique); return scroll(panel);
         }
         private JComponent componentTab() {
-            var panel = stack(); panel.add(componentNote); panel.add(new JLabel("Point light (position uses Transform)")); panel.add(row("Light red", light[0])); panel.add(row("Green", light[1])); panel.add(row("Blue", light[2])); panel.add(row("Intensity", light[3]));
-            var applyLight = new JButton("Add / apply point light"); applyLight.addActionListener(_ -> { var n = selected(); if (n != null) try { controller.setPointLight(n.id(), new PointLightComponent(vec(light, 0), number(light[3]))); } catch (RuntimeException e) { showError(e); } }); panel.add(applyLight);
-            var removeLight = new JButton("Remove point light"); removeLight.addActionListener(_ -> { var n = selected(); if (n != null) controller.setPointLight(n.id(), null); }); panel.add(removeLight);
-            panel.add(new JSeparator()); panel.add(new JLabel("Camera optics (pose uses Transform)")); panel.add(row("Projection", projection)); panel.add(row("FOV / ortho height", framing)); panel.add(row("Focus distance", focus)); panel.add(row("Aperture", aperture));
-            var applyCamera = new JButton("Add / apply camera"); applyCamera.addActionListener(_ -> applyCamera()); panel.add(applyCamera); var removeCamera = new JButton("Remove camera"); removeCamera.addActionListener(_ -> { var n = selected(); if (n != null) controller.setCamera(n.id(), null); }); panel.add(removeCamera); return scroll(panel);
+            return scroll(componentPanel);
+        }
+        private void rebuildComponents(SceneNode node) {
+            componentPanel.removeAll();
+            if (node.light() != null) {
+                put(light, node.light().color(), 0); light[3].setText(Float.toString(node.light().intensity()));
+                componentPanel.add(new JLabel("Point light (position uses Transform)")); componentPanel.add(row("Light red", light[0])); componentPanel.add(row("Green", light[1])); componentPanel.add(row("Blue", light[2])); componentPanel.add(row("Intensity", light[3]));
+                var apply = new JButton("Apply"); apply.addActionListener(_ -> { var selected = selected(); if (selected != null && selected.light() != null) try { controller.setPointLight(selected.id(), new PointLightComponent(vec(light, 0), number(light[3]))); } catch (RuntimeException error) { showError(error); } }); componentPanel.add(apply);
+            }
+            if (node.light() != null && node.camera() != null) componentPanel.add(new JSeparator());
+            if (node.camera() != null) {
+                var camera = node.camera().camera(); projection.setSelectedItem(camera.projection()); framing.setText(Float.toString(camera.projection() == Camera.Projection.ORTHOGRAPHIC ? camera.height() : camera.fov())); focus.setText(Float.toString(camera.focus())); aperture.setText(Float.toString(camera.aperture()));
+                componentPanel.add(new JLabel("Camera optics (pose uses Transform)")); componentPanel.add(row("Projection", projection)); componentPanel.add(row("FOV / ortho height", framing)); componentPanel.add(row("Focus distance", focus)); componentPanel.add(row("Aperture", aperture));
+                var apply = new JButton("Apply"); apply.addActionListener(_ -> applyCamera()); componentPanel.add(apply);
+            }
+            componentPanel.revalidate(); componentPanel.repaint();
         }
 
         private void applyTransform() { var n = selected(); if (n == null) return; try { controller.applyTransform(n.id(), new Transform(vec(transform, 0), vec(transform, 3), vec(transform, 6))); } catch (RuntimeException e) { showError(e); } }
@@ -231,14 +317,16 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             try { var old = state.snapshot().requireMaterial(n.geometry().materialId()).material(); var next = old.withKind((Material.Kind) kind.getSelectedItem()).withColor(vec(color, 0)).withRoughness(number(roughness)).withIor(number(ior)); controller.editSharedMaterial(n.geometry().materialId(), next); } catch (RuntimeException e) { showError(e); }
         }
         private void applyCamera() {
-            var n = selected(); if (n == null) return;
+            var n = selected(); if (n == null || n.camera() == null) return;
             try {
-                var c = n.camera() == null ? StarterScene.canonicalCamera() : n.camera().camera(); var p = (Camera.Projection) projection.getSelectedItem(); c = c.withProjection(p.name().toLowerCase(Locale.ROOT));
+                var c = n.camera().camera(); var p = (Camera.Projection) projection.getSelectedItem(); c = c.withProjection(p.name().toLowerCase(Locale.ROOT));
                 c = p == Camera.Projection.ORTHOGRAPHIC ? c.withHeight(number(framing)) : c.withFov(number(framing)); c = c.withFocus(number(focus)).withAperture(number(aperture)); controller.setCamera(n.id(), new CameraComponent(c));
             } catch (RuntimeException e) { showError(e); }
         }
         private SceneNode selected() { return state == null || state.selection() == null ? null : state.snapshot().findNode(state.selection()).orElse(null); }
         private void showError(RuntimeException error) { JOptionPane.showMessageDialog(this, error.getMessage(), "Invalid value", JOptionPane.ERROR_MESSAGE); }
+        private boolean hasTab(String title) { for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(title)) return true; return false; }
+        private void selectTab(String title) { for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(title)) { setSelectedIndex(i); return; } throw new IllegalArgumentException("Missing inspector tab: " + title); }
         private static JPanel stack() { var p = new JPanel(); p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS)); p.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); return p; }
         private static JComponent scroll(JComponent value) { var s = new JScrollPane(value); s.getVerticalScrollBar().setUnitIncrement(12); return s; }
         private static JPanel row(String label, Component value) { var p = new JPanel(new BorderLayout(5, 2)); p.add(new JLabel(label), BorderLayout.WEST); p.add(value); p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30)); return p; }

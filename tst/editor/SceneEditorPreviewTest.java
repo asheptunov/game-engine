@@ -1,10 +1,17 @@
 package editor;
 
+import editor.overlay.OverlayGeometry;
+import engine.*;
+import engine.objects.Rect;
 import harness.Test;
+import math.Vec3;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.nio.file.*;
 import java.util.HashSet;
@@ -22,17 +29,103 @@ public class SceneEditorPreviewTest {
         var controller = onEdt(EditorController::new); var panel = onEdt(() -> new SceneEditorPanel(controller));
         try {
             var canvas = new BufferedImage(1400, 850, BufferedImage.TYPE_INT_RGB); long deadline = System.nanoTime() + 25_000_000_000L;
+            var output = Path.of(System.getProperty("editor.preview", "out/editor/scene-editor-preview.png")); Files.createDirectories(output.toAbsolutePath().getParent());
             while (System.nanoTime() < deadline) {
                 onEdt(() -> { panel.setSize(1400, 850); layout(panel); var g = canvas.createGraphics(); panel.printAll(g); g.dispose(); return null; });
                 if (onEdt(panel::viewsReady)) break; Thread.sleep(30);
             }
             assertTrue(onEdt(panel::viewsReady)); var revisions = onEdt(panel::displayedRevisions); assertEquals(revisions[0], revisions[1]);
+            var orbitBefore = onEdt(() -> panel.viewCameraForTest(0));
+            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON3, 0, 24, 0); return null; });
+            var orbitAfter = onEdt(() -> panel.viewCameraForTest(0));
+            assertTrue(orbitAfter.eye().x() < orbitBefore.eye().x());
+            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON1, 0, 24, 0); return null; });
+            assertEquals(orbitAfter, onEdt(() -> panel.viewCameraForTest(0)));
+            var panForward = orbitAfter.forward();
+            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON3, InputEvent.SHIFT_DOWN_MASK, 24, 0); return null; });
+            assertVec(panForward, onEdt(() -> panel.viewCameraForTest(0)).forward(), 2e-5f);
+            var beforeAmbiguous = onEdt(() -> panel.viewCameraForTest(0));
+            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON3, InputEvent.BUTTON1_DOWN_MASK, 20, 0); return null; });
+            assertEquals(beforeAmbiguous, onEdt(() -> panel.viewCameraForTest(0)));
             var labels = onEdt(() -> componentText(panel));
             for (var expected : new String[]{"Box", "Sphere", "Plane", "Group", "Light", "Camera", "Apply transform (one edit)",
-                    "Apply to shared material", "Make unique", "Reparent · keep local pose", "Add / apply point light", "Add / apply camera"})
+                    "Apply to shared material", "Make unique", "Reparent · keep local pose", "Capture view", "Wireframe", "Move", "Rotate",
+                    "Output", "Input"})
                 assertTrue(labels.contains(expected));
+            assertFalse(onEdt(() -> panel.hasInspectorTabForTest("Components")));
+            assertFalse(labels.contains("Point light (position uses Transform)")); assertFalse(labels.contains("Camera optics (pose uses Transform)"));
+            writePanel(panel, canvas, output.resolveSibling("scene-editor-component-absent-preview.png"));
 
-            var selected = onEdt(controller::selection);
+            var anchor = onEdt(controller::selection);
+            onEdt(() -> controller.create(EditorController.Primitive.POINT_LIGHT)); var light = onEdt(controller::selection);
+            onEdt(() -> controller.applyTransform(light, new Transform(new Vec3(-2.2f, 1.2f, 3), Vec3.ZERO, new Vec3(1, 1, 1))));
+            onEdt(() -> controller.select(anchor)); onEdt(() -> controller.create(EditorController.Primitive.CAMERA)); var camera = onEdt(controller::selection);
+            onEdt(() -> controller.applyTransform(camera, new Transform(new Vec3(2.2f, 1.1f, 3), Vec3.ZERO, new Vec3(1, 1, 1))));
+            onEdt(() -> controller.select(anchor));
+            awaitOverlay(panel, 0, anchor);
+            var overlay = onEdt(() -> panel.overlayForTest(0));
+            assertTrue(overlay.wireframe().size() > 0);
+            assertTrue(overlay.markers().size() >= 1);
+            assertEquals(3, overlay.handles().size());
+            writePanel(panel, canvas, output.resolveSibling("scene-editor-move-preview.png"));
+            assertTrue(onEdt(() -> panel.pickMarkerForTest(0, light))); assertEquals(light, onEdt(controller::selection)); labels = onEdt(() -> componentText(panel));
+            assertTrue(labels.contains("Point light (position uses Transform)")); assertFalse(labels.contains("Camera optics (pose uses Transform)"));
+            assertTrue(onEdt(() -> panel.hasInspectorTabForTest("Components")));
+            assertTrue(labels.contains("Apply")); assertFalse(labels.contains("Remove point light"));
+            awaitOverlay(panel, 0, light);
+            onEdt(() -> { panel.selectInspectorTabForTest("Components"); return null; });
+            writePanel(panel, canvas, output.resolveSibling("scene-editor-light-preview.png"));
+            assertTrue(onEdt(() -> panel.pickMarkerForTest(0, camera))); assertEquals(camera, onEdt(controller::selection)); labels = onEdt(() -> componentText(panel));
+            assertTrue(labels.contains("Camera optics (pose uses Transform)")); assertFalse(labels.contains("Point light (position uses Transform)"));
+            assertTrue(labels.contains("Apply")); assertFalse(labels.contains("Remove camera"));
+            awaitOverlay(panel, 0, camera);
+            onEdt(() -> { panel.selectInspectorTabForTest("Components"); return null; });
+            writePanel(panel, canvas, output.resolveSibling("scene-editor-camera-preview.png"));
+
+            var localSkew = new Camera(new Vec3(.2f, -.1f, .3f),
+                    new Rect(new Vec3(-.7f, -.45f, 1.25f), new Vec3(1.7f, 0, 0), new Vec3(.28f, 1.05f, 0)),
+                    Camera.Projection.ORTHOGRAPHIC, Camera.Mode.ORTHOGRAPHIC, 6.5f, .18f, 3.25f, .22f).validated();
+            onEdt(() -> controller.setCamera(camera, new CameraComponent(localSkew)));
+            var worldSkew = onEdt(() -> controller.snapshot().camera(camera)); var signature = cameraSignature(worldSkew);
+            onEdt(() -> { panel.useSceneCameraForTest(0, camera); panel.mouseDragForTest(0, MouseEvent.BUTTON3, 0, 18, -7); return null; });
+            var navigatedSkew = onEdt(() -> panel.viewCameraForTest(0));
+            assertEquals(worldSkew.projection(), navigatedSkew.projection()); assertEquals(worldSkew.mode(), navigatedSkew.mode());
+            assertNear(worldSkew.focus(), navigatedSkew.focus(), 2e-4f); assertNear(worldSkew.aperture(), navigatedSkew.aperture(), 2e-4f);
+            assertNear(worldSkew.height(), navigatedSkew.height(), 2e-4f); assertSignature(signature, cameraSignature(navigatedSkew), 3e-4f);
+            float heightBeforeWheel = navigatedSkew.height();
+            onEdt(() -> { panel.mouseWheelForTest(0, -1); return null; });
+            var zoomedSkew = onEdt(() -> panel.viewCameraForTest(0));
+            assertTrue(zoomedSkew.height() < heightBeforeWheel); assertNear(navigatedSkew.aperture(), zoomedSkew.aperture(), 2e-4f);
+            onEdt(() -> { panel.resetViewForTest(0); return null; });
+
+            var group = onEdt(() -> controller.snapshot().nodes().stream().filter(node -> node.label().equals("Composition")).findFirst().orElseThrow().id());
+            onEdt(() -> controller.select(group)); awaitOverlay(panel, 0, group); overlay = onEdt(() -> panel.overlayForTest(0));
+            assertTrue(overlay.wireframe().stream().anyMatch(line -> !line.nodeId().equals(group)));
+
+            var outputArea = onEdt(panel::commandOutputForTest); assertFalse(outputArea.isEditable()); assertTrue(outputArea.isFocusable());
+            onEdt(() -> { panel.executeCommandForTest("status"); outputArea.select(0, Math.min(4, outputArea.getDocument().getLength())); return null; });
+            assertNotNull(onEdt(outputArea::getSelectedText)); assertTrue(onEdt(panel::commandInputForTest).isEditable());
+            for (int i = 0; i < 700; i++) onEdt(() -> { panel.executeCommandForTest("status"); return null; });
+            assertTrue(onEdt(panel::commandOutputLengthForTest) <= 32_000);
+            var chooser = onEdt(panel::chooserForTest); var filter = chooser.getFileFilter();
+            assertFalse(chooser.isAcceptAllFileFilterUsed()); assertTrue(filter.accept(new java.io.File("example.SCENE.XML")));
+            assertFalse(filter.accept(new java.io.File("example.xml"))); assertEquals(Path.of("Example.SCENE.XML"), SceneEditorPanel.scenePathForTest(Path.of("Example.SCENE.XML")));
+
+            var selected = onEdt(() -> controller.snapshot().nodes().stream().filter(node -> node.geometry() != null).findFirst().orElseThrow().id()); onEdt(() -> controller.select(selected));
+            awaitOverlay(panel, 0, selected); var beforeDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform());
+            assertTrue(onEdt(() -> panel.dragHandleForTest(0, OverlayGeometry.Axis.X, 24, true)));
+            var afterDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform()); assertFalse(afterDrag.equals(beforeDrag));
+            var input = onEdt(panel::commandInputForTest);
+            assertTrue(onEdt(() -> panel.dispatchKeyForTest(new KeyEvent(input, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_Z, 'Z'))));
+            assertEquals(beforeDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
+            assertFalse(onEdt(() -> panel.dispatchKeyForTest(new KeyEvent(input, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), InputEvent.CTRL_DOWN_MASK, KeyEvent.VK_C, 'C'))));
+            assertTrue(onEdt(() -> panel.dispatchKeyForTest(new KeyEvent(input, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK, KeyEvent.VK_Z, 'Z'))));
+            assertEquals(afterDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
+            assertTrue(onEdt(controller::undo)); assertEquals(beforeDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
+            awaitOverlay(panel, 0, selected); assertTrue(onEdt(() -> panel.beginHandleDragForTest(0, OverlayGeometry.Axis.Y, 18)));
+            assertFalse(beforeDrag.equals(onEdt(() -> controller.snapshot().requireNode(selected).localTransform())));
+            assertTrue(onEdt(() -> panel.dispatchKeyForTest(new KeyEvent(input, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED))));
+            assertEquals(beforeDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
             onEdt(() -> controller.rename(selected, "Renamed without retrace"));
             long renamedRevision = onEdt(() -> controller.snapshot().revision());
             awaitDisplayedRevision(panel, renamedRevision);
@@ -43,9 +136,29 @@ public class SceneEditorPreviewTest {
                 Thread.sleep(14);
             }
             assertTrue(pickFromView(panel, controller, 1));
-            var output = Path.of(System.getProperty("editor.preview", "out/editor/scene-editor-preview.png")); Files.createDirectories(output.toAbsolutePath().getParent());
-            onEdt(() -> { var g = canvas.createGraphics(); panel.printAll(g); g.dispose(); return null; }); ImageIO.write(canvas, "png", output.toFile());
+            onEdt(() -> { controller.select(selected); panel.gizmoModeForTest(0, OverlayGeometry.GizmoMode.ROTATE); panel.selectInspectorTabForTest("Material"); return null; });
+            awaitOverlayMode(panel, 0, selected, OverlayGeometry.GizmoMode.ROTATE);
+            overlay = onEdt(() -> panel.overlayForTest(0));
+            assertTrue(overlay.wireframe().size() > 0); assertTrue(overlay.markers().size() >= 1);
+            assertTrue(overlay.handles().stream().allMatch(handle -> handle.mode() == OverlayGeometry.GizmoMode.ROTATE));
+            writePanel(panel, canvas, output);
             assertTrue(Files.size(output) > 20_000); assertTrue(distinctPixels(canvas) > 64);
+        } finally { onEdt(() -> { panel.close(); return null; }); }
+    }
+
+    @Test public void editorMouseRouteUsesRemappedBindingFile() throws Exception {
+        var directory = Files.createTempDirectory("scene-editor-bindings");
+        var keys = directory.resolve("keys.properties"); var mouse = directory.resolve("mouse.properties");
+        Files.writeString(keys, "escape = gesture.cancel\nctrl+z = history.undo\nctrl+shift+z = history.redo\n");
+        Files.writeString(mouse, "middle+drag+viewport = view.orbit\nwheel+viewport = view.zoom\n");
+        var controller = onEdt(EditorController::new); var panel = onEdt(() -> new SceneEditorPanel(controller, keys, mouse));
+        try {
+            onEdt(() -> { panel.setSize(1120, 720); layout(panel); return null; });
+            var before = onEdt(() -> panel.viewCameraForTest(0));
+            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON2, 0, 20, 0); return null; });
+            var middle = onEdt(() -> panel.viewCameraForTest(0)); assertFalse(before.equals(middle));
+            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON3, 0, 20, 0); return null; });
+            assertEquals(middle, onEdt(() -> panel.viewCameraForTest(0)));
         } finally { onEdt(() -> { panel.close(); return null; }); }
     }
 
@@ -60,6 +173,33 @@ public class SceneEditorPreviewTest {
         throw new AssertionError("Displayed frames did not rebind to renamed scene revision " + revision);
     }
 
+    private static void awaitOverlay(SceneEditorPanel panel, int view, NodeId selected) throws Exception {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            onEdt(() -> { var image = new BufferedImage(1400, 850, BufferedImage.TYPE_INT_RGB); var g = image.createGraphics(); panel.printAll(g); g.dispose(); return null; });
+            var overlay = onEdt(() -> panel.overlayForTest(view));
+            if (overlay != null && overlay.handles().stream().anyMatch(handle -> handle.nodeId().equals(selected))) return;
+            Thread.sleep(15);
+        }
+        throw new AssertionError("Overlay did not become ready for " + selected);
+    }
+
+    private static void awaitOverlayMode(SceneEditorPanel panel, int view, NodeId selected, OverlayGeometry.GizmoMode mode) throws Exception {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            onEdt(() -> { var image = new BufferedImage(1400, 850, BufferedImage.TYPE_INT_RGB); var g = image.createGraphics(); panel.printAll(g); g.dispose(); return null; });
+            var overlay = onEdt(() -> panel.overlayForTest(view));
+            if (overlay != null && overlay.handles().stream().anyMatch(handle -> handle.nodeId().equals(selected) && handle.mode() == mode)) return;
+            Thread.sleep(15);
+        }
+        throw new AssertionError("Overlay mode did not become ready for " + selected + ": " + mode);
+    }
+
+    private static void writePanel(SceneEditorPanel panel, BufferedImage canvas, Path output) throws Exception {
+        onEdt(() -> { layout(panel); var g = canvas.createGraphics(); panel.printAll(g); g.dispose(); return null; });
+        ImageIO.write(canvas, "png", output.toFile());
+    }
+
     private static boolean pickFromView(SceneEditorPanel panel, EditorController controller, int view) throws Exception {
         for (float v : new float[]{.5f, .4f, .6f, .3f, .7f}) for (float u : new float[]{.5f, .4f, .6f, .3f, .7f}) {
             onEdt(() -> { controller.select(null); panel.pickInViewForTest(view, u, v); return null; });
@@ -69,9 +209,19 @@ public class SceneEditorPreviewTest {
         return false;
     }
     private static int distinctPixels(BufferedImage image) { var values = new HashSet<Integer>(); for (int y = 0; y < image.getHeight(); y += 8) for (int x = 0; x < image.getWidth(); x += 8) values.add(image.getRGB(x, y)); return values.size(); }
+    private static float[] cameraSignature(Camera camera) {
+        var right = camera.sensor().edge1().normalized(); var forward = camera.forward(); var up = forward.cross(right).normalized();
+        var origin = camera.sensor().origin().sub(camera.eye()); var a = camera.sensor().edge1(); var b = camera.sensor().edge2();
+        return new float[]{origin.dot(right), origin.dot(up), origin.dot(forward), a.dot(right), a.dot(up), a.dot(forward),
+                b.dot(right), b.dot(up), b.dot(forward)};
+    }
+    private static void assertSignature(float[] expected, float[] actual, float tolerance) { for (int i = 0; i < expected.length; i++) assertNear(expected[i], actual[i], tolerance); }
+    private static void assertVec(Vec3 expected, Vec3 actual, float tolerance) { assertNear(expected.x(), actual.x(), tolerance); assertNear(expected.y(), actual.y(), tolerance); assertNear(expected.z(), actual.z(), tolerance); }
+    private static void assertNear(float expected, float actual, float tolerance) { assertTrue(Math.abs(expected - actual) <= tolerance); }
     private static Set<String> componentText(Component component) {
         var values = new HashSet<String>();
         if (component instanceof AbstractButton button) values.add(button.getText()); if (component instanceof JLabel label) values.add(label.getText());
+        if (component instanceof JComponent swing && swing.getBorder() instanceof javax.swing.border.TitledBorder titled) values.add(titled.getTitle());
         if (component instanceof Container container) for (var child : container.getComponents()) values.addAll(componentText(child)); return values;
     }
     private static void layout(Container container) { container.doLayout(); for (var child : container.getComponents()) if (child instanceof Container nested) layout(nested); }
