@@ -42,18 +42,23 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     private final EditorInputBindings inputBindings;
     private final JButton undo = new JButton("Undo"), redo = new JButton("Redo");
     private boolean updatingTree;
+    private String bindingWarning;
     private boolean closed;
 
     public SceneEditorPanel(EditorController controller) {
         this(controller, Path.of("assets", "bindings", "scene-editor.properties"),
-                Path.of("assets", "bindings", "scene-editor-mouse.properties"));
+                Path.of("assets", "bindings", "scene-editor-mouse.properties"),Path.of("config","scene-editor-bindings.properties"));
     }
 
     SceneEditorPanel(EditorController controller, Path keyFile, Path mouseFile) {
+        this(controller,keyFile,mouseFile,keyFile.toAbsolutePath().resolveSibling("scene-editor-bindings.override.properties"));
+    }
+
+    SceneEditorPanel(EditorController controller,Path keyFile,Path mouseFile,Path userFile) {
         super(new BorderLayout(6, 6));
         if (!SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("SceneEditorPanel belongs to EDT");
         this.controller = Objects.requireNonNull(controller); commands = new EditorCommandProcessor(controller);
-        inputBindings = new EditorInputBindings(this, controller, keyFile, mouseFile);
+        inputBindings = new EditorInputBindings(this,controller,keyFile,mouseFile,userFile);
         setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6)); setBackground(new Color(32, 37, 44));
         add(toolbar(), BorderLayout.NORTH);
         hierarchy.setRootVisible(true); hierarchy.setShowsRootHandles(true); hierarchy.addTreeSelectionListener(this::treeSelected);
@@ -83,6 +88,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         bar.addSeparator();
         addButton(bar, "Duplicate", _ -> controller.duplicateSelection()); addButton(bar, "Delete", _ -> controller.deleteSelection());
         undo.addActionListener(_ -> controller.undo()); redo.addActionListener(_ -> controller.redo()); bar.add(undo); bar.add(redo);
+        bar.addSeparator();addButton(bar,"Bindings…",_->showBindings());
         bar.add(Box.createHorizontalGlue()); bar.add(dirty);
         return bar;
     }
@@ -122,7 +128,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     @Override public void changed(EditorController.State state) {
         rebuildTree(state); inspector.update(state); viewA.update(state); viewB.update(state);
         undo.setEnabled(state.canUndo() && !state.busy()); redo.setEnabled(state.canRedo() && !state.busy());
-        status.setText(state.status()); var marker = (state.dirty() ? "● Unsaved" : "Saved") + (state.busy() ? " · working…" : ""); dirty.setText(marker); dirtyFooter.setText(marker);
+        status.setText(bindingWarning==null?state.status():bindingWarning); var marker = (state.dirty() ? "● Unsaved" : "Saved") + (state.busy() ? " · working…" : ""); dirty.setText(marker); dirtyFooter.setText(marker);
     }
 
     private void rebuildTree(EditorController.State state) {
@@ -160,11 +166,13 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     private static String icon(SceneNode node) { if (node.camera() != null) return "◉"; if (node.light() != null) return "☀"; if (node.geometry() != null) return "◆"; return "▾"; }
 
     private void chooseOpen() {
+        inputBindings.clearTransient();
         var chooser = chooser(); if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) controller.load(chooser.getSelectedFile().toPath());
     }
     private void chooseSave(Runnable continuation) {
         Path path = controller.state().file();
         if (path == null) {
+            inputBindings.clearTransient();
             var chooser = chooser(); if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return; path = scenePath(chooser.getSelectedFile().toPath());
         }
         saveThen(path, continuation);
@@ -193,7 +201,15 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     }
     public void requestClose() { guardUnsaved(this::closeWindow); }
     private void closeWindow() { var window = SwingUtilities.getWindowAncestor(this); close(); if (window != null) window.dispose(); }
-    public void setRenderingActive(boolean active) { viewA.setActive(active); viewB.setActive(active); }
+    public void setRenderingActive(boolean active) { if(!active)inputBindings.clearTransient();viewA.setActive(active); viewB.setActive(active); }
+    void bindingStatus(String warning){bindingWarning=warning;status.setText(warning==null?controller.state().status():warning);}
+    private void showBindings(){
+        inputBindings.dialogActive(true);var dialog=new java.util.concurrent.atomic.AtomicReference<JDialog>();
+        var panel=new BindingPreferencesPanel(inputBindings,()->{var value=dialog.get();if(value!=null)value.dispose();});
+        var pane=new JOptionPane(panel,JOptionPane.PLAIN_MESSAGE,JOptionPane.DEFAULT_OPTION,null,new Object[]{});
+        var value=pane.createDialog(this,"Editor bindings");dialog.set(value);value.setModal(true);
+        try{value.setVisible(true);}finally{inputBindings.dialogActive(false);}
+    }
     public boolean viewsReady() { return viewA.hasFrame() && viewB.hasFrame(); }
     public long[] displayedRevisions() { return new long[]{viewA.displayedRevision(), viewB.displayedRevision()}; }
     void pickInViewForTest(int view, float u, float v) { (view == 0 ? viewA : viewB).pickNormalizedForTest(u, v); }
@@ -206,6 +222,12 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     void setSelectedCameraFromViewForTest(int view) { (view == 0 ? viewA : viewB).setSelectedCameraFromViewForTest(); }
     Camera viewCameraForTest(int view) { return (view == 0 ? viewA : viewB).currentCameraForTest(); }
     OverlayGeometry.Frame overlayForTest(int view) { return (view == 0 ? viewA : viewB).overlayForTest(); }
+    RenderViewPanel.ProjectionBlock blockNextProjectionForTest(int view){return (view==0?viewA:viewB).blockNextProjectionForTest();}
+    long paintedGenerationForTest(int view){return (view==0?viewA:viewB).paintedGenerationForTest();}
+    long paintedSerialForTest(int view){return (view==0?viewA:viewB).paintedSerialForTest();}
+    boolean paintedBundleCoherentForTest(int view){return (view==0?viewA:viewB).paintedBundleCoherentForTest();}
+    String overlayProgressForTest(int view){return (view==0?viewA:viewB).overlayProgressForTest();}
+    Component viewComponentForTest(int view){return view==0?viewA:viewB;}
     boolean pickMarkerForTest(int view, NodeId node) { return (view == 0 ? viewA : viewB).pickMarkerForTest(node); }
     boolean dragHandleForTest(int view, OverlayGeometry.Axis axis, int pixels, boolean commit) { return (view == 0 ? viewA : viewB).dragHandleForTest(axis, pixels, commit); }
     boolean beginHandleDragForTest(int view, OverlayGeometry.Axis axis, int pixels) { return (view == 0 ? viewA : viewB).beginHandleDragForTest(axis, pixels); }
@@ -218,6 +240,10 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     JFileChooser chooserForTest() { return chooser(); }
     static Path scenePathForTest(Path path) { return scenePath(path); }
     boolean dispatchKeyForTest(KeyEvent event) { return inputBindings.handleKeyForTest(event); }
+    BindingPreferencesPanel bindingPreferencesForTest(){return new BindingPreferencesPanel(inputBindings,()->{});}
+    String bindingStatusForTest(){return status.getText();}
+    String navigationHelpForTest(){return inputBindings.navigationHelp();}
+    void bindingDialogActiveForTest(boolean active){inputBindings.dialogActive(active);}
     void cancelActiveGesture() { if (viewA != null) viewA.cancelGizmo(); if (viewB != null) viewB.cancelGizmo(); }
 
     @Override public void close() {

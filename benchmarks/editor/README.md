@@ -39,8 +39,8 @@ startup failures in `out/editor/editor-error.log`.
    groups show descendant outlines, and every visible light/camera marker is selectable
    under that exact captured camera. Clicking empty space clears selection; a stale image reports
    `View changed; click again` rather than selecting through a newer camera/scene.
-5. Hold the right button and drag to orbit; hold Shift before right-dragging to pan; use the
-   wheel to zoom. Left-drag a Move and Rotate axis, then press Escape during another drag.
+5. Hold the right or middle button and drag to orbit; hold Space before right- or middle-dragging
+   to pan; use the wheel to zoom. Left-drag a Move and Rotate axis, then press Escape during another drag.
    **EXPECT:** left click never navigates, each completed handle drag is one undo step, Escape
    restores the prior transform, and navigation is independent per view and never dirties the scene.
 6. Duplicate a geometry node. Edit its shared material. **EXPECT:** all users change. Press
@@ -58,8 +58,19 @@ startup failures in `out/editor/editor-error.log`.
 10. Save as `.scene.xml`, make another edit, and reopen. **EXPECT:** unsaved New/Open/Close prompts
     Save/Discard/Cancel; saving during a newer edit leaves the marker unsaved; reopen preserves IDs,
     hierarchy, components, and shared assets. A failed load leaves the current world intact.
-11. Minimize or move focus away, then return and close. **EXPECT:** rendering suspends while inactive,
+11. Open **Bindings…**. **EXPECT:** labelled keyboard/mouse rows show every active alternative,
+    including both orbit buttons and both Space-pan gestures. Add or remove an alternative,
+    Apply it, and verify the tooltip/navigation changes immediately. Invalid duplicates, left-drag,
+    unknown actions, or non-viewport modes remain unapplied with a visible message. Restore defaults,
+    Save, relaunch, and **EXPECT:** the saved profile is active without making the scene dirty.
+12. Orbit continuously while toggling Move/Rotate, selecting different nodes, and resizing the
+    window. **EXPECT:** the rendered image, wireframe, markers, and handles change as one complete
+    frame without blinking off or briefly showing the wrong mode/selection. Picking and dragging
+    always target the overlay actually visible.
+13. Minimize or move focus away, then return and close. **EXPECT:** rendering suspends while inactive,
     resumes when active, and close exits cleanly without a terminal window or popup error.
 
-Binding files are `assets/bindings/scene-editor.properties` and
-`assets/bindings/scene-editor-mouse.properties`; restart the editor after changing them.
+Shipped defaults are `assets/bindings/scene-editor.properties` and
+`assets/bindings/scene-editor-mouse.properties`. **Bindings…** saves the single ignored user profile
+`config/scene-editor-bindings.properties` atomically. An invalid profile is preserved, reported in
+the status strip, and ignored in favor of the shipped defaults.

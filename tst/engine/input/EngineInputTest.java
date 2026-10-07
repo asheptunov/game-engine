@@ -8,6 +8,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.Set;
 
 import static harness.Assertions.*;
 
@@ -60,6 +61,21 @@ public class EngineInputTest {
         assertTrue(bindings.handle(new MouseInput(MouseButton.RIGHT, MouseGesture.DRAG, "viewport",
                 new Modifiers(false, false, true, false), 2, 3, 0)));
         assertEquals(11, calls.get());
+    }
+
+    @Test void mouseBindingsSupportHeldPhysicalKeysWithoutChangingLegacyInputs() {
+        var calls=new AtomicInteger();var actions=new ActionRegistry<Consumer<MouseInput>>()
+                .register("orbit",_->calls.incrementAndGet()).register("pan",_->calls.addAndGet(10));
+        var bindings=new MouseBindings(actions).bind(MouseChord.parse("right+drag+viewport"),"orbit")
+                .bind(MouseChord.parse("key.space+right+drag+viewport"),"pan")
+                .bind(MouseChord.parse("key.q+middle+drag+viewport"),"pan");
+        assertEquals("key.space+right+drag+viewport",MouseChord.parse("key.space+right+drag+viewport").format());
+        assertEquals("right+drag+space",MouseChord.parse("right+drag+space").format());
+        assertTrue(bindings.handle(new MouseInput(MouseButton.RIGHT,MouseGesture.DRAG,"viewport",Modifiers.NONE,1,2,0)));
+        assertTrue(bindings.handle(new MouseInput(MouseButton.RIGHT,MouseGesture.DRAG,"viewport",Modifiers.NONE,1,2,0,Set.of(KeyCode.SPACE))));
+        assertTrue(bindings.handle(new MouseInput(MouseButton.MIDDLE,MouseGesture.DRAG,"viewport",Modifiers.NONE,1,2,0,Set.of(KeyCode.Q))));
+        assertEquals(21,calls.get());
+        expect(IllegalArgumentException.class,()->MouseChord.parse("key.l_ctrl+right+drag+viewport"));
     }
 
     @Test

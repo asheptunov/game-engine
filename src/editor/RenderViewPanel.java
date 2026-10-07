@@ -9,7 +9,6 @@ import engine.input.MouseButton;
 import engine.input.MouseGesture;
 import engine.input.MouseInput;
 import math.Vec3;
-import platform.awt.input.AwtInputAdapter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,11 +22,12 @@ import java.util.concurrent.atomic.AtomicReference;
 /** One independent asynchronously rendered editor view. */
 public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private record Request(SceneSnapshot snapshot, Camera camera, int width, int height, NodeId selection) {}
-    private record PickToken(SceneSnapshot snapshot, SpatialQuery query, OverlayGeometry.Prepared overlay) {}
+    private record PickToken(SceneSnapshot snapshot, SpatialQuery query, OverlayGeometry.Prepared overlay, NodeId selection) {}
     private record DisplayFrame(BufferedImage image, long generation, long samples, Camera camera, PickToken token) {}
-    private record PaintedFrame(DisplayFrame frame, Rectangle content, OverlayGeometry.Frame overlay) {}
-    private record OverlayRequest(DisplayFrame frame, int width, int height, OverlayGeometry.GizmoMode mode) {}
-    private record OverlayProjection(DisplayFrame frame, int width, int height, OverlayGeometry.GizmoMode mode, OverlayGeometry.Frame overlay) {}
+    private record DisplayBundle(DisplayFrame frame, int width, int height, OverlayGeometry.GizmoMode mode, OverlayGeometry.Frame overlay, long serial) {}
+    private record PaintedFrame(DisplayFrame frame, Rectangle content, OverlayGeometry.Frame overlay, long serial) {}
+    private record OverlayRequest(DisplayFrame frame, int width, int height, OverlayGeometry.GizmoMode mode, long serial) {}
+    record ProjectionBlock(CountDownLatch entered, CountDownLatch release) {}
     private record CameraChoice(NodeId id, String label) { @Override public String toString() { return label; } }
 
     private final EditorController controller;
@@ -36,6 +36,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private final ScheduledExecutorService executor;
     private final AtomicReference<Request> pending = new AtomicReference<>();
     private final AtomicReference<OverlayRequest> pendingOverlay = new AtomicReference<>();
+    private final AtomicReference<ProjectionBlock> projectionBlockForTest = new AtomicReference<>();
+    private volatile ProjectionBlock activeProjectionBlock;
     private final JComboBox<CameraChoice> cameraChoice = new JComboBox<>();
     private final JButton setSelectedCamera = new JButton("Capture view");
     private final JCheckBox wireframe = new JCheckBox("Wireframe", true);
@@ -44,9 +46,13 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private final JPanel viewHeader = new JPanel(new BorderLayout(6, 3));
     private final Map<Long, PickToken> tokens = new HashMap<>();
     private final OverlayGeometry overlayGeometry = new OverlayGeometry();
-    private volatile DisplayFrame readyFrame;
-    private volatile OverlayProjection readyOverlay;
+    private volatile DisplayFrame candidateFrame;
+    private volatile DisplayBundle readyBundle;
     private volatile PaintedFrame paintedFrame;
+    private OverlayRequest requestedOverlay;
+    private volatile OverlayRequest desiredOverlay;
+    private long overlaySerial;
+    private long publishedOverlaySerial;
     private volatile NodeId selected;
     private volatile String selectedLabel = "Nothing selected";
     private RenderSession session;
@@ -99,8 +105,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var tools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0)); tools.add(wireframe); tools.add(translate); tools.add(rotate);
         var authoring = new JPanel(new BorderLayout(4, 0)); authoring.add(setSelectedCamera, BorderLayout.CENTER); authoring.add(tools, BorderLayout.EAST); viewHeader.add(authoring, BorderLayout.SOUTH);
         add(viewHeader, BorderLayout.NORTH); add(renderStatus, BorderLayout.SOUTH);
-        setFocusable(true);
-        addFocusListener(new FocusAdapter() { @Override public void focusLost(FocusEvent event) { cancelGizmo(); } });
+        setFocusable(true);inputBindings.addChangeListener(this::updateNavigationHelp);updateNavigationHelp();
+        addFocusListener(new FocusAdapter() { @Override public void focusLost(FocusEvent event) { inputBindings.clearTransient(); cancelGizmo(); } });
         installMouse();
         executor = Executors.newSingleThreadScheduledExecutor(r -> {
             var thread = new Thread(r, "scene-editor-view-" + title.toLowerCase(Locale.ROOT).replace(' ', '-'));
@@ -176,7 +182,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
 
     private void setGizmoMode(OverlayGeometry.GizmoMode mode) {
-        gizmoMode = mode; readyOverlay = null; repaint();
+        gizmoMode = mode; repaint();
     }
 
     private static int[] dimensions(Camera camera) {
@@ -205,17 +211,17 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                 if (token == null) { postStatus("Waiting for matching scene publication…"); return; }
                 long samples = image.samples(), generation = image.generation();
                 if (image.finishedNanos() == convertedNanos) {
-                    var ready = readyFrame;
+                    var ready = candidateFrame;
                     if (ready != null && ready.generation() == generation
                             && ready.token() != token) {
-                        readyFrame = new DisplayFrame(ready.image(), generation, samples, image.camera(), token);
+                        candidateFrame = new DisplayFrame(ready.image(), generation, samples, image.camera(), token);
                         SwingUtilities.invokeLater(() -> { if (!closed) repaint(); });
                     }
                     pruneTokens(after.requestedGeneration(), after.activeGeneration(), generation); return;
                 }
                 var buffered = convert(image.presentationPixels());
                 session.presented(image); convertedNanos = image.finishedNanos();
-                readyFrame = new DisplayFrame(buffered, generation, samples, image.camera(), token);
+                candidateFrame = new DisplayFrame(buffered, generation, samples, image.camera(), token);
                 pruneTokens(after.requestedGeneration(), after.activeGeneration(), generation);
                 SwingUtilities.invokeLater(() -> { if (!closed) { renderStatus.setText(samples + " spp · gen " + generation); repaint(); } });
             }
@@ -228,7 +234,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var progress = session == null ? null : session.progress(null);
         if (progress != null && progress.activeGeneration() >= 0) keep.add(progress.activeGeneration());
         if (acquired >= 0) keep.add(acquired);
-        var ready = readyFrame; if (ready != null) keep.add(ready.generation());
+        var candidate = candidateFrame; if (candidate != null) keep.add(candidate.generation());
+        var ready = readyBundle; if (ready != null) keep.add(ready.frame().generation());
         var painted = paintedFrame; if (painted != null) keep.add(painted.frame().generation());
         tokens.keySet().removeIf(generation -> !keep.contains(generation));
     }
@@ -243,13 +250,18 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var view = new RenderView(request.camera(), request.width(), request.height());
         if (session == null) session = RenderEngine.openSession(request.snapshot().toWorldSnapshot(), view, settings);
         else session.update(request.snapshot().toWorldSnapshot(), view, settings);
-        currentPickToken = new PickToken(request.snapshot(), preparedQuery, overlayGeometry.prepare(request.snapshot(), request.selection()));
+        var prior=currentPickToken;
+        if(prior==null||prior.snapshot()!=request.snapshot()||!Objects.equals(prior.selection(),request.selection()))
+            currentPickToken = new PickToken(request.snapshot(), preparedQuery, overlayGeometry.prepare(request.snapshot(), request.selection()),request.selection());
     }
 
     private void projectOverlay(OverlayRequest request) {
+        var block=projectionBlockForTest.getAndSet(null);if(block!=null)try{activeProjectionBlock=block;block.entered().countDown();block.release().await(5,TimeUnit.SECONDS);}catch(InterruptedException error){Thread.currentThread().interrupt();return;}finally{activeProjectionBlock=null;}
         var overlay = overlayGeometry.project(request.frame().token().overlay(), request.frame().camera(), request.mode(),
                 request.width(), request.height(), 72);
-        readyOverlay = new OverlayProjection(request.frame(), request.width(), request.height(), request.mode(), overlay);
+        var desired=desiredOverlay;if(desired==null||!sameProjectionContext(request,desired))return;
+        if(request.serial()<publishedOverlaySerial)return;publishedOverlaySerial=request.serial();
+        readyBundle = new DisplayBundle(request.frame(),request.width(),request.height(),request.mode(),overlay,request.serial());
         SwingUtilities.invokeLater(() -> { if (!closed) repaint(); });
     }
 
@@ -275,9 +287,9 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                     return;
                 }
                 try {
-                    var input = AwtInputAdapter.mouse(MouseGesture.PRESS, event, "viewport");
+                    var input = inputBindings.mouseInput(MouseGesture.PRESS,event);
                     if (input.button() != MouseButton.LEFT && input.button() != MouseButton.NONE)
-                        navigationGesture = new MouseInput(input.button(), MouseGesture.DRAG, input.mode(), input.modifiers(), input.x(), input.y(), 0);
+                        navigationGesture = new MouseInput(input.button(), MouseGesture.DRAG, input.mode(), input.modifiers(), input.x(), input.y(), 0,input.heldKeys());
                 } catch (IllegalArgumentException ignored) { navigationGesture = null; }
             }
             @Override public void mouseReleased(MouseEvent event) {
@@ -291,17 +303,18 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                 if (pressPoint != null && pressPoint.distance(event.getPoint()) >= 3) dragged = true;
                 if (navigationGesture == null) return;
                 var input = new MouseInput(navigationGesture.button(), navigationGesture.gesture(), navigationGesture.mode(),
-                        navigationGesture.modifiers(), event.getX(), event.getY(), 0);
+                        navigationGesture.modifiers(), event.getX(), event.getY(), 0,navigationGesture.heldKeys());
                 inputBindings.handleMouse(RenderViewPanel.this, input);
             }
             @Override public void mouseWheelMoved(MouseWheelEvent event) {
-                try { inputBindings.handleMouse(RenderViewPanel.this, AwtInputAdapter.mouse(MouseGesture.WHEEL, event, "viewport")); }
+                try { inputBindings.handleMouse(RenderViewPanel.this,inputBindings.mouseInput(MouseGesture.WHEEL,event)); }
                 catch (IllegalArgumentException ignored) { }
             }
         };
         addMouseListener(mouse); addMouseMotionListener(mouse); addMouseWheelListener(mouse);
-        setToolTipText("Left-click selects or drags handles · Right-click and drag orbits · Shift+right-click and drag pans · Wheel zooms");
     }
+
+    private void updateNavigationHelp(){setToolTipText("Left-click selects or drags handles · "+inputBindings.navigationHelp());}
 
     void orbit(MouseInput input) {
         int dx = input.x() - dragStart.x, dy = input.y() - dragStart.y; dragStart = new Point(input.x(), input.y());
@@ -398,27 +411,54 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
 
     @Override protected void paintComponent(Graphics graphics) {
-        super.paintComponent(graphics); var frame = readyFrame; int top = getInsets().top + viewHeader.getHeight(), bottom = renderStatus.getHeight();
+        super.paintComponent(graphics); var frame = candidateFrame; int top = getInsets().top + viewHeader.getHeight(), bottom = renderStatus.getHeight();
         int availableWidth = getWidth() - getInsets().left - getInsets().right;
         int availableHeight = getHeight() - top - bottom;
         if (frame != null && availableWidth > 0 && availableHeight > 0) {
             float scale = Math.min(availableWidth / (float) frame.image().getWidth(), availableHeight / (float) frame.image().getHeight());
             int width = Math.max(1, Math.round(frame.image().getWidth() * scale)), height = Math.max(1, Math.round(frame.image().getHeight() * scale));
             int x = (getWidth() - width) / 2, y = top + (availableHeight - height) / 2; var area = new Rectangle(x, y, width, height);
-            graphics.drawImage(frame.image(), x, y, width, height, null);
-            var projection = readyOverlay;
-            boolean matches = projection != null && projection.frame().token() == frame.token()
-                    && projection.frame().camera().equals(frame.camera()) && projection.width() == width
-                    && projection.height() == height && projection.mode() == gizmoMode;
-            var overlay = matches ? projection.overlay() : null;
-            if (!matches && !closed) pendingOverlay.set(new OverlayRequest(frame, width, height, gizmoMode));
-            if (overlay != null) drawOverlay((Graphics2D) graphics, area, overlay);
-            paintedFrame = new PaintedFrame(frame, area, overlay);
+            if(desiredOverlay==null||!requestMatches(desiredOverlay,frame,width,height,gizmoMode))
+                desiredOverlay=new OverlayRequest(frame,width,height,gizmoMode,++overlaySerial);
+            var bundle=readyBundle;
+            if(bundle!=null&&projectionMatches(bundle,frame,width,height,gizmoMode)&&bundle.frame()!=frame){
+                bundle=new DisplayBundle(frame,width,height,gizmoMode,bundle.overlay(),bundle.serial());readyBundle=bundle;
+            }
+            if(bundle!=null&&bundle.frame()==frame&&bundle.width()==width&&bundle.height()==height&&bundle.mode()==gizmoMode){
+                paintBundle(graphics,bundle,area);paintedFrame=new PaintedFrame(bundle.frame(),area,bundle.overlay(),bundle.serial());
+            }else{
+                if(!closed&&(requestedOverlay==null||requestedOverlay.serial()!=desiredOverlay.serial())){
+                    requestedOverlay=desiredOverlay;pendingOverlay.set(requestedOverlay);
+                }
+                var previous=paintedFrame;
+                if(bundle!=null&&sameProjectionContext(bundle,desiredOverlay)&&(previous==null||bundle.serial()>previous.serial())){
+                    int oldWidth=bundle.width(),oldHeight=bundle.height();
+                    var oldArea=new Rectangle((getWidth()-oldWidth)/2,top+(availableHeight-oldHeight)/2,oldWidth,oldHeight);
+                    paintBundle(graphics,bundle,oldArea);paintedFrame=new PaintedFrame(bundle.frame(),oldArea,bundle.overlay(),bundle.serial());
+                }else if(previous!=null){
+                    int oldWidth=previous.content().width,oldHeight=previous.content().height;
+                    var oldArea=new Rectangle((getWidth()-oldWidth)/2,top+(availableHeight-oldHeight)/2,oldWidth,oldHeight);
+                    graphics.drawImage(previous.frame().image(),oldArea.x,oldArea.y,oldArea.width,oldArea.height,null);
+                    drawOverlay((Graphics2D)graphics,oldArea,previous.overlay());paintedFrame=new PaintedFrame(previous.frame(),oldArea,previous.overlay(),previous.serial());
+                }
+            }
         }
         var g = (Graphics2D) graphics.create();
         g.setColor(new Color(18, 22, 28, 210)); g.fillRoundRect(10, top + 8, Math.min(getWidth() - 20, 260), 26, 10, 10);
         g.setColor(new Color(116, 214, 190)); g.drawString("Selected: " + selectedLabel, 18, top + 26); g.dispose();
     }
+
+    private void paintBundle(Graphics graphics,DisplayBundle bundle,Rectangle area){
+        graphics.drawImage(bundle.frame().image(),area.x,area.y,area.width,area.height,null);drawOverlay((Graphics2D)graphics,area,bundle.overlay());
+    }
+    private static boolean projectionMatches(DisplayBundle bundle,DisplayFrame frame,int width,int height,OverlayGeometry.GizmoMode mode){
+        return bundle.frame().token()==frame.token()&&bundle.frame().camera().equals(frame.camera())&&bundle.width()==width&&bundle.height()==height&&bundle.mode()==mode;
+    }
+    private static boolean requestMatches(OverlayRequest request,DisplayFrame frame,int width,int height,OverlayGeometry.GizmoMode mode){
+        return request.frame().token()==frame.token()&&request.frame().camera().equals(frame.camera())&&request.width()==width&&request.height()==height&&request.mode()==mode;
+    }
+    private static boolean sameProjectionContext(OverlayRequest first,OverlayRequest second){return first.frame().token()==second.frame().token()&&first.width()==second.width()&&first.height()==second.height()&&first.mode()==second.mode();}
+    private static boolean sameProjectionContext(DisplayBundle bundle,OverlayRequest request){return bundle.frame().token()==request.frame().token()&&bundle.width()==request.width()&&bundle.height()==request.height()&&bundle.mode()==request.mode();}
 
     private void drawOverlay(Graphics2D source, Rectangle area, OverlayGeometry.Frame overlay) {
         var graphics = (Graphics2D) source.create(); graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -493,6 +533,11 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     void setSelectedCameraFromViewForTest() { setSelectedCameraFromView(); }
     Camera currentCameraForTest() { return sceneCamera == null ? editorCamera : latestSnapshot.camera(sceneCamera); }
     OverlayGeometry.Frame overlayForTest() { return paintedFrame == null ? null : paintedFrame.overlay(); }
+    ProjectionBlock blockNextProjectionForTest() { var block=new ProjectionBlock(new CountDownLatch(1),new CountDownLatch(1));projectionBlockForTest.set(block);return block; }
+    long paintedGenerationForTest(){return paintedFrame==null?-1:paintedFrame.frame().generation();}
+    long paintedSerialForTest(){return paintedFrame==null?-1:paintedFrame.serial();}
+    boolean paintedBundleCoherentForTest(){var painted=paintedFrame;return painted!=null&&painted.overlay()!=null&&painted.overlay().sceneRevision()==painted.frame().token().snapshot().revision();}
+    String overlayProgressForTest(){var candidate=candidateFrame;var painted=paintedFrame;var desired=desiredOverlay;var ready=readyBundle;return "candidateGeneration="+(candidate==null?-1:candidate.generation())+", paintedGeneration="+(painted==null?-1:painted.frame().generation())+", paintedSerial="+(painted==null?-1:painted.serial())+", desiredSerial="+(desired==null?-1:desired.serial())+", readySerial="+(ready==null?-1:ready.serial());}
     boolean pickMarkerForTest(NodeId nodeId) {
         var painted = paintedFrame; if (painted == null || painted.overlay() == null) return false;
         var marker = painted.overlay().markers().stream().filter(value -> value.nodeId().equals(nodeId)).findFirst().orElse(null); if (marker == null) return false;
@@ -517,11 +562,12 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     public void setActive(boolean value) {
         if (closed) return;
         active = value;
-        if (!value) { cancelGizmo(); executor.execute(() -> { if (session != null) session.suspend(); }); }
+        if (!value) { inputBindings.clearTransient(); cancelGizmo(); executor.execute(() -> { if (session != null) session.suspend(); }); }
         else submitCurrent();
     }
     @Override public void close() {
-        if (closed) return; cancelGizmo(); closed = true;
+        if (closed) return; inputBindings.clearTransient(); cancelGizmo(); closed = true;
+        pending.set(null);pendingOverlay.set(null);desiredOverlay=null;var block=projectionBlockForTest.getAndSet(null);if(block!=null)block.release().countDown();block=activeProjectionBlock;if(block!=null)block.release().countDown();
         executor.execute(() -> { if (session != null) session.close(); session = null; executor.shutdown(); });
     }
 }

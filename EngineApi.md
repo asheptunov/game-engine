@@ -68,7 +68,10 @@ focused extraction regressions, inspects harness logs, and runs the consumer.
   sorted representation that round-trips punctuation such as `+` and `=`.
 - `KeyInput` uses a physical `KeyCode` plus exact Ctrl/Alt/Shift/Meta state. Letter identity
   does not depend on Caps Lock. `MouseInput` carries the held button for drag events, exact
-  modifiers, normalized mode, coordinates, and precise wheel rotation.
+  modifiers, an immutable set of held non-modifier physical keys, normalized mode,
+  coordinates, and precise wheel rotation. Mouse chords spell those keys as `key.<token>`;
+  for example, `key.space+right+drag+viewport`. The earlier constructor without held keys
+  remains available, and bare tokens such as the legacy `space` mode keep their old meaning.
 
 AWT conversion lives outside the engine in `platform.awt.input.AwtInputAdapter`. Use
 `AwtInputAdapter.key(event)` and
@@ -86,9 +89,16 @@ ctrl+z = history.undo
 ctrl+shift+z = history.redo
 escape = gesture.cancel
 right+drag+viewport = view.orbit
-shift+right+drag+viewport = view.pan
+middle+drag+viewport = view.orbit
+key.space+right+drag+viewport = view.pan
+key.space+middle+drag+viewport = view.pan
 wheel+viewport = view.zoom
 ```
+
+The editor's **Bindings…** dialog edits keyboard and mouse alternatives with immediate
+validated Apply and atomic Save. A saved profile lives at the ignored path
+`config/scene-editor-bindings.properties`; an absent or invalid profile leaves the shipped
+defaults active, and an invalid file is preserved for repair.
 
 Run `./input-check.ps1` for the engine-only boundary, all-source compilation, shared input
 tests, AWT normalization tests, and the existing UI/viewport/texture-editor binding suites.

@@ -218,7 +218,9 @@ E5 implementation evidence (2026-10-06):
 - The views draw bounded x-ray wireframes, light/camera markers, and local-axis move/rotate
   handles from the exact painted camera. A handle drag publishes live previews but records one
   history entry; Escape or focus loss restores the drag-start snapshot. File-backed editor
-  bindings define right-drag orbit, Shift+right-drag pan, wheel zoom, undo, redo, and cancel.
+  bindings define right/middle-drag orbit, Space+right/middle-drag pan, wheel zoom, undo,
+  redo, and cancel. The native bindings panel supports validated alternatives, immediate
+  Apply, atomic Save, default restoration, and visible recovery from an invalid override.
   Camera navigation retains projection, off-center/skew framing, focus, and aperture, and can
   atomically copy the displayed view back to a selected camera below a supported parent.
 - `./editor-check.ps1 -OutputDirectory out/editor-check-active` passed controller/history/
@@ -229,6 +231,16 @@ E5 implementation evidence (2026-10-06):
   `benchmarks/editor/README.md`. Human GUI interaction remains pending before merge; automated
   checks do not claim physical input, window-manager, or scanout verification. E6 topology and
   mesh modelling remain deferred.
+
+D4 refinement evidence (2026-10-06): mouse chords now carry generic held physical keys
+without changing legacy modes or constructors. The editor clears held-key state across
+typing, dialogs, focus/lifecycle transitions, and close. Each view publishes one immutable
+image/overlay bundle: selection, gizmo-mode, and resize changes keep the prior complete pair
+until off-EDT projection finishes, while camera motion may still show coherent intermediate
+views. Exact painted camera, dimensions, overlay, picking, and handle-drag context therefore
+advance together. `EditorBindingPreferencesTest` covers routing, validation, atomic profile
+failure/restart, and a headless preferences render; `SceneEditorPreviewTest` deterministically
+blocks overlay projection to cover selection, mode-revert, and resize-revert publication.
 
 ### E6 — Mesh editing
 

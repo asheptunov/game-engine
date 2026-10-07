@@ -42,8 +42,12 @@ public class SceneEditorPreviewTest {
             onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON1, 0, 24, 0); return null; });
             assertEquals(orbitAfter, onEdt(() -> panel.viewCameraForTest(0)));
             var panForward = orbitAfter.forward();
-            onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON3, InputEvent.SHIFT_DOWN_MASK, 24, 0); return null; });
+            var view = onEdt(() -> panel.viewComponentForTest(0));
+            onEdt(() -> { panel.dispatchKeyForTest(new KeyEvent(view,KeyEvent.KEY_PRESSED,System.currentTimeMillis(),0,KeyEvent.VK_SPACE,' '));panel.mouseDragForTest(0, MouseEvent.BUTTON3, 0, 24, 0);panel.dispatchKeyForTest(new KeyEvent(view,KeyEvent.KEY_RELEASED,System.currentTimeMillis(),0,KeyEvent.VK_SPACE,' '));return null; });
             assertVec(panForward, onEdt(() -> panel.viewCameraForTest(0)).forward(), 2e-5f);
+            var middlePanForward=onEdt(() -> panel.viewCameraForTest(0)).forward();
+            onEdt(() -> { panel.dispatchKeyForTest(new KeyEvent(view,KeyEvent.KEY_PRESSED,System.currentTimeMillis(),0,KeyEvent.VK_SPACE,' '));panel.mouseDragForTest(0, MouseEvent.BUTTON2, 0, 18, 0);panel.dispatchKeyForTest(new KeyEvent(view,KeyEvent.KEY_RELEASED,System.currentTimeMillis(),0,KeyEvent.VK_SPACE,' '));return null; });
+            assertVec(middlePanForward,onEdt(() -> panel.viewCameraForTest(0)).forward(),2e-5f);
             var beforeAmbiguous = onEdt(() -> panel.viewCameraForTest(0));
             onEdt(() -> { panel.mouseDragForTest(0, MouseEvent.BUTTON3, InputEvent.BUTTON1_DOWN_MASK, 20, 0); return null; });
             assertEquals(beforeAmbiguous, onEdt(() -> panel.viewCameraForTest(0)));
@@ -62,6 +66,7 @@ public class SceneEditorPreviewTest {
             onEdt(() -> controller.select(anchor)); onEdt(() -> controller.create(EditorController.Primitive.CAMERA)); var camera = onEdt(controller::selection);
             onEdt(() -> controller.applyTransform(camera, new Transform(new Vec3(2.2f, 1.1f, 3), Vec3.ZERO, new Vec3(1, 1, 1))));
             onEdt(() -> controller.select(anchor));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
             awaitOverlay(panel, 0, anchor);
             var overlay = onEdt(() -> panel.overlayForTest(0));
             assertTrue(overlay.wireframe().size() > 0);
@@ -122,7 +127,7 @@ public class SceneEditorPreviewTest {
             assertTrue(onEdt(() -> panel.dispatchKeyForTest(new KeyEvent(input, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK, KeyEvent.VK_Z, 'Z'))));
             assertEquals(afterDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
             assertTrue(onEdt(controller::undo)); assertEquals(beforeDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
-            awaitOverlay(panel, 0, selected); assertTrue(onEdt(() -> panel.beginHandleDragForTest(0, OverlayGeometry.Axis.Y, 18)));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitOverlay(panel, 0, selected); assertTrue(onEdt(() -> panel.beginHandleDragForTest(0, OverlayGeometry.Axis.Y, 18)));
             assertFalse(beforeDrag.equals(onEdt(() -> controller.snapshot().requireNode(selected).localTransform())));
             assertTrue(onEdt(() -> panel.dispatchKeyForTest(new KeyEvent(input, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED))));
             assertEquals(beforeDrag, onEdt(() -> controller.snapshot().requireNode(selected).localTransform()));
@@ -130,12 +135,28 @@ public class SceneEditorPreviewTest {
             long renamedRevision = onEdt(() -> controller.snapshot().revision());
             awaitDisplayedRevision(panel, renamedRevision);
             assertTrue(pickFromView(panel, controller, 0));
-            for (int i = 0; i < 24; i++) {
-                int step = i;
-                onEdt(() -> { panel.navigateViewForTest(1, .012f + step * .0001f); return null; });
-                Thread.sleep(14);
+            var movingSerials=new HashSet<Long>();movingSerials.add(onEdt(()->panel.paintedSerialForTest(1)));int movementStep=0;long movementDeadline=System.nanoTime()+6_000_000_000L;
+            while(System.nanoTime()<movementDeadline&&movingSerials.size()<2){
+                int step = movementStep++;
+                onEdt(() -> { panel.navigateViewForTest(1, .012f + step * .0001f);paintPanel(panel,1400,850);assertTrue(panel.overlayForTest(1)!=null);assertTrue(panel.paintedBundleCoherentForTest(1));movingSerials.add(panel.paintedSerialForTest(1));return null; });
+                Thread.sleep(20);
             }
+            if(movingSerials.size()<2)throw new RuntimeException("No coherent preview advanced during six seconds of movement: "+onEdt(()->panel.overlayProgressForTest(1)));
             assertTrue(pickFromView(panel, controller, 1));
+            onEdt(() -> controller.select(selected));awaitOverlay(panel,0,selected);
+            long oldOverlaySerial=onEdt(() -> panel.paintedSerialForTest(0));
+            var alternate=onEdt(() -> controller.snapshot().nodes().stream().filter(node->node.geometry()!=null&&!node.id().equals(selected)).findFirst().orElseThrow().id());
+            var projectionBlock=onEdt(() -> panel.blockNextProjectionForTest(0));onEdt(() -> controller.select(alternate));
+            awaitProjectionBlocked(panel,projectionBlock);
+            assertEquals(oldOverlaySerial,onEdt(() -> panel.paintedSerialForTest(0)));assertTrue(onEdt(() -> panel.paintedBundleCoherentForTest(0)));
+            assertTrue(onEdt(() -> panel.overlayForTest(0).handles().stream().anyMatch(handle->handle.nodeId().equals(selected))));
+            projectionBlock.release().countDown();awaitOverlay(panel,0,alternate);assertTrue(onEdt(() -> panel.paintedSerialForTest(0))>oldOverlaySerial);
+            onEdt(() -> controller.select(selected));awaitOverlay(panel,0,selected);
+            var modeBlock=onEdt(()->panel.blockNextProjectionForTest(0));onEdt(()->{panel.gizmoModeForTest(0,OverlayGeometry.GizmoMode.ROTATE);return null;});awaitProjectionBlocked(panel,modeBlock);
+            onEdt(()->{panel.gizmoModeForTest(0,OverlayGeometry.GizmoMode.TRANSLATE);paintPanel(panel,1400,850);return null;});modeBlock.release().countDown();pumpPaint(panel,8);
+            assertTrue(onEdt(()->panel.overlayForTest(0).handles().stream().allMatch(handle->handle.mode()==OverlayGeometry.GizmoMode.TRANSLATE)));
+            var resizeBlock=onEdt(()->panel.blockNextProjectionForTest(0));onEdt(()->{panel.setSize(1260,780);layout(panel);paintPanel(panel,1260,780);return null;});awaitProjectionBlocked(panel,resizeBlock);
+            onEdt(()->{panel.setSize(1400,850);layout(panel);paintPanel(panel,1400,850);return null;});resizeBlock.release().countDown();pumpPaint(panel,8);assertTrue(onEdt(()->panel.paintedBundleCoherentForTest(0)));
             onEdt(() -> { controller.select(selected); panel.gizmoModeForTest(0, OverlayGeometry.GizmoMode.ROTATE); panel.selectInspectorTabForTest("Material"); return null; });
             awaitOverlayMode(panel, 0, selected, OverlayGeometry.GizmoMode.ROTATE);
             overlay = onEdt(() -> panel.overlayForTest(0));
@@ -194,6 +215,17 @@ public class SceneEditorPreviewTest {
         }
         throw new AssertionError("Overlay mode did not become ready for " + selected + ": " + mode);
     }
+
+    private static void awaitProjectionBlocked(SceneEditorPanel panel,RenderViewPanel.ProjectionBlock block)throws Exception{
+        long deadline=System.nanoTime()+3_000_000_000L;
+        while(System.nanoTime()<deadline&&block.entered().getCount()!=0){
+            onEdt(()->{var image=new BufferedImage(1400,850,BufferedImage.TYPE_INT_RGB);var graphics=image.createGraphics();panel.printAll(graphics);graphics.dispose();return null;});
+            Thread.sleep(10);
+        }
+        assertEquals(0L,block.entered().getCount());
+    }
+    private static void pumpPaint(SceneEditorPanel panel,int count)throws Exception{for(int i=0;i<count;i++){onEdt(()->{paintPanel(panel,panel.getWidth(),panel.getHeight());return null;});Thread.sleep(15);}}
+    private static void paintPanel(SceneEditorPanel panel,int width,int height){var image=new BufferedImage(width,height,BufferedImage.TYPE_INT_RGB);var graphics=image.createGraphics();panel.printAll(graphics);graphics.dispose();}
 
     private static void writePanel(SceneEditorPanel panel, BufferedImage canvas, Path output) throws Exception {
         onEdt(() -> { layout(panel); var g = canvas.createGraphics(); panel.printAll(g); g.dispose(); return null; });
