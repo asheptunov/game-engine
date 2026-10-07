@@ -1,6 +1,7 @@
 # Engine/editor dispatch state
 
-Scope: E1–E5. E6 deferred. Plan: [EngineImplementationPlan.md](EngineImplementationPlan.md).
+Scope: E1–E6. Original plan: [EngineImplementationPlan.md](EngineImplementationPlan.md).
+E6 authorized 2026-10-07; plan: [MeshEditingPlan.md](MeshEditingPlan.md).
 
 | id | title | deps | gui-qa | status | lane | commit | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -56,3 +57,16 @@ D5 `65db8f8` provides fixed action groups with per-action binding fields and alt
 Implementer and independent root Windows PowerShell 5.1 editor gates passed; 24 logs
 audited without harness failures. Root inspected the action-first preview; evidence
 saved in `out/milestones/editor-refinements/d5`. Profile/runtime format is unchanged.
+
+## E6 mesh editing
+
+| id | title | deps | gui-qa | status | lane | commit | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| F1 | Editable topology, extrusion and persistence | D5 | no | merged | existing scene-editor checkout | c1dc59a | Committed on editor branch; independent PS5.1 gate and source review passed, including self-touch polygon fix |
+| F2 | Face selection and modelling UI | F1 | yes | needs-qa | existing scene-editor checkout | 404090a | Independent full PS5.1 input/editor gate passed; post-extrusion dual-view preview inspected; human GUI acceptance pending |
+
+Admission: ~75 GiB free on C:, above 8 GiB reserve + 6 GiB single-lane budget.
+
+F1/F2 are committed on `codex/scene-editor`; final implementation commit `404090a`.
+All 63 final implementer/root logs audited without harness failures. Evidence copied to
+`out/milestones/e6`; manual steps: [MeshEditorQA.md](MeshEditorQA.md).
