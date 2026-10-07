@@ -1,7 +1,7 @@
 # E5 scene editor — hands-on QA
 
 Built and ready: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
-Branch: `codex/scene-editor`, current implementation `0fbc561` (includes launcher fix `ba2d58d`).
+Branch: `codex/scene-editor`, current implementation `65db8f8` (includes launcher fix `ba2d58d`).
 
 Launch from Git Bash:
 
@@ -120,3 +120,19 @@ independent root editor gate. All 36 logs were audited with zero harness failure
 Tests cover delayed projection, mode/resize reversal, and advancing coherent displayed
 pairs during sustained camera motion; preferences and scene previews were inspected.
 Evidence: `out/milestones/editor-refinements/d4`. Native input/dialog QA remains pending.
+
+## D5 follow-up QA — action-first bindings
+
+1. Open Bindings. EXPECT: fixed History and Navigation groups list Undo, Redo,
+   Cancel active handle drag, Orbit, Pan and Zoom; actions cannot be reassigned.
+2. Edit an action's chord and add an alternative for that action; Apply.
+   EXPECT: both bindings invoke that action and other actions retain their bindings.
+3. Remove all bindings from one action. EXPECT: the action remains visible as unbound
+   and can receive a new binding. Removing a binding never deletes an action.
+4. Save/reopen, then Restore defaults. EXPECT: saved alternatives reload under their
+   owning action; defaults remain a draft until applied/saved. Conflicts preserve
+   the working configuration and explain the duplicate chord.
+
+D5 verification: implementer and independent root Windows PowerShell 5.1 editor gates
+passed; 24 logs audited without failures. Action-first preview visually inspected.
+Evidence: `out/milestones/editor-refinements/d5`. Saved profile format is unchanged.

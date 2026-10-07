@@ -33,6 +33,7 @@ Plan: [EditorRefinementPlan.md](EditorRefinementPlan.md). Base ba2d58d.
 | D2 | Projection, wireframe and gizmo helpers | C | no | merged | `C:/Users/andri/.codex/worktrees/editor-overlays/RayTracingEngine` | 0d6439b | Integrated into editor branch; independent 12 projection/overlay/gizmo tests passed |
 | D3 | Editor controls, overlays and usability | D1, D2 | yes | needs-qa | `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine` | 9f8c450 | PowerShell 5.1 editor/input gates passed; scoped source review clear; window-free overlay/inspector previews produced; native GUI QA pending |
 | D4 | Binding preferences and coherent overlays | D3 | yes | needs-qa | `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine` | 0fbc561 | PowerShell 5.1 full input/editor gate passed; coherent moving previews and delayed mode/resize regressions green; native GUI QA pending |
+| D5 | Action-first binding preferences | D4 | yes | needs-qa | `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine` | 65db8f8 | Static grouped actions and per-action alternatives; PowerShell 5.1 editor gate passed; native GUI QA pending |
 
 Admission: ~79 GiB free; 8 GiB reserve + 6 GiB per lane fits three isolated writing lanes.
 
@@ -50,3 +51,8 @@ Continuous-motion tests verify both overlay coherence and displayed progress; de
 mode/resize completions cannot restore obsolete context. Camera-only requests share the
 immutable scene/selection token so complete intermediate previews remain paintable.
 Preferences screenshot inspected; evidence saved under `out/milestones/editor-refinements/d4`.
+
+D5 `65db8f8` provides fixed action groups with per-action binding fields and alternatives.
+Implementer and independent root Windows PowerShell 5.1 editor gates passed; 24 logs
+audited without harness failures. Root inspected the action-first preview; evidence
+saved in `out/milestones/editor-refinements/d5`. Profile/runtime format is unchanged.

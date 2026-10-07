@@ -86,3 +86,22 @@ the scene-editor checkout; root reviews, verifies and pushes. Preserve root Goal
    held-key/reset/typing/remap/conflict/save-failure/restart tests and window-free
    preferences PNG. Run explicit Windows PowerShell 5.1 editor/input gates and inspect
    harness logs; root independently verifies. No native test windows. Update docs/QA.
+
+## D5 — Action-first binding preferences
+
+User requests a static list of actions, each owning editable bindings/alternates.
+Reorganize only the preferences UI/model adapter; keep runtime dispatch and saved
+profile compatible. Show deterministic History (Undo, Redo, Cancel active handle drag)
+and Navigation (Orbit, Pan, Zoom) groups, including unbound actions. Actions are labels,
+never editable choices. Each action has editable chord fields/list and Add binding /
+Remove binding controls scoped to that action. Removing its last binding leaves the
+action visible and unbound; do not remove action rows. Alternatives are equivalent,
+so don't imply a persisted primary ordering that the profile does not store.
+
+Preserve Apply, Save, Restore defaults, conflict/error behavior and draft cancellation.
+No user profile migration or runtime/renderer changes. Keep the UI compact and scrollable;
+inspect a window-free PNG showing defaults plus an unbound action and added alternate.
+Use existing preferences tests, extending only for fixed action visibility/ownership,
+alternative persistence and conflict preservation. Explicit PS5.1 editor gate required;
+root independently reviews/tests. Existing scene-editor writing lane owns changes;
+root pushes and records verification. No native test windows; preserve root Goals.md.
