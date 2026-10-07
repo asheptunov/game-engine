@@ -22,3 +22,23 @@ Final editor branch: `codex/scene-editor`. Keep this worktree available for hand
 Launch from that worktree with `./editor` in Git Bash or `./editor.ps1` in PowerShell.
 QA card: `benchmarks/editor/README.md` in the editor worktree. Independent final preview:
 `out/orchestrator-verify/editor-preview.png`. No native test windows were opened.
+
+## First GUI feedback refinements
+
+Plan: [EditorRefinementPlan.md](EditorRefinementPlan.md). Base ba2d58d.
+
+| id | title | deps | gui-qa | status | lane | commit | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| D1 | Shared serializable engine bindings | C | no | merged | `C:/Users/andri/.codex/worktrees/engine-bindings/RayTracingEngine` | 97e3bd4 | Integrated into editor branch; independent core+AWT tests and legacy gate passed |
+| D2 | Projection, wireframe and gizmo helpers | C | no | merged | `C:/Users/andri/.codex/worktrees/editor-overlays/RayTracingEngine` | 0d6439b | Integrated into editor branch; independent 12 projection/overlay/gizmo tests passed |
+| D3 | Editor controls, overlays and usability | D1, D2 | yes | needs-qa | `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine` | 9f8c450 | PowerShell 5.1 editor/input gates passed; scoped source review clear; window-free overlay/inspector previews produced; native GUI QA pending |
+
+Admission: ~79 GiB free; 8 GiB reserve + 6 GiB per lane fits three isolated writing lanes.
+
+D1/D2 helper worktrees are archived after integration. Final editor commit `9f8c450`
+includes both helpers; the editor worktree remains available. Independent final
+Windows PowerShell 5.1 engine-only/editor build and complete editor gate passed;
+all 34 implementer gate logs were audited without harness failures. Overlay and
+conditional inspector previews were visually checked. Evidence lives in
+`out/milestones/editor-refinements/d1`, `d2`, and `d3`; updated manual steps are in
+[EngineEditorQA.md](EngineEditorQA.md). Native GUI QA remains pending; no test windows opened.

@@ -1,7 +1,7 @@
 # E5 scene editor — hands-on QA
 
 Built and ready: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
-Branch: `codex/scene-editor`, implementation commit `a793699`, launcher fix `ba2d58d`.
+Branch: `codex/scene-editor`, current implementation `9f8c450` (includes launcher fix `ba2d58d`).
 
 Launch from Git Bash:
 
@@ -16,7 +16,8 @@ to `out/editor/editor-error.log`. The original playground remains independently 
 1. Select **Composition**, create a **Box**, and change its position/rotation/scale using
    **Apply transform (one edit)**.
    **EXPECT:** the hierarchy and both rendered views update; Undo/Redo reverses the whole edit.
-2. Click objects in both views. Drag to orbit, Shift/right-drag to pan, wheel to zoom.
+2. Left-click objects in both views. Right-click and drag to orbit,
+   Shift+right-click and drag to pan, and use the wheel to zoom.
    **EXPECT:** selection matches the visible object; the two cameras move independently.
 3. Duplicate an object and edit its shared material. Then **Make unique** and edit again.
    **EXPECT:** the first material edit changes both instances; the second changes only the unique one.
@@ -42,6 +43,41 @@ compiler errors, missing executables, and log-file failures still propagate. The
 is present in the built worktree and pushed editor branch.
 
 More detailed checks: `benchmarks/editor/README.md` in the editor worktree.
+
+## First feedback refinements
+
+The editor now uses shared engine key/mouse bindings, loaded from
+`assets/bindings/scene-editor.properties` and `scene-editor-mouse.properties`.
+Restart after editing these files. Left click selects objects and operates handles;
+the default middle button has no navigation action.
+
+1. Right-drag left/right, then up/down; hold Shift before right-dragging.
+   EXPECT: horizontal orbit follows the corrected direction, vertical behavior is
+   unchanged, and only the Shift gesture pans. Left-drag does not orbit.
+2. Select a mesh or group; toggle Wireframe and switch Move/Rotate.
+   EXPECT: selected geometry or group descendants have dashed wireframes; local
+   X/Y/Z handles translate/rotate. Light and camera anchors are visible/selectable.
+   Overlays are intentionally visible through geometry (x-ray), using the displayed
+   camera's sharp reference projection even with depth of field.
+3. Drag a handle, release, then Ctrl+Z and Ctrl+Shift+Z; start another drag and press Escape.
+   EXPECT: a whole drag is one undo entry; Escape restores the starting transform.
+4. Select a mesh, then a light, then a camera.
+   EXPECT: camera/light properties appear only on objects supporting them, with Apply
+   buttons. Navigate a view and capture it into the selected camera; undo restores it.
+5. Resize the divider above Commands, select/copy output, and type a command in Input.
+   EXPECT: Output remains readonly with no insertion caret; recent action is in the
+   separate bottom strip. Undo shortcuts work while a property/input field has focus.
+6. Open a scene file.
+   EXPECT: directories and compatible `.scene.xml` files are shown; unrelated files
+   are filtered out. Existing unsaved-work confirmation still applies.
+
+Native dialog behavior, mouse feel, and desktop focus remain hands-on checks.
+
+Refinement verification: Windows PowerShell 5.1 editor and input gates passed,
+including legacy texture-editor/viewport bindings. Independent root editor build and
+the complete editor gate passed again on the final source; harness logs contain no
+failures. Move/rotate, light, camera, and component-absence PNGs were inspected.
+Logs and previews are preserved under `out/milestones/editor-refinements/d3`.
 
 ## Don't report these (pre-existing)
 
