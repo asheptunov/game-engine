@@ -42,9 +42,14 @@ public class EditorBindingPreferencesTest {
         var files=defaults();var controller=onEdt(EditorController::new);var panel=onEdt(()->new SceneEditorPanel(controller,files.keys,files.mouse,files.user));
         try{
             assertFalse(onEdt(controller::dirty));var preferences=onEdt(panel::bindingPreferencesForTest);
+            assertEquals(List.of("history.undo","history.redo","gesture.cancel","view.orbit","view.pan","view.zoom"),onEdt(preferences::actionIdsForTest));
+            onEdt(()->{preferences.setBindingsForTest("history.redo",List.of());preferences.addBindingForTest("view.orbit","key.q+middle+drag+viewport");return null;});
+            assertTrue(onEdt(()->preferences.bindingsForTest("history.redo").isEmpty()));assertTrue(onEdt(()->preferences.bindingsForTest("view.orbit").size())==3);
+            assertTrue(onEdt(preferences::draftForTest).stream().filter(entry->entry.action().equals("view.orbit")).allMatch(entry->entry.kind()==EditorBindingProfile.Kind.MOUSE));
             writePreferences(preferences,Path.of(System.getProperty("editor.bindings.preview","out/editor/scene-editor-bindings-preview.png")));
+            onEdt(()->{preferences.restoreDefaultsForTest();return null;});assertEquals(List.of("ctrl+shift+z"),onEdt(()->preferences.bindingsForTest("history.redo")));
             var valid=List.of(key("ctrl+z","history.undo"),key("ctrl+shift+z","history.redo"),key("escape","gesture.cancel"),
-                    mouse("middle+drag+viewport","view.orbit"),mouse("right+drag+viewport","view.pan"),mouse("wheel+viewport","view.zoom"));
+                    mouse("middle+drag+viewport","view.orbit"),mouse("key.q+middle+drag+viewport","view.orbit"),mouse("right+drag+viewport","view.pan"),mouse("wheel+viewport","view.zoom"));
             onEdt(()->{preferences.setRowsForTest(valid);preferences.applyForTest();return null;});assertTrue(onEdt(preferences::statusForTest).contains("Applied"));
             assertTrue(onEdt(panel::navigationHelpForTest).contains("Right-click and drag pan"));assertFalse(onEdt(controller::dirty));
             var before=onEdt(()->panel.viewCameraForTest(0));onEdt(()->{panel.mouseDragForTest(0,MouseEvent.BUTTON3,0,20,0);return null;});var after=onEdt(()->panel.viewCameraForTest(0));assertVec(before.forward(),after.forward());
@@ -57,10 +62,10 @@ public class EditorBindingPreferencesTest {
             var left=List.of(key("ctrl+z","history.undo"),mouse("left+drag+viewport","view.orbit"));
             onEdt(()->{preferences.setRowsForTest(left);preferences.applyForTest();return null;});assertTrue(onEdt(preferences::statusForTest).contains("reserved"));
 
-            onEdt(()->{preferences.setRowsForTest(valid);preferences.saveForTest();return null;});assertTrue(onEdt(preferences::statusForTest).contains("Saved"));assertTrue(Files.readString(files.user).contains("mouse.right+drag+viewport = view.pan"));
+            onEdt(()->{preferences.setRowsForTest(valid);preferences.saveForTest();return null;});assertTrue(onEdt(preferences::statusForTest).contains("Saved"));var saved=Files.readString(files.user);assertTrue(saved.contains("mouse.right+drag+viewport = view.pan"));assertTrue(saved.contains("mouse.key.q+middle+drag+viewport = view.orbit"));
         }finally{onEdt(()->{panel.close();return null;});}
         var restartedController=onEdt(EditorController::new);var restarted=onEdt(()->new SceneEditorPanel(restartedController,files.keys,files.mouse,files.user));
-        try{assertTrue(onEdt(restarted::navigationHelpForTest).contains("Right-click and drag pan"));assertFalse(onEdt(restartedController::dirty));}
+        try{var help=onEdt(restarted::navigationHelpForTest);assertTrue(help.contains("Right-click and drag pan"));assertTrue(help.contains("Q+Middle-click and drag"));assertFalse(onEdt(restartedController::dirty));}
         finally{onEdt(()->{restarted.close();return null;});}
     }
 
@@ -86,7 +91,7 @@ public class EditorBindingPreferencesTest {
     private static EditorBindingProfile.Entry mouse(String chord,String action){return new EditorBindingProfile.Entry(EditorBindingProfile.Kind.MOUSE,chord,action);}
     private static KeyEvent key(Component component,int id,int code,char value){return new KeyEvent(component,id,System.currentTimeMillis(),0,code,value);}
     private static void assertVec(math.Vec3 expected,math.Vec3 actual){assertTrue(Math.abs(expected.x()-actual.x())<1e-5f);assertTrue(Math.abs(expected.y()-actual.y())<1e-5f);assertTrue(Math.abs(expected.z()-actual.z())<1e-5f);}
-    private static void writePreferences(BindingPreferencesPanel panel,Path output)throws Exception{var image=new BufferedImage(780,500,BufferedImage.TYPE_INT_RGB);onEdt(()->{panel.setSize(image.getWidth(),image.getHeight());layout(panel);var graphics=image.createGraphics();panel.printAll(graphics);graphics.dispose();return null;});Files.createDirectories(output.toAbsolutePath().getParent());ImageIO.write(image,"png",output.toFile());assertTrue(Files.size(output)>10_000);}
+    private static void writePreferences(BindingPreferencesPanel panel,Path output)throws Exception{var image=new BufferedImage(800,760,BufferedImage.TYPE_INT_RGB);onEdt(()->{panel.setSize(image.getWidth(),image.getHeight());layout(panel);var graphics=image.createGraphics();panel.printAll(graphics);graphics.dispose();return null;});Files.createDirectories(output.toAbsolutePath().getParent());ImageIO.write(image,"png",output.toFile());assertTrue(Files.size(output)>10_000);}
     private static void layout(Container container){container.doLayout();for(var child:container.getComponents())if(child instanceof Container nested)layout(nested);}
     private static <T>T onEdt(Callable<T> action)throws Exception{if(SwingUtilities.isEventDispatchThread())return action.call();var value=new AtomicReference<T>();var error=new AtomicReference<Throwable>();SwingUtilities.invokeAndWait(()->{try{value.set(action.call());}catch(Throwable failure){error.set(failure);}});if(error.get()!=null)throw new RuntimeException(error.get());return value.get();}
 }

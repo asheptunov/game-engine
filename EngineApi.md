@@ -95,8 +95,9 @@ key.space+middle+drag+viewport = view.pan
 wheel+viewport = view.zoom
 ```
 
-The editor's **Bindings…** dialog edits keyboard and mouse alternatives with immediate
-validated Apply and atomic Save. A saved profile lives at the ignored path
+The editor's **Bindings…** dialog groups the six fixed actions under History and Navigation;
+each action owns zero or more equivalent editable alternatives and stays visible when unbound.
+It provides immediate validated Apply and atomic Save. A saved profile lives at the ignored path
 `config/scene-editor-bindings.properties`; an absent or invalid profile leaves the shipped
 defaults active, and an invalid file is preserved for repair.
 

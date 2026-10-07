@@ -58,8 +58,9 @@ startup failures in `out/editor/editor-error.log`.
 10. Save as `.scene.xml`, make another edit, and reopen. **EXPECT:** unsaved New/Open/Close prompts
     Save/Discard/Cancel; saving during a newer edit leaves the marker unsaved; reopen preserves IDs,
     hierarchy, components, and shared assets. A failed load leaves the current world intact.
-11. Open **Bindings…**. **EXPECT:** labelled keyboard/mouse rows show every active alternative,
-    including both orbit buttons and both Space-pan gestures. Add or remove an alternative,
+11. Open **Bindings…**. **EXPECT:** fixed History and Navigation sections show Undo, Redo,
+    Cancel active handle drag, Orbit, Pan, and Zoom even when an action is unbound. Each action
+    owns its keyboard or mouse alternatives; there is no editable action selector. Add or remove an alternative,
     Apply it, and verify the tooltip/navigation changes immediately. Invalid duplicates, left-drag,
     unknown actions, or non-viewport modes remain unapplied with a visible message. Restore defaults,
     Save, relaunch, and **EXPECT:** the saved profile is active without making the scene dirty.

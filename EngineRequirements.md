@@ -242,6 +242,14 @@ advance together. `EditorBindingPreferencesTest` covers routing, validation, ato
 failure/restart, and a headless preferences render; `SceneEditorPreviewTest` deterministically
 blocks overlay projection to cover selection, mode-revert, and resize-revert publication.
 
+D5 refinement evidence (2026-10-06): the preferences adapter presents a deterministic,
+grouped action list instead of editable action choices. Undo, Redo, Cancel active handle drag,
+Orbit, Pan, and Zoom remain visible when unbound; each owns scoped Add binding and Remove
+binding controls, and all listed chords are equivalent alternatives. The serialized profile
+and runtime dispatch are unchanged. The headless preferences regression covers fixed action
+ownership, an unbound action, added alternatives, restore, validation preservation, Save, and
+restart using injected paths.
+
 ### E6 — Mesh editing
 
 - [ ] Implement editable vertex/edge/face topology and stable selection identities.
