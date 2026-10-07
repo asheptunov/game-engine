@@ -252,17 +252,30 @@ restart using injected paths.
 
 ### E6 — Mesh editing
 
-- [ ] Implement editable vertex/edge/face topology and stable selection identities.
-- [ ] Define supported polygon inputs and deterministic triangulation, including explicit
+- [x] Implement editable vertex/edge/face topology and stable selection identities.
+- [x] Define supported polygon inputs and deterministic triangulation, including explicit
       rejection of unsupported polygon shapes. Preserve render-to-editable face mapping.
 - [ ] Implement face selection and extrusion as the first complete modelling operation.
-- [ ] Publish a new immutable mesh revision atomically; integrate undo/redo, asset sharing,
+- [x] Publish a new immutable mesh revision atomically; integrate undo/redo, asset sharing,
       scene queries, validation diagnostics, and persistence of editable topology.
 - [ ] Verify topology and winding, picking after edits, undo/redo, save/load, and behavior
       when an edit makes a mesh unsuitable for its assigned solid/medium material.
 
 Gate: create a primitive, select and extrude a face, inspect the result in both views,
 undo/redo it, and save/reopen with editable topology and selection mapping intact.
+
+F1 engine evidence (2026-10-07): `EditableMeshGeometry` provides bounded immutable polygon
+topology, canonical edge adjacency, stable IDs/counters, deterministic source-face fan
+triangulation, explicit primitive/triangle conversion, and positive listed-normal face
+extrusion. Closed intent is revalidated as an outward connected manifold on every creation,
+conversion, extrusion and V2 load. `SceneEdit` performs shared conversion/extrusion in one
+atomic publication; existing instance validation rejects incompatible emission/scattering/
+open-glass results without changing history. `EditableMeshTest` covers topology hazards,
+conversion, repeat extrusion, queries through transformed shared instances, make-unique,
+fresh undo/redo revisions, counter-only content, and material rejection. `ScenePersistenceTest`
+covers V1 compatibility, V2 topology/counter round trip and hostile V2 references, counters,
+duplicates, versions, and forged boundary intent. Face-mode selection and editor controls
+remain F2; the complete native-window E6 gate therefore remains pending.
 
 ## Verification and implementation tracking
 

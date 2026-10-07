@@ -16,7 +16,7 @@ $sources = @(
 $compileArguments = @("--enable-preview", "--release", "23", "-d", $classes) + $sources
 Invoke-NativeLogged $javac $compileArguments (Join-Path $output "compile-all.log") "Editor/test compilation failed"
 $tests = @("editor.EditorControllerTest", "editor.SceneEditorPreviewTest", "editor.EditorBindingPreferencesTest", "editor.GizmoDragTest", "editor.OverlayGeometryTest",
-    "engine.CameraProjectorTest", "engine.SceneDocumentTest", "engine.ScenePersistenceTest", "engine.SpatialQueryTest", "engine.EngineSessionTest")
+    "engine.CameraProjectorTest", "engine.EditableMeshTest", "engine.SceneDocumentTest", "engine.ScenePersistenceTest", "engine.SpatialQueryTest", "engine.EngineSessionTest")
 foreach ($test in $tests) {
     $log = Join-Path $output ($test.Replace(".", "_") + ".log")
     $arguments = @("--enable-preview", "-Djava.awt.headless=true")

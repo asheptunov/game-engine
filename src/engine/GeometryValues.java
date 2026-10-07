@@ -5,6 +5,8 @@ final class GeometryValues {
     private GeometryValues(){}
     static boolean equal(GeometryData a,GeometryData b){
         if(a==b)return true;if(a==null||b==null||a.getClass()!=b.getClass())return false;
-        return a instanceof TriangleMesh mesh?mesh.sameDefinition((TriangleMesh)b):a.equals(b);
+        if(a instanceof TriangleMesh mesh)return mesh.sameDefinition((TriangleMesh)b);
+        if(a instanceof EditableMeshGeometry mesh)return mesh.sameDefinition((EditableMeshGeometry)b);
+        return a.equals(b);
     }
 }

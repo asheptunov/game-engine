@@ -134,18 +134,40 @@ directions are normalized, while transformed local rays deliberately remain unno
 the same parameter measures world-ray distance. `IndexedMesh` represents a closed,
 connected, outward-wound solid. `TriangleMesh.surface` accepts general open/disconnected
 indexed triangles; `TriangleMesh.closedSolid` additionally validates a connected,
-two-faces-per-edge, oppositely wound, positive-volume boundary. V1 implements position
-indices, faceted geometric normals, and one material asset per node. Normals, UVs, and
-material slots are outside V1 and are never silently discarded. Analytic `SphereGeometry`,
-open `RectGeometry`, and canonical `BoxGeometry.UNIT` retain existing transport paths.
+two-faces-per-edge, oppositely wound, positive-volume boundary. Triangle meshes implement
+position indices, faceted geometric normals, and one material asset per node. Normals, UVs,
+and material slots are never silently discarded. Analytic `SphereGeometry`, open
+`RectGeometry`, and canonical `BoxGeometry.UNIT` retain existing transport paths.
+
+`EditableMeshGeometry` stores immutable ordered vertices and polygon faces with stable,
+nonnegative asset-local `long` IDs. Its canonical edges expose adjacent face IDs. A face has
+3..1024 distinct referenced vertices and must be finite, nondegenerate, planar, simple and
+strictly convex. Planarity uses a `1e-5` relative extent tolerance; turns/intersections use
+`1e-6`. Fan triangulation starts at the first listed vertex, preserves winding, and maps all
+derived triangles back to the polygon face ID. Surface meshes may have boundary edges;
+closed solids additionally validate two opposite face windings per edge, one connected
+component and positive signed volume. Geometric self-intersection between separate faces
+remains unsupported and undetected, matching closed triangle meshes.
+
+`EditableMeshGeometry.from` explicitly converts boxes to six quads, rectangles to one quad,
+analytic spheres to the fixed `IndexedMesh.sphere(8)` tessellation, and triangle meshes to
+one editable face per source triangle. Triangle conversion preserves unique nonnegative
+source face IDs and rejects duplicate, negative or exhausted IDs. Editable input returns
+the same immutable value. `extrude(faceId,distance)` accepts a finite positive distance,
+moves a replacement cap along its listed-winding normal, retains the cap face ID, and
+allocates cap vertices and side-quad face IDs from persisted monotonic counters. For a
+validated solid the normal is outward. Side order is `vi, vj, vj', vi'`; repeat extrusion
+remains manifold. Counter exhaustion rejects the edit.
 
 ## Scene documents and transactions
 
 `SceneDocument` is a single-writer atomic publisher. Create and edit it on one application
 update thread; render/query workers may concurrently retain its immutable `SceneSnapshot`.
 One `transact` callback may create, rename, transform, reparent, assign, duplicate or delete
-nodes and create/edit/make-unique shared assets. It validates the complete result before one
-publication. Failure changes neither snapshot nor revision, nested writes are rejected,
+nodes and create/edit/make-unique shared assets. `convertGeometryToEditable` and
+`extrudeFace` replace shared geometry within the same transaction. It validates every
+referencing node/material in the complete result before one publication. Failure changes
+neither snapshot nor revision, nested writes are rejected,
 duplicate copies a whole subtree with fresh node UUIDs and shared asset references, delete
 removes a subtree, and `reparentKeepingLocal` deliberately retains the local pose. Labels
 may repeat and are never keys. Flattened renderer object/material identity uses UUID strings.
@@ -170,9 +192,12 @@ bounded at 4096. Camera components store exact local `Camera` values; pixel dime
 
 ## Scene files and spatial queries
 
-`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml` format version 1. Geometry is
-embedded. External references produce an explicit unsupported-V1 error and are deferred to
-a later schema. Files preserve UUIDs, graph order/references, labels, geometry, materials,
+`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml`. It reads version 1 unchanged;
+the writer retains version 1 unless editable topology is present, then writes version 2.
+V2 persists ordered vertex/face IDs, polygon references, boundary intent and both next-ID
+counters, never the derived triangles. Editable topology under V1 and unknown versions are
+rejected. Geometry is embedded and external references remain unsupported. Files preserve
+UUIDs, graph order/references, labels, geometry, materials,
 point lights and local cameras while excluding runtime revisions, render settings, jobs,
 caches, accumulation and undo history. Loading fully validates before `loadInto` publishes.
 Saving writes and forces a sibling temporary file, reload-validates it, and requires atomic
@@ -181,8 +206,15 @@ replacement; failure preserves the previous target.
 The reader disables DTDs, entities, external DTD/schema access and XInclude. It rejects
 unknown elements/attributes/version, non-finite values, duplicate/dangling IDs, cycles and
 unsupported component combinations. Limits are 16 MiB, 250,000 XML elements, XML depth 32,
-50,000 nodes, 16,000 assets of each kind, 250,000 vertices, 500,000 triangles and graph
-depth 4096. The writer enforces the same reloadable structural limits.
+50,000 nodes, 16,000 assets of each kind, 250,000 vertices, 500,000 derived triangles,
+1024 vertices per polygon and graph depth 4096. Checked totals cover editable corners and
+derived triangles before topology construction. The writer enforces the same reloadable
+structural limits.
+
+Material compatibility is unchanged and validates atomically after conversion/extrusion.
+Closed editable meshes can be dielectric. A canonical converted box can retain scattering
+only while its derived primitives equal the canonical box; extrusion then rejects it.
+Tessellated sphere conversion rejects scattering, and rectangle conversion rejects emission.
 
 `SpatialQuery.prepare(snapshot)` builds immutable query state and never mutates a render
 session. `nearest` scale-safely normalizes finite nonzero directions, so distance is in world

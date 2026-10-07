@@ -48,6 +48,14 @@ public class ScenePersistenceTest {
         assertEquals(0,process.waitFor());assertEquals(expected,Files.readString(output));
     }
 
+    @Test void editableV2RoundTripPreservesTopologyCountersAndDerivedFaceMapping()throws Exception {
+        var document=new SceneDocument();var geometry=new GeometryId[1];var node=new NodeId[1];
+        document.transact(edit->{geometry[0]=edit.createGeometry("editable",EditableMeshGeometry.from(BoxGeometry.UNIT).extrude(1,.75f));var material=edit.createMaterial("blue",Material.srgb("ignored",0x3b82f6));node[0]=edit.createNode("mesh",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(node[0],geometry[0],material);});
+        var path=temp().resolve("editable.scene.xml");SceneFiles.save(path,document.snapshot());var xml=Files.readString(path);assertTrue(xml.contains("version=\"2\""));assertTrue(xml.contains("<editable-mesh"));assertFalse(xml.contains("<triangles>"));
+        var loaded=SceneFiles.load(path);var mesh=(EditableMeshGeometry)loaded.requireGeometry(geometry[0]).geometry();assertEquals(12L,mesh.nextVertexId());assertEquals(10L,mesh.nextFaceId());assertEquals(10,mesh.faces().size());assertEquals(List.of(8L,9L,10L,11L),mesh.requireFace(1).vertexIds());assertTrue(mesh.closedBoundary());
+        var hit=SpatialQuery.prepare(loaded).nearest(new Vec3(0,0,10),new Vec3(0,0,-1)).orElseThrow();assertEquals(node[0],hit.nodeId());assertEquals(1L,hit.sourceFaceId());
+    }
+
     @Test void invalidAndHostileFilesDoNotReplaceActiveDocument()throws Exception {
         var sample=sample();var before=sample.document().snapshot();var dir=temp();
         var dangling=dir.resolve("dangling.scene.xml");Files.writeString(dangling,"""
@@ -62,7 +70,19 @@ public class ScenePersistenceTest {
 
     @Test void elementLimitAndUnknownVersionAreRejected()throws Exception {
         var dir=temp();var many=dir.resolve("elements.scene.xml");var xml=new StringBuilder("<scene format='ray-tracing-engine-scene' version='1'><geometry-assets>");for(int i=0;i<SceneFiles.MAX_ELEMENTS;i++)xml.append("<x/>");xml.append("</geometry-assets><material-assets/><nodes/></scene>");Files.writeString(many,xml);boolean rejected=false;try{SceneFiles.load(many);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
-        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='2'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='3'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+    }
+    @Test void invalidEditableVersionsReferencesCountersAndBoundariesAreRejected()throws Exception {
+        var dir=temp();var body="""
+                <geometry-assets><editable-mesh id='00000000-0000-0000-0000-000000000001' label='m' boundary='surface' next-vertex-id='3' next-face-id='1'>
+                <vertices><v id='0' x='0' y='0' z='0'/><v id='1' x='1' y='0' z='0'/><v id='2' x='0' y='1' z='0'/></vertices>
+                <faces><face id='0'><vertex id='0'/><vertex id='1'/><vertex id='2'/></face></faces></editable-mesh></geometry-assets><material-assets/><nodes/>
+                """;
+        var underV1=dir.resolve("editable-v1.scene.xml");Files.writeString(underV1,"<scene format='ray-tracing-engine-scene' version='1'>"+body+"</scene>");rejectLoad(underV1);
+        var dangling=dir.resolve("editable-dangling.scene.xml");Files.writeString(dangling,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("<vertex id='2'/></face>","<vertex id='9'/></face>")+"</scene>");rejectLoad(dangling);
+        var counter=dir.resolve("editable-counter.scene.xml");Files.writeString(counter,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("next-vertex-id='3'","next-vertex-id='2'")+"</scene>");rejectLoad(counter);
+        var duplicate=dir.resolve("editable-duplicate.scene.xml");Files.writeString(duplicate,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("<v id='2'", "<v id='1'")+"</scene>");rejectLoad(duplicate);
+        var forgedClosed=dir.resolve("editable-open-closed.scene.xml");Files.writeString(forgedClosed,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("boundary='surface'","boundary='closed-solid'")+"</scene>");rejectLoad(forgedClosed);
     }
     @Test void nestedLeafInvalidValuesAndDeepXmlAreFormatErrors()throws Exception {
         var dir=temp();var nested=dir.resolve("nested.scene.xml");Files.writeString(nested,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets><sphere id='00000000-0000-0000-0000-000000000001' label='s' center-x='0' center-y='0' center-z='0' radius='1'><unsupported/></sphere></geometry-assets><material-assets/><nodes/></scene>");boolean rejected=false;try{SceneFiles.load(nested);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
@@ -72,5 +92,6 @@ public class ScenePersistenceTest {
     @Test void failedSavePreservesPreviousValidBytes()throws Exception {
         var sample=sample();var path=temp().resolve("preserved.scene.xml");SceneFiles.save(path,sample.document().snapshot());var before=Files.readAllBytes(path);var nodes=new ArrayList<SceneNode>();for(int i=0;i<=SceneFiles.MAX_NODES;i++)nodes.add(new SceneNode(new NodeId(new UUID(0,i+1)),"n",null,Transform.IDENTITY,null,null,null));var tooMany=new SceneSnapshot(0,0,nodes,List.of(),List.of());boolean rejected=false;try{SceneFiles.save(path,tooMany);}catch(java.io.IOException expected){rejected=true;}assertTrue(rejected);assertEquals(before,Files.readAllBytes(path));assertNotNull(SceneFiles.load(path));
     }
+    private static void rejectLoad(Path path)throws Exception{boolean rejected=false;try{SceneFiles.load(path);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);}
     public static void main(String[] args){SuiteRunner.runThis();}
 }

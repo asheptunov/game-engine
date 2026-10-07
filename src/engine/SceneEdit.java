@@ -36,6 +36,10 @@ public final class SceneEdit {
     public void setCamera(NodeId id,CameraComponent camera){updateNode(id,n->n.withCamera(camera));}
     public void renameGeometry(GeometryId id,String label){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,label,a.revision(),a.geometry()));}
     public void replaceGeometry(GeometryId id,GeometryData geometry){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),geometry));}
+    /** Explicitly convert one shared asset; every referencing node observes the atomic replacement. */
+    public void convertGeometryToEditable(GeometryId id){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),EditableMeshGeometry.from(a.geometry())));}
+    /** Extrude one stable face on an already-editable shared asset. */
+    public void extrudeFace(GeometryId id,long faceId,float distance){int i=requireGeometry(id);var a=geometries.get(i);if(!(a.geometry() instanceof EditableMeshGeometry mesh))throw new IllegalArgumentException("Geometry is not an editable mesh: "+id);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),mesh.extrude(faceId,distance)));}
     public void renameMaterial(MaterialId id,String label){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,label,a.revision(),a.material()));}
     public void replaceMaterial(MaterialId id,Material material){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,a.label(),a.revision(),material));}
     public GeometryId makeGeometryUnique(NodeId nodeId){
