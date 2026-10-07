@@ -56,6 +56,42 @@ no application sources on the command line. It rejects imports from `scenes`, `u
 only those output classes. `engine-check.ps1` also compiles all sources/tests, runs the
 focused extraction regressions, inspects harness logs, and runs the consumer.
 
+## Shared input bindings
+
+`engine.input` provides platform-neutral immutable input values and serializable dispatch:
+
+- Register named actions with `ActionRegistry<A>.register(String, A)`.
+- Build `KeyBindings` for `Runnable` actions or `MouseBindings` for
+  `Consumer<MouseInput>` actions. `handle` returns whether a registered action ran.
+- Load UTF-8 properties with `BindingFiles.load(Path, bindings)`, then call
+  `validate(owner)` to reject unresolved action ids. `BindingFiles.save` writes a stable,
+  sorted representation that round-trips punctuation such as `+` and `=`.
+- `KeyInput` uses a physical `KeyCode` plus exact Ctrl/Alt/Shift/Meta state. Letter identity
+  does not depend on Caps Lock. `MouseInput` carries the held button for drag events, exact
+  modifiers, normalized mode, coordinates, and precise wheel rotation.
+
+AWT conversion lives outside the engine in `platform.awt.input.AwtInputAdapter`. Use
+`AwtInputAdapter.key(event)` and
+`AwtInputAdapter.mouse(MouseGesture.DRAG, event, "viewport")`; the latter derives the held
+button from AWT down masks because drag events report `NOBUTTON`. Multiple held buttons are
+rejected as ambiguous. The compatibility classes in `ui` delegate storage, parsing,
+validation, and file I/O to this engine API while retaining their old `MouseEvent` actions
+and buttonless drag lookup, so existing viewport and texture-editor property maps keep their
+meaning.
+
+An editor can register `undo`, `redo`, `orbit`, `pan`, and `zoom`, then load these chords:
+
+```properties
+ctrl+z = undo
+ctrl+shift+z = redo
+right+drag+viewport = orbit
+shift+right+drag+viewport = pan
+wheel+viewport = zoom
+```
+
+Run `./input-check.ps1` for the engine-only boundary, all-source compilation, shared input
+tests, AWT normalization tests, and the existing UI/viewport/texture-editor binding suites.
+
 ## Updates and lifecycle
 
 `FixedStepLoop` supplies a daemon fixed-step application clock independent of rendering.

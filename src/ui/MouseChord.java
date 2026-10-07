@@ -26,6 +26,13 @@ public record MouseChord(MouseButton button,
                 e.isControlDown(), e.isAltDown(), e.isShiftDown(), e.isMetaDown());
     }
 
+    engine.input.MouseChord toEngine() {
+        return new engine.input.MouseChord(
+                engine.input.MouseButton.valueOf(button.name()),
+                engine.input.MouseGesture.valueOf(gesture.name()), mode,
+                new engine.input.Modifiers(ctrl, alt, shift, meta));
+    }
+
     /**
      * Parses chord syntax like {@code "left+press+brush"}, {@code "drag+box_select"}, {@code "wheel"}.
      * Tokens are {@code +}-separated, case-insensitive, order-independent:
