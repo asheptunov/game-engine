@@ -49,3 +49,40 @@ All lanes use Java23 preview. Verification must explicitly exercise Windows Powe
 5.1 build/check scripts, inspect harness logs, and render actual Swing panels headlessly.
 No test windows or focus takeover. Review focused changes and test failure/lifecycle paths.
 Independent root checks final compilation, targeted tests and overlay/inspector PNGs.
+
+## D4 — Binding preferences and coherent overlays
+
+Base `9f8c450`; supersedes earlier default gesture choices. One writing lane reuses
+the scene-editor checkout; root reviews, verifies and pushes. Preserve root Goals.md.
+
+1. Default right-drag and middle-drag orbit; Space+right-drag or Space+middle-drag pans; wheel zooms.
+   Left stays reserved for picking/handles. Space is a held physical key, not an OS
+   modifier: extend the common engine mouse chord/input mechanism compatibly to
+   support held keys, rather than special-casing pan in the editor. Old bindings
+   and constructors retain behavior. Capture gesture at press; release/focus loss,
+   dialog opening and close clear transient key/button state; typing spaces works.
+2. Add a discoverable Bindings button opening a labelled configuration panel/dialog.
+   Users can edit shortcuts and mouse chords, add/remove alternatives, restore
+   defaults, cancel, and Apply/Save. Show action names and readable syntax guidance.
+   Validate duplicate normalized chords, unknown actions, unsupported gestures and
+   reserved left selection before mutation. Apply works immediately across views;
+   Save persists across restart. Cancel/errors preserve active mappings. Settings
+   must not dirty the scene or enter scene undo history. Derive navigation help
+   from effective bindings. Isolate dialog typing from application shortcuts.
+3. Prefer one atomic user override profile (ignored `config/scene-editor-bindings.properties`)
+   with key/mouse prefixes serialized through the common binding tables. No override
+   means shipped defaults. Write a temp sibling then replace before swapping live
+   mappings; failed validation/write leaves old mappings and file intact. Use injected
+   temporary paths in tests, never overwrite the user's real preferences in tests.
+4. Fix presentation gaps by publishing a coherent image + projected overlay bundle.
+   Preparing mesh edges stays off the EDT. Projection uses exact captured camera,
+   scene/selection token, dimensions and mode; keep previous complete pair until new
+   pair ready, never mix old projection with a new camera. Stable spp updates reuse
+   projection. Selection/mode/resize changes also produce coherent bundles. Picking
+   uses the painted bundle. No unbounded queue, full mesh projection on EDT, or changes
+   to transport. Preserve x-ray/toggle behavior and finite-aperture reference.
+5. Add deterministic publication/interleaving regressions (every painted image has
+   matching overlay during sustained orbit/pan/refinement; no stale pick/handle),
+   held-key/reset/typing/remap/conflict/save-failure/restart tests and window-free
+   preferences PNG. Run explicit Windows PowerShell 5.1 editor/input gates and inspect
+   harness logs; root independently verifies. No native test windows. Update docs/QA.

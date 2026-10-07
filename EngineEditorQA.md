@@ -1,7 +1,7 @@
 # E5 scene editor — hands-on QA
 
 Built and ready: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
-Branch: `codex/scene-editor`, current implementation `9f8c450` (includes launcher fix `ba2d58d`).
+Branch: `codex/scene-editor`, current implementation `0fbc561` (includes launcher fix `ba2d58d`).
 
 Launch from Git Bash:
 
@@ -87,3 +87,36 @@ an editor GUI test failure. Report any new editor problem.
 
 E6 mesh topology/face extrusion is intentionally outside this delivery. Per the handoff
 dispatch policy, the final GUI milestone stays unmerged until hands-on QA is complete.
+
+## D4 follow-up QA — bindings and overlay continuity
+
+These defaults supersede the Shift-pan instructions above: right/middle drag orbit;
+Space+right/middle drag pan; wheel zoom. Left remains selection/handles.
+Focus the viewport before holding Space. Hold it before pressing the mouse button;
+the gesture keeps the key state captured at its start.
+
+Bindings opens from the toolbar. Apply changes the current session; Save also writes
+`config/scene-editor-bindings.properties` for the next launch. Close discards unapplied
+draft edits (previously applied changes remain). The override file is ignored by Git;
+the shipped `assets/bindings/scene-editor*.properties` remain defaults. Mouse chords
+use `key.space` for the held key; the older bare `space` token remains a mode name.
+
+1. Open Bindings from the toolbar. Add an alternate shortcut, Apply, and use it.
+   EXPECT: both views use the new mappings immediately; scene undo/dirty state is unchanged.
+2. Enter a duplicate/conflicting chord or try binding left-drag navigation.
+   EXPECT: a clear validation error; previous active bindings still work.
+3. Save a valid configuration, close/relaunch the editor, then reopen Bindings.
+   EXPECT: mappings persist. Restore defaults changes the draft until applied/saved.
+4. Hold Space while right- or middle-dragging; release it, then start another drag.
+   EXPECT: first gesture pans; the next orbits. Typing spaces in Input still works;
+   changing focus or opening the bindings dialog clears held navigation keys.
+5. Select geometry and continuously orbit/pan in both views, then resize and switch Move/Rotate.
+   EXPECT: visible rendered images retain matching wireframes/handles without blank-overlay
+   frames. A previous complete image may remain briefly while the next pair is prepared.
+   Selection and handles continue to target the displayed image.
+
+D4 verification: full Windows PowerShell 5.1 input/editor gate passed, followed by an
+independent root editor gate. All 36 logs were audited with zero harness failures.
+Tests cover delayed projection, mode/resize reversal, and advancing coherent displayed
+pairs during sustained camera motion; preferences and scene previews were inspected.
+Evidence: `out/milestones/editor-refinements/d4`. Native input/dialog QA remains pending.
