@@ -8,7 +8,7 @@ import java.util.*;
 /** Immutable, reusable indexed boundary. Triangle indices are stable primitive identities.
  * Closed meshes must be connected, consistently wound manifolds with positive signed volume.
  * Self intersections are not supported (nor detected); callers must supply embedded solids. */
-public final class IndexedMesh extends AbstractList<SceneObject> implements RandomAccess {
+public final class IndexedMesh extends AbstractList<SceneObject> implements RandomAccess, MeshGeometry {
     private final List<Vec3> vertices;
     private final int[] indices;
     private final List<SceneObject> triangles;
@@ -45,6 +45,8 @@ public final class IndexedMesh extends AbstractList<SceneObject> implements Rand
     }
     public List<Vec3> vertices(){return vertices;}
     public int[] indices(){return indices.clone();}
+    @Override public long sourceFaceId(int primitiveIndex){return primitiveIndex;}
+    @Override public boolean closedBoundary(){return true;}
     @Override public SceneObject get(int index){return triangles.get(index);}
     @Override public int size(){return triangles.size();}
 

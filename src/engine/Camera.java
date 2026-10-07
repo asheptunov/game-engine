@@ -50,6 +50,13 @@ public record Camera(Vec3 eye, Rect sensor, Projection projection, Mode mode, fl
         return new Rect(eye.sub(horizontal.scale(.5f)).sub(vertical.scale(.5f)),horizontal,vertical);
     }
     public Camera withPose(Vec3 position, Rect plane) { return new Camera(position,plane,mode,focus,aperture,height,rememberedAperture); }
+    /** Apply a node world transform; camera optics require a uniform world scale. */
+    public Camera transformed(Transform transform) {
+        float scale=transform.uniformScale();
+        var plane=new Rect(transform.point(sensor.origin()),transform.vector(sensor.edge1()),transform.vector(sensor.edge2()));
+        return new Camera(transform.point(eye),plane,projection,mode,focus*scale,aperture*scale,
+                height*scale,rememberedAperture*scale).validated();
+    }
     private void standard() {
         var offset=center().sub(eye);float d=planeDistance();
         if(d<=0 || Math.abs(sensor.edge1().normalized().dot(sensor.edge2().normalized()))>1e-5

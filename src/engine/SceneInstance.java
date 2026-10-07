@@ -8,17 +8,24 @@ import java.util.List;
 public record SceneInstance(String name, List<SceneObject> geometry, Transform transform, Material material) {
     public SceneInstance {
         if (name == null || name.isBlank() || transform == null || material == null) throw new IllegalArgumentException("Invalid instance");
-        geometry = geometry instanceof IndexedMesh ? geometry : List.copyOf(geometry);
+        geometry = geometry instanceof MeshGeometry ? geometry : List.copyOf(geometry);
         if(material.scattering()>0 && !(geometry.size()==1 && geometry.getFirst() instanceof Sphere) && !geometry.equals(box()))
             throw new IllegalArgumentException("Scattering requires a closed sphere or box");
         if(material.emissive() && !(geometry.size()==1 && geometry.getFirst() instanceof Rect))
             throw new IllegalArgumentException("Emission requires a rectangular surface");
         if (material.kind() == Material.Kind.DIELECTRIC &&
-                !(geometry.size() == 1 && geometry.getFirst() instanceof Sphere) && !(geometry instanceof IndexedMesh) && !geometry.equals(box()))
+                !(geometry.size() == 1 && geometry.getFirst() instanceof Sphere)
+                && !(geometry instanceof MeshGeometry mesh && mesh.closedBoundary()) && !geometry.equals(box()))
             throw new IllegalArgumentException("Glass requires a closed sphere, box or indexed mesh");
     }
     public SceneInstance withTransform(Transform t) { return new SceneInstance(name, geometry, t, material); }
     public SceneInstance withMaterial(Material m) { return new SceneInstance(name, geometry, transform, m); }
+    @Override public boolean equals(Object other) {
+        if(!(other instanceof SceneInstance instance))return false;
+        return name.equals(instance.name)&&transform.equals(instance.transform)&&material.equals(instance.material)
+                &&(geometry instanceof MeshGeometry)==(instance.geometry instanceof MeshGeometry)&&geometry.equals(instance.geometry);
+    }
+    @Override public int hashCode(){return java.util.Objects.hash(name,geometry,transform,material,geometry instanceof MeshGeometry);}
     /** Twelve outward-facing triangles, eight shared coordinates; local box spans -1..1. */
     public static List<SceneObject> box() {
         var v = new Vec3[]{new Vec3(-1,-1,-1),new Vec3(1,-1,-1),new Vec3(1,1,-1),new Vec3(-1,1,-1),

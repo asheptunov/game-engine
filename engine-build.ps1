@@ -32,8 +32,8 @@ $sources = @(
     Tee-Object -FilePath (Join-Path $output "engine-compile.log")
 if ($LASTEXITCODE -ne 0) { throw "Engine-only compilation failed with exit code $LASTEXITCODE" }
 
-$consumer = Join-Path $repository "src/examples/headless/HeadlessEngineDemo.java"
-& $javac --enable-preview --release 23 -cp $classes -d $classes $consumer 2>&1 |
+$consumers = (Get-ChildItem (Join-Path $repository "src/examples/headless") -Filter *.java).FullName
+& $javac --enable-preview --release 23 -cp $classes -d $classes $consumers 2>&1 |
     Tee-Object -FilePath (Join-Path $output "consumer-compile.log")
 if ($LASTEXITCODE -ne 0) { throw "Independent consumer compilation failed with exit code $LASTEXITCODE" }
 Write-Output "Engine-only build passed: $classes"

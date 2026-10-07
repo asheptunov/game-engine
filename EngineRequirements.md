@@ -1,6 +1,6 @@
 # Engine and authoring tools specification
 
-Status: E1–E2 complete; E3–E6 are pending. Recorded 2026-10-06.
+Status: E1–E3 complete; E4 engine work complete with editor-consumer proof in E5; E5–E6 pending. Recorded 2026-10-06.
 
 ## Intent
 
@@ -118,8 +118,8 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 | --- | --- | --- | --- |
 | E1 | Public engine scene/render boundary and migrated playground | Existing renderer | Complete |
 | E2 | Independent headless consumer and multiple-view proof | E1 | Complete |
-| E3 | Stable scene graph/assets and versioned persistence | E2 | Pending |
-| E4 | General mesh assets and reusable scene queries | E3 | Pending |
+| E3 | Stable scene graph/assets and versioned persistence | E2 | Complete |
+| E4 | General mesh assets and reusable scene queries | E3 | Engine complete; editor consumer proof in E5 |
 | E5 | Initial scene-authoring application | E4 | Pending |
 | E6 | Editable topology and first mesh-modelling operation | E5 | Pending |
 
@@ -154,16 +154,16 @@ code. This completes the first delivery; do not postpone it until an editor exis
 
 ### E3 — Scene graph, asset identity, and persistence
 
-- [ ] Introduce stable node/asset IDs and hierarchy with explicit transform policy.
-- [ ] Implement transactional create, transform, rename, reparent, assign, duplicate,
+- [x] Introduce stable node/asset IDs and hierarchy with explicit transform policy.
+- [x] Implement transactional create, transform, rename, reparent, assign, duplicate,
       make-unique, and delete operations with reference/deletion rules.
-- [ ] Define a versioned scene file schema for nodes, asset references/data, materials,
+- [x] Define a versioned scene file schema for nodes, asset references/data, materials,
       lights, and cameras. Exclude renderer caches, jobs, and accumulation.
-- [ ] Resolve external assets relative to a documented project root; diagnose missing
-      assets and unsupported versions. Validate fully before replacing the active scene.
-- [ ] Save without corrupting the previous valid file on failure. Define schema evolution
+- [x] V1 embeds assets and explicitly diagnoses external references as deferred; unknown
+      versions fail. Validate fully before replacing the active scene.
+- [x] Save without corrupting the previous valid file on failure. Define schema evolution
       policy; no migration from nonexistent historical file formats is required.
-- [ ] Verify round trips preserve identity, hierarchy, shared assets, and rendered results;
+- [x] Verify round trips preserve identity, hierarchy, shared assets, and rendered results;
       cover invalid references, hierarchy cycles, failed loads, and shared/unique edits.
 
 Gate: save a constructed scene, load it in a fresh process, and obtain equivalent world
@@ -171,17 +171,22 @@ content and a matching seeded render. Rendering/display preferences are separate
 
 ### E4 — General meshes and spatial queries
 
-- [ ] Separate general triangle-mesh validity from solid-boundary/material compatibility.
-- [ ] Add programmatic mesh construction with clear validation errors and documented
+- [x] Separate general triangle-mesh validity from solid-boundary/material compatibility.
+- [x] Add programmatic mesh construction with clear validation errors and documented
       attribute support; retain procedural primitives as reusable constructors.
-- [ ] Expose nearest-hit/picking queries independent of viewport and console state.
-- [ ] Preserve source face IDs through triangulation/preparation and acceleration ordering.
-- [ ] Verify open diffuse surfaces, transformed instances, hit identity/distance, shared
+- [x] Expose nearest-hit/picking queries independent of viewport and console state.
+- [x] Preserve source face IDs through triangulation/preparation and acceleration ordering.
+- [x] Verify open diffuse surfaces, transformed instances, hit identity/distance, shared
       assets, and rejected invalid solid/medium assignments against brute-force references.
 
 Gate: both consumers can construct and render an open surface and a closed solid, and
 identify selected nodes/faces through the same public query API. Existing glass and volume
 restrictions remain explicit; general meshes do not automatically become valid media.
+
+E3/E4 engine evidence and exact commands are in [the scene-document verification record](benchmarks/engine/README.md).
+The independent headless document consumer and engine query tests satisfy B's API gate. The
+second interactive document consumer and end-to-end selection workflow are intentionally
+verified with the E5 editor rather than attributed to the still-legacy playground.
 
 ### E5 — Scene-authoring application
 

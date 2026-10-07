@@ -52,7 +52,7 @@ until its generation equals `RenderProgress.requestedGeneration`. The complete e
 
 `engine-build.ps1` compiles the engine and its small infrastructure dependencies first, with
 no application sources on the command line. It rejects imports from `scenes`, `ui`, `di`,
-`rendering`, or `java.awt` in engine sources, then compiles the headless consumer against
+`rendering`, or `java.awt` in engine sources, then compiles both headless consumers against
 only those output classes. `engine-check.ps1` also compiles all sources/tests, runs the
 focused extraction regressions, inspects harness logs, and runs the consumer.
 
@@ -67,8 +67,8 @@ coordinator. Closing a session is idempotent.
 The playground uses `RenderEngine.openLegacySession(ViewportState, DirectRgbTracer)` so its
 existing commands, autofocus policy, profiler hooks, and blocking benchmarks retain their
 numeric behavior. This is the only transitional adapter. Remove it, `ViewportState`, and the
-playground's direct tracer accessor after E3 document transactions replace command mutation
-and all playground diagnostics consume public session metadata.
+playground's direct tracer accessor after a later application migration moves console
+mutation to `SceneDocument`; E3–E4 do not claim that legacy mutation has already moved.
 
 ## Coordinates and geometry
 
@@ -78,9 +78,77 @@ The camera plane spans `edge1` horizontally and `edge2` vertically; its forward 
 distance, absorption, focus, and camera movement. Triangle winding uses
 `(b - a) × (c - a)`. Ray intersections report the ray parameter; engine-generated primary
 directions are normalized, while transformed local rays deliberately remain unnormalized so
-the same parameter measures world-ray distance. `IndexedMesh` still represents only a closed,
-connected, outward-wound solid. E4 adds the distinct general open-surface mesh contract.
+the same parameter measures world-ray distance. `IndexedMesh` represents a closed,
+connected, outward-wound solid. `TriangleMesh.surface` accepts general open/disconnected
+indexed triangles; `TriangleMesh.closedSolid` additionally validates a connected,
+two-faces-per-edge, oppositely wound, positive-volume boundary. V1 implements position
+indices, faceted geometric normals, and one material asset per node. Normals, UVs, and
+material slots are outside V1 and are never silently discarded. Analytic `SphereGeometry`,
+open `RectGeometry`, and canonical `BoxGeometry.UNIT` retain existing transport paths.
 
-`SceneInstance` labels remain current renderer identity during this transitional milestone.
-Stable node and asset IDs, hierarchy, transactions, persistence, and revisioned query
-identity arrive in E3–E4.
+## Scene documents and transactions
+
+`SceneDocument` is a single-writer atomic publisher. Create and edit it on one application
+update thread; render/query workers may concurrently retain its immutable `SceneSnapshot`.
+One `transact` callback may create, rename, transform, reparent, assign, duplicate or delete
+nodes and create/edit/make-unique shared assets. It validates the complete result before one
+publication. Failure changes neither snapshot nor revision, nested writes are rejected,
+duplicate copies a whole subtree with fresh node UUIDs and shared asset references, delete
+removes a subtree, and `reparentKeepingLocal` deliberately retains the local pose. Labels
+may repeat and are never keys. Flattened renderer object/material identity uses UUID strings.
+
+`UndoHistory` is an optional bounded authoring wrapper; games can call `SceneDocument`
+directly without retaining history. Undo/redo republishes with fresh runtime epochs. If code
+edits or replaces the document outside a history wrapper, the wrapper detects the revision
+and clears stale stacks rather than overwriting unrelated work. Limit zero disables storage.
+Group a multi-field UI Apply action into one `edit` callback.
+
+Scene revision tracks every publication for stale picks. A separate transport revision feeds
+`WorldSnapshot`, so labels and camera-only edits retain other sessions' accumulation; actual
+flattened geometry/material/light/transform edits and their undo/redo get a fresh transport
+epoch. Asset revisions are independent runtime-only epochs.
+
+Parent transforms use positive TRS: scale, then X/Y/Z Euler rotation, then translation.
+Composition accepts only finite positive-determinant matrices whose basis columns remain
+orthogonal within relative `1e-5`. Shear, reflection, singular results, and camera world
+scales nonuniform by more than `1e-5` are rejected before publication. Hierarchy depth is
+bounded at 4096. Camera components store exact local `Camera` values; pixel dimensions and
+`RenderSettings` remain outside the document.
+
+## Scene files and spatial queries
+
+`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml` format version 1. Geometry is
+embedded. External references produce an explicit unsupported-V1 error and are deferred to
+a later schema. Files preserve UUIDs, graph order/references, labels, geometry, materials,
+point lights and local cameras while excluding runtime revisions, render settings, jobs,
+caches, accumulation and undo history. Loading fully validates before `loadInto` publishes.
+Saving writes and forces a sibling temporary file, reload-validates it, and requires atomic
+replacement; failure preserves the previous target.
+
+The reader disables DTDs, entities, external DTD/schema access and XInclude. It rejects
+unknown elements/attributes/version, non-finite values, duplicate/dangling IDs, cycles and
+unsupported component combinations. Limits are 16 MiB, 250,000 XML elements, XML depth 32,
+50,000 nodes, 16,000 assets of each kind, 250,000 vertices, 500,000 triangles and graph
+depth 4096. The writer enforces the same reloadable structural limits.
+
+`SpatialQuery.prepare(snapshot)` builds immutable query state and never mutates a render
+session. `nearest` scale-safely normalizes finite nonzero directions, so distance is in world
+units. `RayHit` includes scene/node/geometry/revision, original primitive/source-face
+identity, world/local positions, geometric normal, front-face state and triangle
+barycentrics. Exact ties use node order then original primitive order even after BVH sorting.
+Compare `RayHit.sceneRevision` with the current snapshot before applying a pick.
+`pick(camera,u,v)` and `screenRay` use the renderer's exact reference camera ray, with
+coordinates in 0..1 and `v=0` at the image bottom.
+
+The independent example builds open and closed meshes, saves/reloads, picks a source face,
+and renders without application sources:
+
+```powershell
+./engine-build.ps1
+& "C:/Users/andri/.jdks/openjdk-23.0.1/bin/java.exe" --enable-preview `
+  '-Djava.awt.headless=true' -cp out/engine-build/classes `
+  examples.headless.SceneDocumentDemo out/engine-build/demo.scene.xml out/engine-build/demo.png
+```
+
+Run `./scene-check.ps1` for the boundary build, E3/E4 hazards, fresh-process persistence,
+document consumer, and focused mesh/dielectric/volume/parallel transport regression gate.

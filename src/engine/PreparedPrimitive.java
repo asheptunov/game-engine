@@ -15,11 +15,12 @@ final class PreparedPrimitive {
     final Sphere worldSphere;
     final Transform transform;
     final MeshSurface mesh;
+    final SceneObject geometry;
     PreparedPrimitive(SceneInstance object, int index) {
         objectId=object.name(); materialId=object.material().name(); primitiveId=index; material=object.material();
         transform=object.transform();
-        var geometry=object.geometry().get(index);
-        mesh=object.geometry() instanceof IndexedMesh && geometry instanceof Tri t
+        geometry=object.geometry().get(index);
+        mesh=object.geometry() instanceof MeshGeometry && geometry instanceof Tri t
                 ?new MeshSurface(transform.point(t.a()),transform.point(t.b()),transform.point(t.c())):null;
         sphere=geometry instanceof Sphere s ? s : null;
         worldSphere=sphere!=null && transform.scale.x()==transform.scale.y() && transform.scale.y()==transform.scale.z()
@@ -29,6 +30,9 @@ final class PreparedPrimitive {
             case Rect r -> new TraceSurface(new Rect(transform.point(r.origin()),transform.vector(r.edge1()),transform.vector(r.edge2())));
             case Sphere s -> null;
         };
+    }
+    Vec3 normalAt(float x,float y,float z) {
+        var hit=new DirectRgbTracer.Hit();normal(x,y,z,hit);return new Vec3(hit.nx,hit.ny,hit.nz);
     }
     float distance(float ox,float oy,float oz,float dx,float dy,float dz) {
         if(mesh!=null)return mesh.distance(ox,oy,oz,dx,dy,dz);

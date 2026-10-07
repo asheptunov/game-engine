@@ -562,6 +562,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   small window-free query measurements, not GUI latency or tracking-lag promises. Details and
   manual commands: [camera verification](benchmarks/camera/README.md).
 
+## Engine E3–E4 — scene documents, persistence, meshes and queries `[implemented]`
+
+- Stable UUID graph/assets, duplicate-label-safe identity, atomic single-writer transactions,
+  restricted validated hierarchy transforms, subtree duplicate/delete, shared/unique assets,
+  and optional bounded undo/redo with stale-history invalidation.
+- Strict embedded-only `.scene.xml` V1 with hardened JDK parsing, symmetric file/structure
+  limits, complete pre-publication validation, reload-validated atomic saves, real point-light
+  and camera components, and fresh runtime revisions after load/undo.
+- General open `TriangleMesh` plus explicit closed-solid validation. Public session-independent
+  queries return node/asset/source-face identity, robust normalized world distance, positions,
+  normals and barycentrics with deterministic ties; camera screen rays share renderer math.
+- Engine boundary, 47 focused B/regression tests, fresh-JVM seeded roundtrip and independent
+  headless document demo pass. Evidence: [scene-document verification](benchmarks/engine/README.md).
+  The E5 editor remains the second interactive document consumer and human picking proof.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

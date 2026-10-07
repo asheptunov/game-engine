@@ -1,0 +1,76 @@
+package engine;
+
+import engine.objects.Rect;
+import harness.SuiteRunner;
+import harness.Test;
+import math.Vec3;
+import java.io.RandomAccessFile;
+import java.nio.file.*;
+import java.util.*;
+import static harness.Assertions.*;
+
+public class ScenePersistenceTest {
+    private record Sample(SceneDocument document,NodeId camera,NodeId secondCamera,NodeId sharedA,NodeId sharedB){}
+    private static Sample sample() {
+        var d=new SceneDocument();var ids=new Object[12];
+        d.transact(e->{
+            ids[0]=e.createGeometry("sphere",new SphereGeometry(Vec3.ZERO,1));
+            ids[1]=e.createGeometry("open",TriangleMesh.surface(List.of(new Vec3(-2,-1,0),new Vec3(2,-1,0),new Vec3(0,2,0)),new int[]{0,1,2},new long[]{91}));
+            ids[2]=e.createGeometry("box",BoxGeometry.UNIT);
+            ids[3]=e.createMaterial("blue",Material.srgb("ignored",0x3b82f6));
+            ids[4]=e.createMaterial("glass",new Material("ignored",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1.4f,new Vec3(.1f,.2f,.3f),0,Vec3.ZERO,.2f,.1f));
+            ids[5]=e.createNode("group",null,Transform.IDENTITY);
+            ids[6]=e.createNode("duplicate label",(NodeId)ids[5],new Transform(new Vec3(-1,0,5),Vec3.ZERO,new Vec3(1,1,1)));e.assignGeometry((NodeId)ids[6],(GeometryId)ids[0],(MaterialId)ids[3]);
+            ids[7]=e.createNode("duplicate label",(NodeId)ids[5],new Transform(new Vec3(1,0,6),Vec3.ZERO,new Vec3(1,1,1)));e.assignGeometry((NodeId)ids[7],(GeometryId)ids[0],(MaterialId)ids[3]);
+            var floor=e.createNode("open floor",null,new Transform(new Vec3(0,-2,6),new Vec3(90,0,0),new Vec3(1,1,1)));e.assignGeometry(floor,(GeometryId)ids[1],(MaterialId)ids[3]);
+            var box=e.createNode("cloud box",null,new Transform(new Vec3(3,0,7),Vec3.ZERO,new Vec3(1,1,1)));e.assignGeometry(box,(GeometryId)ids[2],(MaterialId)ids[4]);
+            var light=e.createNode("light",null,new Transform(new Vec3(-2,3,0),Vec3.ZERO,new Vec3(1,1,1)));e.setPointLight(light,new PointLightComponent(new Vec3(1,.9f,.8f),80));
+            var localCamera=new Camera(new Vec3(0,0,0),new Rect(new Vec3(-.8f,-.5f,1),new Vec3(1.6f,0,0),new Vec3(0,1,0)));
+            ids[8]=e.createNode("camera",null,Transform.IDENTITY);e.setCamera((NodeId)ids[8],new CameraComponent(localCamera));
+            ids[9]=e.createNode("camera",null,new Transform(new Vec3(2,0,0),Vec3.ZERO,new Vec3(1,1,1)));e.setCamera((NodeId)ids[9],new CameraComponent(localCamera));
+        });
+        return new Sample(d,(NodeId)ids[8],(NodeId)ids[9],(NodeId)ids[6],(NodeId)ids[7]);
+    }
+    private static Path temp()throws Exception {var root=Path.of("out/cli");Files.createDirectories(root);return Files.createTempDirectory(root,"scene-persistence-");}
+
+    @Test void strictRoundTripPreservesIdentityGraphSharingLightsAndCameras()throws Exception {
+        var sample=sample();var before=sample.document().snapshot();var path=temp().resolve("sample.scene.xml");SceneFiles.save(path,before);var loaded=SceneFiles.load(path);
+        assertEquals(0L,loaded.revision());assertEquals(before.nodes(),loaded.nodes());assertEquals(before.geometryAssets().size(),loaded.geometryAssets().size());assertEquals(before.materialAssets().stream().map(MaterialAsset::id).toList(),loaded.materialAssets().stream().map(MaterialAsset::id).toList());
+        assertEquals(loaded.requireNode(sample.sharedA()).geometry(),loaded.requireNode(sample.sharedB()).geometry());
+        assertEquals(before.camera(sample.camera()),loaded.camera(sample.camera()));assertNotEquals(loaded.camera(sample.camera()),loaded.camera(sample.secondCamera()));
+        assertEquals(before.toWorldSnapshot().lights(),loaded.toWorldSnapshot().lights());
+        var mesh=(TriangleMesh)loaded.geometryAssets().stream().filter(a->a.geometry() instanceof TriangleMesh).findFirst().orElseThrow().geometry();assertEquals(91L,mesh.sourceFaceId(0));assertFalse(mesh.closedBoundary());
+    }
+
+    @Test void freshJvmLoadProducesMatchingSeededRender()throws Exception {
+        var sample=sample();var path=temp().resolve("fresh.scene.xml");SceneFiles.save(path,sample.document().snapshot());var expected=SceneTestSupport.renderHash(sample.document().snapshot(),sample.camera());var output=path.resolveSibling("hash.txt");var log=path.resolveSibling("child.log");
+        var java=Path.of(System.getProperty("java.home"),"bin","java.exe").toString();var process=new ProcessBuilder(java,"--enable-preview","-Djava.awt.headless=true","-cp",System.getProperty("java.class.path"),"engine.ScenePersistenceProcess",path.toString(),sample.camera().toString(),output.toString()).redirectErrorStream(true).redirectOutput(log.toFile()).start();
+        assertEquals(0,process.waitFor());assertEquals(expected,Files.readString(output));
+    }
+
+    @Test void invalidAndHostileFilesDoNotReplaceActiveDocument()throws Exception {
+        var sample=sample();var before=sample.document().snapshot();var dir=temp();
+        var dangling=dir.resolve("dangling.scene.xml");Files.writeString(dangling,"""
+                <scene format="ray-tracing-engine-scene" version="1"><geometry-assets/><material-assets/><nodes>
+                <node id="00000000-0000-0000-0000-000000000001" label="n"><transform position-x="0" position-y="0" position-z="0" rotation-x="0" rotation-y="0" rotation-z="0" scale-x="1" scale-y="1" scale-z="1"/><geometry asset="00000000-0000-0000-0000-000000000002" material="00000000-0000-0000-0000-000000000003"/></node>
+                </nodes></scene>""");
+        boolean rejected=false;try{SceneFiles.loadInto(dangling,sample.document());}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);assertSame(before,sample.document().snapshot());
+        var doctype=dir.resolve("doctype.scene.xml");Files.writeString(doctype,"<!DOCTYPE scene [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><scene format='ray-tracing-engine-scene' version='1'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(doctype);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var external=dir.resolve("external.scene.xml");Files.writeString(external,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets><external id='00000000-0000-0000-0000-000000000001' label='x' uri='x'/></geometry-assets><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(external);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var huge=dir.resolve("huge.scene.xml");try(var file=new RandomAccessFile(huge.toFile(),"rw")){file.setLength(SceneFiles.MAX_FILE_BYTES+1);}rejected=false;try{SceneFiles.load(huge);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+    }
+
+    @Test void elementLimitAndUnknownVersionAreRejected()throws Exception {
+        var dir=temp();var many=dir.resolve("elements.scene.xml");var xml=new StringBuilder("<scene format='ray-tracing-engine-scene' version='1'><geometry-assets>");for(int i=0;i<SceneFiles.MAX_ELEMENTS;i++)xml.append("<x/>");xml.append("</geometry-assets><material-assets/><nodes/></scene>");Files.writeString(many,xml);boolean rejected=false;try{SceneFiles.load(many);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='2'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+    }
+    @Test void nestedLeafInvalidValuesAndDeepXmlAreFormatErrors()throws Exception {
+        var dir=temp();var nested=dir.resolve("nested.scene.xml");Files.writeString(nested,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets><sphere id='00000000-0000-0000-0000-000000000001' label='s' center-x='0' center-y='0' center-z='0' radius='1'><unsupported/></sphere></geometry-assets><material-assets/><nodes/></scene>");boolean rejected=false;try{SceneFiles.load(nested);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var invalid=dir.resolve("invalid.scene.xml");Files.writeString(invalid,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets/><material-assets><material id='00000000-0000-0000-0000-000000000001' label='m' kind='diffuse' red='2' green='0' blue='0' ior='1' absorption-red='0' absorption-green='0' absorption-blue='0' roughness='0' emission-red='0' emission-green='0' emission-blue='0' scattering='0' anisotropy='0'/></material-assets><nodes/></scene>");rejected=false;try{SceneFiles.load(invalid);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var deep=dir.resolve("deep.scene.xml");var xml=new StringBuilder("<scene format='ray-tracing-engine-scene' version='1'>");for(int i=0;i<SceneFiles.MAX_XML_DEPTH+2;i++)xml.append("<x>");for(int i=0;i<SceneFiles.MAX_XML_DEPTH+2;i++)xml.append("</x>");xml.append("</scene>");Files.writeString(deep,xml);rejected=false;try{SceneFiles.load(deep);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+    }
+    @Test void failedSavePreservesPreviousValidBytes()throws Exception {
+        var sample=sample();var path=temp().resolve("preserved.scene.xml");SceneFiles.save(path,sample.document().snapshot());var before=Files.readAllBytes(path);var nodes=new ArrayList<SceneNode>();for(int i=0;i<=SceneFiles.MAX_NODES;i++)nodes.add(new SceneNode(new NodeId(new UUID(0,i+1)),"n",null,Transform.IDENTITY,null,null,null));var tooMany=new SceneSnapshot(0,0,nodes,List.of(),List.of());boolean rejected=false;try{SceneFiles.save(path,tooMany);}catch(java.io.IOException expected){rejected=true;}assertTrue(rejected);assertEquals(before,Files.readAllBytes(path));assertNotNull(SceneFiles.load(path));
+    }
+    public static void main(String[] args){SuiteRunner.runThis();}
+}
