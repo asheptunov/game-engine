@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repository = $PSScriptRoot
+. (Join-Path $repository "native-process.ps1")
 $jdk = if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin/javac.exe"))) {
     Join-Path $env:JAVA_HOME "bin"
 } else {
@@ -28,12 +29,10 @@ $sources = @(
     (Join-Path $repository "src/profiling/TraceProfile.java")
     (Join-Path $repository "src/profiling/RuntimeMetrics.java")
 )
-& $javac --enable-preview --release 23 -d $classes $sources 2>&1 |
-    Tee-Object -FilePath (Join-Path $output "engine-compile.log")
-if ($LASTEXITCODE -ne 0) { throw "Engine-only compilation failed with exit code $LASTEXITCODE" }
+$compileArguments = @("--enable-preview", "--release", "23", "-d", $classes) + $sources
+Invoke-NativeLogged $javac $compileArguments (Join-Path $output "engine-compile.log") "Engine-only compilation failed"
 
 $consumers = (Get-ChildItem (Join-Path $repository "src/examples/headless") -Filter *.java).FullName
-& $javac --enable-preview --release 23 -cp $classes -d $classes $consumers 2>&1 |
-    Tee-Object -FilePath (Join-Path $output "consumer-compile.log")
-if ($LASTEXITCODE -ne 0) { throw "Independent consumer compilation failed with exit code $LASTEXITCODE" }
+$consumerArguments = @("--enable-preview", "--release", "23", "-cp", $classes, "-d", $classes) + $consumers
+Invoke-NativeLogged $javac $consumerArguments (Join-Path $output "consumer-compile.log") "Independent consumer compilation failed"
 Write-Output "Engine-only build passed: $classes"
