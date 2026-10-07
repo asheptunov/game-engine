@@ -76,7 +76,7 @@ A14: The 50 ms limit still stops a batch between complete image samples. P2 addi
 
 Q15: is how does rendering snapshots asynchronously "enable automatic resolution reduction during movement and refinement when stationary"
 
-A15: It lets input and display continue while an expensive pass finishes. P4 now adds the separate policy: `view interactive on` chooses a smaller grid during camera movement using measured completed-image cost, then restores the requested grid after 350 ms without camera changes. Grid changes wait for completed jobs so continuous movement still publishes coherent previews. Each grid starts its own accumulation; stationary rendering then adds samples to reduce noise. Path depth and camera field of view remain unchanged. Automatic mode is off by default, and F3 shows the sampled dimensions alongside FPS. See [InteractiveResolution.java](src/scenes/viewport/InteractiveResolution.java).
+A15: It lets input and display continue while an expensive pass finishes. P4 now adds the separate policy: `view interactive on` chooses a smaller grid during camera movement using measured completed-image cost, then restores the requested grid after 350 ms without camera changes. Grid changes wait for completed jobs so continuous movement still publishes coherent previews. Each grid starts its own accumulation; stationary rendering then adds samples to reduce noise. Path depth and camera field of view remain unchanged. Automatic mode is off by default, and F3 shows the sampled dimensions alongside FPS. See [InteractiveResolution.java](src/engine/InteractiveResolution.java).
 
 Q16: what is top-level BVH over objects and how is it different from how we're using a BVH now?
 
@@ -88,7 +88,7 @@ A17: Track **throughput**, the running RGB multiplier for light found farther al
 
 Q18: what are IOR-aware roulette weights in the context of Russian roulette tracing?
 
-A18: IOR means index of refraction. Our glass transmission weight includes `(incidentIOR / exitIOR)²`: entering IOR 1.5 glass from air multiplies throughput by about 0.444; exiting reverses that factor. This temporary reduction is not absorption. For roulette decisions, track a compensating product of `(exitIOR / incidentIOR)²` across transmissions, so glass paths are not needlessly killed inside. Keep the physical throughput unchanged except for roulette survival compensation. This is proposed work; the transmission factors already exist in [Material.java](src/scenes/viewport/Material.java).
+A18: IOR means index of refraction. Our glass transmission weight includes `(incidentIOR / exitIOR)²`: entering IOR 1.5 glass from air multiplies throughput by about 0.444; exiting reverses that factor. This temporary reduction is not absorption. For roulette decisions, track a compensating product of `(exitIOR / incidentIOR)²` across transmissions, so glass paths are not needlessly killed inside. Keep the physical throughput unchanged except for roulette survival compensation. This is proposed work; the transmission factors already exist in [Material.java](src/engine/Material.java).
 
 Q19: in the Adaptive sampling technique, how could you know that a pixel is noisy to spend more time on it? conversely, how can you know that a region is converged? don't you send a uniform # of rays per pixel? or is this some heuristic, like how much is a pixel changing per sample with no scene changes, and keep rendering the ones with high variance?
 
