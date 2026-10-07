@@ -28,6 +28,9 @@ public final class EditorCommandProcessor {
                 case "material" -> material(words);
                 case "light" -> light(words);
                 case "camera" -> camera(words);
+                case "mode" -> mode(words);
+                case "mesh" -> mesh(words);
+                case "face" -> face(words);
                 case "undo" -> { exact(words, 1, "undo"); yield done(controller.undo()); }
                 case "redo" -> { exact(words, 1, "redo"); yield done(controller.redo()); }
                 case "save" -> save(words);
@@ -115,6 +118,23 @@ public final class EditorCommandProcessor {
             default -> throw new IllegalArgumentException("Use camera set or camera remove");
         };
     }
+    private String mode(List<String> words){
+        exact(words,2,"mode object|face");return done(controller.setSelectionMode(switch(words.get(1).toLowerCase(Locale.ROOT)){case "object"->EditorController.SelectionMode.OBJECT;case "face"->EditorController.SelectionMode.FACE;default->throw new IllegalArgumentException("Use mode object or mode face");}));
+    }
+    private String mesh(List<String> words){
+        require(words,2,"mesh convert|unique");return switch(words.get(1).toLowerCase(Locale.ROOT)){
+            case "convert"->{exact(words,2,"mesh convert");yield done(controller.convertGeometryToEditable(selected()));}
+            case "unique"->{exact(words,2,"mesh unique");yield done(controller.makeGeometryUnique(selected()));}
+            default->throw new IllegalArgumentException("Use mesh convert or mesh unique");
+        };
+    }
+    private String face(List<String> words){
+        require(words,2,"face select <face-id> | face extrude <positive-distance>");return switch(words.get(1).toLowerCase(Locale.ROOT)){
+            case "select"->{exact(words,3,"face select <face-id>");yield done(controller.selectFace(Long.parseLong(words.get(2))));}
+            case "extrude"->{exact(words,3,"face extrude <positive-distance>");yield done(controller.extrudeSelectedFace(Float.parseFloat(words.get(2))));}
+            default->throw new IllegalArgumentException("Use face select or face extrude");
+        };
+    }
     private String save(List<String> words) {
         if (controller.state().busy()) return "Error: file work is already in progress";
         Path path = words.size() > 1 ? Path.of(String.join(" ", words.subList(1, words.size()))) : controller.state().file();
@@ -126,10 +146,10 @@ public final class EditorCommandProcessor {
         if (controller.dirty()) return "Error: save or discard unsaved changes before loading";
         var path = Path.of(String.join(" ", words.subList(1, words.size()))); controller.load(path); return "Load started: " + path;
     }
-    private String describe() { var state = controller.state(); return "revision=" + state.snapshot().revision() + " nodes=" + state.snapshot().nodes().size() + " selected=" + state.selection() + " dirty=" + state.dirty(); }
+    private String describe() { var state = controller.state(); return "revision=" + state.snapshot().revision() + " nodes=" + state.snapshot().nodes().size() + " selected=" + state.selection() + " mode="+state.selectionMode().name().toLowerCase(Locale.ROOT)+" face="+(state.faceSelection()==null?"none":state.faceSelection().faceId())+" dirty=" + state.dirty(); }
     private NodeId selected() { var id = controller.selection(); if (id == null) throw new IllegalArgumentException("Select a node first"); return id; }
     private String done(boolean ok) { return ok ? controller.state().status() : "Error: " + controller.state().status(); }
     private static void require(List<String> words, int size, String usage) { if (words.size() < size) throw new IllegalArgumentException("Usage: " + usage); }
     private static void exact(List<String> words, int size, String usage) { if (words.size() != size) throw new IllegalArgumentException("Usage: " + usage); }
-    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, undo, redo, save, load, status"; }
+    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|face, mesh convert|unique, face select <id>, face extrude <distance>, undo, redo, save, load, status"; }
 }

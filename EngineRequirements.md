@@ -255,10 +255,10 @@ restart using injected paths.
 - [x] Implement editable vertex/edge/face topology and stable selection identities.
 - [x] Define supported polygon inputs and deterministic triangulation, including explicit
       rejection of unsupported polygon shapes. Preserve render-to-editable face mapping.
-- [ ] Implement face selection and extrusion as the first complete modelling operation.
+- [x] Implement face selection and extrusion as the first complete modelling operation.
 - [x] Publish a new immutable mesh revision atomically; integrate undo/redo, asset sharing,
       scene queries, validation diagnostics, and persistence of editable topology.
-- [ ] Verify topology and winding, picking after edits, undo/redo, save/load, and behavior
+- [x] Verify topology and winding, picking after edits, undo/redo, save/load, and behavior
       when an edit makes a mesh unsuitable for its assigned solid/medium material.
 
 Gate: create a primitive, select and extrude a face, inspect the result in both views,
@@ -274,8 +274,18 @@ open-glass results without changing history. `EditableMeshTest` covers topology 
 conversion, repeat extrusion, queries through transformed shared instances, make-unique,
 fresh undo/redo revisions, counter-only content, and material rejection. `ScenePersistenceTest`
 covers V1 compatibility, V2 topology/counter round trip and hostile V2 references, counters,
-duplicates, versions, and forged boundary intent. Face-mode selection and editor controls
-remain F2; the complete native-window E6 gate therefore remains pending.
+duplicates, versions, and forged boundary intent.
+
+F2 editor evidence (2026-10-07): Object/Face mode, explicit shared conversion, Make unique,
+stable polygon picking and positive-distance extrusion use the same controller transactions
+from the inspector and command panel. The exact painted frame owns its query, camera and
+face-highlight context in both views; camera-only preview publication remains coherent and
+object gizmos are unavailable in Face mode. Selection reconciliation covers shared-to-unique
+asset changes, edits, undo/redo and load. `EditorControllerTest`, `OverlayGeometryTest` and
+`SceneEditorPreviewTest` cover stale cross-view/mode intents, marker overlap, shared edits,
+unique geometry, extrusion, history, save/reopen and a window-free two-view journey. The
+headless gate writes `scene-editor-mesh-extruded-preview.png`; native-window manual QA remains
+the final human acceptance step.
 
 ## Verification and implementation tracking
 

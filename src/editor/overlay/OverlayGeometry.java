@@ -21,7 +21,7 @@ public final class OverlayGeometry {
     public enum Axis { X,Y,Z }
     public enum GizmoMode { NONE,TRANSLATE,ROTATE }
     public enum MarkerKind { LIGHT,CAMERA }
-    public enum Style { WIREFRAME_XRAY,TRANSLATION_HANDLE_XRAY,ROTATION_HANDLE_XRAY }
+    public enum Style { WIREFRAME_XRAY,FACE_SELECTION_XRAY,TRANSLATION_HANDLE_XRAY,ROTATION_HANDLE_XRAY }
     public enum HitKind { HANDLE,MARKER }
 
     public record Line(NodeId nodeId,Style style,Axis axis,double u1,double v1,double u2,double v2) {
@@ -34,9 +34,12 @@ public final class OverlayGeometry {
         public Handle { Objects.requireNonNull(nodeId);Objects.requireNonNull(mode);Objects.requireNonNull(axis);lines=List.copyOf(lines); }
     }
     public record Hit(NodeId nodeId,HitKind kind,MarkerKind markerKind,GizmoMode mode,Axis axis,double distancePixels) {}
-    public record Frame(long sceneRevision,List<Line> wireframe,List<Marker> markers,List<Handle> handles,
+    public record FaceSelection(NodeId nodeId,GeometryId geometryId,long faceId) {
+        public FaceSelection { Objects.requireNonNull(nodeId);Objects.requireNonNull(geometryId); }
+    }
+    public record Frame(long sceneRevision,List<Line> wireframe,List<Line> selectedFace,List<Marker> markers,List<Handle> handles,
                         boolean wireframeTruncated) {
-        public Frame { wireframe=List.copyOf(wireframe);markers=List.copyOf(markers);handles=List.copyOf(handles); }
+        public Frame { wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);markers=List.copyOf(markers);handles=List.copyOf(handles); }
         /** Handles take precedence over markers; both use exactly the displayed projected geometry. */
         public Optional<Hit> pick(double u,double v,int pixelWidth,int pixelHeight,double tolerancePixels) {
             if(!Double.isFinite(u)||!Double.isFinite(v)||pixelWidth<=0||pixelHeight<=0
@@ -65,9 +68,9 @@ public final class OverlayGeometry {
     public record WorldMarker(NodeId nodeId,MarkerKind kind,Vec3 position) {
         public WorldMarker { Objects.requireNonNull(nodeId);Objects.requireNonNull(kind);Objects.requireNonNull(position); }
     }
-    public record Prepared(long sceneRevision,NodeId selection,Vec3 pivot,Vec3 xAxis,Vec3 yAxis,Vec3 zAxis,
-                           List<WorldLine> wireframe,List<WorldMarker> markers,boolean wireframeTruncated) {
-        public Prepared { wireframe=List.copyOf(wireframe);markers=List.copyOf(markers); }
+    public record Prepared(long sceneRevision,NodeId selection,FaceSelection faceSelection,Vec3 pivot,Vec3 xAxis,Vec3 yAxis,Vec3 zAxis,
+                           List<WorldLine> wireframe,List<WorldLine> selectedFace,List<WorldMarker> markers,boolean wireframeTruncated) {
+        public Prepared { wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);markers=List.copyOf(markers); }
         public Vec3 axis(Axis axis){return switch(axis){case X->xAxis;case Y->yAxis;case Z->zAxis;};}
     }
 
@@ -84,8 +87,12 @@ public final class OverlayGeometry {
 
     /** Build world-space overlay data. Selected geometry shows itself; a component-free group shows its subtree. */
     public Prepared prepare(SceneSnapshot snapshot,NodeId selection) {
+        return prepare(snapshot,selection,null);
+    }
+    /** Face selection is camera-independent and becomes part of the immutable prepared context. */
+    public Prepared prepare(SceneSnapshot snapshot,NodeId selection,FaceSelection faceSelection) {
         Objects.requireNonNull(snapshot,"snapshot");
-        var wireframe=new ArrayList<WorldLine>();var markers=new ArrayList<WorldMarker>();boolean truncated=false;
+        var wireframe=new ArrayList<WorldLine>();var selectedFace=new ArrayList<WorldLine>();var markers=new ArrayList<WorldMarker>();boolean truncated=false;
         for(var node:snapshot.nodes()) {
             var transform=snapshot.worldTransform(node.id());
             if(node.light()!=null)markers.add(new WorldMarker(node.id(),MarkerKind.LIGHT,transform.point(Vec3.ZERO)));
@@ -106,8 +113,19 @@ public final class OverlayGeometry {
                     wireframe.add(new WorldLine(node.id(),transform.point(line.start),transform.point(line.end)));
                 }
             }
+            if(faceSelection!=null&&faceSelection.nodeId().equals(selection)&&selected.geometry()!=null
+                    &&selected.geometry().geometryId().equals(faceSelection.geometryId())) {
+                var asset=snapshot.requireGeometry(faceSelection.geometryId());
+                if(asset.geometry() instanceof EditableMeshGeometry mesh) {
+                    var face=mesh.requireFace(faceSelection.faceId());var transform=snapshot.worldTransform(selection);
+                    for(int i=0;i<face.vertexIds().size();i++) {
+                        var a=mesh.requireVertex(face.vertexIds().get(i)).position();var b=mesh.requireVertex(face.vertexIds().get((i+1)%face.vertexIds().size())).position();
+                        selectedFace.add(new WorldLine(selection,transform.point(a),transform.point(b)));
+                    }
+                }
+            }
         }
-        return new Prepared(snapshot.revision(),selection,pivot,x,y,z,wireframe,markers,truncated);
+        return new Prepared(snapshot.revision(),selection,faceSelection,pivot,x,y,z,wireframe,selectedFace,markers,truncated);
     }
 
     /** Project prepared data for the exact painted camera and viewport dimensions. */
@@ -118,6 +136,9 @@ public final class OverlayGeometry {
         var projector=CameraProjector.of(camera);var lines=new ArrayList<Line>();
         for(var world:prepared.wireframe)projector.clipAndProject(world.start,world.end).ifPresent(p->lines.add(
                 line(world.nodeId,Style.WIREFRAME_XRAY,null,p)));
+        var faceLines=new ArrayList<Line>();
+        for(var world:prepared.selectedFace)projector.clipAndProject(world.start,world.end).ifPresent(p->faceLines.add(
+                line(world.nodeId,Style.FACE_SELECTION_XRAY,null,p)));
         var markers=new ArrayList<Marker>();
         for(var world:prepared.markers)projector.project(world.position).filter(CameraProjector.ProjectedPoint::insideViewport)
                 .ifPresent(p->markers.add(new Marker(world.nodeId,world.kind,p.u(),p.v())));
@@ -134,7 +155,7 @@ public final class OverlayGeometry {
                 }
             }
         }
-        return new Frame(prepared.sceneRevision,lines,markers,handles,prepared.wireframeTruncated);
+        return new Frame(prepared.sceneRevision,lines,faceLines,markers,handles,prepared.wireframeTruncated);
     }
 
     public synchronized int cachedAssetCount(){return cache.size();}
@@ -194,6 +215,12 @@ public final class OverlayGeometry {
             for(int plane=0;plane<3;plane++)for(int i=0;i<SPHERE_SEGMENTS;i++) {
                 double a=i*2*Math.PI/SPHERE_SEGMENTS,b=(i+1)*2*Math.PI/SPHERE_SEGMENTS;
                 output.add(new LocalLine(circle(sphere,plane,a),circle(sphere,plane,b)));
+            }
+        } else if(geometry instanceof EditableMeshGeometry mesh) {
+            var vertices=new HashMap<Long,Vec3>();for(var vertex:mesh.editableVertices())vertices.put(vertex.id(),vertex.position());
+            for(var edge:mesh.edges()) {
+                if(output.size()==MAX_WIREFRAME_SEGMENTS){truncated=true;break;}
+                output.add(new LocalLine(vertices.get(edge.firstVertexId()),vertices.get(edge.secondVertexId())));
             }
         } else if(geometry instanceof TriangleMesh mesh) {
             var vertices=mesh.vertices();var indices=mesh.indices();var edges=new HashSet<Long>();

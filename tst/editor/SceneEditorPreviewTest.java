@@ -116,7 +116,35 @@ public class SceneEditorPreviewTest {
             assertFalse(chooser.isAcceptAllFileFilterUsed()); assertTrue(filter.accept(new java.io.File("example.SCENE.XML")));
             assertFalse(filter.accept(new java.io.File("example.xml"))); assertEquals(Path.of("Example.SCENE.XML"), SceneEditorPanel.scenePathForTest(Path.of("Example.SCENE.XML")));
 
-            var selected = onEdt(() -> controller.snapshot().nodes().stream().filter(node -> node.geometry() != null).findFirst().orElseThrow().id()); onEdt(() -> controller.select(selected));
+            var selected = onEdt(() -> controller.snapshot().nodes().stream().filter(node -> node.label().equals("Teal box")).findFirst().orElseThrow().id()); onEdt(() -> controller.select(selected));
+            assertTrue(onEdt(() -> panel.hasInspectorTabForTest("Mesh"))); assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("No face"));
+            onEdt(() -> { panel.selectInspectorTabForTest("Mesh"); panel.selectionModeForTest(EditorController.SelectionMode.FACE); return null; });
+            assertEquals(EditorController.SelectionMode.FACE,onEdt(controller::selectionMode));
+            assertTrue(onEdt(panel::meshConvertForTest)); assertTrue(onEdt(() -> controller.snapshot().requireGeometry(
+                    controller.snapshot().requireNode(selected).geometry().geometryId()).geometry() instanceof EditableMeshGeometry));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
+            assertTrue(pickFaceFromView(panel,controller,selected,0));
+            awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
+            assertTrue(onEdt(()->panel.overlayForTest(0).handles().isEmpty()));
+            assertFalse(onEdt(()->panel.beginHandleDragForTest(0,OverlayGeometry.Axis.X,18)));
+            assertTrue(onEdt(()->panel.pickMarkerForTest(0,light)));Thread.sleep(250);onEdt(()->null);
+            assertFalse(light.equals(onEdt(controller::selection)));
+            if(onEdt(controller::faceSelection)==null){onEdt(()->{controller.select(selected);return null;});assertTrue(pickFaceFromView(panel,controller,selected,0));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);}
+            onEdt(()->{panel.wireframeForTest(0,false);panel.wireframeForTest(1,false);panel.selectInspectorTabForTest("Mesh");return null;});pumpPaint(panel,4);
+            assertFalse(onEdt(()->panel.overlayForTest(0).selectedFace().isEmpty()));assertFalse(onEdt(()->panel.overlayForTest(1).selectedFace().isEmpty()));
+            assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("Selected face"));
+            assertFalse(onEdt(panel::meshConvertEnabledForTest));assertTrue(onEdt(panel::meshExtrudeEnabledForTest));
+            writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-preview.png"));
+            int faceCountBefore=((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size();
+            assertTrue(onEdt(()->panel.meshExtrudeForTest(.35f)));
+            assertTrue(((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size()>faceCountBefore);
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
+            onEdt(()->{panel.selectInspectorTabForTest("Mesh");return null;});writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-extruded-preview.png"));
+            assertTrue(onEdt(controller::undo));assertEquals(faceCountBefore,((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size());
+            assertTrue(onEdt(controller::redo));awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
+            onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.selectionModeForTest(EditorController.SelectionMode.FACE);return null;});
+            assertTrue(pickFaceFromView(panel,controller,selected,1));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
+            onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.wireframeForTest(0,true);panel.wireframeForTest(1,true);return null;});
             awaitOverlay(panel, 0, selected); var beforeDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform());
             assertTrue(onEdt(() -> panel.dragHandleForTest(0, OverlayGeometry.Axis.X, 24, true)));
             var afterDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform()); assertFalse(afterDrag.equals(beforeDrag));
@@ -205,6 +233,17 @@ public class SceneEditorPreviewTest {
         throw new AssertionError("Overlay did not become ready for " + selected);
     }
 
+    private static void awaitFaceOverlay(SceneEditorPanel panel,int view,NodeId selected)throws Exception{
+        long deadline=System.nanoTime()+5_000_000_000L;
+        while(System.nanoTime()<deadline){
+            onEdt(()->{paintPanel(panel,1400,850);return null;});
+            var overlay=onEdt(()->panel.overlayForTest(view));
+            if(overlay!=null&&!overlay.selectedFace().isEmpty()&&overlay.selectedFace().stream().allMatch(line->line.nodeId().equals(selected)))return;
+            Thread.sleep(15);
+        }
+        throw new AssertionError("Selected face overlay did not become ready for "+selected+" in view "+view);
+    }
+
     private static void awaitOverlayMode(SceneEditorPanel panel, int view, NodeId selected, OverlayGeometry.GizmoMode mode) throws Exception {
         long deadline = System.nanoTime() + 5_000_000_000L;
         while (System.nanoTime() < deadline) {
@@ -237,6 +276,14 @@ public class SceneEditorPreviewTest {
             onEdt(() -> { controller.select(null); panel.pickInViewForTest(view, u, v); return null; });
             long deadline = System.nanoTime() + 700_000_000L;
             while (System.nanoTime() < deadline) { if (onEdt(controller::selection) != null) return true; Thread.sleep(10); }
+        }
+        return false;
+    }
+    private static boolean pickFaceFromView(SceneEditorPanel panel,EditorController controller,NodeId target,int view)throws Exception{
+        for(float v:new float[]{.5f,.4f,.6f,.3f,.7f,.2f,.8f})for(float u:new float[]{.5f,.4f,.6f,.3f,.7f,.2f,.8f}){
+            onEdt(()->{controller.select(target);panel.pickInViewForTest(view,u,v);return null;});
+            long deadline=System.nanoTime()+800_000_000L;
+            while(System.nanoTime()<deadline){var face=onEdt(controller::faceSelection);if(face!=null&&face.nodeId().equals(target))return true;Thread.sleep(10);}
         }
         return false;
     }

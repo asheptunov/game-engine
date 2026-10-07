@@ -41,6 +41,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     private final RenderViewPanel viewA, viewB;
     private final EditorInputBindings inputBindings;
     private final JButton undo = new JButton("Undo"), redo = new JButton("Redo");
+    private final JToggleButton objectSelect=new JToggleButton("Object",true),faceSelect=new JToggleButton("Face");
     private boolean updatingTree;
     private String bindingWarning;
     private boolean closed;
@@ -88,6 +89,9 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         bar.addSeparator();
         addButton(bar, "Duplicate", _ -> controller.duplicateSelection()); addButton(bar, "Delete", _ -> controller.deleteSelection());
         undo.addActionListener(_ -> controller.undo()); redo.addActionListener(_ -> controller.redo()); bar.add(undo); bar.add(redo);
+        bar.addSeparator();bar.add(new JLabel("Select:"));var selectionModes=new ButtonGroup();selectionModes.add(objectSelect);selectionModes.add(faceSelect);
+        objectSelect.setToolTipText("Object mode: select nodes and use transform handles");faceSelect.setToolTipText("Face mode: select editable polygon faces; object handles are disabled");
+        objectSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.OBJECT));faceSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.FACE));bar.add(objectSelect);bar.add(faceSelect);
         bar.addSeparator();addButton(bar,"Bindings…",_->showBindings());
         bar.add(Box.createHorizontalGlue()); bar.add(dirty);
         return bar;
@@ -127,6 +131,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
 
     @Override public void changed(EditorController.State state) {
         rebuildTree(state); inspector.update(state); viewA.update(state); viewB.update(state);
+        objectSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.OBJECT);faceSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.FACE);
         undo.setEnabled(state.canUndo() && !state.busy()); redo.setEnabled(state.canRedo() && !state.busy());
         status.setText(bindingWarning==null?state.status():bindingWarning); var marker = (state.dirty() ? "● Unsaved" : "Saved") + (state.busy() ? " · working…" : ""); dirty.setText(marker); dirtyFooter.setText(marker);
     }
@@ -244,6 +249,14 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     String bindingStatusForTest(){return status.getText();}
     String navigationHelpForTest(){return inputBindings.navigationHelp();}
     void bindingDialogActiveForTest(boolean active){inputBindings.dialogActive(active);}
+    void selectionModeForTest(EditorController.SelectionMode mode){if(mode==EditorController.SelectionMode.OBJECT)objectSelect.doClick();else faceSelect.doClick();}
+    void wireframeForTest(int view,boolean enabled){(view==0?viewA:viewB).wireframeForTest(enabled);}
+    String meshFaceTextForTest(){return inspector.meshFaceText();}
+    boolean meshConvertEnabledForTest(){return inspector.meshConvertEnabled();}
+    boolean meshExtrudeEnabledForTest(){return inspector.meshExtrudeEnabled();}
+    boolean meshConvertForTest(){return inspector.convertGeometry();}
+    boolean meshUniqueForTest(){return inspector.makeGeometryUnique();}
+    boolean meshExtrudeForTest(float distance){return inspector.extrude(distance);}
     void cancelActiveGesture() { if (viewA != null) viewA.cancelGizmo(); if (viewB != null) viewB.cancelGizmo(); }
 
     @Override public void close() {
@@ -261,11 +274,15 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private final JTextField[] color = fields(3, ".8");
         private final JTextField roughness = new JTextField("0"), ior = new JTextField("1.5");
         private final JLabel materialNote = new JLabel("No material");
+        private final JLabel meshNote=new JLabel("No geometry"),meshSharing=new JLabel(""),meshFace=new JLabel("No face selected");
+        private final JTextField extrusionDistance=new JTextField("0.5");
+        private final JButton convertGeometry=new JButton("Convert to editable mesh"),uniqueGeometry=new JButton("Make geometry unique"),extrudeFace=new JButton("Extrude face");
         private final JTextField[] light = fields(4, "1");
         private final JComboBox<Camera.Projection> projection = new JComboBox<>(Camera.Projection.values());
         private final JTextField framing = new JTextField("50"), focus = new JTextField("5"), aperture = new JTextField("0");
         private final JPanel componentPanel = stack();
         private final JComponent transformPanel;
+        private final JComponent meshPanel;
         private final JComponent materialPanel;
         private final JComponent componentsPanel;
 
@@ -277,7 +294,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                     if (value instanceof MaterialAsset asset) setText(asset.label()); return component;
                 }
             });
-            transformPanel = transformTab(); materialPanel = materialTab(); componentsPanel = componentTab();
+            transformPanel = transformTab();meshPanel=meshTab(); materialPanel = materialTab(); componentsPanel = componentTab();
             addTab("Transform", transformPanel);
         }
 
@@ -290,6 +307,9 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             parent.setSelectedIndex(parentIndex);
             material.removeAllItems(); for (var asset : state.snapshot().materialAssets()) material.addItem(asset);
             if (node.geometry() != null) {
+                var geometry=state.snapshot().requireGeometry(node.geometry().geometryId());long geometryUses=state.snapshot().nodes().stream().filter(n->n.geometry()!=null&&n.geometry().geometryId().equals(geometry.id())).count();
+                boolean editable=geometry.geometry() instanceof EditableMeshGeometry;meshNote.setText(geometryLabel(geometry.geometry()));meshSharing.setText("Shared by "+geometryUses+" node"+(geometryUses==1?"":"s"));
+                var selectedFace=state.faceSelection();meshFace.setText(selectedFace!=null&&selectedFace.nodeId().equals(node.id())?"Selected face ID: "+selectedFace.faceId():"No face selected");convertGeometry.setEnabled(!editable);uniqueGeometry.setEnabled(geometryUses>1);extrudeFace.setEnabled(editable&&selectedFace!=null&&selectedFace.nodeId().equals(node.id()));
                 var asset = state.snapshot().requireMaterial(node.geometry().materialId()); material.setSelectedItem(asset); var m = asset.material();
                 put(color, m.color(), 0); kind.setSelectedItem(m.kind()); roughness.setText(Float.toString(m.roughness())); ior.setText(Float.toString(m.ior()));
                 long uses = state.snapshot().nodes().stream().filter(n -> n.geometry() != null && n.geometry().materialId().equals(asset.id())).count();
@@ -301,7 +321,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private void rebuildTabs(SceneNode node) {
             String selectedTitle = getSelectedIndex() < 0 ? "Transform" : getTitleAt(getSelectedIndex());
             removeAll(); addTab("Transform", transformPanel); setEnabledAt(0, node != null);
-            if (node != null && node.geometry() != null) addTab("Material", materialPanel);
+            if (node != null && node.geometry() != null){addTab("Mesh",meshPanel);addTab("Material", materialPanel);}
             if (node != null && (node.light() != null || node.camera() != null)) addTab("Components", componentsPanel);
             for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(selectedTitle)) { setSelectedIndex(i); return; }
             setSelectedIndex(0);
@@ -317,6 +337,11 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             var panel = stack(); panel.add(row("Assigned", material)); var assign = new JButton("Assign selected material"); assign.addActionListener(_ -> { var n = selected(); var a = (MaterialAsset) material.getSelectedItem(); if (n != null && a != null) controller.assignMaterial(n.id(), a.id()); }); panel.add(assign);
             panel.add(materialNote); panel.add(row("Kind", kind)); panel.add(row("Linear red", color[0])); panel.add(row("Green", color[1])); panel.add(row("Blue", color[2])); panel.add(row("Roughness", roughness)); panel.add(row("IOR", ior));
             var shared = new JButton("Apply to shared material"); shared.addActionListener(_ -> applyMaterial()); var unique = new JButton("Make unique"); unique.addActionListener(_ -> { var n = selected(); if (n != null) controller.makeMaterialUnique(n.id()); }); panel.add(shared); panel.add(unique); return scroll(panel);
+        }
+        private JComponent meshTab(){
+            var panel=stack();panel.add(line(meshNote));panel.add(line(meshSharing));convertGeometry.setToolTipText("Explicitly convert box, sphere, plane, or triangle geometry; selection never converts it automatically");convertGeometry.addActionListener(_->convertGeometry());panel.add(convertGeometry);
+            uniqueGeometry.setToolTipText("Copy this shared geometry asset for only the selected node");uniqueGeometry.addActionListener(_->makeGeometryUnique());panel.add(uniqueGeometry);panel.add(new JSeparator());panel.add(line(meshFace));panel.add(row("Distance (local units)",extrusionDistance));
+            extrudeFace.setToolTipText("Extrude the selected polygon along its listed-winding normal in one undoable edit");extrudeFace.addActionListener(_->{try{extrude(Float.parseFloat(extrusionDistance.getText().trim()));}catch(RuntimeException error){showError(error);}});panel.add(extrudeFace);return scroll(panel);
         }
         private JComponent componentTab() {
             return scroll(componentPanel);
@@ -350,15 +375,30 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             } catch (RuntimeException e) { showError(e); }
         }
         private SceneNode selected() { return state == null || state.selection() == null ? null : state.snapshot().findNode(state.selection()).orElse(null); }
+        private boolean convertGeometry(){var node=selected();return node!=null&&controller.convertGeometryToEditable(node.id());}
+        private boolean makeGeometryUnique(){var node=selected();return node!=null&&controller.makeGeometryUnique(node.id());}
+        private boolean extrude(float distance){return controller.extrudeSelectedFace(distance);}
+        private String meshFaceText(){return meshFace.getText();}
+        private boolean meshConvertEnabled(){return convertGeometry.isEnabled();}
+        private boolean meshExtrudeEnabled(){return extrudeFace.isEnabled();}
         private void showError(RuntimeException error) { JOptionPane.showMessageDialog(this, error.getMessage(), "Invalid value", JOptionPane.ERROR_MESSAGE); }
         private boolean hasTab(String title) { for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(title)) return true; return false; }
         private void selectTab(String title) { for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(title)) { setSelectedIndex(i); return; } throw new IllegalArgumentException("Missing inspector tab: " + title); }
         private static JPanel stack() { var p = new JPanel(); p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS)); p.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); return p; }
+        private static JPanel line(Component value){var p=new JPanel(new BorderLayout());p.add(value);p.setMaximumSize(new Dimension(Integer.MAX_VALUE,24));return p;}
         private static JComponent scroll(JComponent value) { var s = new JScrollPane(value); s.getVerticalScrollBar().setUnitIncrement(12); return s; }
         private static JPanel row(String label, Component value) { var p = new JPanel(new BorderLayout(5, 2)); p.add(new JLabel(label), BorderLayout.WEST); p.add(value); p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30)); return p; }
         private static JTextField[] fields(int count, String value) { var fields = new JTextField[count]; Arrays.setAll(fields, _ -> new JTextField(value)); return fields; }
         private static void put(JTextField[] fields, Vec3 value, int offset) { fields[offset].setText(Float.toString(value.x())); fields[offset + 1].setText(Float.toString(value.y())); fields[offset + 2].setText(Float.toString(value.z())); }
         private static Vec3 vec(JTextField[] fields, int offset) { return new Vec3(number(fields[offset]), number(fields[offset + 1]), number(fields[offset + 2])); }
         private static float number(JTextField field) { return Float.parseFloat(field.getText().trim()); }
+        private static String geometryLabel(GeometryData geometry){
+            if(geometry instanceof EditableMeshGeometry)return "Editable polygon mesh";
+            if(geometry instanceof BoxGeometry)return "Box";
+            if(geometry instanceof SphereGeometry)return "Sphere";
+            if(geometry instanceof RectGeometry)return "Plane";
+            if(geometry instanceof TriangleMesh)return "Triangle mesh";
+            return "Geometry";
+        }
     }
 }

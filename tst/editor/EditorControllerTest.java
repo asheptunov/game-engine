@@ -70,6 +70,80 @@ public class EditorControllerTest {
         } finally { onEdt(() -> { controller.close(); return null; }); }
     }
 
+    @Test public void faceModeConvertsMakesUniqueExtrudesAndReconcilesAcrossHistoryAndLoad() throws Exception {
+        var jobs = new ManualExecutor(); var storage = new MemoryStorage(); var controller = onEdt(() -> new EditorController(storage, jobs));
+        try {
+            var commands = new EditorCommandProcessor(controller); var initial = onEdt(controller::snapshot);
+            var cameraId = initial.nodes().stream().filter(node -> node.camera() != null).findFirst().orElseThrow().id();
+            var query = SpatialQuery.prepare(initial); RayHit hit = null;
+            for (int y = 1; y < 10 && hit == null; y++) for (int x = 1; x < 10 && hit == null; x++)
+                hit = query.pick(initial.camera(cameraId), x / 10f, y / 10f).orElse(null);
+            assertNotNull(hit); var picked = hit;
+
+            assertTrue(onEdt(() -> commands.execute("mode face")).startsWith("Face selection mode"));
+            assertEquals(EditorController.SelectionMode.FACE, onEdt(controller::selectionMode));
+            long intent = onEdt(() -> controller.beginPick(initial.revision()));
+            assertTrue(onEdt(() -> controller.acceptPick(picked, initial.revision(), intent)));
+            assertEquals(picked.nodeId(), onEdt(controller::selection)); assertNull(onEdt(controller::faceSelection));
+            assertTrue(onEdt(() -> controller.state().status()).contains("Convert to editable mesh"));
+
+            long staleIntent = onEdt(() -> controller.beginPick(initial.revision()));
+            assertTrue(onEdt(() -> controller.setSelectionMode(EditorController.SelectionMode.OBJECT)));
+            assertFalse(onEdt(() -> controller.acceptPick(picked, initial.revision(), staleIntent)));
+            assertTrue(onEdt(() -> controller.setSelectionMode(EditorController.SelectionMode.FACE)));
+
+            assertTrue(onEdt(()->commands.execute("create box")).contains("Create Box"));var selected=onEdt(controller::selection);
+            assertTrue(onEdt(() -> commands.execute("mesh convert")).contains("editable mesh"));
+            var converted = onEdt(controller::snapshot); var convertedNode = converted.requireNode(selected);
+            var editable = (EditableMeshGeometry) converted.requireGeometry(convertedNode.geometry().geometryId()).geometry();
+            long faceId = editable.faces().getFirst().id();
+            assertTrue(onEdt(() -> commands.execute("face select " + faceId)).contains("Selected face"));
+            var selectedFaceBeforeNoop=onEdt(controller::faceSelection);long sameModeIntent=onEdt(()->controller.beginPick(controller.snapshot().revision()));
+            assertTrue(onEdt(()->controller.setSelectionMode(EditorController.SelectionMode.FACE)));assertEquals(selectedFaceBeforeNoop,onEdt(controller::faceSelection));
+            assertTrue(onEdt(()->controller.acceptPick(null,controller.snapshot().revision(),sameModeIntent)));
+            assertTrue(onEdt(() -> commands.execute("face select " + faceId)).contains("Selected face"));
+
+            assertTrue(onEdt(controller::duplicateSelection)); var copy = onEdt(controller::selection);
+            assertEquals(convertedNode.geometry().geometryId(), onEdt(() -> controller.snapshot().requireNode(copy).geometry().geometryId()));
+            assertTrue(onEdt(() -> commands.execute("face select " + faceId)).contains("Selected face"));
+            assertTrue(onEdt(() -> commands.execute("mesh unique")).contains("unique"));
+            var uniqueGeometry = onEdt(() -> controller.snapshot().requireNode(copy).geometry().geometryId());
+            assertNotEquals(convertedNode.geometry().geometryId(), uniqueGeometry);
+            assertEquals(uniqueGeometry, onEdt(controller::faceSelection).geometryId());
+
+            int facesBefore = ((EditableMeshGeometry) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size();
+            long beforeBadCommand = onEdt(() -> controller.snapshot().revision());
+            assertTrue(onEdt(() -> commands.execute("face extrude .4 extra")).startsWith("Error:"));
+            assertEquals(beforeBadCommand, onEdt(() -> controller.snapshot().revision()));
+            assertTrue(onEdt(() -> commands.execute("face extrude .4")).contains("Extrude face"));
+            var extruded = (EditableMeshGeometry) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry());
+            assertTrue(extruded.faces().size() > facesBefore); assertEquals(faceId, onEdt(controller::faceSelection).faceId());
+
+            var savedSnapshot = onEdt(controller::snapshot); var save = onEdt(() -> controller.save(Path.of("mesh.scene.xml")));
+            jobs.runNext(); flushEdt(); assertTrue(save.get(2, TimeUnit.SECONDS)); assertTrue(storage.saved.sameContent(savedSnapshot));
+
+            assertTrue(onEdt(controller::undo));
+            assertEquals(facesBefore, ((EditableMeshGeometry) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size());
+            assertEquals(faceId, onEdt(controller::faceSelection).faceId());
+            assertTrue(onEdt(controller::redo));assertTrue(((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size()>facesBefore);
+            assertEquals(faceId,onEdt(controller::faceSelection).faceId());assertTrue(onEdt(controller::undo));
+            assertTrue(onEdt(controller::undo));
+            assertEquals(convertedNode.geometry().geometryId(), onEdt(controller::faceSelection).geometryId());
+            assertTrue(onEdt(controller::undo)); assertNull(onEdt(controller::faceSelection));
+
+            storage.loaded = savedSnapshot; var load = onEdt(() -> controller.load(Path.of("mesh.scene.xml")));
+            jobs.runNext(); flushEdt(); assertTrue(load.get(2, TimeUnit.SECONDS)); assertNull(onEdt(controller::faceSelection));
+            assertEquals(EditorController.SelectionMode.FACE, onEdt(controller::selectionMode));
+            assertTrue(onEdt(controller::snapshot).geometryAssets().stream().anyMatch(asset -> asset.geometry() instanceof EditableMeshGeometry));
+            var loadedNode=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.geometry()!=null&&controller.snapshot().requireGeometry(node.geometry().geometryId()).geometry() instanceof EditableMeshGeometry).findFirst().orElseThrow());
+            onEdt(()->controller.select(loadedNode.id()));var loadedMesh=(EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry());
+            long loadedFace=loadedMesh.faces().getFirst().id();int loadedFaces=loadedMesh.faces().size();assertTrue(onEdt(()->controller.selectFace(loadedFace)));assertTrue(onEdt(()->controller.extrudeSelectedFace(.1f)));
+            assertTrue(((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry())).faces().size()>loadedFaces);
+            var help = onEdt(() -> commands.execute("help"));
+            assertTrue(help.contains("mode object|face")); assertTrue(help.contains("mesh convert")); assertTrue(help.contains("face extrude"));
+        } finally { onEdt(() -> { controller.close(); return null; }); }
+    }
+
     @Test public void asyncSaveTracksDiskBaselineAndLoadBlocksMutation() throws Exception {
         var jobs = new ManualExecutor(); var storage = new MemoryStorage(); var controller = onEdt(() -> new EditorController(storage, jobs));
         try {

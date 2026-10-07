@@ -29,6 +29,8 @@ foreach ($test in $tests) {
 }
 $preview = Join-Path $output "scene-editor-preview.png"
 if (-not (Test-Path $preview) -or (Get-Item $preview).Length -lt 20000) { throw "Window-free editor preview was not produced" }
+$meshPreview = Join-Path $output "scene-editor-mesh-extruded-preview.png"
+if (-not (Test-Path $meshPreview) -or (Get-Item $meshPreview).Length -lt 20000) { throw "Window-free mesh-editing preview was not produced" }
 $bindingsPreview = Join-Path $output "scene-editor-bindings-preview.png"
 if (-not (Test-Path $bindingsPreview) -or (Get-Item $bindingsPreview).Length -lt 10000) { throw "Window-free bindings preview was not produced" }
 Write-Output "Headless editor checks passed: $output"

@@ -3,6 +3,8 @@
 Automated checks are deliberately window-free. They build the real Swing panel, render two
 independent engine views, exercise picks and controller operations, and paint the complete
 layout to `out/editor-check/scene-editor-preview.png` with `java.awt.headless=true`.
+The mesh journey also writes `out/editor-check/scene-editor-mesh-extruded-preview.png`, with
+the selected stable face highlighted in both exact rendered views.
 
 ```powershell
 ./editor-check.ps1
@@ -70,6 +72,17 @@ startup failures in `out/editor/editor-error.log`.
     always target the overlay actually visible.
 13. Minimize or move focus away, then return and close. **EXPECT:** rendering suspends while inactive,
     resumes when active, and close exits cleanly without a terminal window or popup error.
+14. Select `Teal box`, switch **Select: Face**, and click the box. **EXPECT:** the status and Mesh
+    inspector say to convert it, while the node remains selected and no conversion happens silently.
+    Press **Convert to editable mesh**, click a polygon in either view, turn Wireframe off, and
+    **EXPECT:** the same orange polygon boundary remains visible in both views while Move/Rotate
+    handles stay disabled. If geometry is shared, use **Make geometry unique** to choose per-node
+    editing; otherwise extrusion edits every user of the shared asset. Enter a positive local-unit
+    distance and press **Extrude face**. **EXPECT:** one atomic edit moves the stable cap and adds
+    sides. Undo/Redo, Save, and reopen; **EXPECT:** topology, source face identity and the rendered
+    result survive, while Face selection is safely reconciled or cleared when its asset disappears.
+    Repeat with `mode face`, `mesh convert`, `mesh unique`, `face select <id>`, and
+    `face extrude <distance>` in the command panel.
 
 Shipped defaults are `assets/bindings/scene-editor.properties` and
 `assets/bindings/scene-editor-mouse.properties`. **Bindings…** saves the single ignored user profile

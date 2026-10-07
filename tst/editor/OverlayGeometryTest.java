@@ -45,6 +45,22 @@ public class OverlayGeometryTest {
         assertEquals(new Vec3(1,0,6),cameraMarker.position());
     }
 
+    @Test void editableFaceBoundaryProjectsIndependentlyOfObjectGizmos() {
+        var document=new SceneDocument();var ids=new Object[3];document.transact(edit->{
+            ids[0]=edit.createMaterial("mat",Material.srgb("mat",0xffffff));
+            ids[1]=edit.createGeometry("editable box",EditableMeshGeometry.from(BoxGeometry.UNIT));
+            ids[2]=edit.createNode("box",null,new Transform(new Vec3(0,0,5),new Vec3(8,17,3),new Vec3(1,1,1)));
+            edit.assignGeometry((NodeId)ids[2],(GeometryId)ids[1],(MaterialId)ids[0]);
+        });
+        var snapshot=document.snapshot();var mesh=(EditableMeshGeometry)snapshot.requireGeometry((GeometryId)ids[1]).geometry();
+        long faceId=mesh.faces().getFirst().id();var overlays=new OverlayGeometry();
+        var prepared=overlays.prepare(snapshot,(NodeId)ids[2],new OverlayGeometry.FaceSelection((NodeId)ids[2],(GeometryId)ids[1],faceId));
+        assertEquals(mesh.requireFace(faceId).vertexIds().size(),prepared.selectedFace().size());
+        var frame=overlays.project(prepared,viewCamera(),OverlayGeometry.GizmoMode.NONE,800,600,80);
+        assertEquals(prepared.selectedFace().size(),frame.selectedFace().size()); assertTrue(frame.handles().isEmpty());
+        assertTrue(frame.selectedFace().stream().allMatch(line->line.style()==OverlayGeometry.Style.FACE_SELECTION_XRAY));
+    }
+
     @Test void immutableAssetCacheIsBoundedAcrossManySelections() {
         var document=new SceneDocument();var nodes=new NodeId[OverlayGeometry.MAX_CACHED_ASSETS+20];document.transact(e->{
             var material=e.createMaterial("mat",Material.srgb("mat",0xffffff));

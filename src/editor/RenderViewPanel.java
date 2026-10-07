@@ -21,8 +21,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** One independent asynchronously rendered editor view. */
 public final class RenderViewPanel extends JPanel implements AutoCloseable {
-    private record Request(SceneSnapshot snapshot, Camera camera, int width, int height, NodeId selection) {}
-    private record PickToken(SceneSnapshot snapshot, SpatialQuery query, OverlayGeometry.Prepared overlay, NodeId selection) {}
+    private record Request(SceneSnapshot snapshot, Camera camera, int width, int height, NodeId selection,
+                           EditorController.SelectionMode selectionMode,EditorController.FaceSelection faceSelection) {}
+    private record PickToken(SceneSnapshot snapshot, SpatialQuery query, OverlayGeometry.Prepared overlay, NodeId selection,
+                             EditorController.SelectionMode selectionMode,EditorController.FaceSelection faceSelection) {}
     private record DisplayFrame(BufferedImage image, long generation, long samples, Camera camera, PickToken token) {}
     private record DisplayBundle(DisplayFrame frame, int width, int height, OverlayGeometry.GizmoMode mode, OverlayGeometry.Frame overlay, long serial) {}
     private record PaintedFrame(DisplayFrame frame, Rectangle content, OverlayGeometry.Frame overlay, long serial) {}
@@ -54,6 +56,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private long overlaySerial;
     private long publishedOverlaySerial;
     private volatile NodeId selected;
+    private volatile EditorController.SelectionMode selectionMode=EditorController.SelectionMode.OBJECT;
+    private volatile EditorController.FaceSelection faceSelection;
     private volatile String selectedLabel = "Nothing selected";
     private RenderSession session;
     private long convertedNanos = -1;
@@ -119,7 +123,10 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         if (!SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("View updates belong to EDT");
         latestSnapshot = state.snapshot();
         selected = state.selection();
+        selectionMode=state.selectionMode();faceSelection=state.faceSelection();
         selectedLabel = selected == null ? "Nothing selected" : state.snapshot().findNode(selected).map(SceneNode::label).orElse("Selection changed");
+        if(faceSelection!=null)selectedLabel+=" · face "+faceSelection.faceId();
+        boolean objectMode=selectionMode==EditorController.SelectionMode.OBJECT;translate.setEnabled(objectMode);rotate.setEnabled(objectMode);updateNavigationHelp();
         setSelectedCamera.setEnabled(selected != null && state.snapshot().findNode(selected).map(node -> node.camera() != null).orElse(false));
         rebuildCameraChoices(state.snapshot()); submitCurrent(); repaint();
     }
@@ -153,7 +160,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
             else camera = latestSnapshot.camera(sceneCamera);
         }
         catch (RuntimeException error) { renderStatus.setText(error.getMessage()); return; }
-        int[] dimensions = dimensions(camera); pending.set(new Request(latestSnapshot, camera, dimensions[0], dimensions[1], selected));
+        int[] dimensions = dimensions(camera); pending.set(new Request(latestSnapshot, camera, dimensions[0], dimensions[1], selected,selectionMode,faceSelection));
     }
 
     private Camera cameraAtOrbit(Camera optics) {
@@ -184,6 +191,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private void setGizmoMode(OverlayGeometry.GizmoMode mode) {
         gizmoMode = mode; repaint();
     }
+    private OverlayGeometry.GizmoMode effectiveGizmoMode(){return selectionMode==EditorController.SelectionMode.OBJECT?gizmoMode:OverlayGeometry.GizmoMode.NONE;}
 
     private static int[] dimensions(Camera camera) {
         float aspect = camera.sensor().edge1().length() / camera.sensor().edge2().length();
@@ -251,8 +259,11 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         if (session == null) session = RenderEngine.openSession(request.snapshot().toWorldSnapshot(), view, settings);
         else session.update(request.snapshot().toWorldSnapshot(), view, settings);
         var prior=currentPickToken;
-        if(prior==null||prior.snapshot()!=request.snapshot()||!Objects.equals(prior.selection(),request.selection()))
-            currentPickToken = new PickToken(request.snapshot(), preparedQuery, overlayGeometry.prepare(request.snapshot(), request.selection()),request.selection());
+        if(prior==null||prior.snapshot()!=request.snapshot()||!Objects.equals(prior.selection(),request.selection())
+                ||prior.selectionMode()!=request.selectionMode()||!Objects.equals(prior.faceSelection(),request.faceSelection())) {
+            OverlayGeometry.FaceSelection face=request.faceSelection()==null?null:new OverlayGeometry.FaceSelection(request.faceSelection().nodeId(),request.faceSelection().geometryId(),request.faceSelection().faceId());
+            currentPickToken = new PickToken(request.snapshot(), preparedQuery, overlayGeometry.prepare(request.snapshot(), request.selection(),face),request.selection(),request.selectionMode(),request.faceSelection());
+        }
     }
 
     private void projectOverlay(OverlayRequest request) {
@@ -314,7 +325,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         addMouseListener(mouse); addMouseMotionListener(mouse); addMouseWheelListener(mouse);
     }
 
-    private void updateNavigationHelp(){setToolTipText("Left-click selects or drags handles · "+inputBindings.navigationHelp());}
+    private void updateNavigationHelp(){setToolTipText((selectionMode==EditorController.SelectionMode.FACE?"Left-click selects editable faces":"Left-click selects or drags handles")+" · "+inputBindings.navigationHelp());}
 
     void orbit(MouseInput input) {
         int dx = input.x() - dragStart.x, dy = input.y() - dragStart.y; dragStart = new Point(input.x(), input.y());
@@ -356,6 +367,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
 
     private boolean beginGizmo(Point point) {
+        if(selectionMode!=EditorController.SelectionMode.OBJECT)return false;
         var painted = paintedFrame; if (painted == null || painted.overlay() == null || !painted.content().contains(point)) return false;
         var uv = normalized(point, painted.content());
         var hit = painted.overlay().pick(uv[0], uv[1], painted.content().width, painted.content().height, 9).orElse(null);
@@ -397,7 +409,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var frame = painted.frame(); var area = new Rectangle(painted.content());
         if (frame == null || !area.contains(point)) { postStatus("Click inside the rendered image"); return; }
         var uv = normalized(point, area); float u = (float) uv[0], v = (float) uv[1];
-        if (painted.overlay() != null) {
+        if (controller.selectionMode()==EditorController.SelectionMode.OBJECT && painted.overlay() != null) {
             var hit = painted.overlay().pick(u, v, area.width, area.height, 9).orElse(null);
             if (hit != null && hit.kind() == OverlayGeometry.HitKind.MARKER) { controller.acceptOverlayPick(hit.nodeId(), painted.overlay().sceneRevision()); return; }
         }
@@ -418,13 +430,14 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
             float scale = Math.min(availableWidth / (float) frame.image().getWidth(), availableHeight / (float) frame.image().getHeight());
             int width = Math.max(1, Math.round(frame.image().getWidth() * scale)), height = Math.max(1, Math.round(frame.image().getHeight() * scale));
             int x = (getWidth() - width) / 2, y = top + (availableHeight - height) / 2; var area = new Rectangle(x, y, width, height);
-            if(desiredOverlay==null||!requestMatches(desiredOverlay,frame,width,height,gizmoMode))
-                desiredOverlay=new OverlayRequest(frame,width,height,gizmoMode,++overlaySerial);
+            var effectiveMode=effectiveGizmoMode();
+            if(desiredOverlay==null||!requestMatches(desiredOverlay,frame,width,height,effectiveMode))
+                desiredOverlay=new OverlayRequest(frame,width,height,effectiveMode,++overlaySerial);
             var bundle=readyBundle;
-            if(bundle!=null&&projectionMatches(bundle,frame,width,height,gizmoMode)&&bundle.frame()!=frame){
-                bundle=new DisplayBundle(frame,width,height,gizmoMode,bundle.overlay(),bundle.serial());readyBundle=bundle;
+            if(bundle!=null&&projectionMatches(bundle,frame,width,height,effectiveMode)&&bundle.frame()!=frame){
+                bundle=new DisplayBundle(frame,width,height,effectiveMode,bundle.overlay(),bundle.serial());readyBundle=bundle;
             }
-            if(bundle!=null&&bundle.frame()==frame&&bundle.width()==width&&bundle.height()==height&&bundle.mode()==gizmoMode){
+            if(bundle!=null&&bundle.frame()==frame&&bundle.width()==width&&bundle.height()==height&&bundle.mode()==effectiveMode){
                 paintBundle(graphics,bundle,area);paintedFrame=new PaintedFrame(bundle.frame(),area,bundle.overlay(),bundle.serial());
             }else{
                 if(!closed&&(requestedOverlay==null||requestedOverlay.serial()!=desiredOverlay.serial())){
@@ -467,6 +480,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
             graphics.setColor(new Color(235, 244, 255, 205));
             for (var line : overlay.wireframe()) drawLine(graphics, area, line);
         }
+        graphics.setStroke(new BasicStroke(3.2f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+        graphics.setColor(new Color(255,116,72,245));for(var line:overlay.selectedFace())drawLine(graphics,area,line);
         graphics.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         for (var handle : overlay.handles()) {
             graphics.setColor(axisColor(handle.axis())); for (var line : handle.lines()) drawLine(graphics, area, line);
@@ -533,6 +548,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     void setSelectedCameraFromViewForTest() { setSelectedCameraFromView(); }
     Camera currentCameraForTest() { return sceneCamera == null ? editorCamera : latestSnapshot.camera(sceneCamera); }
     OverlayGeometry.Frame overlayForTest() { return paintedFrame == null ? null : paintedFrame.overlay(); }
+    void wireframeForTest(boolean enabled){wireframe.setSelected(enabled);repaint();}
     ProjectionBlock blockNextProjectionForTest() { var block=new ProjectionBlock(new CountDownLatch(1),new CountDownLatch(1));projectionBlockForTest.set(block);return block; }
     long paintedGenerationForTest(){return paintedFrame==null?-1:paintedFrame.frame().generation();}
     long paintedSerialForTest(){return paintedFrame==null?-1:paintedFrame.serial();}

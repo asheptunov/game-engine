@@ -586,7 +586,23 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   picking checks plus document, persistence, query, and session regressions. It paints the real
   panel and two engine views to `out/editor-check/scene-editor-preview.png` without opening a window.
 - Manual launch and EXPECT card: [editor verification](benchmarks/editor/README.md). Native
-  interaction remains pending; E6 mesh topology, extrusion, and viewport gizmos are out of scope.
+  interaction remains pending; E6 mesh editing is tracked separately below.
+
+## Engine E6 — editable mesh modelling `[implemented; human GUI QA pending]`
+
+- This engine roadmap milestone is distinct from the legacy **M6 — RayTracer** milestone above.
+  Bounded immutable vertex/edge/polygon topology, stable source-face IDs, deterministic fan
+  triangulation, primitive conversion, shared or unique asset edits, positive face extrusion,
+  V2 editable XML and V1 read compatibility are implemented and specified in
+  [EngineRequirements.md](EngineRequirements.md).
+- The editor adds Object/Face selection, exact-painted asynchronous face picking, two-view
+  selected-face boundaries, explicit conversion, Make geometry unique, one-step extrusion,
+  undo/redo reconciliation, command parity and save/reopen behavior. Face mode disables object
+  gizmos, and stale view/mode completions cannot replace current selection.
+- Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e6-f2-final` passed the complete
+  editor/mesh/session gate and shared legacy input regression; its logs were audited for hidden
+  harness failures. Window-free evidence is `scene-editor-mesh-extruded-preview.png`. The native
+  workflow remains for human GUI acceptance using the [editor QA card](benchmarks/editor/README.md).
 
 ## Notes / Decisions
 
