@@ -101,7 +101,8 @@ public final class SceneSnapshot {
     public WorldSnapshot toWorldSnapshot(){return world;}
     List<RenderEntry> renderEntries(){return renderEntries;}
 
-    boolean sameContent(SceneSnapshot other) {
+    /** Compare persistent scene content while ignoring runtime publication revisions. */
+    public boolean sameContent(SceneSnapshot other) {
         if(other==null||!nodes.equals(other.nodes)||geometries.size()!=other.geometries.size()||materials.size()!=other.materials.size())return false;
         for(int i=0;i<geometries.size();i++){var a=geometries.get(i);var b=other.geometries.get(i);if(!a.id().equals(b.id())||!a.label().equals(b.label())||!GeometryValues.equal(a.geometry(),b.geometry()))return false;}
         for(int i=0;i<materials.size();i++){var a=materials.get(i);var b=other.materials.get(i);if(!a.id().equals(b.id())||!a.label().equals(b.label())||!a.material().equals(b.material()))return false;}

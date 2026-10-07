@@ -142,6 +142,23 @@ public class EngineSessionTest {
         }
     }
 
+    @Test void progressReportsExactActiveGenerationAcrossRapidCameraRequests() {
+        var settings=RenderSettings.defaults().withWorkers(1).withTileSize(8).withPathDepth(8).withSampleTarget(1);
+        try(var session=RenderEngine.openSession(world(0,0),new RenderView(CAMERA,1200,1200),settings)) {
+            session.request();var first=session.progress(null);assertTrue(first.running());
+            long active=first.activeGeneration();assertEquals(first.requestedGeneration(),active);
+            int advanced=0;
+            for(int i=0;i<24;i++) {
+                session.update(world(0,0),new RenderView(CAMERA.withFov(45+i),1200,1200),settings);session.request();
+                var progress=session.progress(null);
+                if(!progress.running())break;
+                assertEquals(active,progress.activeGeneration());
+                if(progress.requestedGeneration()>active)advanced++;
+            }
+            assertTrue(advanced>16);
+        }
+    }
+
     @Test void semanticRepublicationRetainsSamplesButNewRevisionInvalidates() throws Exception {
         var view=new RenderView(CAMERA,64,64);
         var settings=RenderSettings.defaults().withWorkers(1).withSamplesPerBatch(1).withSampleTarget(3);

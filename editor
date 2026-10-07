@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_dir="$(cd "$(dirname "$0")" && pwd)"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$repo_dir/editor.ps1")" "$@"

@@ -32,6 +32,7 @@ final class AsyncViewportTrace implements AutoCloseable {
     private ViewportState.RenderKey key;
     private boolean running, wasPaused;
     private volatile long generation;
+    private volatile long activeGeneration=-1;
     private long requestedNanos, firstImageNanos=-1, target;
     private volatile long cancelledJobs, wastedRays, maxTileNanos;
     private final InteractiveResolution resolution = new InteractiveResolution();
@@ -86,7 +87,7 @@ final class AsyncViewportTrace implements AutoCloseable {
         boolean p4Motion=moving && live.interactive();
         long token=epoch, jobGeneration=generation, requested=System.nanoTime();
         var jobKey=key;
-        running=true;
+        running=true;activeGeneration=jobGeneration;
         coordinator.execute(() -> {
             boolean published=false;
             try {
@@ -137,7 +138,7 @@ final class AsyncViewportTrace implements AutoCloseable {
                     wastedRays+=jobKey.equals(live.renderKey()) ? tracer.discardedPrimaryRays : tracer.primaryRays;
                 }
                 output.writing=false;
-                running=false; if(closed) tracer.close();
+                running=false; activeGeneration=-1; if(closed) tracer.close();
             } }
         });
     }
@@ -170,7 +171,7 @@ final class AsyncViewportTrace implements AutoCloseable {
             firstImageNanos=System.nanoTime()-requestedNanos;
     }
     RenderProgress progress(Image shown) {
-        return new RenderProgress(generation,shown==null ? -1 : shown.generation(),
+        return new RenderProgress(generation,activeGeneration,shown==null ? -1 : shown.generation(),
                 shown==null ? 0 : shown.samples(),shown==null ? -1 : System.nanoTime()-shown.requestedNanos(),
                 firstImageNanos,cancelledJobs,wastedRays,maxTileNanos,running);
     }

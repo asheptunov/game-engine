@@ -577,6 +577,17 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   headless document demo pass. Evidence: [scene-document verification](benchmarks/engine/README.md).
   The E5 editor remains the second interactive document consumer and human picking proof.
 
+## Engine E5 — scene authoring application `[implemented; human QA pending]`
+
+- Separate native Swing executable with hierarchy, two asynchronous camera views, exact
+  publication-bound picking, numeric transform/material/light/camera inspectors, shared versus
+  unique assets, undo/redo, guarded async XML files, and a command panel using the same edits.
+- `editor-check.ps1` compiles the boundary and full product, then runs controller/file/history/
+  picking checks plus document, persistence, query, and session regressions. It paints the real
+  panel and two engine views to `out/editor-check/scene-editor-preview.png` without opening a window.
+- Manual launch and EXPECT card: [editor verification](benchmarks/editor/README.md). Native
+  interaction remains pending; E6 mesh topology, extrusion, and viewport gizmos are out of scope.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

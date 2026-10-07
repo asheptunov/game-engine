@@ -1,0 +1,193 @@
+package editor;
+
+import engine.*;
+import math.Vec3;
+
+import javax.swing.SwingUtilities;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.Consumer;
+
+/** EDT-owned authoring state. Background tasks only consume immutable snapshots. */
+public final class EditorController implements AutoCloseable {
+    public enum Primitive { BOX, SPHERE, PLANE, GROUP, POINT_LIGHT, CAMERA }
+    public interface Listener { void changed(State state); }
+    public interface Storage {
+        SceneSnapshot load(Path path) throws IOException;
+        void save(Path path, SceneSnapshot snapshot) throws IOException;
+    }
+    public record State(SceneSnapshot snapshot, NodeId selection, Path file, boolean dirty,
+                        boolean canUndo, boolean canRedo, boolean busy, String status) {}
+    private final SceneDocument document;
+    private final UndoHistory history;
+    private final Storage storage;
+    private final ExecutorService io;
+    private final List<Listener> listeners = new ArrayList<>();
+    private NodeId selection;
+    private Path file;
+    private SceneSnapshot clean;
+    private String status = "Ready";
+    private boolean busy;
+    private boolean loading;
+    private long fileToken;
+    private boolean closed;
+
+    public EditorController() {
+        this(new Storage() {
+            @Override public SceneSnapshot load(Path path) throws IOException { return SceneFiles.load(path); }
+            @Override public void save(Path path, SceneSnapshot snapshot) throws IOException { SceneFiles.save(path, snapshot); }
+        }, Executors.newSingleThreadExecutor(r -> {
+            var thread = new Thread(r, "scene-editor-files"); thread.setDaemon(true); return thread;
+        }));
+    }
+
+    public EditorController(Storage storage, ExecutorService io) {
+        requireEdt();
+        this.storage = Objects.requireNonNull(storage); this.io = Objects.requireNonNull(io);
+        document = StarterScene.create(); history = new UndoHistory(document, 100);
+        clean = document.snapshot();
+        selection = document.snapshot().nodes().stream().filter(n -> n.geometry() != null)
+                .map(SceneNode::id).findFirst().orElse(null);
+    }
+
+    public void addListener(Listener listener) { requireEdt(); listeners.add(Objects.requireNonNull(listener)); listener.changed(state()); }
+    public void removeListener(Listener listener) { requireEdt(); listeners.remove(listener); }
+    public State state() { requireEdt(); return new State(document.snapshot(), selection, file, dirty(), history.canUndo(), history.canRedo(), busy, status); }
+    public SceneSnapshot snapshot() { return document.snapshot(); }
+    public NodeId selection() { requireEdt(); return selection; }
+    public boolean dirty() { requireEdt(); return !document.snapshot().sameContent(clean); }
+
+    public boolean select(NodeId id) {
+        requireEdt();
+        if (id != null && document.snapshot().findNode(id).isEmpty()) return fail("Selection is no longer in the scene");
+        selection = id; status = id == null ? "Selection cleared" : "Selected " + document.snapshot().requireNode(id).label(); publish(); return true;
+    }
+    public boolean acceptPick(RayHit hit, long displayedRevision) {
+        requireEdt();
+        if (displayedRevision != document.snapshot().revision() || hit != null && hit.sceneRevision() != displayedRevision)
+            return fail("View changed; click again");
+        return select(hit == null ? null : hit.nodeId());
+    }
+
+    public boolean create(Primitive primitive) {
+        requireEdt(); var created = new NodeId[1];
+        boolean ok = edit("Create " + pretty(primitive), e -> {
+            created[0] = e.createNode(pretty(primitive), selection, Transform.IDENTITY);
+            switch (primitive) {
+                case GROUP -> { }
+                case POINT_LIGHT -> e.setPointLight(created[0], new PointLightComponent(new Vec3(1, .9f, .75f), 80));
+                case CAMERA -> e.setCamera(created[0], new CameraComponent(StarterScene.canonicalCamera()));
+                default -> {
+                    var first = document.snapshot().materialAssets().stream().findFirst();
+                    var material = first.map(MaterialAsset::id)
+                            .orElseGet(() -> e.createMaterial("Default", Material.srgb("default", 0xc8ccd2)));
+                    GeometryData geometry = switch (primitive) {
+                        case BOX -> BoxGeometry.UNIT;
+                        case SPHERE -> new SphereGeometry(Vec3.ZERO, 1);
+                        case PLANE -> new RectGeometry(new Vec3(-1, 0, -1), new Vec3(0, 0, 2), new Vec3(2, 0, 0));
+                        default -> throw new IllegalStateException();
+                    };
+                    var geometryId = e.createGeometry(pretty(primitive) + " geometry", geometry);
+                    e.assignGeometry(created[0], geometryId, material);
+                }
+            }
+        });
+        if (ok) { selection = created[0]; publish(); }
+        return ok;
+    }
+
+    public boolean rename(NodeId id, String label) { return edit("Rename node", e -> e.renameNode(id, label)); }
+    public boolean applyTransform(NodeId id, Transform transform) { return edit("Apply transform", e -> e.setLocalTransform(id, transform)); }
+    public boolean reparent(NodeId id, NodeId parent) { return edit("Reparent (keep local pose)", e -> e.reparentKeepingLocal(id, parent)); }
+    public boolean duplicateSelection() {
+        requireEdt(); if (selection == null) return fail("Select a node to duplicate");
+        var copy = new NodeId[1]; boolean ok = edit("Duplicate subtree", e -> copy[0] = e.duplicateSubtree(selection));
+        if (ok) { selection = copy[0]; publish(); } return ok;
+    }
+    public boolean deleteSelection() {
+        requireEdt(); if (selection == null) return fail("Select a node to delete");
+        var old = document.snapshot().requireNode(selection); boolean ok = edit("Delete subtree", e -> e.deleteSubtree(selection));
+        if (ok) { selection = old.parentId(); publish(); } return ok;
+    }
+    public boolean assignMaterial(NodeId id, MaterialId material) {
+        var node = document.snapshot().requireNode(id); if (node.geometry() == null) return fail("Selected node has no geometry");
+        return edit("Assign material", e -> e.assignGeometry(id, node.geometry().geometryId(), material));
+    }
+    public boolean editSharedMaterial(MaterialId id, Material material) { return edit("Edit shared material", e -> e.replaceMaterial(id, material)); }
+    public boolean makeMaterialUnique(NodeId id) { return edit("Make material unique", e -> e.makeMaterialUnique(id)); }
+    public boolean setPointLight(NodeId id, PointLightComponent light) { return edit(light == null ? "Remove point light" : "Apply point light", e -> e.setPointLight(id, light)); }
+    public boolean setCamera(NodeId id, CameraComponent camera) { return edit(camera == null ? "Remove camera" : "Apply camera", e -> e.setCamera(id, camera)); }
+
+    public boolean undo() { requireEdt(); return loading ? fail("Wait for the scene load to finish") : !history.canUndo() ? fail("Nothing to undo") : fromHistory("Undid edit", history::undo); }
+    public boolean redo() { requireEdt(); return loading ? fail("Wait for the scene load to finish") : !history.canRedo() ? fail("Nothing to redo") : fromHistory("Redid edit", history::redo); }
+    private boolean fromHistory(String text, Callable<SceneSnapshot> operation) {
+        try { operation.call(); if (selection != null && document.snapshot().findNode(selection).isEmpty()) selection = null; status = text; publish(); return true; }
+        catch (Exception error) { return fail(message(error)); }
+    }
+
+    public void newScene() {
+        requireEdt(); if (busy) { fail("Wait for file work to finish"); return; }
+        var fresh = StarterScene.create().snapshot(); history.replace("New scene", fresh); history.clear();
+        file = null; fileToken++; clean = document.snapshot();
+        selection = document.snapshot().nodes().stream().filter(n -> n.geometry() != null).map(SceneNode::id).findFirst().orElse(null);
+        status = "Created starter scene"; publish();
+    }
+
+    public CompletableFuture<Boolean> load(Path path) {
+        requireEdt(); if (busy) return CompletableFuture.completedFuture(false);
+        busy = loading = true; status = "Loading " + path.getFileName() + "…"; publish(); long token = ++fileToken;
+        var result = new CompletableFuture<Boolean>();
+        io.submit(() -> {
+            try {
+                var loaded = storage.load(path);
+                SwingUtilities.invokeLater(() -> {
+                    if (closed || token != fileToken) { result.complete(false); return; }
+                    try {
+                        history.replace("Load scene", loaded); history.clear(); file = path.toAbsolutePath(); clean = document.snapshot();
+                        selection = document.snapshot().nodes().stream().findFirst().map(SceneNode::id).orElse(null);
+                        busy = loading = false; status = "Loaded " + path.getFileName(); publish(); result.complete(true);
+                    } catch (RuntimeException error) { busy = loading = false; fail(message(error)); result.complete(false); }
+                });
+            } catch (Exception error) {
+                SwingUtilities.invokeLater(() -> { if (token == fileToken) { busy = loading = false; fail("Load failed: " + message(error)); } result.complete(false); });
+            }
+        });
+        return result;
+    }
+
+    public CompletableFuture<Boolean> save(Path path) {
+        requireEdt(); if (busy) return CompletableFuture.completedFuture(false);
+        var captured = document.snapshot(); var absolute = path.toAbsolutePath();
+        long token = ++fileToken; busy = true; status = "Saving " + path.getFileName() + "…"; publish();
+        var result = new CompletableFuture<Boolean>();
+        io.submit(() -> {
+            try {
+                storage.save(absolute, captured);
+                SwingUtilities.invokeLater(() -> {
+                    if (!closed && token == fileToken) {
+                        file = absolute; clean = captured;
+                        busy = false; status = dirty() ? "Saved; newer edits remain unsaved" : "Saved " + path.getFileName(); publish();
+                    }
+                    result.complete(true);
+                });
+            } catch (Exception error) {
+                SwingUtilities.invokeLater(() -> { if (token == fileToken) { busy = false; fail("Save failed: " + message(error)); } result.complete(false); });
+            }
+        });
+        return result;
+    }
+
+    private boolean edit(String label, Consumer<SceneEdit> operation) {
+        requireEdt(); if (loading) return fail("Wait for the scene load to finish");
+        try { var before = document.snapshot(); var after = history.edit(label, operation); status = after == before ? label + " made no change" : label; publish(); return true; }
+        catch (RuntimeException error) { return fail(message(error)); }
+    }
+    private boolean fail(String value) { status = value; publish(); return false; }
+    private void publish() { var value = state(); for (var listener : List.copyOf(listeners)) listener.changed(value); }
+    private static String pretty(Primitive value) { var s = value.name().toLowerCase(Locale.ROOT).replace('_', ' '); return Character.toUpperCase(s.charAt(0)) + s.substring(1); }
+    private static String message(Throwable error) { return error.getMessage() == null || error.getMessage().isBlank() ? error.getClass().getSimpleName() : error.getMessage(); }
+    private static void requireEdt() { if (!SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("EditorController belongs to the Swing event thread"); }
+    @Override public void close() { requireEdt(); if (!closed) { closed = true; fileToken++; listeners.clear(); io.shutdownNow(); } }
+}

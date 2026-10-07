@@ -64,6 +64,11 @@ pending. A transport edit cancels obsolete work between tiles; a camera-only edi
 as a coherent preview. Call `suspend` when rendering becomes inactive and `close` to stop the
 coordinator. Closing a session is idempotent.
 
+`RenderProgress.activeGeneration` identifies the exact generation captured by the one
+in-flight job, or `-1` while idle. It can differ from `requestedGeneration` while a coherent
+older-camera preview finishes, allowing presentation adapters to retain matching immutable
+scene metadata without guessing from two timing-sensitive status reads.
+
 The playground uses `RenderEngine.openLegacySession(ViewportState, DirectRgbTracer)` so its
 existing commands, autofocus policy, profiler hooks, and blocking benchmarks retain their
 numeric behavior. This is the only transitional adapter. Remove it, `ViewportState`, and the
