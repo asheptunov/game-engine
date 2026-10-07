@@ -1,7 +1,7 @@
 # E5 scene editor — hands-on QA
 
 Built and ready: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
-Branch: `codex/scene-editor`, implementation commit `a793699`.
+Branch: `codex/scene-editor`, implementation commit `a793699`, launcher fix `ba2d58d`.
 
 Launch from Git Bash:
 
@@ -35,6 +35,11 @@ engine classpath, then passed `editor.EditorControllerTest` and
 `editor.SceneEditorPreviewTest`. Logs were inspected for harness failures.
 Actual Swing panels with rendered views were painted to PNG without opening windows;
 native dialogs, mouse feel, and desktop lifecycle remain human QA.
+
+Follow-up: reproduced the javac preview-note failure on Windows PowerShell 5.1 and fixed
+native output handling. Editor build, editor checks, and scene checks pass on 5.1;
+compiler errors, missing executables, and log-file failures still propagate. The fix
+is present in the built worktree and pushed editor branch.
 
 More detailed checks: `benchmarks/editor/README.md` in the editor worktree.
 

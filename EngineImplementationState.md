@@ -6,7 +6,7 @@ Scope: E1–E5. E6 deferred. Plan: [EngineImplementationPlan.md](EngineImplement
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | A | Engine extraction and independent consumer | — | no | merged | `C:/Users/andri/.codex/worktrees/engine-extraction/RayTracingEngine` | f56ca53 | Independent engine-only build, rendered PNG, session suite and 54-suite log audit passed; documented baseline Caps Lock fixture limitation |
 | B | Scene graph, persistence, meshes and queries | A | no | merged | `C:/Users/andri/.codex/worktrees/scene-documents/RayTracingEngine` | f4144c8 | Full scene gate passed; independent engine-only compile, document demo and 16 document/persistence/query tests passed |
-| C | Playable scene editor | B | yes | needs-qa | `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine` | a793699 | Editor and engine gates passed; independent engine-only editor build and real-panel/controller tests passed; native GUI QA pending |
+| C | Playable scene editor | B | yes | needs-qa | `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine` | ba2d58d | PowerShell 5.1 launcher bug fixed; editor/scene gates and failure probes passed on 5.1; independent build passed; native GUI QA pending |
 
 Admission: C: has ~83 GiB free; reserve 8 GiB and budget 6 GiB per active lane.
 Use one writing lane at a time because nodes depend on preceding APIs. Independent
