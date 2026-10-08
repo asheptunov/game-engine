@@ -1,6 +1,6 @@
 # Engine/editor dispatch state
 
-Scope: E1–E6. Original plan: [EngineImplementationPlan.md](EngineImplementationPlan.md).
+Scope: E1–E6 implemented; E7 specified, not started. Original plan: [EngineImplementationPlan.md](EngineImplementationPlan.md).
 E6 authorized 2026-10-07; plan: [MeshEditingPlan.md](MeshEditingPlan.md).
 
 | id | title | deps | gui-qa | status | lane | commit | notes |
@@ -70,3 +70,20 @@ Admission: ~75 GiB free on C:, above 8 GiB reserve + 6 GiB single-lane budget.
 F1/F2 are committed on `codex/scene-editor`; final implementation commit `404090a`.
 All 63 final implementer/root logs audited without harness failures. Evidence copied to
 `out/milestones/e6`; manual steps: [MeshEditorQA.md](MeshEditorQA.md).
+
+## E7 specification
+
+Recorded 2026-10-07 in [EngineRequirements.md](EngineRequirements.md): analytic versus
+polygon asset representations, direct mesh modes/element edits without conversion,
+optional analytic approximation, derived renderer geometry, validated material
+capabilities and backwards-compatible persistence.
+
+Plan: [GeometryRepresentationPlan.md](GeometryRepresentationPlan.md).
+
+| id | title | deps | gui-qa | status | lane | commit | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| G1 | Canonical geometry and renderer boundary | F2 | no | running | existing scene-editor checkout | | Engine model, capabilities, v3 and legacy migration |
+| G2 | Direct vertex/edge editing | G1 | yes | blocked | existing scene-editor checkout | | Controller, picking, highlighting, grouped edits |
+| G3 | Analytic parameters and explicit approximation | G2 | yes | blocked | existing scene-editor checkout | | Inspector, bounded detail, final regression and QA |
+
+Admission: 54 GiB free on C:, above 8 GiB reserve + 6 GiB single writing lane.
