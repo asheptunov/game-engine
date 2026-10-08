@@ -105,4 +105,13 @@ usable cube deformation, face translation and visible unselected mesh-mode cues.
 | id | title | deps | gui-qa | status | lane | commit | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | H1 | Polygon deformation and face translation | G3 | no | merged | existing scene-editor checkout | ad83244 | Pushed editor branch; root/implementer full PS5.1 gates clear, 64 logs audited; source review clear |
-| H2 | Mode cues and face editing UI | H1 | yes | running | existing scene-editor checkout | | Both-view visible elements, numeric/handle face movement |
+| H2 | Mode cues and face editing UI | H1 | yes | needs-qa | existing scene-editor checkout | bdec663 | Pushed editor branch; independent full gate/review clear; all three mode previews inspected |
+
+H1/H2 feedback fixes are implemented and pushed through `bdec663`. Final implementer
+and root full Windows PowerShell 5.1 input/editor/transport gates pass (30 suites/223
+tests per final run, 64 combined logs audited with zero failures). Independent source
+review is clear. Actual Teal box vertex/edge/face XYZ numeric edits, two-view handles,
+stale face picks and coherent motion are tested. Root evidence:
+`out/milestones/e7/e7-h1-root-final` and `out/milestones/e7/e7-h2-root-final`.
+Human QA remains separate; [GeometryEditorQA.md](GeometryEditorQA.md) now supersedes
+the original planar-face restrictions. Editor checkout stays unmerged into main.

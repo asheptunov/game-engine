@@ -4,6 +4,11 @@ Status: implemented on `codex/scene-editor` through `940fe72`; automated gates a
 independent review passed. Native GUI acceptance is pending. Delivery results are in
 [EngineImplementationState.md](EngineImplementationState.md).
 
+Native feedback follow-up [GeometryEditingFeedbackPlan.md](GeometryEditingFeedbackPlan.md)
+is implemented through `bdec663`. It supersedes this initial plan's nonplanar-edit
+rejection and v3 write policy: stable faces now support validated warped fans, face
+translation and visible mode cues; new files use v4 with strict legacy-format reads.
+
 Repository: `C:/Users/andri/Documents/RayTracingEngine` (orchestrator documents).
 Implementation: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`,
 branch `codex/scene-editor`, base `404090a`. Preserve existing E7 documentation edits

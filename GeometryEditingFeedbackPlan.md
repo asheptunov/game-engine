@@ -1,6 +1,7 @@
 # E7 editing feedback implementation
 
-Status: H1 verified/pushed as `ad83244`, H2 running. One writing lane admitted with ~52 GiB free on C:,
+Status: H1 `ad83244` and H2 `bdec663` verified and pushed. Native interaction QA is
+pending; automated gates and independent review are clear. One writing lane admitted with ~52 GiB free on C:,
 above the 8 GiB reserve plus 6 GiB lane budget.
 
 User feedback: face translation is missing; cube vertex/edge moves are blocked by

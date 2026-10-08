@@ -272,8 +272,9 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
       are unavailable with a clear explanation; analytic objects cannot yield fake mesh
       element selections. Keep selecting objects practical while a mesh mode is active.
 - [x] Provide stable vertex/edge/face selection and bounded element editing: at minimum
-      vertex translation, edge translation of its endpoint vertices, and the existing
-      positive face extrusion. Each operation publishes one validated immutable revision
+      vertex translation, edge translation of its endpoint vertices, face-boundary
+      translation without implicit topology changes, and positive face extrusion. Each
+      operation publishes one validated immutable revision
       and one undo entry; a drag previews live and commits once or cancels fully.
       Failed edits preserve geometry/history, including invalid polygons and incompatible
       solid/media assignments. Topology repair, subdivision, bevels and multi-element
@@ -339,11 +340,37 @@ controls only for analytic spheres and polygon controls only for polygon assets.
 as mesh requires an explicit 4..64 detail and explains shared same-ID replacement and the loss
 of analytic parameters. Controller/engine tests cover chosen detail, exact analytic undo,
 identical-value no-op history, shared references, stale pre-approximation picks, scattering
-failure with unchanged snapshot/history/selection, and v3 analytic/polygon save/reopen.
+      failure with unchanged snapshot/history/selection, and canonical analytic/polygon save/reopen.
 `scene-editor-analytic-preview.png` and `scene-editor-approximation-preview.png` are
 window-free two-view evidence. Windows PowerShell 5.1
 `editor-check.ps1 -OutputDirectory out/e7-g3-final` and
 `input-check.ps1 -OutputDirectory out/e7-g3-final` pass with audited logs. Native-window
+interaction remains pending separately using the editor QA card.
+
+H1 deformation evidence (2026-10-07): stable polygon faces may be nonplanar and render/query
+as their deterministic first-vertex fan without allocating replacement face IDs. Validation
+uses origin-relative double area vectors, rejects degenerate, folded, concave or self-crossing
+fans, and derives an area-weighted face normal. Closed meshes retain opposite-edge winding,
+connectivity and finite positive signed-volume checks. `translateFace` moves the selected
+boundary vertices in asset-local units through the same shared, atomic transaction path as
+vertex and edge edits. Scene XML now writes V4; V1 triangle groups and V2/V3 polygon files keep
+their legacy coplanar acceptance rules. Focused tests move every canonical-box vertex, edge and
+face by 0.1 along each axis while preserving topology IDs, source-face query mapping and closed
+validity; failure tests cover collapsed/folded geometry, render-normal overflow, emitter/volume
+material rejection, grouped history rollback, V4 warped round trips and V3 warped rejection.
+
+H2 editor evidence (2026-10-07): Face mode now gives selected faces the same numeric and live
+translate workflow as vertices and edges. The captured face/asset/revision context owns the drag;
+updates rebuild from its immutable baseline, commit as one undo entry, and Escape or invalid final
+release restores the complete baseline. Active Vertex, Edge and Face modes remain visible before
+selection even with Wireframe off. Their x-ray display cues use a separate deterministic 10,000
+point/segment budget, selected-node-first ordering, and the same camera-independent overlay token
+and exact painted-camera bundle as the rendered image. Face centers are visual only; clicks remain
+depth-visible spatial queries. Window-free two-view evidence is
+`scene-editor-vertex-mode-preview.png`, `scene-editor-edge-mode-preview.png`, and
+`scene-editor-face-mode-preview.png`. Windows PowerShell 5.1
+`input-check.ps1 -OutputDirectory out/e7-h2-final` covers numeric/drag face edits, stale contexts,
+shared/unique assets, undo/cancel, bounded cues and sustained coherent camera motion. Native-window
 interaction remains pending separately using the editor QA card.
 
 Deferred: a general capability/plugin framework, new analytic shape families, generalized
