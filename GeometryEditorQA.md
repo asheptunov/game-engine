@@ -3,11 +3,13 @@
 Implementation checkout: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
 Launch `./editor` in Git Bash or `./editor.ps1` in PowerShell. This card records human
 acceptance separately from automated headless checks. E7 is implemented through
-`bdec663`; independent full engine/editor/transport/input gates and source review passed.
+`22e5a0f`; independent full engine/editor/transport/input gates and source review passed.
 Native interaction acceptance remains pending.
 
 Native feedback follow-up: [GeometryEditingFeedbackPlan.md](GeometryEditingFeedbackPlan.md)
 adds face movement, warped-face deformation and visible mode cues.
+Ownership follow-up: [IndependentObjectsPlan.md](IndependentObjectsPlan.md) gives each
+object independent geometry and materials and removes the linking workflow.
 
 - Create a box and a plane. Switch Object/Vertex/Edge/Face modes immediately; no
   conversion is required and mode changes do not mark the scene dirty or add undo.

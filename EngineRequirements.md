@@ -283,7 +283,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
       and prepared selection context. Define deterministic screen-pick tolerances and
       tie breaks for vertices/edges; document x-ray versus depth-visible behavior. Both
       views reflect the selected object's edits and reconcile stable selections across undo/redo/load.
-- [ ] Each editor object owns independent geometry and materials, including newly created
+- [x] Each editor object owns independent geometry and materials, including newly created
       objects and subtree duplicates. Remove linking, sharing counts and Make unique
       workflows. Normalize legacy shared files before editor publication, retaining
       stable node/element identities and a clean load baseline. Generic engine consumers
@@ -380,6 +380,18 @@ interaction remains pending separately using the editor QA card.
 Deferred: a general capability/plugin framework, new analytic shape families, generalized
 polygon repair/self-intersection detection, transport algorithms and unrelated optimization.
 Concrete representation types and validated operations are sufficient for this phase.
+
+I1 ownership evidence (2026-10-08): starter objects, creation and subtree duplication
+now have distinct geometry and material asset identities. The editor has no linking,
+sharing counts or Make unique controls. Loading legacy shared files separates identities
+deterministically on the I/O worker and checks centralized persistence limits before
+publication. Node/element IDs, shape/material values and transforms are preserved;
+successful loads are clean with empty history. Generic engine persistence retains
+explicit sharing. Independent full PS5.1 gates pass 31 suites/230 tests; the final
+controller-only readability cleanup passes all 12 affected tests. Scoped Checkstyle/PMD
+reports zero new/increased findings without baseline changes. Full main readability
+verification remains separate and unavailable/red during concurrent tooling work.
+See [IndependentObjectsPlan.md](IndependentObjectsPlan.md) for evidence and limitations.
 
 ## Verification and implementation tracking
 

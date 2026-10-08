@@ -123,4 +123,14 @@ geometry and materials should be independent; editor linking workflows are remov
 
 | id | title | deps | gui-qa | status | lane | commit | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| I1 | Independent geometry and materials | H2 | yes | running | existing scene-editor checkout | pending | Legacy aliases normalize off EDT; duplicates clone per-node asset identities |
+| I1 | Independent geometry and materials | H2 | yes | needs-qa | existing scene-editor checkout | 22e5a0f | Pushed editor branch; 31 suites/230 tests, scoped style/review clear; inspector preview inspected |
+
+I1 is implemented and pushed through `22e5a0f`. Creating and duplicating objects gives
+each its own geometry and material identity; legacy aliases normalize on the I/O worker
+before a clean, history-free load. Linking/Make unique controls and commands are removed.
+Implementer and root full PS5.1 gates passed 31 suites/230 tests per run. Root full-run
+source hashes were stable; final test-only cleanup passed a fresh 12-test controller run.
+Scoped pinned Checkstyle/PMD reports zero new/increased findings, without baseline changes.
+Full main `verify.ps1` remains unavailable/red during unrelated readability tooling work;
+that checkout was preserved. Evidence/limitations: [IndependentObjectsPlan.md](IndependentObjectsPlan.md).
+Native acceptance: [GeometryEditorQA.md](GeometryEditorQA.md). Editor remains unmerged.
