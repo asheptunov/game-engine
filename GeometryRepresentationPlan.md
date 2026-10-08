@@ -36,6 +36,9 @@ analytic approximation remain missing.
    RectGeometry (do not narrow existing support to perpendicular edges). Box scattering requires validated
    closed rectangular box geometry; retain existing transform/transport restrictions.
    Record precise capability validation before implementing it; never silently drop materials.
+   Parallelogram constructors/migration canonicalize the fourth corner from the stored
+   origin and adjacent corners using the renderer's float construction; document any
+   extreme-offset float cancellation difference. Arbitrary skew quads are not emitters.
 4. New saves use version 3 with canonical sphere/polygon assets. Read v1/v2 and migrate
    boxes/planes deterministically using E6 IDs/winding; retain v2 IDs/counters exactly.
    Unique triangle source IDs survive import. Repeated IDs reconstruct only a validated
