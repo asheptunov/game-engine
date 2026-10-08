@@ -71,7 +71,9 @@ public final class SceneFiles {
     public static SceneSnapshot loadInto(Path path,SceneDocument document)throws IOException{return Objects.requireNonNull(document).replace(load(path));}
 
     public static void save(Path path,SceneSnapshot snapshot) throws IOException {
-        Objects.requireNonNull(path,"path");Objects.requireNonNull(snapshot,"snapshot");validateLimits(snapshot);
+        Objects.requireNonNull(path,"path");
+        Objects.requireNonNull(snapshot,"snapshot");
+        validateForSave(snapshot);
         var absolute=path.toAbsolutePath();var parent=absolute.getParent();if(parent==null)throw new IOException("Scene path needs a parent directory");
         Path temporary=Files.createTempFile(parent,absolute.getFileName().toString()+".",".tmp");boolean moved=false;
         try {
@@ -82,6 +84,13 @@ public final class SceneFiles {
             try{Files.move(temporary,absolute,ATOMIC_MOVE,REPLACE_EXISTING);moved=true;}
             catch(AtomicMoveNotSupportedException e){throw new IOException("Atomic scene replacement is unavailable; original file was preserved",e);}
         } finally {if(!moved)Files.deleteIfExists(temporary);}
+    }
+
+    /** Validate persistence bounds without retaining a serialized copy in memory. */
+    public static void validateForSave(SceneSnapshot snapshot) throws IOException {
+        Objects.requireNonNull(snapshot, "snapshot");
+        validateLimits(snapshot);
+        write(new BoundedCountingOutputStream(MAX_FILE_BYTES), snapshot);
     }
 
     private static void validateLimits(SceneSnapshot snapshot) throws IOException {
@@ -113,7 +122,31 @@ public final class SceneFiles {
             w.writeCharacters("\n  ");w.writeEndElement();w.writeCharacters("\n  ");start(w,"nodes");
             for(var node:snapshot.nodes()){w.writeCharacters("\n    ");writeNode(w,node);}
             w.writeCharacters("\n  ");w.writeEndElement();w.writeCharacters("\n");w.writeEndElement();w.writeCharacters("\n");w.writeEndDocument();w.flush();
-        } catch(XMLStreamException e){throw new IOException("Could not write scene XML",e);}
+        } catch(XMLStreamException e){
+            if(e.getCause() instanceof IOException cause) {
+                throw cause;
+            }
+            throw new IOException("Could not write scene XML",e);
+        }
+    }
+    private static final class BoundedCountingOutputStream extends OutputStream {
+        private final long maximumBytes;
+        private long bytesWritten;
+        private BoundedCountingOutputStream(long maximumBytes) {
+            this.maximumBytes=maximumBytes;
+        }
+        @Override public void write(int value)throws IOException {
+            add(1);
+        }
+        @Override public void write(byte[] bytes,int offset,int length)throws IOException {
+            add(length);
+        }
+        private void add(int length)throws IOException {
+            if(length<0||bytesWritten>maximumBytes-length) {
+                throw new IOException("Serialized scene exceeds "+maximumBytes+" bytes");
+            }
+            bytesWritten+=length;
+        }
     }
     private static void writeGeometry(XMLStreamWriter w,GeometryAsset a)throws XMLStreamException {
         var base=new String[]{"id",a.id().toString(),"label",a.label()};

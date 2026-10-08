@@ -48,6 +48,11 @@ public final class SceneSnapshot {
         world=new WorldSnapshot(transportRevision,entries.stream().map(RenderEntry::instance).toList(),List.of(),lights);
     }
     public static SceneSnapshot empty(){return new SceneSnapshot(0,0,List.of(),List.of(),List.of());}
+    /** Build immutable persistent content with fresh runtime revisions. */
+    public static SceneSnapshot content(List<SceneNode> nodes,List<GeometryAsset> geometries,
+                                        List<MaterialAsset> materials) {
+        return new SceneSnapshot(0,0,nodes,geometries,materials);
+    }
     private static <K,V> Map<K,V> unique(List<V> values, java.util.function.Function<V,K> key, String kind) {
         var result=new LinkedHashMap<K,V>();
         for(var value:values) {

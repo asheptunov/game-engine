@@ -349,7 +349,7 @@ public final class EditorController implements AutoCloseable {
                 case CAMERA -> e.setCamera(created[0], new CameraComponent(StarterScene.canonicalCamera()));
                 default -> {
                     var first = document.snapshot().materialAssets().stream().findFirst();
-                    var material = first.map(MaterialAsset::id)
+                    var material = first.map(asset -> e.createMaterial(asset.label(), asset.material()))
                             .orElseGet(() -> e.createMaterial("Default", Material.srgb("default", 0xc8ccd2)));
                     GeometryData geometry = switch (primitive) {
                         case BOX -> BoxGeometry.UNIT;
@@ -379,13 +379,17 @@ public final class EditorController implements AutoCloseable {
         var old = document.snapshot().requireNode(selection); boolean ok = edit("Delete subtree", e -> e.deleteSubtree(selection));
         if (ok) { selectionIntent++;selection = old.parentId();clearElementSelection();publish(); } return ok;
     }
-    public boolean assignMaterial(NodeId id, MaterialId material) {
-        var node = document.snapshot().requireNode(id); if (node.geometry() == null) return fail("Selected node has no geometry");
-        return edit("Assign material", e -> e.assignGeometry(id, node.geometry().geometryId(), material));
+    public boolean applyMaterial(NodeId id, Material material) {
+        requireEdt();
+        Objects.requireNonNull(material, "material");
+        var node = document.snapshot().requireNode(id);
+        if (node.geometry() == null) {
+            return fail("Selected node has no geometry");
+        }
+        return edit(
+                "Apply material properties",
+                edit -> edit.replaceMaterial(node.geometry().materialId(), material));
     }
-    public boolean editSharedMaterial(MaterialId id, Material material) { return edit("Edit shared material", e -> e.replaceMaterial(id, material)); }
-    public boolean makeMaterialUnique(NodeId id) { return edit("Make material unique", e -> e.makeMaterialUnique(id)); }
-    public boolean makeGeometryUnique(NodeId id){return edit("Make geometry unique",e->e.makeGeometryUnique(id));}
     public boolean applyAnalyticSphere(NodeId id, Vec3 center, float radius) {
         requireEdt();
         Objects.requireNonNull(center, "center");
@@ -640,7 +644,7 @@ public final class EditorController implements AutoCloseable {
         var result = new CompletableFuture<Boolean>();
         io.submit(() -> {
             try {
-                var loaded = storage.load(path);
+                var loaded = IndependentSceneAssets.normalize(storage.load(path));
                 SwingUtilities.invokeLater(() -> {
                     if (closed || token != fileToken) { result.complete(false); return; }
                     try {

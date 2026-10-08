@@ -200,9 +200,11 @@ one transaction. Approximation accepts only a current `AnalyticSphere` and requi
 explicit 4..64 detail. It validates every referencing node/material in the complete result
 before one publication. Failure changes
 neither snapshot nor revision, nested writes are rejected,
-duplicate copies a whole subtree with fresh node UUIDs and shared asset references, delete
+duplicate copies a whole subtree with fresh node UUIDs and fresh geometry/material asset
+identities for every copied geometry node, delete
 removes a subtree, and `reparentKeepingLocal` deliberately retains the local pose. Labels
 may repeat and are never keys. Flattened renderer object/material identity uses UUID strings.
+Generic consumers can still share assets explicitly by assigning the same asset IDs.
 
 `UndoHistory` is an optional bounded authoring wrapper; games can call `SceneDocument`
 directly without retaining history. Undo/redo republishes with fresh runtime epochs. If code
@@ -280,12 +282,21 @@ budget. Face clicks remain depth-visible scene queries: the center is a visual c
 shortcut. A selected face translates all of its boundary vertices from their asset-local baseline;
 its move-handle pivot is the boundary centroid, distinct from the largest-fan-triangle cue center.
 
+The editor gives every geometry-bearing node its own geometry and material asset identities.
+Creation and subtree duplication allocate both identities per object. Loading a legacy file
+separates aliases deterministically on the file worker before the immutable snapshot reaches
+the EDT; the lowest node UUID retains each original ID, unreferenced assets remain, and the
+normalized scene becomes the clean baseline. Generic `SceneFiles.load` still preserves
+explicit sharing for other consumers. Expansion is rejected before publication when it would
+exceed the centralized asset/topology/XML element or exact serialized-byte limits.
+
 The Mesh inspector shows asset-local center/radius controls only for analytic spheres and
 polygon element controls only for polygon assets. Applying sphere parameters replaces the
-shared asset once and creates at most one undo entry; identical values publish nothing.
-**Approximate as mesh** uses the chosen 4..64 detail, explains the shared replacement and
-loss of analytic parameters, and preserves geometry ID, references, node transforms, and
-materials. Undo restores the exact analytic value. Text commands use
+selected object's private asset once and creates at most one undo entry; identical values
+publish nothing. **Approximate as mesh** uses the chosen 4..64 detail, explains the loss of
+analytic parameters, and preserves the selected object, geometry ID, transform, and material.
+Undo restores the exact analytic value. The Material inspector applies properties only to the
+selected object; the editor has no asset-linking or Make unique workflow. Text commands use
 `sphere set <center-x> <center-y> <center-z> <radius>` and
 `mesh approximate <detail>`; the former generic `mesh convert` route is removed.
 

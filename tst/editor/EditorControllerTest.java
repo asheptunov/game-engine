@@ -10,7 +10,9 @@ import engine.objects.Rect;
 import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -19,7 +21,7 @@ import static harness.Assertions.*;
 public class EditorControllerTest {
     public static void main(String[] args) { harness.SuiteRunner.runThis(); }
 
-    @Test public void operationsCommandsHistorySharingAndComponentsUseOneController() throws Exception {
+    @Test public void operationsCommandsHistoryIndependentObjectsAndComponentsUseOneController() throws Exception {
         var controller = onEdt(EditorController::new);
         try {
             var original = onEdt(controller::state); var group = original.snapshot().nodes().stream().filter(n -> n.label().equals("Composition")).findFirst().orElseThrow();
@@ -35,17 +37,22 @@ public class EditorControllerTest {
             onEdt(controller::redo); assertEquals(transformed, onEdt(() -> controller.snapshot().requireNode(box.id()).localTransform()));
 
             var material = box.geometry().materialId(); onEdt(controller::duplicateSelection); var copy = onEdt(() -> controller.snapshot().requireNode(controller.selection()));
-            assertNotEquals(box.id(), copy.id()); assertEquals(box.geometry(), copy.geometry());
-            onEdt(() -> controller.makeMaterialUnique(copy.id())); var unique = onEdt(() -> controller.snapshot().requireNode(copy.id()));
-            assertNotEquals(material, unique.geometry().materialId());
-            assertTrue(onEdt(() -> commands.execute("material edit mirror .3 .4 .5 .2 1.5")).contains("Edit shared material"));
-            assertEquals(Material.Kind.MIRROR, onEdt(() -> controller.snapshot().requireMaterial(unique.geometry().materialId()).material().kind()));
+            assertNotEquals(box.id(), copy.id());
+            assertNotEquals(box.geometry().geometryId(), copy.geometry().geometryId());
+            assertNotEquals(box.geometry().materialId(), copy.geometry().materialId());
+            assertEquals(
+                    onEdt(() -> controller.snapshot()
+                            .requireGeometry(box.geometry().geometryId()).geometry()),
+                    onEdt(() -> controller.snapshot()
+                            .requireGeometry(copy.geometry().geometryId()).geometry()));
+            assertTrue(onEdt(() -> commands.execute("material edit mirror .3 .4 .5 .2 1.5")).contains("Apply material properties"));
+            assertEquals(Material.Kind.MIRROR, onEdt(() -> controller.snapshot().requireMaterial(copy.geometry().materialId()).material().kind()));
             assertEquals(Material.Kind.DIFFUSE, onEdt(() -> controller.snapshot().requireMaterial(material).material().kind()));
 
             assertTrue(onEdt(() -> commands.execute("light set 1 .8 .6 30")).contains("point light"));
-            assertEquals(30f, onEdt(() -> controller.snapshot().requireNode(unique.id()).light().intensity()));
+            assertEquals(30f, onEdt(() -> controller.snapshot().requireNode(copy.id()).light().intensity()));
             assertTrue(onEdt(() -> commands.execute("camera set perspective 55 4 0")).contains("camera"));
-            assertEquals(55f, onEdt(() -> controller.snapshot().requireNode(unique.id()).camera().camera().fov()));
+            assertEquals(55f, onEdt(() -> controller.snapshot().requireNode(copy.id()).camera().camera().fov()));
         } finally { onEdt(() -> { controller.close(); return null; }); }
     }
 
@@ -70,7 +77,56 @@ public class EditorControllerTest {
         } finally { onEdt(() -> { controller.close(); return null; }); }
     }
 
-    @Test public void faceModeConvertsMakesUniqueExtrudesAndReconcilesAcrossHistoryAndLoad() throws Exception {
+    @Test public void duplicateGeometryAndMaterialEditsUndoWithoutChangingTheOriginal() throws Exception {
+        var controller = onEdt(EditorController::new);
+        try {
+            var original = onEdt(() -> controller.snapshot().nodes().stream()
+                    .filter(node -> node.label().equals("Teal box")).findFirst().orElseThrow());
+            assertTrue(onEdt(() -> controller.select(original.id())));
+            var originalGeometry = original.geometry().geometryId();
+            var originalMaterial = original.geometry().materialId();
+            var originalMesh = (PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(originalGeometry).geometry());
+            var originalMaterialValue = onEdt(() ->
+                    controller.snapshot().requireMaterial(originalMaterial).material());
+
+            assertTrue(onEdt(controller::duplicateSelection));
+            var copiedNodeId = onEdt(controller::selection);
+            var copiedComponent = onEdt(() ->
+                    controller.snapshot().requireNode(copiedNodeId).geometry());
+            assertNotEquals(originalGeometry, copiedComponent.geometryId());
+            assertNotEquals(originalMaterial, copiedComponent.materialId());
+            assertTrue(onEdt(() -> controller.applyMaterial(copiedNodeId,
+                    originalMaterialValue.withColor(new Vec3(.2f, .3f, .4f)))));
+            assertTrue(onEdt(() -> controller.setSelectionMode(EditorController.SelectionMode.FACE)));
+            long faceId = originalMesh.faces().getFirst().id();
+            assertTrue(onEdt(() -> controller.selectFace(faceId)));
+            assertTrue(onEdt(() -> controller.translateSelectedElement(new Vec3(.1f, 0, 0))));
+            assertEquals(originalMesh, onEdt(() ->
+                    controller.snapshot().requireGeometry(originalGeometry).geometry()));
+            assertEquals(originalMaterialValue, onEdt(() ->
+                    controller.snapshot().requireMaterial(originalMaterial).material()));
+
+            assertTrue(onEdt(controller::undo));
+            assertTrue(onEdt(controller::undo));
+            assertTrue(onEdt(controller::undo));
+            assertTrue(onEdt(() -> controller.snapshot().findNode(copiedNodeId).isEmpty()));
+            assertTrue(onEdt(controller::redo));
+            assertTrue(onEdt(controller::redo));
+            assertTrue(onEdt(controller::redo));
+            assertEquals(new Vec3(.2f, .3f, .4f), onEdt(() -> controller.snapshot()
+                    .requireMaterial(copiedComponent.materialId()).material().color()));
+            assertEquals(originalMesh, onEdt(() ->
+                    controller.snapshot().requireGeometry(originalGeometry).geometry()));
+        } finally {
+            onEdt(() -> {
+                controller.close();
+                return null;
+            });
+        }
+    }
+
+    @Test public void faceModeUsesIndependentDuplicateAndReconcilesAcrossHistoryAndLoad() throws Exception {
         var jobs = new ManualExecutor(); var storage = new MemoryStorage(); var controller = onEdt(() -> new EditorController(storage, jobs));
         try {
             var commands = new EditorCommandProcessor(controller); var initial = onEdt(controller::snapshot);
@@ -102,11 +158,9 @@ public class EditorControllerTest {
             assertTrue(onEdt(() -> commands.execute("face select " + faceId)).contains("Selected face"));
 
             assertTrue(onEdt(controller::duplicateSelection)); var copy = onEdt(controller::selection);
-            assertEquals(convertedNode.geometry().geometryId(), onEdt(() -> controller.snapshot().requireNode(copy).geometry().geometryId()));
+            assertNotEquals(convertedNode.geometry().geometryId(), onEdt(() -> controller.snapshot().requireNode(copy).geometry().geometryId()));
             assertTrue(onEdt(() -> commands.execute("face select " + faceId)).contains("Selected face"));
-            assertTrue(onEdt(() -> commands.execute("mesh unique")).contains("unique"));
             var uniqueGeometry = onEdt(() -> controller.snapshot().requireNode(copy).geometry().geometryId());
-            assertNotEquals(convertedNode.geometry().geometryId(), uniqueGeometry);
             assertEquals(uniqueGeometry, onEdt(controller::faceSelection).geometryId());
 
             var beforeFaceMove = (PolygonMesh) onEdt(() ->
@@ -166,8 +220,7 @@ public class EditorControllerTest {
             assertEquals(faceId,onEdt(controller::faceSelection).faceId());assertTrue(onEdt(controller::undo));
             assertTrue(onEdt(controller::undo));
             assertTrue(onEdt(controller::undo));
-            assertTrue(onEdt(controller::undo));
-            assertEquals(convertedNode.geometry().geometryId(), onEdt(controller::faceSelection).geometryId());
+            assertEquals(uniqueGeometry, onEdt(controller::faceSelection).geometryId());
             assertTrue(onEdt(controller::undo)); assertNull(onEdt(controller::faceSelection));
 
             storage.loaded = savedSnapshot; var load = onEdt(() -> controller.load(Path.of("mesh.scene.xml")));
@@ -183,31 +236,36 @@ public class EditorControllerTest {
         } finally { onEdt(() -> { controller.close(); return null; }); }
     }
 
-    @Test public void directVertexEdgeEditingSharesValidatesGroupsAndReconcilesStableSelections() throws Exception {
+    @Test public void directVertexEdgeEditingIsolatesDuplicatesAndReconcilesStableSelections() throws Exception {
         var controller=onEdt(EditorController::new);
         try{
             var sphereNode=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.label().equals("Terracotta sphere")).findFirst().orElseThrow());
             onEdt(()->controller.select(sphereNode.id()));
             assertTrue(onEdt(()->controller.approximateAnalyticSphere(sphereNode.id(),8)));
-            var sharedGeometry=onEdt(()->controller.snapshot().requireNode(sphereNode.id()).geometry().geometryId());
+            var originalGeometry=onEdt(()->controller.snapshot().requireNode(sphereNode.id()).geometry().geometryId());
             assertTrue(onEdt(controller::duplicateSelection));var duplicate=onEdt(controller::selection);
-            assertEquals(sharedGeometry,onEdt(()->controller.snapshot().requireNode(duplicate).geometry().geometryId()));
+            var duplicateGeometry = onEdt(() -> controller.snapshot()
+                    .requireNode(duplicate).geometry().geometryId());
+            assertNotEquals(originalGeometry, duplicateGeometry);
 
-            long beforeModeRevision=onEdt(()->controller.snapshot().revision());boolean beforeModeDirty=onEdt(controller::dirty);
+            long beforeModeRevision=onEdt(()->controller.snapshot().revision());
+            boolean beforeModeDirty=onEdt(controller::dirty);
             assertTrue(onEdt(()->controller.setSelectionMode(EditorController.SelectionMode.VERTEX)));
             assertEquals(beforeModeRevision,onEdt(()->controller.snapshot().revision()));assertEquals(beforeModeDirty,onEdt(controller::dirty));
-            var sharedMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(sharedGeometry).geometry());long vertexId=sharedMesh.editableVertices().getFirst().id();
-            assertTrue(onEdt(()->controller.selectVertex(vertexId)));var beforePosition=sharedMesh.requireVertex(vertexId).position();
+            var duplicateMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(duplicateGeometry).geometry());
+            long vertexId=duplicateMesh.editableVertices().getFirst().id();
+            assertTrue(onEdt(()->controller.selectVertex(vertexId)));
+            var beforePosition=duplicateMesh.requireVertex(vertexId).position();
             assertTrue(onEdt(()->controller.translateSelectedElement(new Vec3(0,.05f,0))));
-            var movedShared=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(sharedGeometry).geometry());
-            assertEquals(beforePosition.add(new Vec3(0,.05f,0)),movedShared.requireVertex(vertexId).position());
-            assertEquals(sharedGeometry,onEdt(()->controller.snapshot().requireNode(sphereNode.id()).geometry().geometryId()));
+            var movedDuplicate=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(duplicateGeometry).geometry());
+            assertEquals(beforePosition.add(new Vec3(0,.05f,0)),movedDuplicate.requireVertex(vertexId).position());
+            assertEquals(beforePosition,((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(originalGeometry).geometry())).requireVertex(vertexId).position());
 
-            assertTrue(onEdt(()->controller.makeGeometryUnique(duplicate)));var uniqueGeometry=onEdt(()->controller.snapshot().requireNode(duplicate).geometry().geometryId());
-            assertNotEquals(sharedGeometry,uniqueGeometry);assertEquals(uniqueGeometry,onEdt(controller::vertexSelection).geometryId());
+            var uniqueGeometry=duplicateGeometry;
+            assertEquals(uniqueGeometry,onEdt(controller::vertexSelection).geometryId());
             assertTrue(onEdt(()->controller.translateSelectedElement(new Vec3(.04f,0,0))));
             assertNotEquals(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).requireVertex(vertexId).position(),
-                    ((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(sharedGeometry).geometry())).requireVertex(vertexId).position());
+                    ((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(originalGeometry).geometry())).requireVertex(vertexId).position());
             assertTrue(onEdt(controller::undo));assertEquals(uniqueGeometry,onEdt(controller::vertexSelection).geometryId());assertTrue(onEdt(controller::redo));
 
             var uniqueMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry());var edge=uniqueMesh.edges().getFirst();
@@ -251,7 +309,7 @@ public class EditorControllerTest {
         }finally{onEdt(()->{controller.close();return null;});}
     }
 
-    @Test public void analyticSphereParametersApproximationPersistSharingAndRejectStaleOrInvalidEdits() throws Exception {
+    @Test public void analyticSphereParametersAndApproximationStayIndependentAndRejectInvalidEdits() throws Exception {
         var jobs = new ManualExecutor();
         var storage = new MemoryStorage();
         var controller = onEdt(() -> new EditorController(storage, jobs));
@@ -265,10 +323,8 @@ public class EditorControllerTest {
             var original = (AnalyticSphere) onEdt(() ->
                     controller.snapshot().requireGeometry(geometryId).geometry());
 
-            assertTrue(onEdt(controller::duplicateSelection));
-            var duplicate = onEdt(controller::selection);
-            assertEquals(geometryId, onEdt(() ->
-                    controller.snapshot().requireNode(duplicate).geometry().geometryId()));
+            var duplicate = duplicateIndependentGeometry(controller, geometryId);
+            var duplicateGeometryId = duplicate.geometry().geometryId();
             assertTrue(onEdt(() -> controller.select(sphereNode.id())));
 
             assertTrue(onEdt(() -> commands.execute("sphere set -0.5 0.25 0.75 1.5"))
@@ -276,6 +332,7 @@ public class EditorControllerTest {
             var changed = new AnalyticSphere(new Vec3(-.5f, .25f, .75f), 1.5f);
             assertEquals(changed, onEdt(() ->
                     controller.snapshot().requireGeometry(geometryId).geometry()));
+            assertIndependentAnalyticGeometry(controller, duplicateGeometryId, original);
             var afterParameters = onEdt(controller::snapshot);
             assertTrue(onEdt(() -> commands.execute("sphere set -0.5 0.25 0.75 1.5"))
                     .contains("made no change"));
@@ -305,7 +362,8 @@ public class EditorControllerTest {
             var polygon = (PolygonMesh) approximated.requireGeometry(geometryId).geometry();
             assertEquals(4 * 12 * 11, polygon.faces().size());
             assertEquals(geometryId, approximated.requireNode(sphereNode.id()).geometry().geometryId());
-            assertEquals(geometryId, approximated.requireNode(duplicate).geometry().geometryId());
+            assertIndependentAnalyticGeometry(
+                    approximated, duplicate.id(), duplicateGeometryId);
             assertFalse(onEdt(() -> controller.acceptPick(
                     null, staleContext.snapshot().revision(), staleIntent)));
             assertEquals(sphereNode.id(), onEdt(controller::selection));
@@ -346,13 +404,12 @@ public class EditorControllerTest {
             flushEdt();
             assertTrue(restoreAnalytic.get(2, TimeUnit.SECONDS));
             assertTrue(onEdt(() -> controller.select(sphereNode.id())));
-            assertTrue(onEdt(() -> controller.makeMaterialUnique(sphereNode.id())));
             var materialId = onEdt(() ->
                     controller.snapshot().requireNode(sphereNode.id()).geometry().materialId());
             var oldMaterial = onEdt(() ->
                     controller.snapshot().requireMaterial(materialId).material());
-            assertTrue(onEdt(() -> controller.editSharedMaterial(
-                    materialId, oldMaterial.withKind(Material.Kind.DIELECTRIC)
+            assertTrue(onEdt(() -> controller.applyMaterial(
+                    sphereNode.id(), oldMaterial.withKind(Material.Kind.DIELECTRIC)
                             .withIor(1.2f).withScattering(.5f))));
             var beforeFailure = onEdt(controller::snapshot);
             var beforeSelection = onEdt(controller::selection);
@@ -398,6 +455,48 @@ public class EditorControllerTest {
             assertFalse(failed.get(2, TimeUnit.SECONDS)); assertSame(beforeFailure, onEdt(controller::snapshot));
             assertTrue(onEdt(() -> controller.state().status()).startsWith("Load failed:"));
         } finally { onEdt(() -> { controller.close(); return null; }); }
+    }
+
+    @Test public void legacyAliasLoadIsCleanAndOversizedExpansionPreservesEditorState() throws Exception {
+        var jobs = new ManualExecutor();
+        var storage = new MemoryStorage();
+        var controller = onEdt(() -> new EditorController(storage, jobs));
+        try {
+            storage.loaded = sharedAssetScene(2);
+            var loaded = onEdt(() -> controller.load(Path.of("legacy-shared.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertTrue(loaded.get(2, TimeUnit.SECONDS));
+            var normalized = onEdt(controller::snapshot);
+            var first = normalized.nodes().get(0).geometry();
+            var second = normalized.nodes().get(1).geometry();
+            assertNotEquals(first.geometryId(), second.geometryId());
+            assertNotEquals(first.materialId(), second.materialId());
+            assertFalse(onEdt(controller::dirty));
+            assertFalse(onEdt(() -> controller.state().canUndo()));
+
+            var selected = normalized.nodes().get(1).id();
+            assertTrue(onEdt(() -> controller.select(selected)));
+            assertTrue(onEdt(() -> controller.rename(selected, "Edited after load")));
+            var beforeFailure = onEdt(controller::state);
+            storage.loaded = sharedAssetScene(SceneFiles.MAX_GEOMETRY_ASSETS + 1);
+            var rejected = onEdt(() -> controller.load(Path.of("oversized-shared.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertFalse(rejected.get(2, TimeUnit.SECONDS));
+            var afterFailure = onEdt(controller::state);
+            assertSame(beforeFailure.snapshot(), afterFailure.snapshot());
+            assertEquals(beforeFailure.selection(), afterFailure.selection());
+            assertEquals(beforeFailure.file(), afterFailure.file());
+            assertEquals(beforeFailure.canUndo(), afterFailure.canUndo());
+            assertEquals(beforeFailure.dirty(), afterFailure.dirty());
+            assertTrue(afterFailure.status().contains("geometry asset limit"));
+        } finally {
+            onEdt(() -> {
+                controller.close();
+                return null;
+            });
+        }
     }
 
     @Test public void sceneContentComparisonIncludesMeshSourceIdentity() throws Exception {
@@ -467,6 +566,44 @@ public class EditorControllerTest {
             e.createGeometry(geometry, "mesh", PolygonMesh.triangleSurface(List.of(new Vec3(0, 0, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0)), new int[]{0, 1, 2}, new long[]{face}));
             e.createMaterial(material, "mat", Material.srgb("mat", 0xffffff)); e.createNode(node, "node", null, Transform.IDENTITY); e.assignGeometry(node, geometry, material);
         }); return document.snapshot();
+    }
+    private static SceneSnapshot sharedAssetScene(int nodeCount) {
+        var geometryId = new GeometryId(new UUID(0, 1));
+        var materialId = new MaterialId(new UUID(0, 2));
+        var nodes = new ArrayList<SceneNode>(nodeCount);
+        for (int index = 0; index < nodeCount; index++) {
+            var nodeId = new NodeId(new UUID(1, index + 1L));
+            nodes.add(new SceneNode(nodeId, "Legacy object", null, Transform.IDENTITY,
+                    new GeometryComponent(geometryId, materialId), null, null));
+        }
+        return SceneSnapshot.content(nodes,
+                List.of(new GeometryAsset(geometryId, "Legacy sphere", 0,
+                        new AnalyticSphere(Vec3.ZERO, 1))),
+                List.of(new MaterialAsset(materialId, "Legacy gray", 0,
+                        Material.srgb("gray", 0x808080))));
+    }
+
+    private static void assertIndependentAnalyticGeometry(
+            EditorController controller, GeometryId geometryId, AnalyticSphere expected)
+            throws Exception {
+        assertEquals(expected, onEdt(() ->
+                controller.snapshot().requireGeometry(geometryId).geometry()));
+    }
+
+    private static SceneNode duplicateIndependentGeometry(
+            EditorController controller, GeometryId sourceGeometryId) throws Exception {
+        return onEdt(() -> {
+            assertTrue(controller.duplicateSelection());
+            var duplicate = controller.snapshot().requireNode(controller.selection());
+            assertNotEquals(sourceGeometryId, duplicate.geometry().geometryId());
+            return duplicate;
+        });
+    }
+
+    private static void assertIndependentAnalyticGeometry(
+            SceneSnapshot snapshot, NodeId nodeId, GeometryId geometryId) {
+        assertEquals(geometryId, snapshot.requireNode(nodeId).geometry().geometryId());
+        assertInstanceOf(AnalyticSphere.class, snapshot.requireGeometry(geometryId).geometry());
     }
 
     private static void assertCameraNear(Camera expected, Camera actual) {

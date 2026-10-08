@@ -105,12 +105,37 @@ public final class SceneEdit {
         materials.add(new MaterialAsset(id,source.label(),0,source.material()));
         nodes.set(ni,node.withGeometry(new GeometryComponent(node.geometry().geometryId(),id)));return id;
     }
-    /** Duplicate an entire subtree with fresh node IDs while preserving shared asset references. */
-    public NodeId duplicateSubtree(NodeId rootId){
-        var root=nodes.get(requireNode(rootId));var descendants=subtree(rootId);
-        var ids=new LinkedHashMap<NodeId,NodeId>();for(var old:descendants)ids.put(old.id(),NodeId.random());
-        for(var old:descendants){NodeId parent=old.id().equals(rootId)?old.parentId():ids.get(old.parentId());nodes.add(new SceneNode(ids.get(old.id()),old.label(),parent,old.localTransform(),old.geometry(),old.light(),old.camera()));}
+    /** Duplicate a subtree with fresh node, geometry, and material identities. */
+    public NodeId duplicateSubtree(NodeId rootId) {
+        requireNode(rootId);
+        var descendants = subtree(rootId);
+        var ids = new LinkedHashMap<NodeId, NodeId>();
+        for (var source : descendants) {
+            ids.put(source.id(), NodeId.random());
+        }
+        for (var source : descendants) {
+            NodeId parent = source.id().equals(rootId)
+                    ? source.parentId()
+                    : ids.get(source.parentId());
+            nodes.add(new SceneNode(ids.get(source.id()), source.label(), parent,
+                    source.localTransform(), copyGeometryComponent(source.geometry()),
+                    source.light(), source.camera()));
+        }
         return ids.get(rootId);
+    }
+    private GeometryComponent copyGeometryComponent(GeometryComponent component) {
+        if (component == null) {
+            return null;
+        }
+        var sourceGeometry = geometries.get(requireGeometry(component.geometryId()));
+        var sourceMaterial = materials.get(requireMaterial(component.materialId()));
+        var geometryId = GeometryId.random();
+        var materialId = MaterialId.random();
+        geometries.add(new GeometryAsset(
+                geometryId, sourceGeometry.label(), 0, sourceGeometry.geometry()));
+        materials.add(new MaterialAsset(
+                materialId, sourceMaterial.label(), 0, sourceMaterial.material()));
+        return new GeometryComponent(geometryId, materialId);
     }
     public void deleteSubtree(NodeId rootId){var remove=subtree(rootId).stream().map(SceneNode::id).collect(java.util.stream.Collectors.toSet());nodes.removeIf(n->remove.contains(n.id()));}
     private List<SceneNode> subtree(NodeId root) {

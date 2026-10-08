@@ -298,7 +298,6 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     boolean meshExtrudeEnabledForTest(){return inspector.meshExtrudeEnabled();}
     boolean applySphereForTest(Vec3 center,float radius){return inspector.applyAnalyticSphere(center,radius);}
     boolean approximateSphereForTest(int detail){return inspector.approximateAnalyticSphere(detail);}
-    boolean meshUniqueForTest(){return inspector.makeGeometryUnique();}
     boolean meshExtrudeForTest(float distance){return inspector.extrude(distance);}
     boolean translateSelectedElementForTest(Vec3 delta) {
         return inspector.translateSelectedElement(delta);
@@ -359,13 +358,10 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private final JTextField name = new JTextField();
         private final JTextField[] transform = fields(9, "0");
         private final JComboBox<NodeChoice> parent = new JComboBox<>();
-        private final JComboBox<MaterialAsset> material = new JComboBox<>();
         private final JComboBox<Material.Kind> kind = new JComboBox<>(Material.Kind.values());
         private final JTextField[] color = fields(3, ".8");
         private final JTextField roughness = new JTextField("0"), ior = new JTextField("1.5");
-        private final JLabel materialNote = new JLabel("No material");
         private final JLabel meshNote = new JLabel("No geometry");
-        private final JLabel meshSharing = new JLabel("");
         private final JLabel meshFace = new JLabel("No face selected");
         private final JTextField extrusionDistance = new JTextField("0.5");
         private final JTextField[] elementDelta = fields(3, "0");
@@ -374,7 +370,6 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private final JSpinner sphereDetail = new JSpinner(new SpinnerNumberModel(12, 4, 64, 1));
         private final JButton applySphere = new JButton("Apply");
         private final JButton approximateSphere = new JButton("Approximate as mesh");
-        private final JButton uniqueGeometry = new JButton("Make geometry unique");
         private final JButton translateElement = new JButton("Translate selection");
         private final JButton extrudeFace = new JButton("Extrude face");
         private final JTextField[] light = fields(4, "1");
@@ -389,12 +384,6 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
 
         Inspector(EditorController controller) {
             this.controller = controller;
-            material.setRenderer(new DefaultListCellRenderer() {
-                @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean selected, boolean focus) {
-                    var component = super.getListCellRendererComponent(list, value, index, selected, focus);
-                    if (value instanceof MaterialAsset asset) setText(asset.label()); return component;
-                }
-            });
             transformPanel = transformTab();
             meshPanel = meshTab();
             materialPanel = materialTab();
@@ -409,17 +398,11 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             parent.removeAllItems(); parent.addItem(new NodeChoice(null, "Scene root")); int parentIndex = 0, index = 1;
             for (var n : state.snapshot().nodes()) if (!n.id().equals(node.id())) { parent.addItem(new NodeChoice(n.id(), n.label())); if (n.id().equals(node.parentId())) parentIndex = index; index++; }
             parent.setSelectedIndex(parentIndex);
-            material.removeAllItems(); for (var asset : state.snapshot().materialAssets()) material.addItem(asset);
             if (node.geometry() != null) {
                 var geometry = state.snapshot().requireGeometry(node.geometry().geometryId());
-                long geometryUses = state.snapshot().nodes().stream()
-                        .filter(candidate -> candidate.geometry() != null
-                                && candidate.geometry().geometryId().equals(geometry.id()))
-                        .count();
                 var geometryValue = geometry.geometry();
                 boolean polygon = geometryValue instanceof PolygonMesh;
                 meshNote.setText(geometryLabel(geometryValue));
-                meshSharing.setText("Shared by " + geometryUses + " node" + (geometryUses == 1 ? "" : "s"));
                 ((CardLayout) geometryEditor.getLayout()).show(
                         geometryEditor, geometryValue instanceof AnalyticSphere ? "analytic" : "polygon");
                 if (geometryValue instanceof AnalyticSphere sphere) {
@@ -441,7 +424,6 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                 }
                 applySphere.setEnabled(geometryValue instanceof AnalyticSphere);
                 approximateSphere.setEnabled(geometryValue instanceof AnalyticSphere);
-                uniqueGeometry.setEnabled(geometryUses > 1);
                 boolean selectedTranslatableElement = (selectedVertex != null
                         && selectedVertex.nodeId().equals(node.id()))
                         || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()))
@@ -449,10 +431,9 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                 translateElement.setEnabled(polygon && selectedTranslatableElement);
                 extrudeFace.setEnabled(polygon && selectedFace != null
                         && selectedFace.nodeId().equals(node.id()));
-                var asset = state.snapshot().requireMaterial(node.geometry().materialId()); material.setSelectedItem(asset); var m = asset.material();
+                var asset = state.snapshot().requireMaterial(node.geometry().materialId());
+                var m = asset.material();
                 put(color, m.color(), 0); kind.setSelectedItem(m.kind()); roughness.setText(Float.toString(m.roughness())); ior.setText(Float.toString(m.ior()));
-                long uses = state.snapshot().nodes().stream().filter(n -> n.geometry() != null && n.geometry().materialId().equals(asset.id())).count();
-                materialNote.setText(uses + " node" + (uses == 1 ? " uses" : "s use") + " this shared material");
             }
             rebuildComponents(node);
         }
@@ -473,17 +454,21 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             panel.add(row("Parent", parent)); var reparent = new JButton("Reparent · keep local pose"); reparent.addActionListener(_ -> { var n = selected(); var p = (NodeChoice) parent.getSelectedItem(); if (n != null) controller.reparent(n.id(), p == null ? null : p.id()); }); panel.add(reparent); return scroll(panel);
         }
         private JComponent materialTab() {
-            var panel = stack(); panel.add(row("Assigned", material)); var assign = new JButton("Assign selected material"); assign.addActionListener(_ -> { var n = selected(); var a = (MaterialAsset) material.getSelectedItem(); if (n != null && a != null) controller.assignMaterial(n.id(), a.id()); }); panel.add(assign);
-            panel.add(materialNote); panel.add(row("Kind", kind)); panel.add(row("Linear red", color[0])); panel.add(row("Green", color[1])); panel.add(row("Blue", color[2])); panel.add(row("Roughness", roughness)); panel.add(row("IOR", ior));
-            var shared = new JButton("Apply to shared material"); shared.addActionListener(_ -> applyMaterial()); var unique = new JButton("Make unique"); unique.addActionListener(_ -> { var n = selected(); if (n != null) controller.makeMaterialUnique(n.id()); }); panel.add(shared); panel.add(unique); return scroll(panel);
+            var panel = stack();
+            panel.add(row("Kind", kind));
+            panel.add(row("Linear red", color[0]));
+            panel.add(row("Green", color[1]));
+            panel.add(row("Blue", color[2]));
+            panel.add(row("Roughness", roughness));
+            panel.add(row("IOR", ior));
+            var apply = new JButton("Apply");
+            apply.addActionListener(_ -> applyMaterial());
+            panel.add(apply);
+            return scroll(panel);
         }
         private JComponent meshTab() {
             var panel = stack();
             panel.add(line(meshNote));
-            panel.add(line(meshSharing));
-            uniqueGeometry.setToolTipText("Copy this shared geometry asset for only the selected node");
-            uniqueGeometry.addActionListener(_ -> makeGeometryUnique());
-            panel.add(line(uniqueGeometry));
             panel.add(new JSeparator());
 
             geometryEditor.add(analyticSpherePanel(), "analytic");
@@ -500,7 +485,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             panel.add(row("Center Y", sphereCenter[1]));
             panel.add(row("Center Z", sphereCenter[2]));
             panel.add(row("Radius", sphereRadius));
-            applySphere.setToolTipText("Replace this shared analytic asset once; node transforms and materials stay unchanged");
+            applySphere.setToolTipText("Apply center and radius to the selected object's shape as one undoable edit");
             applySphere.addActionListener(_ -> {
                 try {
                     applyAnalyticSphere(vec(sphereCenter, 0), number(sphereRadius));
@@ -510,8 +495,8 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             });
             panel.add(line(applySphere));
             panel.add(new JSeparator());
-            panel.add(infoText("Approximation replaces this shared analytic asset with polygon topology. "
-                    + "It preserves the asset ID, nodes, transforms, and materials, but exact curvature "
+            panel.add(infoText("Approximation replaces the selected object's analytic shape with polygon topology. "
+                    + "It preserves the object, transform, and material, but exact curvature "
                     + "and analytic parameters are lost until Undo."));
             panel.add(row("Detail (4..64)", sphereDetail));
             approximateSphere.setToolTipText(
@@ -574,8 +559,23 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
 
         private void applyTransform() { var n = selected(); if (n == null) return; try { controller.applyTransform(n.id(), new Transform(vec(transform, 0), vec(transform, 3), vec(transform, 6))); } catch (RuntimeException e) { showError(e); } }
         private void applyMaterial() {
-            var n = selected(); if (n == null || n.geometry() == null) return;
-            try { var old = state.snapshot().requireMaterial(n.geometry().materialId()).material(); var next = old.withKind((Material.Kind) kind.getSelectedItem()).withColor(vec(color, 0)).withRoughness(number(roughness)).withIor(number(ior)); controller.editSharedMaterial(n.geometry().materialId(), next); } catch (RuntimeException e) { showError(e); }
+            var node = selected();
+            if (node == null || node.geometry() == null) {
+                return;
+            }
+            try {
+                var oldMaterial = state.snapshot()
+                        .requireMaterial(node.geometry().materialId())
+                        .material();
+                var nextMaterial = oldMaterial
+                        .withKind((Material.Kind) kind.getSelectedItem())
+                        .withColor(vec(color, 0))
+                        .withRoughness(number(roughness))
+                        .withIor(number(ior));
+                controller.applyMaterial(node.id(), nextMaterial);
+            } catch (RuntimeException exception) {
+                showError(exception);
+            }
         }
         private void applyCamera() {
             var n = selected(); if (n == null || n.camera() == null) return;
@@ -593,7 +593,6 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             var node=selected();
             return node!=null&&controller.approximateAnalyticSphere(node.id(),detail);
         }
-        private boolean makeGeometryUnique(){var node=selected();return node!=null&&controller.makeGeometryUnique(node.id());}
         private boolean extrude(float distance){return controller.extrudeSelectedFace(distance);}
         private boolean translateSelectedElement(Vec3 delta) {
             put(elementDelta, delta, 0);

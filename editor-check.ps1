@@ -15,7 +15,7 @@ $sources = @(
 )
 $compileArguments = @("--enable-preview", "--release", "23", "-d", $classes) + $sources
 Invoke-NativeLogged $javac $compileArguments (Join-Path $output "compile-all.log") "Editor/test compilation failed"
-$tests = @("editor.EditorControllerTest", "editor.SceneEditorPreviewTest", "editor.EditorBindingPreferencesTest", "editor.GizmoDragTest", "editor.OverlayGeometryTest", "editor.overlay.OverlayGeometryBoundsTest",
+$tests = @("editor.EditorControllerTest", "editor.IndependentSceneAssetsTest", "editor.SceneEditorPreviewTest", "editor.EditorBindingPreferencesTest", "editor.GizmoDragTest", "editor.OverlayGeometryTest", "editor.overlay.OverlayGeometryBoundsTest",
     "engine.CameraProjectorTest", "engine.EditableMeshTest", "engine.GeometryRepresentationTest", "engine.SceneDocumentTest", "engine.ScenePersistenceTest", "engine.SpatialQueryTest", "engine.EngineSessionTest",
     "engine.MaterialPlaygroundTest", "engine.DielectricPathTest", "engine.RoughLightingTest", "engine.MeshAccelerationTest", "engine.VolumePathTest")
 foreach ($test in $tests) {
@@ -47,6 +47,10 @@ if (-not (Test-Path $analyticPreview) -or (Get-Item $analyticPreview).Length -lt
 $approximationPreview = Join-Path $output "scene-editor-approximation-preview.png"
 if (-not (Test-Path $approximationPreview) -or (Get-Item $approximationPreview).Length -lt 20000) {
     throw "Window-free sphere-approximation preview was not produced"
+}
+$independentMaterialPreview = Join-Path $output "scene-editor-independent-material-preview.png"
+if (-not (Test-Path $independentMaterialPreview) -or (Get-Item $independentMaterialPreview).Length -lt 20000) {
+    throw "Window-free independent-material inspector preview was not produced"
 }
 $bindingsPreview = Join-Path $output "scene-editor-bindings-preview.png"
 if (-not (Test-Path $bindingsPreview) -or (Get-Item $bindingsPreview).Length -lt 10000) { throw "Window-free bindings preview was not produced" }

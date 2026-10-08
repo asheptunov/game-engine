@@ -54,12 +54,12 @@ public class SceneEditorPreviewTest {
             assertEquals(beforeAmbiguous, onEdt(() -> panel.viewCameraForTest(0)));
             var labels = onEdt(() -> componentText(panel));
             for (var expected : new String[]{"Box", "Sphere", "Plane", "Group", "Light", "Camera", "Apply transform (one edit)",
-                    "Apply to shared material", "Make unique", "Reparent · keep local pose", "Capture view", "Wireframe", "Move", "Rotate",
+                    "Apply", "Reparent · keep local pose", "Capture view", "Wireframe", "Move", "Rotate",
                     "Output", "Input"})
                 assertTrue(labels.contains(expected));
             assertFalse(onEdt(() -> panel.hasInspectorTabForTest("Components")));
             assertFalse(labels.contains("Point light (position uses Transform)")); assertFalse(labels.contains("Camera optics (pose uses Transform)"));
-            writePanel(panel, canvas, output.resolveSibling("scene-editor-component-absent-preview.png"));
+            writeIndependentMaterialPreviews(panel, canvas, output, labels);
 
             var anchor = onEdt(controller::selection);
             onEdt(() -> controller.create(EditorController.Primitive.POINT_LIGHT)); var light = onEdt(controller::selection);
@@ -521,6 +521,22 @@ public class SceneEditorPreviewTest {
     }
     private static void pumpPaint(SceneEditorPanel panel,int count)throws Exception{for(int i=0;i<count;i++){onEdt(()->{paintPanel(panel,panel.getWidth(),panel.getHeight());return null;});Thread.sleep(15);}}
     private static void paintPanel(SceneEditorPanel panel,int width,int height){var image=new BufferedImage(width,height,BufferedImage.TYPE_INT_RGB);var graphics=image.createGraphics();panel.printAll(graphics);graphics.dispose();}
+
+    private static void writeIndependentMaterialPreviews(
+            SceneEditorPanel panel, BufferedImage canvas, Path output, Set<String> labels)
+            throws Exception {
+        assertFalse(labels.contains("Make unique"));
+        assertFalse(labels.contains("Shared by"));
+        writePanel(panel, canvas, output.resolveSibling("scene-editor-component-absent-preview.png"));
+        onEdt(() -> {
+            panel.selectInspectorTabForTest("Material");
+            return null;
+        });
+        writePanel(
+                panel,
+                canvas,
+                output.resolveSibling("scene-editor-independent-material-preview.png"));
+    }
 
     private static void writePanel(SceneEditorPanel panel, BufferedImage canvas, Path output) throws Exception {
         onEdt(() -> { layout(panel); var g = canvas.createGraphics(); panel.printAll(g); g.dispose(); return null; });
