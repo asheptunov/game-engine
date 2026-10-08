@@ -137,7 +137,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         if(faceSelection!=null)selectedLabel+=" · face "+faceSelection.faceId();
         boolean objectMode=selectionMode==EditorController.SelectionMode.OBJECT;
         boolean translatableElement=(selectionMode==EditorController.SelectionMode.VERTEX&&vertexSelection!=null)
-                ||(selectionMode==EditorController.SelectionMode.EDGE&&edgeSelection!=null);
+                ||(selectionMode==EditorController.SelectionMode.EDGE&&edgeSelection!=null)
+                ||(selectionMode==EditorController.SelectionMode.FACE&&faceSelection!=null);
         translate.setEnabled(objectMode||translatableElement);rotate.setEnabled(objectMode);
         if(!objectMode&&translatableElement)translate.setSelected(true);updateNavigationHelp();
         setSelectedCamera.setEnabled(selected != null && state.snapshot().findNode(selected).map(node -> node.camera() != null).orElse(false));
@@ -209,6 +210,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         if(selectionMode==EditorController.SelectionMode.OBJECT)return gizmoMode;
         if(selectionMode==EditorController.SelectionMode.VERTEX&&vertexSelection!=null)return OverlayGeometry.GizmoMode.TRANSLATE;
         if(selectionMode==EditorController.SelectionMode.EDGE&&edgeSelection!=null)return OverlayGeometry.GizmoMode.TRANSLATE;
+        if(selectionMode==EditorController.SelectionMode.FACE&&faceSelection!=null)return OverlayGeometry.GizmoMode.TRANSLATE;
         return OverlayGeometry.GizmoMode.NONE;
     }
 
@@ -373,7 +375,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
             case OBJECT->"Left-click selects objects or drags transform handles";
             case VERTEX->"Left-click x-ray selects vertices (8 px) or drags move handles";
             case EDGE->"Left-click x-ray selects edges (6 px) or drags move handles";
-            case FACE->"Left-click selects polygon faces";
+            case FACE->"Left-click depth-selects polygon faces or drags selected-face move handles";
         };
         setToolTipText(left+" · "+inputBindings.navigationHelp());
     }
@@ -423,16 +425,19 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var hit = painted.overlay().pick(uv[0], uv[1], painted.content().width, painted.content().height, 9).orElse(null);
         if (hit == null || hit.kind() != OverlayGeometry.HitKind.HANDLE) return false;
         var token=painted.frame().token();
-        if(token.selectionMode()==EditorController.SelectionMode.FACE)return false;
         var prepared = painted.frame().token().overlay(); var axis = prepared.axis(hit.axis());
         Optional<GizmoDrag> drag = hit.mode() == OverlayGeometry.GizmoMode.TRANSLATE
                 ? GizmoDrag.beginTranslation(painted.frame().camera(), prepared.pivot(), axis, uv[0], uv[1], painted.content().width, painted.content().height)
                 : GizmoDrag.beginRotation(painted.frame().camera(), prepared.pivot(), axis, uv[0], uv[1]);
         if (drag.isEmpty()) { renderStatus.setText("Handle is aligned with this view; choose another axis or view"); return false; }
         String label = (hit.mode() == OverlayGeometry.GizmoMode.TRANSLATE ? "Move " : "Rotate ") + hit.axis();
-        elementGizmo=token.selectionMode()==EditorController.SelectionMode.VERTEX||token.selectionMode()==EditorController.SelectionMode.EDGE;
+        elementGizmo=token.selectionMode()==EditorController.SelectionMode.VERTEX
+                ||token.selectionMode()==EditorController.SelectionMode.EDGE
+                ||token.selectionMode()==EditorController.SelectionMode.FACE;
         boolean began=elementGizmo
-                ?controller.beginElementGesture(painted.overlay().sceneRevision(),token.selectionMode(),token.selection(),token.vertexSelection(),token.edgeSelection())
+                ?controller.beginElementGesture(
+                        painted.overlay().sceneRevision(), token.selectionMode(), token.selection(),
+                        token.vertexSelection(), token.edgeSelection(), token.faceSelection())
                 :controller.beginTransformGesture(hit.nodeId(),label,painted.overlay().sceneRevision());
         if(!began){elementGizmo=false;return false;}
         gizmoDrag = drag.get(); gizmoStart = painted.frame().token().snapshot(); gizmoNode = hit.nodeId(); gizmoAxis = hit.axis();
@@ -597,6 +602,36 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
             graphics.setColor(new Color(235, 244, 255, 205));
             for (var line : overlay.wireframe()) drawLine(graphics, area, line);
         }
+        for (var line : overlay.elementCueLines()) {
+            if (line.style() == OverlayGeometry.Style.VERTEX_BOUNDARY_CUE_XRAY) {
+                graphics.setStroke(new BasicStroke(1f));
+                graphics.setColor(new Color(116, 214, 190, 120));
+            } else if (line.style() == OverlayGeometry.Style.EDGE_CUE_XRAY) {
+                graphics.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                graphics.setColor(new Color(116, 214, 190, 205));
+            } else {
+                graphics.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                graphics.setColor(new Color(125, 180, 255, 185));
+            }
+            drawLine(graphics, area, line);
+        }
+        for (var point : overlay.elementCuePoints()) {
+            int x = screenX(area, point.u());
+            int y = screenY(area, point.v());
+            if (point.kind() == OverlayGeometry.ElementKind.VERTEX) {
+                graphics.setColor(new Color(116, 214, 190, 225));
+                graphics.fillOval(x - 4, y - 4, 8, 8);
+                graphics.setColor(new Color(235, 255, 250, 235));
+                graphics.drawOval(x - 5, y - 5, 10, 10);
+            } else {
+                graphics.setColor(new Color(125, 180, 255, 225));
+                int[] xs = {x, x + 5, x, x - 5};
+                int[] ys = {y - 5, y, y + 5, y};
+                graphics.fillPolygon(xs, ys, 4);
+                graphics.setColor(new Color(230, 240, 255, 235));
+                graphics.drawPolygon(xs, ys, 4);
+            }
+        }
         graphics.setStroke(new BasicStroke(3.2f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
         graphics.setColor(new Color(255,116,72,245));for(var line:overlay.selectedFace())drawLine(graphics,area,line);
         for(var line:overlay.selectedEdges())drawLine(graphics,area,line);
@@ -625,6 +660,11 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         }
         if(overlay.elementCandidatesTruncated()){
             graphics.setColor(new Color(255,190,84));graphics.drawString("Element picking bounded to first 100,000 stable IDs",area.x+8,area.y+area.height-24);
+        }
+        if (overlay.elementCuesTruncated()) {
+            graphics.setColor(new Color(255, 190, 84));
+            graphics.drawString("Mode cues truncated at 10,000; click picking remains available",
+                    area.x + 8, area.y + area.height - 40);
         }
         graphics.dispose();
     }

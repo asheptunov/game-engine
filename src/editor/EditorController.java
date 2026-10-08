@@ -50,7 +50,9 @@ public final class EditorController implements AutoCloseable {
                            long firstId, long secondId, PolygonMesh baseline,
                            long displayedRevision, String label) {
         boolean element() {
-            return mode == SelectionMode.VERTEX || mode == SelectionMode.EDGE;
+            return mode == SelectionMode.VERTEX
+                    || mode == SelectionMode.EDGE
+                    || mode == SelectionMode.FACE;
         }
     }
     private final SceneDocument document;
@@ -416,7 +418,12 @@ public final class EditorController implements AutoCloseable {
             return edit("Move edge "+selectedEdge.firstVertexId()+"-"+selectedEdge.secondVertexId(),edit->edit.translateEdge(
                     selectedEdge.geometryId(),selectedEdge.firstVertexId(),selectedEdge.secondVertexId(),localDelta));
         }
-        return fail("Select a vertex or edge first");
+        if (selectionMode == SelectionMode.FACE && faceSelection != null) {
+            var selectedFace = faceSelection;
+            return edit("Move face " + selectedFace.faceId(), edit -> edit.translateFace(
+                    selectedFace.geometryId(), selectedFace.faceId(), localDelta));
+        }
+        return fail("Select a vertex, edge, or face first");
     }
     public boolean setPointLight(NodeId id, PointLightComponent light) { return edit(light == null ? "Remove point light" : "Apply point light", e -> e.setPointLight(id, light)); }
     public boolean setCamera(NodeId id, CameraComponent camera) { return edit(camera == null ? "Remove camera" : "Apply camera", e -> e.setCamera(id, camera)); }
@@ -496,15 +503,18 @@ public final class EditorController implements AutoCloseable {
         }
     }
     public boolean beginElementGesture(long displayedRevision) {
-        return beginElementGesture(displayedRevision,selectionMode,selection,vertexSelection,edgeSelection);
+        return beginElementGesture(
+                displayedRevision, selectionMode, selection,
+                vertexSelection, edgeSelection, faceSelection);
     }
     public boolean beginElementGesture(long displayedRevision,SelectionMode displayedMode,NodeId displayedSelection,
-                                       VertexSelection displayedVertex,EdgeSelection displayedEdge) {
+                                       VertexSelection displayedVertex,EdgeSelection displayedEdge,
+                                       FaceSelection displayedFace) {
         requireEdt();
         if (loading || busy) return fail("Wait for file work to finish");
         if (gesture != null) return fail("A transform gesture is already active");
         if (!selectionContextMatches(displayedRevision, displayedMode, displayedSelection,
-                displayedVertex, displayedEdge, faceSelection)) {
+                displayedVertex, displayedEdge, displayedFace)) {
             return fail("View changed; click again");
         }
         try {
@@ -528,9 +538,23 @@ public final class EditorController implements AutoCloseable {
                 first = edgeSelection.firstVertexId();
                 second = edgeSelection.secondVertexId();
                 requireEdge(mesh, first, second);
-            } else return fail("Select a vertex or edge first");
-            String label = selectionMode == SelectionMode.VERTEX
-                    ? "Move vertex " + first : "Move edge " + first + "-" + second;
+            } else if (selectionMode == SelectionMode.FACE && faceSelection != null) {
+                if (!faceSelection.nodeId().equals(node.id())
+                        || !faceSelection.geometryId().equals(node.geometry().geometryId())) {
+                    throw new IllegalArgumentException("Face selection changed");
+                }
+                first = faceSelection.faceId();
+                second = -1;
+                mesh.requireFace(first);
+            } else {
+                return fail("Select a vertex, edge, or face first");
+            }
+            String label = switch (selectionMode) {
+                case VERTEX -> "Move vertex " + first;
+                case EDGE -> "Move edge " + first + "-" + second;
+                case FACE -> "Move face " + first;
+                default -> throw new IllegalStateException("Object mode is not an element gesture");
+            };
             history.beginGroup(label);
             selectionIntent++;
             gesture = new Gesture(node.id(), node.geometry().geometryId(), selectionMode,
@@ -549,9 +573,13 @@ public final class EditorController implements AutoCloseable {
         Objects.requireNonNull(localDelta, "localDelta");
         if (gesture == null || !gesture.element()) return fail("Element gesture is no longer active");
         try {
-            PolygonMesh candidate = gesture.mode() == SelectionMode.VERTEX
-                    ? gesture.baseline().translateVertex(gesture.firstId(), localDelta)
-                    : gesture.baseline().translateEdge(gesture.firstId(), gesture.secondId(), localDelta);
+            PolygonMesh candidate = switch (gesture.mode()) {
+                case VERTEX -> gesture.baseline().translateVertex(gesture.firstId(), localDelta);
+                case EDGE -> gesture.baseline().translateEdge(
+                        gesture.firstId(), gesture.secondId(), localDelta);
+                case FACE -> gesture.baseline().translateFace(gesture.firstId(), localDelta);
+                default -> throw new IllegalStateException("Object gesture has no polygon baseline");
+            };
             history.updateGroup(edit -> edit.replaceGeometry(gesture.geometryId(), candidate));
             gestureCandidateValid = true;
             gestureValidationError = null;

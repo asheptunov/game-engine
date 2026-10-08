@@ -16,6 +16,7 @@ public final class OverlayGeometry {
     public static final int MAX_CACHED_ASSETS=256;
     public static final int MAX_CACHED_SEGMENTS=200_000;
     public static final int MAX_ELEMENT_PICK_CANDIDATES = 100_000;
+    public static final int MAX_ELEMENT_CUES = 10_000;
     public static final double VERTEX_PICK_RADIUS_PIXELS = 8;
     public static final double EDGE_PICK_DISTANCE_PIXELS = 6;
     public static final int SPHERE_SEGMENTS=48;
@@ -26,7 +27,16 @@ public final class OverlayGeometry {
     public enum ElementMode { OBJECT, VERTEX, EDGE, FACE }
     public enum ElementKind { VERTEX, EDGE, FACE }
     public enum MarkerKind { LIGHT,CAMERA }
-    public enum Style { WIREFRAME_XRAY,EDGE_SELECTION_XRAY,FACE_SELECTION_XRAY,TRANSLATION_HANDLE_XRAY,ROTATION_HANDLE_XRAY }
+    public enum Style {
+        WIREFRAME_XRAY,
+        VERTEX_BOUNDARY_CUE_XRAY,
+        EDGE_CUE_XRAY,
+        FACE_BOUNDARY_CUE_XRAY,
+        EDGE_SELECTION_XRAY,
+        FACE_SELECTION_XRAY,
+        TRANSLATION_HANDLE_XRAY,
+        ROTATION_HANDLE_XRAY
+    }
     public enum HitKind { HANDLE,MARKER }
 
     public record Line(NodeId nodeId,Style style,Axis axis,double u1,double v1,double u2,double v2) {
@@ -37,6 +47,14 @@ public final class OverlayGeometry {
     }
     public record Point(NodeId nodeId, double u, double v) {
         public Point { Objects.requireNonNull(nodeId); }
+    }
+    public record CuePoint(NodeId nodeId, GeometryId geometryId, ElementKind kind,
+                           long elementId, double u, double v) {
+        public CuePoint {
+            Objects.requireNonNull(nodeId);
+            Objects.requireNonNull(geometryId);
+            Objects.requireNonNull(kind);
+        }
     }
     public record Handle(NodeId nodeId,GizmoMode mode,Axis axis,List<Line> lines) {
         public Handle { Objects.requireNonNull(nodeId);Objects.requireNonNull(mode);Objects.requireNonNull(axis);lines=List.copyOf(lines); }
@@ -58,12 +76,17 @@ public final class OverlayGeometry {
     }
     public record VertexHit(NodeId nodeId,GeometryId geometryId,long vertexId,double distancePixels) {}
     public record EdgeHit(NodeId nodeId,GeometryId geometryId,long firstVertexId,long secondVertexId,double distancePixels) {}
-    public record Frame(long sceneRevision,List<Line> wireframe,List<Line> selectedFace,List<Point> selectedVertices,
-                        List<Line> selectedEdges,List<Marker> markers,List<Handle> handles,
-                        boolean wireframeTruncated,boolean elementCandidatesTruncated) {
+    public record Frame(long sceneRevision,List<Line> wireframe,List<Line> elementCueLines,
+                        List<CuePoint> elementCuePoints,List<Line> selectedFace,
+                        List<Point> selectedVertices,List<Line> selectedEdges,
+                        List<Marker> markers,List<Handle> handles,
+                        boolean wireframeTruncated,boolean elementCuesTruncated,
+                        boolean elementCandidatesTruncated) {
         public Frame {
-            wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);selectedVertices=List.copyOf(selectedVertices);
-            selectedEdges=List.copyOf(selectedEdges);markers=List.copyOf(markers);handles=List.copyOf(handles);
+            wireframe=List.copyOf(wireframe);elementCueLines=List.copyOf(elementCueLines);
+            elementCuePoints=List.copyOf(elementCuePoints);selectedFace=List.copyOf(selectedFace);
+            selectedVertices=List.copyOf(selectedVertices);selectedEdges=List.copyOf(selectedEdges);
+            markers=List.copyOf(markers);handles=List.copyOf(handles);
         }
         /** Handles take precedence over markers; both use exactly the displayed projected geometry. */
         public Optional<Hit> pick(double u,double v,int pixelWidth,int pixelHeight,double tolerancePixels) {
@@ -95,14 +118,22 @@ public final class OverlayGeometry {
     }
     public record WorldVertex(NodeId nodeId,GeometryId geometryId,long vertexId,Vec3 position) {}
     public record WorldEdge(NodeId nodeId,GeometryId geometryId,long firstVertexId,long secondVertexId,Vec3 start,Vec3 end) {}
+    public record WorldCueLine(NodeId nodeId, GeometryId geometryId, ElementKind kind,
+                               long firstId, long secondId, Vec3 start, Vec3 end) {}
+    public record WorldCuePoint(NodeId nodeId, GeometryId geometryId, ElementKind kind,
+                                long elementId, Vec3 position) {}
     public record Prepared(long sceneRevision,NodeId selection,ElementMode elementMode,ElementSelection elementSelection,
                            Vec3 pivot,Vec3 xAxis,Vec3 yAxis,Vec3 zAxis,List<WorldLine> wireframe,List<WorldLine> selectedFace,
                            List<Vec3> selectedVertices,List<WorldLine> selectedEdges,List<WorldMarker> markers,
                            List<WorldVertex> elementVertices,List<WorldEdge> elementEdges,
-                           boolean wireframeTruncated,boolean elementCandidatesTruncated) {
+                           List<WorldCueLine> elementCueLines,List<WorldCuePoint> elementCuePoints,
+                           boolean wireframeTruncated,boolean elementCuesTruncated,
+                           boolean elementCandidatesTruncated) {
         public Prepared {
             wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);selectedVertices=List.copyOf(selectedVertices);
-            selectedEdges=List.copyOf(selectedEdges);markers=List.copyOf(markers);elementVertices=List.copyOf(elementVertices);elementEdges=List.copyOf(elementEdges);
+            selectedEdges=List.copyOf(selectedEdges);markers=List.copyOf(markers);
+            elementVertices=List.copyOf(elementVertices);elementEdges=List.copyOf(elementEdges);
+            elementCueLines=List.copyOf(elementCueLines);elementCuePoints=List.copyOf(elementCuePoints);
         }
         public Vec3 axis(Axis axis){return switch(axis){case X->xAxis;case Y->yAxis;case Z->zAxis;};}
     }
@@ -128,18 +159,24 @@ public final class OverlayGeometry {
     private final Map<AssetKey,Cached> cache=new LinkedHashMap<>(16,.75f,true);
     private final int maxWireframeSegments;
     private final int maxElementPickCandidates;
+    private final int maxElementCues;
     private int cachedSegments;
 
     public OverlayGeometry() {
-        this(MAX_WIREFRAME_SEGMENTS, MAX_ELEMENT_PICK_CANDIDATES);
+        this(MAX_WIREFRAME_SEGMENTS, MAX_ELEMENT_PICK_CANDIDATES, MAX_ELEMENT_CUES);
     }
 
     OverlayGeometry(int maxWireframeSegments, int maxElementPickCandidates) {
-        if (maxWireframeSegments < 1 || maxElementPickCandidates < 1) {
+        this(maxWireframeSegments, maxElementPickCandidates, MAX_ELEMENT_CUES);
+    }
+
+    OverlayGeometry(int maxWireframeSegments, int maxElementPickCandidates, int maxElementCues) {
+        if (maxWireframeSegments < 1 || maxElementPickCandidates < 1 || maxElementCues < 1) {
             throw new IllegalArgumentException("Overlay limits must be positive");
         }
         this.maxWireframeSegments = maxWireframeSegments;
         this.maxElementPickCandidates = maxElementPickCandidates;
+        this.maxElementCues = maxElementCues;
     }
 
     /** Build world-space overlay data. Selected geometry shows itself; a component-free group shows its subtree. */
@@ -164,6 +201,8 @@ public final class OverlayGeometry {
         var markers = new ArrayList<WorldMarker>();
         var candidateVertices = new ArrayList<WorldVertex>();
         var candidateEdges = new ArrayList<WorldEdge>();
+        var cueLines = new ArrayList<WorldCueLine>();
+        var cuePoints = new ArrayList<WorldCuePoint>();
         boolean truncated = false;
         boolean elementTruncated = false;
         for (var node : snapshot.nodes()) {
@@ -214,6 +253,8 @@ public final class OverlayGeometry {
                 }
             }
         }
+        boolean cuesTruncated = prepareElementCues(
+                snapshot, selection, elementMode, cueLines, cuePoints);
         Vec3 pivot=null,x=null,y=null,z=null;
         if(selection!=null) {
             var selected=snapshot.requireNode(selection);var world=snapshot.worldTransform(selection);
@@ -244,6 +285,7 @@ public final class OverlayGeometry {
                         selectedEdges.add(new WorldLine(selection,a,b));pivot=a.add(b).scale(.5f);
                     }else{
                         var face=mesh.requireFace(elementSelection.firstId());
+                        pivot = transform.point(faceVertexCentroid(mesh, face));
                         for(int i=0;i<face.vertexIds().size();i++) {
                             var a=mesh.requireVertex(face.vertexIds().get(i)).position();var b=mesh.requireVertex(face.vertexIds().get((i+1)%face.vertexIds().size())).position();
                             selectedFace.add(new WorldLine(selection,transform.point(a),transform.point(b)));
@@ -253,7 +295,199 @@ public final class OverlayGeometry {
             }
         }
         return new Prepared(snapshot.revision(),selection,elementMode,elementSelection,pivot,x,y,z,wireframe,selectedFace,
-                selectedVertices,selectedEdges,markers,candidateVertices,candidateEdges,truncated,elementTruncated);
+                selectedVertices,selectedEdges,markers,candidateVertices,candidateEdges,cueLines,cuePoints,
+                truncated,cuesTruncated,elementTruncated);
+    }
+
+    /**
+     * Build a camera-independent, finite cue set. Selection highlight and handles are
+     * prepared separately so this display budget can never hide the active element.
+     */
+    private boolean prepareElementCues(
+            SceneSnapshot snapshot, NodeId selectedNode, ElementMode mode,
+            List<WorldCueLine> cueLines, List<WorldCuePoint> cuePoints) {
+        if (mode == ElementMode.OBJECT) return false;
+        var nodes = polygonNodes(snapshot, selectedNode);
+        return switch (mode) {
+            case VERTEX -> prepareVertexCues(snapshot, nodes, cueLines, cuePoints);
+            case EDGE -> prepareEdgeCues(snapshot, nodes, cueLines);
+            case FACE -> prepareFaceCues(snapshot, nodes, cueLines, cuePoints);
+            case OBJECT -> false;
+        };
+    }
+
+    private boolean prepareVertexCues(
+            SceneSnapshot snapshot, List<SceneNode> nodes,
+            List<WorldCueLine> cueLines, List<WorldCuePoint> cuePoints) {
+        boolean truncated = false;
+        int pointBudget = Math.max(1, maxElementCues * 2 / 3);
+        outerPoints:
+        for (var node : nodes) {
+            var asset = snapshot.requireGeometry(node.geometry().geometryId());
+            var local = cached(asset);
+            var transform = snapshot.worldTransform(node.id());
+            for (var vertex : local.vertices) {
+                if (cuePoints.size() == pointBudget) {
+                    truncated = true;
+                    break outerPoints;
+                }
+                cuePoints.add(new WorldCuePoint(
+                        node.id(), asset.id(), ElementKind.VERTEX, vertex.id(),
+                        transform.point(vertex.position())));
+            }
+        }
+        outerLines:
+        for (var node : nodes) {
+            var asset = snapshot.requireGeometry(node.geometry().geometryId());
+            var local = cached(asset);
+            var transform = snapshot.worldTransform(node.id());
+            for (var edge : local.edges) {
+                if (cuePoints.size() + cueLines.size() == maxElementCues) {
+                    truncated = true;
+                    break outerLines;
+                }
+                cueLines.add(new WorldCueLine(
+                        node.id(), asset.id(), ElementKind.VERTEX,
+                        edge.firstId(), edge.secondId(),
+                        transform.point(edge.start()), transform.point(edge.end())));
+            }
+        }
+        return truncated;
+    }
+
+    private boolean prepareEdgeCues(
+            SceneSnapshot snapshot, List<SceneNode> nodes, List<WorldCueLine> cueLines) {
+        for (var node : nodes) {
+            var asset = snapshot.requireGeometry(node.geometry().geometryId());
+            var local = cached(asset);
+            var transform = snapshot.worldTransform(node.id());
+            for (var edge : local.edges) {
+                if (cueLines.size() == maxElementCues) return true;
+                cueLines.add(new WorldCueLine(
+                        node.id(), asset.id(), ElementKind.EDGE,
+                        edge.firstId(), edge.secondId(),
+                        transform.point(edge.start()), transform.point(edge.end())));
+            }
+        }
+        return false;
+    }
+
+    private boolean prepareFaceCues(
+            SceneSnapshot snapshot, List<SceneNode> nodes,
+            List<WorldCueLine> cueLines, List<WorldCuePoint> cuePoints) {
+        for (var node : nodes) {
+            var asset = snapshot.requireGeometry(node.geometry().geometryId());
+            var mesh = (PolygonMesh) asset.geometry();
+            var transform = snapshot.worldTransform(node.id());
+            var faceIds = smallestFaceIds(mesh);
+            for (long faceId : faceIds.ids()) {
+                var face = mesh.requireFace(faceId);
+                int faceCost = face.vertexIds().size() + 1;
+                if (cueLines.size() + cuePoints.size() + faceCost > maxElementCues) return true;
+                cuePoints.add(new WorldCuePoint(
+                        node.id(), asset.id(), ElementKind.FACE, faceId,
+                        transform.point(faceSurfaceMarker(mesh, face))));
+                for (int index = 0; index < face.vertexIds().size(); index++) {
+                    long firstId = face.vertexIds().get(index);
+                    long secondId = face.vertexIds().get((index + 1) % face.vertexIds().size());
+                    cueLines.add(new WorldCueLine(
+                            node.id(), asset.id(), ElementKind.FACE, faceId, -1,
+                            transform.point(mesh.requireVertex(firstId).position()),
+                            transform.point(mesh.requireVertex(secondId).position())));
+                }
+            }
+            if (faceIds.truncated()) return true;
+        }
+        return false;
+    }
+
+    private List<SceneNode> polygonNodes(SceneSnapshot snapshot, NodeId selectedNode) {
+        return snapshot.nodes().stream()
+                .filter(node -> node.geometry() != null)
+                .filter(node -> snapshot.requireGeometry(
+                        node.geometry().geometryId()).geometry() instanceof PolygonMesh)
+                .sorted(Comparator
+                        .comparing((SceneNode node) -> !Objects.equals(node.id(), selectedNode))
+                        .thenComparing(node -> node.id().value()))
+                .toList();
+    }
+
+    private record FaceIds(List<Long> ids, boolean truncated) {}
+
+    /** Retain only the lowest stable face IDs; no unbounded face cache is created. */
+    private FaceIds smallestFaceIds(PolygonMesh mesh) {
+        var retained = new PriorityQueue<Long>(maxElementCues, Comparator.reverseOrder());
+        boolean truncated = false;
+        for (var face : mesh.faces()) {
+            if (retained.size() < maxElementCues) {
+                retained.add(face.id());
+            } else {
+                truncated = true;
+                if (face.id() < retained.element()) {
+                    retained.remove();
+                    retained.add(face.id());
+                }
+            }
+        }
+        var ordered = new ArrayList<>(retained);
+        ordered.sort(Long::compare);
+        return new FaceIds(List.copyOf(ordered), truncated);
+    }
+
+    /** Boundary centroid is the manipulation pivot, even when the authored face is warped. */
+    private static Vec3 faceVertexCentroid(PolygonMesh mesh, PolygonMesh.Face face) {
+        double x = 0;
+        double y = 0;
+        double z = 0;
+        for (long vertexId : face.vertexIds()) {
+            Vec3 position = mesh.requireVertex(vertexId).position();
+            x += position.x();
+            y += position.y();
+            z += position.z();
+        }
+        double inverseCount = 1.0 / face.vertexIds().size();
+        return new Vec3(
+                (float) (x * inverseCount),
+                (float) (y * inverseCount),
+                (float) (z * inverseCount));
+    }
+
+    /**
+     * Put the face cue on its rendered surface: largest fan-triangle centroid, with
+     * strict comparison so equal-area ties keep the lowest fan index.
+     */
+    private static Vec3 faceSurfaceMarker(PolygonMesh mesh, PolygonMesh.Face face) {
+        Vec3 first = mesh.requireVertex(face.vertexIds().getFirst()).position();
+        Vec3 bestSecond = null;
+        Vec3 bestThird = null;
+        double bestAreaSquared = -1;
+        for (int index = 1; index + 1 < face.vertexIds().size(); index++) {
+            Vec3 second = mesh.requireVertex(face.vertexIds().get(index)).position();
+            Vec3 third = mesh.requireVertex(face.vertexIds().get(index + 1)).position();
+            double areaSquared = triangleAreaSquared(first, second, third);
+            if (areaSquared > bestAreaSquared) {
+                bestAreaSquared = areaSquared;
+                bestSecond = second;
+                bestThird = third;
+            }
+        }
+        return new Vec3(
+                (float) (((double) first.x() + bestSecond.x() + bestThird.x()) / 3.0),
+                (float) (((double) first.y() + bestSecond.y() + bestThird.y()) / 3.0),
+                (float) (((double) first.z() + bestSecond.z() + bestThird.z()) / 3.0));
+    }
+
+    private static double triangleAreaSquared(Vec3 first, Vec3 second, Vec3 third) {
+        double ax = (double) second.x() - first.x();
+        double ay = (double) second.y() - first.y();
+        double az = (double) second.z() - first.z();
+        double bx = (double) third.x() - first.x();
+        double by = (double) third.y() - first.y();
+        double bz = (double) third.z() - first.z();
+        double cx = ay * bz - az * by;
+        double cy = az * bx - ax * bz;
+        double cz = ax * by - ay * bx;
+        return cx * cx + cy * cy + cz * cz;
     }
 
     /** Project prepared data for the exact painted camera and viewport dimensions. */
@@ -264,6 +498,19 @@ public final class OverlayGeometry {
         var projector=CameraProjector.of(camera);var lines=new ArrayList<Line>();
         for(var world:prepared.wireframe)projector.clipAndProject(world.start,world.end).ifPresent(p->lines.add(
                 line(world.nodeId,Style.WIREFRAME_XRAY,null,p)));
+        var cueLines = new ArrayList<Line>();
+        for (var world : prepared.elementCueLines) {
+            projector.clipAndProject(world.start(), world.end()).ifPresent(projected -> cueLines.add(
+                    line(world.nodeId(), cueLineStyle(world.kind()), null, projected)));
+        }
+        var cuePoints = new ArrayList<CuePoint>();
+        for (var world : prepared.elementCuePoints) {
+            projector.project(world.position())
+                    .filter(CameraProjector.ProjectedPoint::insideViewport)
+                    .ifPresent(projected -> cuePoints.add(new CuePoint(
+                            world.nodeId(), world.geometryId(), world.kind(), world.elementId(),
+                            projected.u(), projected.v())));
+        }
         var faceLines=new ArrayList<Line>();
         for(var world:prepared.selectedFace)projector.clipAndProject(world.start,world.end).ifPresent(p->faceLines.add(
                 line(world.nodeId,Style.FACE_SELECTION_XRAY,null,p)));
@@ -289,8 +536,18 @@ public final class OverlayGeometry {
                 }
             }
         }
-        return new Frame(prepared.sceneRevision,lines,faceLines,selectedVertexPoints,selectedEdgeLines,markers,handles,
-                prepared.wireframeTruncated,prepared.elementCandidatesTruncated);
+        return new Frame(prepared.sceneRevision,lines,cueLines,cuePoints,faceLines,
+                selectedVertexPoints,selectedEdgeLines,markers,handles,
+                prepared.wireframeTruncated,prepared.elementCuesTruncated,
+                prepared.elementCandidatesTruncated);
+    }
+
+    private static Style cueLineStyle(ElementKind kind) {
+        return switch (kind) {
+            case VERTEX -> Style.VERTEX_BOUNDARY_CUE_XRAY;
+            case EDGE -> Style.EDGE_CUE_XRAY;
+            case FACE -> Style.FACE_BOUNDARY_CUE_XRAY;
+        };
     }
 
     /** Project bounded vertex candidates only for an explicit click against its captured camera. */
@@ -383,29 +640,28 @@ public final class OverlayGeometry {
             }
         } else if (geometry instanceof PolygonMesh mesh) {
             var byId = new HashMap<Long, Vec3>();
+            int retainedElementGeometry = Math.max(maxElementPickCandidates, maxElementCues);
             var stableEdgeOrder = Comparator.comparingLong(PolygonMesh.Edge::firstVertexId)
                     .thenComparingLong(PolygonMesh.Edge::secondVertexId);
             var smallestStableEdges = new PriorityQueue<PolygonMesh.Edge>(
-                    maxElementPickCandidates, stableEdgeOrder.reversed());
+                    retainedElementGeometry, stableEdgeOrder.reversed());
             var sortedVertices = mesh.editableVertices().stream()
                     .sorted(Comparator.comparingLong(PolygonMesh.Vertex::id)).toList();
             for (var vertex : sortedVertices) {
                 byId.put(vertex.id(), vertex.position());
-                if (vertices.size() < maxElementPickCandidates) {
+                if (vertices.size() < retainedElementGeometry) {
                     vertices.add(new LocalVertex(vertex.id(), vertex.position()));
-                } else {
-                    vertexCandidatesTruncated = true;
                 }
             }
+            vertexCandidatesTruncated = sortedVertices.size() > maxElementPickCandidates;
             for (var edge : mesh.edges()) {
                 var start = byId.get(edge.firstVertexId());
                 var end = byId.get(edge.secondVertexId());
                 if (output.size() < maxWireframeSegments) output.add(new LocalLine(start, end));
                 else wireframeTruncated = true;
-                if (smallestStableEdges.size() < maxElementPickCandidates) {
+                if (smallestStableEdges.size() < retainedElementGeometry) {
                     smallestStableEdges.add(edge);
                 } else {
-                    edgeCandidatesTruncated = true;
                     if (stableEdgeOrder.compare(edge, smallestStableEdges.element()) < 0) {
                         smallestStableEdges.remove();
                         smallestStableEdges.add(edge);
@@ -414,6 +670,7 @@ public final class OverlayGeometry {
             }
             var sortedEdges = new ArrayList<>(smallestStableEdges);
             sortedEdges.sort(stableEdgeOrder);
+            edgeCandidatesTruncated = mesh.edges().size() > maxElementPickCandidates;
             for (var edge : sortedEdges) {
                 edges.add(new LocalEdge(edge.firstVertexId(), edge.secondVertexId(),
                         byId.get(edge.firstVertexId()), byId.get(edge.secondVertexId())));

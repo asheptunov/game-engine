@@ -38,6 +38,53 @@ public class OverlayGeometryBoundsTest {
         assertTrue(prepared.elementCandidatesTruncated());
     }
 
+    @Test void displayCueBudgetPrioritizesSelectedNodeAndIsIndependentFromPickBudget() {
+        var scene = scene();
+        var overlays = new OverlayGeometry(2, 100, 6);
+
+        var vertex = overlays.prepare(
+                scene.snapshot(), scene.secondNode(), OverlayGeometry.ElementMode.VERTEX, null);
+        assertEquals(4, vertex.elementCuePoints().size());
+        assertTrue(vertex.elementCuePoints().stream()
+                .allMatch(point -> point.nodeId().equals(scene.secondNode())));
+        assertEquals(2, vertex.elementCueLines().size());
+        assertTrue(vertex.elementCueLines().stream()
+                .allMatch(line -> line.nodeId().equals(scene.secondNode())));
+        assertTrue(vertex.elementCuesTruncated());
+        assertEquals(8, vertex.elementVertices().size());
+        assertFalse(vertex.elementCandidatesTruncated());
+
+        var edges = overlays.prepare(
+                scene.snapshot(), scene.secondNode(), OverlayGeometry.ElementMode.EDGE, null);
+        assertEquals(6, edges.elementCueLines().size());
+        assertTrue(edges.elementCueLines().subList(0, 4).stream()
+                .allMatch(line -> line.nodeId().equals(scene.secondNode())));
+        assertTrue(edges.elementCuesTruncated());
+        assertEquals(8, edges.elementEdges().size());
+
+        var reverseLimits = new OverlayGeometry(100, 2, 6)
+                .prepare(scene.snapshot(), scene.secondNode(), OverlayGeometry.ElementMode.EDGE, null);
+        assertEquals(2, reverseLimits.elementEdges().size());
+        assertEquals(6, reverseLimits.elementCueLines().size());
+        assertTrue(reverseLimits.elementCandidatesTruncated());
+        assertTrue(reverseLimits.elementCuesTruncated());
+    }
+
+    @Test void faceCueBudgetCountsCenterAndEveryBoundarySegment() {
+        var scene = scene();
+        var tooSmall = new OverlayGeometry(2, 100, 4).prepare(
+                scene.snapshot(), scene.firstNode(), OverlayGeometry.ElementMode.FACE, null);
+        assertTrue(tooSmall.elementCueLines().isEmpty());
+        assertTrue(tooSmall.elementCuePoints().isEmpty());
+        assertTrue(tooSmall.elementCuesTruncated());
+
+        var exact = new OverlayGeometry(2, 100, 5).prepare(
+                scene.snapshot(), scene.firstNode(), OverlayGeometry.ElementMode.FACE, null);
+        assertEquals(4, exact.elementCueLines().size());
+        assertEquals(1, exact.elementCuePoints().size());
+        assertTrue(exact.elementCuesTruncated());
+    }
+
     private static Scene scene() {
         var document = new SceneDocument();
         var firstNode = new NodeId(new UUID(0, 1));

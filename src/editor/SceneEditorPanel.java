@@ -95,7 +95,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         objectSelect.setToolTipText("Object mode: select nodes and use transform handles");
         vertexSelect.setToolTipText("Vertex mode: x-ray pick within 8 logical pixels; drag local-axis move handles");
         edgeSelect.setToolTipText("Edge mode: x-ray pick within 6 logical pixels; drag local-axis move handles");
-        faceSelect.setToolTipText("Face mode: ray-pick polygon faces; object handles are disabled");
+        faceSelect.setToolTipText("Face mode: depth-visible surface pick; polygon boundaries and centers stay visible; selected faces have move handles");
         objectSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.OBJECT));
         vertexSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.VERTEX));
         edgeSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.EDGE));
@@ -300,6 +300,9 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     boolean approximateSphereForTest(int detail){return inspector.approximateAnalyticSphere(detail);}
     boolean meshUniqueForTest(){return inspector.makeGeometryUnique();}
     boolean meshExtrudeForTest(float distance){return inspector.extrude(distance);}
+    boolean translateSelectedElementForTest(Vec3 delta) {
+        return inspector.translateSelectedElement(delta);
+    }
     void cancelActiveGesture() { if (viewA != null) viewA.cancelGizmo(); if (viewB != null) viewB.cancelGizmo(); }
 
     @Override public void close() {
@@ -441,7 +444,8 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                 uniqueGeometry.setEnabled(geometryUses > 1);
                 boolean selectedTranslatableElement = (selectedVertex != null
                         && selectedVertex.nodeId().equals(node.id()))
-                        || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()));
+                        || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()))
+                        || (selectedFace != null && selectedFace.nodeId().equals(node.id()));
                 translateElement.setEnabled(polygon && selectedTranslatableElement);
                 extrudeFace.setEnabled(polygon && selectedFace != null
                         && selectedFace.nodeId().equals(node.id()));
@@ -525,7 +529,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             panel.add(row("Local delta Y", elementDelta[1]));
             panel.add(row("Local delta Z", elementDelta[2]));
             translateElement.setToolTipText(
-                    "Translate the selected stable vertex, or both selected edge endpoints, in asset-local units as one validated edit");
+                    "Translate the selected stable vertex, edge endpoints, or face boundary vertices in asset-local units as one validated edit");
             translateElement.addActionListener(_ -> {
                 try {
                     controller.translateSelectedElement(vec(elementDelta, 0));
@@ -591,6 +595,12 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         }
         private boolean makeGeometryUnique(){var node=selected();return node!=null&&controller.makeGeometryUnique(node.id());}
         private boolean extrude(float distance){return controller.extrudeSelectedFace(distance);}
+        private boolean translateSelectedElement(Vec3 delta) {
+            put(elementDelta, delta, 0);
+            long beforeRevision = controller.snapshot().revision();
+            translateElement.doClick();
+            return controller.snapshot().revision() != beforeRevision;
+        }
         private String meshFaceText(){return meshFace.getText();}
         private String meshGeometryText(){return meshNote.getText();}
         private boolean meshApproximateEnabled(){return approximateSphere.isEnabled();}

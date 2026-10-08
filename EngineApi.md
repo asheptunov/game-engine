@@ -271,6 +271,14 @@ them asynchronously only when clicked, and accepts the result only if the painte
 mode, node and element selection still match. Camera-only motion reuses this camera-independent
 token, preserving coherent lagging previews. Selected-element highlights and translate handles
 are projected with the exact displayed camera and published with the image as one bundle.
+Every active polygon mode also shows bounded x-ray editing cues before an element is selected:
+Vertex shows points and supporting boundaries, Edge shows boundaries, and Face shows boundaries
+plus one on-surface center per face. The display budget is 10,000 emitted points/segments,
+prioritized by the selected node, node UUID, then stable element IDs; it is independent of the
+100,000-candidate click budget. Selected highlights and handles are never consumed by the cue
+budget. Face clicks remain depth-visible scene queries: the center is a visual cue, not a pick
+shortcut. A selected face translates all of its boundary vertices from their asset-local baseline;
+its move-handle pivot is the boundary centroid, distinct from the largest-fan-triangle cue center.
 
 The Mesh inspector shows asset-local center/radius controls only for analytic spheres and
 polygon element controls only for polygon assets. Applying sphere parameters replaces the

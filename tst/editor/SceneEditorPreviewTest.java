@@ -168,16 +168,100 @@ public class SceneEditorPreviewTest {
             awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
             assertTrue(pickFaceFromView(panel,controller,selected,0));
             awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
-            assertTrue(onEdt(()->panel.overlayForTest(0).handles().isEmpty()));
-            assertFalse(onEdt(()->panel.beginHandleDragForTest(0,OverlayGeometry.Axis.X,18)));
+            assertFalse(onEdt(()->panel.overlayForTest(0).handles().isEmpty()));
+            assertTrue(onEdt(()->panel.beginHandleDragForTest(0,OverlayGeometry.Axis.X,18)));
+            onEdt(() -> { panel.cancelGizmoForTest(0); return null; });
             assertTrue(onEdt(()->panel.pickMarkerForTest(0,light)));Thread.sleep(250);onEdt(()->null);
             assertFalse(light.equals(onEdt(controller::selection)));
             if(onEdt(controller::faceSelection)==null){onEdt(()->{controller.select(selected);return null;});assertTrue(pickFaceFromView(panel,controller,selected,0));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);}
+            awaitPaintedContext(panel,controller,0);awaitPaintedContext(panel,controller,1);
+            var pendingFacePick = onEdt(() -> panel.blockNextElementPickForTest(0));
+            assertTrue(onEdt(() -> panel.pickVisibleFaceForTest(0, selected)));
+            awaitProjectionBlocked(panel, pendingFacePick);
+            onEdt(() -> controller.select(light));
+            pendingFacePick.release().countDown();
+            Thread.sleep(100);
+            onEdt(() -> null);
+            assertEquals(light, onEdt(controller::selection));
+            assertNull(onEdt(controller::faceSelection));
+            assertTrue(pickFaceFromView(panel,controller,selected,0));
+            awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
             onEdt(()->{panel.wireframeForTest(0,false);panel.wireframeForTest(1,false);panel.selectInspectorTabForTest("Mesh");return null;});pumpPaint(panel,4);
             assertFalse(onEdt(()->panel.overlayForTest(0).selectedFace().isEmpty()));assertFalse(onEdt(()->panel.overlayForTest(1).selectedFace().isEmpty()));
+            assertFalse(onEdt(()->panel.overlayForTest(0).elementCueLines().isEmpty()));assertFalse(onEdt(()->panel.overlayForTest(1).elementCuePoints().isEmpty()));
             assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("Selected face"));
             assertFalse(onEdt(panel::meshApproximateEnabledForTest));assertTrue(onEdt(panel::meshExtrudeEnabledForTest));
             writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-preview.png"));
+            var faceGeometry = onEdt(controller::faceSelection).geometryId();
+            var faceIdBeforeMove = onEdt(controller::faceSelection).faceId();
+            var beforeNumericFaceMove = (PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry());
+            var movedFace = beforeNumericFaceMove.requireFace(faceIdBeforeMove);
+            var faceNumericDelta = new Vec3(.04f, .03f, .02f);
+            assertTrue(onEdt(() -> panel.translateSelectedElementForTest(faceNumericDelta)));
+            var afterNumericFaceMove = (PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry());
+            for (long vertexId : movedFace.vertexIds()) {
+                assertEquals(beforeNumericFaceMove.requireVertex(vertexId).position().add(faceNumericDelta),
+                        afterNumericFaceMove.requireVertex(vertexId).position());
+            }
+            assertTrue(onEdt(controller::undo));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
+            var beforeFaceDrag = (PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry());
+            assertTrue(onEdt(() -> panel.dragHandleForTest(1, OverlayGeometry.Axis.Y, 12, true)));
+            assertNotEquals(beforeFaceDrag, onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry()));
+            assertTrue(onEdt(controller::undo));
+            assertEquals(beforeFaceDrag, onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry()));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
+            assertTrue(onEdt(() -> panel.beginHandleDragForTest(0, OverlayGeometry.Axis.Z, 8)));
+            onEdt(() -> { panel.cancelGizmoForTest(0); return null; });
+            assertEquals(beforeFaceDrag, onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry()));
+            awaitPaintedContext(panel,controller,0);awaitPaintedContext(panel,controller,1);pumpPaint(panel,4);
+            writePanel(panel,canvas,output.resolveSibling("scene-editor-face-mode-preview.png"));
+
+            onEdt(() -> { panel.selectionModeForTest(EditorController.SelectionMode.VERTEX); controller.select(selected); return null; });
+            awaitElementMode(panel,0,OverlayGeometry.ElementMode.VERTEX);awaitElementMode(panel,1,OverlayGeometry.ElementMode.VERTEX);
+            awaitPaintedContext(panel,controller,0);awaitPaintedContext(panel,controller,1);
+            long tealVertex = onEdt(() -> panel.pickVertexVisibleInBothForTest(0, selected));
+            assertTrue(tealVertex >= 0);awaitVertexSelection(controller,tealVertex);
+            awaitVertexOverlay(panel,0,selected);awaitVertexOverlay(panel,1,selected);
+            var beforeTealVertex = (PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry());
+            var tealVertexPosition = beforeTealVertex.requireVertex(tealVertex).position();
+            var vertexNumericDelta = new Vec3(.025f, .02f, .015f);
+            assertTrue(onEdt(() -> panel.translateSelectedElementForTest(vertexNumericDelta)));
+            assertEquals(tealVertexPosition.add(vertexNumericDelta), ((PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(faceGeometry).geometry())).requireVertex(tealVertex).position());
+            assertTrue(onEdt(controller::undo));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitVertexOverlay(panel,0,selected);awaitVertexOverlay(panel,1,selected);
+            assertTrue(onEdt(() -> panel.dragHandleForTest(0, OverlayGeometry.Axis.X, 10, true)));
+            assertNotEquals(tealVertexPosition, ((PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(faceGeometry).geometry())).requireVertex(tealVertex).position());
+            assertTrue(onEdt(controller::undo));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitVertexOverlay(panel,0,selected);awaitVertexOverlay(panel,1,selected);
+            writePanel(panel,canvas,output.resolveSibling("scene-editor-vertex-mode-preview.png"));
+
+            onEdt(() -> { panel.selectionModeForTest(EditorController.SelectionMode.EDGE); return null; });
+            awaitElementMode(panel,0,OverlayGeometry.ElementMode.EDGE);awaitElementMode(panel,1,OverlayGeometry.ElementMode.EDGE);
+            awaitPaintedContext(panel,controller,0);awaitPaintedContext(panel,controller,1);
+            var tealEdge = onEdt(() -> panel.pickEdgeVisibleInBothForTest(1, selected));
+            assertNotNull(tealEdge);awaitEdgeSelection(controller,tealEdge[0],tealEdge[1]);
+            awaitEdgeOverlay(panel,0,selected);awaitEdgeOverlay(panel,1,selected);
+            var beforeTealEdge = (PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(faceGeometry).geometry());
+            var tealEdgePosition = beforeTealEdge.requireVertex(tealEdge[0]).position();
+            var edgeNumericDelta = new Vec3(.02f, .015f, .01f);
+            assertTrue(onEdt(() -> panel.translateSelectedElementForTest(edgeNumericDelta)));
+            assertEquals(tealEdgePosition.add(edgeNumericDelta), ((PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(faceGeometry).geometry())).requireVertex(tealEdge[0]).position());
+            assertTrue(onEdt(controller::undo));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitEdgeOverlay(panel,0,selected);awaitEdgeOverlay(panel,1,selected);
+            assertTrue(onEdt(() -> panel.dragHandleForTest(1, OverlayGeometry.Axis.X, 10, true)));
+            assertNotEquals(tealEdgePosition, ((PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(faceGeometry).geometry())).requireVertex(tealEdge[0]).position());
+            assertTrue(onEdt(controller::undo));
+            awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitEdgeOverlay(panel,0,selected);awaitEdgeOverlay(panel,1,selected);
+            writePanel(panel,canvas,output.resolveSibling("scene-editor-edge-mode-preview.png"));
+
+            onEdt(() -> { panel.selectionModeForTest(EditorController.SelectionMode.FACE); return null; });
+            assertTrue(pickFaceFromView(panel,controller,selected,0));
+            awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
             int faceCountBefore=((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size();
             assertTrue(onEdt(()->panel.meshExtrudeForTest(.35f)));
             assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size()>faceCountBefore);
@@ -222,6 +306,8 @@ public class SceneEditorPreviewTest {
             awaitPaintedContext(panel, controller, 0);
             long pickedVertex=onEdt(()->panel.pickVertexVisibleInBothForTest(0,floor));assertTrue(pickedVertex>=0);awaitVertexSelection(controller,pickedVertex);
             awaitVertexOverlay(panel,0,floor);awaitVertexOverlay(panel,1,floor);
+            assertFalse(onEdt(() -> panel.overlayForTest(0).elementCuePoints().isEmpty()));
+            assertFalse(onEdt(() -> panel.overlayForTest(1).elementCueLines().isEmpty()));
             assertTrue(onEdt(() -> panel.beginHandleDragForTest(0, OverlayGeometry.Axis.X, 8)));
             assertTrue(onEdt(() -> panel.pickVisibleVertexForTest(1, selected)) >= 0);
             Thread.sleep(100);
@@ -247,6 +333,8 @@ public class SceneEditorPreviewTest {
             awaitPaintedContext(panel, controller, 0);awaitPaintedContext(panel, controller, 1);
             var pickedEdge=onEdt(()->panel.pickEdgeVisibleInBothForTest(1,floor));assertNotNull(pickedEdge);awaitEdgeSelection(controller,pickedEdge[0],pickedEdge[1]);
             awaitEdgeOverlay(panel,0,floor);awaitEdgeOverlay(panel,1,floor);assertTrue(onEdt(()->panel.overlayForTest(0).selectedFace().isEmpty()));
+            assertFalse(onEdt(() -> panel.overlayForTest(0).elementCueLines().isEmpty()));
+            assertFalse(onEdt(() -> panel.overlayForTest(1).elementCueLines().isEmpty()));
             writePanel(panel,canvas,output.resolveSibling("scene-editor-elements-preview.png"));
             var beforeEdgeMove=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry());
             var beforeEdgePosition=beforeEdgeMove.requireVertex(pickedEdge[0]).position();
@@ -261,7 +349,9 @@ public class SceneEditorPreviewTest {
             onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.selectionModeForTest(EditorController.SelectionMode.FACE);return null;});
             assertTrue(pickFaceFromView(panel,controller,selected,1));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
             onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.wireframeForTest(0,true);panel.wireframeForTest(1,true);return null;});
-            awaitOverlay(panel, 0, selected); var beforeDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform());
+            awaitOverlay(panel, 0, selected);
+            awaitPaintedContext(panel, controller, 0);
+            var beforeDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform());
             assertTrue(onEdt(() -> panel.dragHandleForTest(0, OverlayGeometry.Axis.X, 24, true)));
             var afterDrag = onEdt(() -> controller.snapshot().requireNode(selected).localTransform()); assertFalse(afterDrag.equals(beforeDrag));
             var input = onEdt(panel::commandInputForTest);

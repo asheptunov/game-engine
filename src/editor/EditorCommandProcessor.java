@@ -184,11 +184,23 @@ public final class EditorCommandProcessor {
             default -> throw new IllegalArgumentException("Use mesh approximate or mesh unique");
         };
     }
-    private String face(List<String> words){
-        require(words,2,"face select <face-id> | face extrude <positive-distance>");return switch(words.get(1).toLowerCase(Locale.ROOT)){
-            case "select"->{exact(words,3,"face select <face-id>");yield done(controller.selectFace(Long.parseLong(words.get(2))));}
-            case "extrude"->{exact(words,3,"face extrude <positive-distance>");yield done(controller.extrudeSelectedFace(Float.parseFloat(words.get(2))));}
-            default->throw new IllegalArgumentException("Use face select or face extrude");
+    private String face(List<String> words) {
+        require(words, 2,
+                "face select <face-id> | face move <local-dx> <local-dy> <local-dz> | face extrude <positive-distance>");
+        return switch (words.get(1).toLowerCase(Locale.ROOT)) {
+            case "select" -> {
+                exact(words, 3, "face select <face-id>");
+                yield done(controller.selectFace(Long.parseLong(words.get(2))));
+            }
+            case "move" -> {
+                exact(words, 5, "face move <local-dx> <local-dy> <local-dz>");
+                yield done(controller.translateSelectedElement(vector(words, 2)));
+            }
+            case "extrude" -> {
+                exact(words, 3, "face extrude <positive-distance>");
+                yield done(controller.extrudeSelectedFace(Float.parseFloat(words.get(2))));
+            }
+            default -> throw new IllegalArgumentException("Use face select, face move, or face extrude");
         };
     }
     private String save(List<String> words) {
@@ -227,5 +239,5 @@ public final class EditorCommandProcessor {
     private String done(boolean ok) { return ok ? controller.state().status() : "Error: " + controller.state().status(); }
     private static void require(List<String> words, int size, String usage) { if (words.size() < size) throw new IllegalArgumentException("Usage: " + usage); }
     private static void exact(List<String> words, int size, String usage) { if (words.size() != size) throw new IllegalArgumentException("Usage: " + usage); }
-    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|vertex|edge|face, sphere set <center x y z> <radius>, mesh approximate <detail 4..64>|unique, vertex select <id>, vertex move <local dx dy dz>, edge select <a> <b>, edge move <local dx dy dz>, face select <id>, face extrude <distance>, undo, redo, save, load, status"; }
+    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|vertex|edge|face, sphere set <center x y z> <radius>, mesh approximate <detail 4..64>|unique, vertex select <id>, vertex move <local dx dy dz>, edge select <a> <b>, edge move <local dx dy dz>, face select <id>, face move <local dx dy dz>, face extrude <distance>, undo, redo, save, load, status"; }
 }

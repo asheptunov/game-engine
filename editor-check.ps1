@@ -34,6 +34,14 @@ $meshPreview = Join-Path $output "scene-editor-mesh-extruded-preview.png"
 if (-not (Test-Path $meshPreview) -or (Get-Item $meshPreview).Length -lt 20000) { throw "Window-free mesh-editing preview was not produced" }
 $elementPreview = Join-Path $output "scene-editor-elements-preview.png"
 if (-not (Test-Path $elementPreview) -or (Get-Item $elementPreview).Length -lt 20000) { throw "Window-free element-editing preview was not produced" }
+$vertexPreview = Join-Path $output "scene-editor-vertex-mode-preview.png"
+$edgePreview = Join-Path $output "scene-editor-edge-mode-preview.png"
+$facePreview = Join-Path $output "scene-editor-face-mode-preview.png"
+foreach ($modePreview in @($vertexPreview, $edgePreview, $facePreview)) {
+    if (-not (Test-Path $modePreview) -or (Get-Item $modePreview).Length -lt 20000) {
+        throw "Window-free element-mode preview was not produced: $modePreview"
+    }
+}
 $analyticPreview = Join-Path $output "scene-editor-analytic-preview.png"
 if (-not (Test-Path $analyticPreview) -or (Get-Item $analyticPreview).Length -lt 20000) { throw "Window-free analytic-sphere preview was not produced" }
 $approximationPreview = Join-Path $output "scene-editor-approximation-preview.png"

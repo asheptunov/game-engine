@@ -122,7 +122,7 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 | E4 | General mesh assets and reusable scene queries | E3 | Complete |
 | E5 | Initial scene-authoring application | E4 | Implemented; human GUI QA pending |
 | E6 | Editable topology and first mesh-modelling operation | E5 | Implemented; human GUI QA pending |
-| E7 | Geometry representation simplification and direct mesh editing | E6 | Specified; not implemented |
+| E7 | Geometry representation simplification and direct mesh editing | E6 | Implemented; human GUI QA pending |
 
 ### E1 — Extract the engine boundary
 
@@ -426,6 +426,20 @@ their legacy coplanar acceptance rules. Focused tests move every canonical-box v
 face by 0.1 along each axis while preserving topology IDs, source-face query mapping and closed
 validity; failure tests cover collapsed/folded geometry, render-normal overflow, emitter/volume
 material rejection, grouped history rollback, V4 warped round trips and V3 warped rejection.
+
+H2 editor evidence (2026-10-07): Face mode now gives selected faces the same numeric and live
+translate workflow as vertices and edges. The captured face/asset/revision context owns the drag;
+updates rebuild from its immutable baseline, commit as one undo entry, and Escape or invalid final
+release restores the complete baseline. Active Vertex, Edge and Face modes remain visible before
+selection even with Wireframe off. Their x-ray display cues use a separate deterministic 10,000
+point/segment budget, selected-node-first ordering, and the same camera-independent overlay token
+and exact painted-camera bundle as the rendered image. Face centers are visual only; clicks remain
+depth-visible spatial queries. Window-free two-view evidence is
+`scene-editor-vertex-mode-preview.png`, `scene-editor-edge-mode-preview.png`, and
+`scene-editor-face-mode-preview.png`. Windows PowerShell 5.1
+`input-check.ps1 -OutputDirectory out/e7-h2-final` covers numeric/drag face edits, stale contexts,
+shared/unique assets, undo/cancel, bounded cues and sustained coherent camera motion. Native-window
+interaction remains pending separately using the editor QA card.
 
 Deferred: a general capability/plugin framework, new analytic shape families, generalized
 polygon repair/self-intersection detection, transport algorithms and unrelated optimization.

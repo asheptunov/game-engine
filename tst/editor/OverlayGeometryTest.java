@@ -61,6 +61,59 @@ public class OverlayGeometryTest {
         assertTrue(frame.selectedFace().stream().allMatch(line->line.style()==OverlayGeometry.Style.FACE_SELECTION_XRAY));
     }
 
+    @Test void activeModesExposeUnselectedCuesAndWarpedFaceUsesDistinctSurfaceMarkerAndPivot() {
+        var document = new SceneDocument();
+        var nodeId = new NodeId(new UUID(0, 11));
+        var geometryId = new GeometryId(new UUID(0, 12));
+        document.transact(edit -> {
+            var materialId = edit.createMaterial("mat", Material.srgb("mat", 0xffffff));
+            var warped = PolygonMesh.surface(
+                    List.of(
+                            new PolygonMesh.Vertex(0, new Vec3(-1, -1, 0)),
+                            new PolygonMesh.Vertex(1, new Vec3(1, -1, 0)),
+                            new PolygonMesh.Vertex(2, new Vec3(1, 1, 1)),
+                            new PolygonMesh.Vertex(3, new Vec3(-1, 1, 0))),
+                    List.of(new PolygonMesh.Face(7, List.of(0L, 1L, 2L, 3L))),
+                    4, 8);
+            edit.createGeometry(geometryId, "warped", warped);
+            edit.createNode(nodeId, "warped", null,
+                    new Transform(new Vec3(0, 0, 5), Vec3.ZERO, new Vec3(1, 1, 1)));
+            edit.assignGeometry(nodeId, geometryId, materialId);
+        });
+        var snapshot = document.snapshot();
+        var overlays = new OverlayGeometry();
+
+        var vertexPrepared = overlays.prepare(
+                snapshot, nodeId, OverlayGeometry.ElementMode.VERTEX, null);
+        var vertexFrame = overlays.project(
+                vertexPrepared, viewCamera(), OverlayGeometry.GizmoMode.NONE, 800, 600, 80);
+        assertEquals(4, vertexFrame.elementCuePoints().size());
+        assertTrue(vertexFrame.elementCuePoints().stream()
+                .allMatch(point -> point.kind() == OverlayGeometry.ElementKind.VERTEX));
+        assertFalse(vertexFrame.elementCueLines().isEmpty());
+
+        var edgeFrame = overlays.project(overlays.prepare(
+                        snapshot, nodeId, OverlayGeometry.ElementMode.EDGE, null),
+                viewCamera(), OverlayGeometry.GizmoMode.NONE, 800, 600, 80);
+        assertEquals(4, edgeFrame.elementCueLines().size());
+        assertTrue(edgeFrame.elementCuePoints().isEmpty());
+
+        var faceSelection = new OverlayGeometry.ElementSelection(
+                nodeId, geometryId, OverlayGeometry.ElementKind.FACE, 7, -1);
+        var facePrepared = overlays.prepare(
+                snapshot, nodeId, OverlayGeometry.ElementMode.FACE, faceSelection);
+        assertEquals(new Vec3(0, 0, 5.25f), facePrepared.pivot());
+        assertEquals(new Vec3(1f / 3, -1f / 3, 5f + 1f / 3),
+                facePrepared.elementCuePoints().getFirst().position());
+        var faceFrame = overlays.project(
+                facePrepared, viewCamera(), OverlayGeometry.GizmoMode.TRANSLATE, 800, 600, 80);
+        assertEquals(4, faceFrame.elementCueLines().size());
+        assertEquals(1, faceFrame.elementCuePoints().size());
+        assertEquals(3, faceFrame.handles().size());
+        var cue = faceFrame.elementCuePoints().getFirst();
+        assertTrue(faceFrame.pick(cue.u(), cue.v(), 800, 600, 2).isEmpty());
+    }
+
     @Test void xrayVertexAndEdgePickingUsesFixedPixelsStableTiesAndSelectedHighlights() {
         var document=new SceneDocument();var lower=new NodeId(new UUID(0,1));var higher=new NodeId(new UUID(0,2));
         var geometryId=new GeometryId(new UUID(0,3));

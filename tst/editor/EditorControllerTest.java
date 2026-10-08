@@ -109,6 +109,45 @@ public class EditorControllerTest {
             assertNotEquals(convertedNode.geometry().geometryId(), uniqueGeometry);
             assertEquals(uniqueGeometry, onEdt(controller::faceSelection).geometryId());
 
+            var beforeFaceMove = (PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry());
+            var movedFace = beforeFaceMove.requireFace(faceId);
+            long beforeBadMove = onEdt(() -> controller.snapshot().revision());
+            assertTrue(onEdt(() -> commands.execute("face move .1 0 0 extra")).startsWith("Error:"));
+            assertEquals(beforeBadMove, onEdt(() -> controller.snapshot().revision()));
+            assertTrue(onEdt(() -> commands.execute("face move .1 0 0")).contains("Move face"));
+            var afterFaceMove = (PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry());
+            for (long vertexId : movedFace.vertexIds()) {
+                assertEquals(beforeFaceMove.requireVertex(vertexId).position().add(new Vec3(.1f, 0, 0)),
+                        afterFaceMove.requireVertex(vertexId).position());
+            }
+            assertEquals(faceId, onEdt(controller::faceSelection).faceId());
+            assertTrue(onEdt(controller::undo));
+            assertEquals(beforeFaceMove, onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry()));
+            assertTrue(onEdt(controller::redo));
+            assertEquals(afterFaceMove, onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry()));
+
+            var faceGestureStart = onEdt(controller::state);
+            assertTrue(onEdt(() -> controller.beginElementGesture(
+                    faceGestureStart.snapshot().revision(), faceGestureStart.selectionMode(),
+                    faceGestureStart.selection(), faceGestureStart.vertexSelection(),
+                    faceGestureStart.edgeSelection(), faceGestureStart.faceSelection())));
+            assertEquals(-1L, onEdt(() -> controller.beginPick(controller.snapshot().revision())));
+            assertTrue(onEdt(() -> controller.updateElementGesture(new Vec3(0, .02f, 0))));
+            assertTrue(onEdt(() -> controller.updateElementGesture(new Vec3(0, .04f, 0))));
+            var faceGestureResult = (PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry());
+            assertTrue(onEdt(controller::commitTransformGesture));
+            assertTrue(onEdt(controller::undo));
+            assertEquals(afterFaceMove, onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry()));
+            assertTrue(onEdt(controller::redo));
+            assertEquals(faceGestureResult, onEdt(() ->
+                    controller.snapshot().requireGeometry(uniqueGeometry).geometry()));
+
             int facesBefore = ((PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size();
             long beforeBadCommand = onEdt(() -> controller.snapshot().revision());
             assertTrue(onEdt(() -> commands.execute("face extrude .4 extra")).startsWith("Error:"));
@@ -126,6 +165,8 @@ public class EditorControllerTest {
             assertTrue(onEdt(controller::redo));assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size()>facesBefore);
             assertEquals(faceId,onEdt(controller::faceSelection).faceId());assertTrue(onEdt(controller::undo));
             assertTrue(onEdt(controller::undo));
+            assertTrue(onEdt(controller::undo));
+            assertTrue(onEdt(controller::undo));
             assertEquals(convertedNode.geometry().geometryId(), onEdt(controller::faceSelection).geometryId());
             assertTrue(onEdt(controller::undo)); assertNull(onEdt(controller::faceSelection));
 
@@ -138,7 +179,7 @@ public class EditorControllerTest {
             long loadedFace=loadedMesh.faces().getFirst().id();int loadedFaces=loadedMesh.faces().size();assertTrue(onEdt(()->controller.selectFace(loadedFace)));assertTrue(onEdt(()->controller.extrudeSelectedFace(.1f)));
             assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry())).faces().size()>loadedFaces);
             var help = onEdt(() -> commands.execute("help"));
-            assertTrue(help.contains("mode object|vertex|edge|face")); assertTrue(help.contains("vertex move")); assertTrue(help.contains("edge move"));assertTrue(help.contains("face extrude"));
+            assertTrue(help.contains("mode object|vertex|edge|face")); assertTrue(help.contains("vertex move")); assertTrue(help.contains("edge move"));assertTrue(help.contains("face move"));assertTrue(help.contains("face extrude"));
         } finally { onEdt(() -> { controller.close(); return null; }); }
     }
 

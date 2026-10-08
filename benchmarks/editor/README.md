@@ -6,7 +6,9 @@ layout to `out/editor-check/scene-editor-preview.png` with `java.awt.headless=tr
 The mesh journey also writes `out/editor-check/scene-editor-mesh-extruded-preview.png`, with
 the selected stable face highlighted in both exact rendered views, and
 `scene-editor-elements-preview.png`, with a selected stable edge and translate handles in both
-views.
+views. `scene-editor-vertex-mode-preview.png`, `scene-editor-edge-mode-preview.png`, and
+`scene-editor-face-mode-preview.png` show each active mode's wireframe-independent cues and
+selected-element feedback under both exact displayed cameras.
 
 ```powershell
 ./editor-check.ps1
@@ -77,8 +79,10 @@ startup failures in `out/editor/editor-error.log`.
 14. Select `Teal box` or `Floor` and switch among **Vertex**, **Edge**, and **Face**. **EXPECT:**
     polygon elements are immediately selectable without conversion, a new asset, a dirty mark, or
     an undo entry. Vertex/edge selection is x-ray; close candidates resolve consistently. The
-    selected element is highlighted in both views, Vertex/Edge show Move handles, and Face disables
-    object handles. An analytic sphere can still be selected as an object in these modes and reports
+    selected element is highlighted in both views, and Vertex/Edge/Face show Move handles for the
+    selected element. Before selection, Vertex points/supporting boundaries, Edge boundaries, and
+    Face boundaries/on-surface centers remain visible even with Wireframe off. An analytic sphere
+    can still be selected as an object in these modes and reports
     that it has no mesh elements rather than inventing them.
 15. With a vertex selected, enter a small **Local delta** such as `0.1 0 0`, apply it, and Undo.
     Repeat on an edge, then drag an axis and press Escape during a second drag. **EXPECT:** numeric
@@ -87,13 +91,17 @@ startup failures in `out/editor/editor-error.log`.
     preserving the prior world. Duplicate a polygon node and confirm a shared edit reaches both;
     use **Make geometry unique** and confirm the next edit affects only one. Orbit continuously
     during these checks; highlights remain paired with their displayed image and keep advancing.
-16. In Face mode click a polygon in either view, turn Wireframe off, and **EXPECT:** the orange
-    boundary remains visible in both views. Enter a positive local-unit distance and press
+16. In Face mode click a polygon in either view, turn Wireframe off, and **EXPECT:** the selected
+    boundary and translate handles remain visible in both views. Enter a small **Local delta** and
+    Apply, then drag a handle in the other view and cancel another drag with Escape. **EXPECT:**
+    the whole face boundary moves, each completed move is one undo entry, and cancellation restores
+    its drag-start topology. Then enter a positive local-unit distance and press
     **Extrude face**. **EXPECT:** one atomic edit moves the stable cap and adds sides. Undo/Redo,
     Save, and reopen; **EXPECT:** topology, stable element identity and rendering survive while
     selection is safely reconciled or cleared if an asset/element disappears. Repeat with
     `mode vertex`, `vertex select <id>`, `vertex move <dx> <dy> <dz>`, `mode edge`,
-    `edge select <a> <b>`, `edge move <dx> <dy> <dz>`, `mode face`, and `face extrude <distance>`.
+    `edge select <a> <b>`, `edge move <dx> <dy> <dz>`, `mode face`,
+    `face move <dx> <dy> <dz>`, and `face extrude <distance>`.
 17. Select `Terracotta sphere` and open **Mesh**. **EXPECT:** asset-local Center X/Y/Z and
     Radius fields are visible; polygon element controls are absent. Apply a changed positive
     radius and center, then Undo/Redo. **EXPECT:** both shared instances update together as an

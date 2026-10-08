@@ -667,6 +667,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   axis; `ScenePersistenceTest` covers V4 warped round trips, strict legacy reads and stable IDs.
   Windows PowerShell 5.1 full-gate evidence is recorded in `out/e7-h1-final`.
 
+## Engine E7 H2 — visible element modes and face movement `[implemented; human GUI QA pending]`
+
+- Face selection now supports numeric asset-local translation and live translate handles in both
+  views. The gesture captures the stable face and immutable mesh baseline, previews validated
+  revisions, commits once, and restores the baseline on Escape or an invalid release.
+- Vertex, Edge and Face modes show deterministic x-ray cues before selection, independently of
+  Wireframe. Cue projection shares the coherent exact-camera display bundle; face centers remain
+  visual labels while face selection stays depth-visible. A separate 10,000 point/segment display
+  cap does not reduce the existing 100,000-candidate click budget or selected highlights.
+- Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e7-h2-final` covers the controller,
+  exact painted-context two-view journey, bounded overlay policy, persistence/transport regressions
+  and shared input routing. Window-free evidence is `scene-editor-vertex-mode-preview.png`,
+  `scene-editor-edge-mode-preview.png`, and `scene-editor-face-mode-preview.png`; native QA remains
+  pending using the [editor QA card](benchmarks/editor/README.md).
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,
