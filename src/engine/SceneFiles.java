@@ -18,7 +18,7 @@ import java.util.*;
 import static java.nio.file.StandardCopyOption.*;
 import static java.nio.file.StandardOpenOption.*;
 
-/** Strict, embedded-only scene XML persistence. V3 stores only analytic spheres and polygon meshes. */
+/** Strict, embedded-only scene XML persistence. V4 stores analytic spheres and deformable polygon meshes. */
 public final class SceneFiles {
     public static final long MAX_FILE_BYTES=16L*1024*1024;
     public static final int MAX_ELEMENTS=250_000,MAX_NODES=50_000,MAX_GEOMETRY_ASSETS=16_000,
@@ -53,7 +53,9 @@ public final class SceneFiles {
             if(root==null||!root.getTagName().equals("scene"))throw format("Root element must be <scene>");
             attributes(root,"format","version");
             if(!FORMAT.equals(required(root,"format")))throw format("Unknown scene format");
-            String version=required(root,"version");if(!version.equals("1")&&!version.equals("2")&&!version.equals("3"))throw format("Unsupported scene version: "+version);
+            String version=required(root,"version");
+            if(!Set.of("1","2","3","4").contains(version))
+                throw format("Unsupported scene version: "+version);
             if(countElements(root)>MAX_ELEMENTS)throw format("Scene exceeds element limit "+MAX_ELEMENTS);
             var sections=children(root,"geometry-assets","material-assets","nodes");
             var geometrySection=one(sections,"geometry-assets");var materialSection=one(sections,"material-assets");var nodeSection=one(sections,"nodes");
@@ -104,7 +106,7 @@ public final class SceneFiles {
     private static void write(OutputStream output,SceneSnapshot snapshot)throws IOException {
         try {
             var w=XMLOutputFactory.newFactory().createXMLStreamWriter(output,"UTF-8");w.writeStartDocument("UTF-8","1.0");w.writeCharacters("\n");
-            start(w,"scene","format",FORMAT,"version","3");w.writeCharacters("\n  ");start(w,"geometry-assets");
+            start(w,"scene","format",FORMAT,"version","4");w.writeCharacters("\n  ");start(w,"geometry-assets");
             for(var asset:snapshot.geometryAssets()){w.writeCharacters("\n    ");writeGeometry(w,asset);}
             w.writeCharacters("\n  ");w.writeEndElement();w.writeCharacters("\n  ");start(w,"material-assets");
             for(var asset:snapshot.materialAssets()){w.writeCharacters("\n    ");writeMaterial(w,asset);}
@@ -139,7 +141,9 @@ public final class SceneFiles {
         var result=new ArrayList<GeometryAsset>();long vertices=0,triangles=0,corners=0;
         for(var e:elements){
             if(e.getTagName().equals("external"))throw format("External geometry references are unsupported in scene files");
-            if(version.equals("3")&&Set.of("rect","box","mesh","editable-mesh").contains(e.getTagName()))throw format("Legacy <"+e.getTagName()+"> geometry is unsupported in scene format v3");
+            if(Set.of("3","4").contains(version)
+                    && Set.of("rect","box","mesh","editable-mesh").contains(e.getTagName()))
+                throw format("Legacy <"+e.getTagName()+"> geometry is unsupported in scene format v"+version);
             var id=geometryId(e);var label=label(e);
             GeometryData data=switch(e.getTagName()){
                 case "sphere"->{attributes(e,"id","label","center-x","center-y","center-z","radius");empty(e);yield new AnalyticSphere(vec(e,"center"),number(e,"radius"));}
@@ -155,7 +159,8 @@ public final class SceneFiles {
                 }
                 case "editable-mesh","polygon-mesh"->{
                     if(e.getTagName().equals("editable-mesh")&&!version.equals("2"))throw format("Editable topology requires scene format v2");
-                    if(e.getTagName().equals("polygon-mesh")&&!version.equals("3"))throw format("Polygon topology requires scene format v3");
+                    if(e.getTagName().equals("polygon-mesh")&&!Set.of("3","4").contains(version))
+                        throw format("Polygon topology requires scene format v3 or v4");
                     attributes(e,"id","label","boundary","next-vertex-id","next-face-id");var groups=children(e,"vertices","faces");var vs=one(groups,"vertices");var fs=one(groups,"faces");attributes(vs);attributes(fs);
                     var ve=children(vs,"v");var fe=children(fs,"face");long derived=0;
                     for(var face:fe){attributes(face,"id");var refs=children(face,"vertex");if(refs.size()<3)throw format("Editable face needs at least three vertices");if(refs.size()>PolygonMesh.MAX_FACE_VERTICES)throw format("Editable face exceeds vertex limit "+PolygonMesh.MAX_FACE_VERTICES);corners=checkedFormat(corners,refs.size(),"face corner");derived=checkedFormat(derived,refs.size()-2L,"triangle");}
@@ -163,7 +168,15 @@ public final class SceneFiles {
                     if(vertices>MAX_VERTICES)throw format("Scene exceeds vertex limit "+MAX_VERTICES);if(triangles>MAX_TRIANGLES)throw format("Scene exceeds triangle limit "+MAX_TRIANGLES);if(corners>MAX_FACE_CORNERS)throw format("Scene exceeds face corner limit "+MAX_FACE_CORNERS);
                     var points=new ArrayList<PolygonMesh.Vertex>(ve.size());for(var v:ve){attributes(v,"id","x","y","z");empty(v);points.add(new PolygonMesh.Vertex(longNumber(v,"id"),new Vec3(number(v,"x"),number(v,"y"),number(v,"z"))));}
                     var faces=new ArrayList<PolygonMesh.Face>(fe.size());for(var face:fe){var refs=children(face,"vertex");var faceVertices=new ArrayList<Long>(refs.size());for(var ref:refs){attributes(ref,"id");empty(ref);faceVertices.add(longNumber(ref,"id"));}faces.add(new PolygonMesh.Face(longNumber(face,"id"),faceVertices));}
-                    long nextVertex=longNumber(e,"next-vertex-id"),nextFace=longNumber(e,"next-face-id");String boundary=required(e,"boundary");yield switch(boundary){case "surface"->PolygonMesh.surface(points,faces,nextVertex,nextFace);case "closed-solid"->PolygonMesh.closedSolid(points,faces,nextVertex,nextFace);default->throw format("Unknown editable mesh boundary: "+boundary);};
+                    long nextVertex=longNumber(e,"next-vertex-id"),nextFace=longNumber(e,"next-face-id");
+                    String boundary=required(e,"boundary");
+                    PolygonMesh mesh=switch(boundary){
+                        case "surface"->PolygonMesh.surface(points,faces,nextVertex,nextFace);
+                        case "closed-solid"->PolygonMesh.closedSolid(points,faces,nextVertex,nextFace);
+                        default->throw format("Unknown editable mesh boundary: "+boundary);
+                    };
+                    if(!version.equals("4"))mesh.validateLegacyPlanarity();
+                    yield mesh;
                 }
                 default->throw format("Unknown geometry element");
             };

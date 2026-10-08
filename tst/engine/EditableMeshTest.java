@@ -32,9 +32,8 @@ public class EditableMeshTest {
 
     @Test void invalidPolygonTopologyIdsAndCountersAreRejected() {
         rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,2,0,0),v(2,1,.25f,0),v(3,2,1,0),v(4,0,1,0)),List.of(f(0,0L,1L,2L,3L,4L)),5,1),"convex");
-        rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,0,0),v(2,1,1,.1f),v(3,0,1,0)),List.of(f(0,0L,1L,2L,3L)),4,1),"planar");
-        rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,1,0),v(2,0,1,0),v(3,1,0,0)),List.of(f(0,0L,1L,2L,3L)),4,1),"convex");
-        rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,1,0),v(2,1,2,0),v(3,0,1,0),v(4,2,1,0),v(5,0,3,0)),List.of(f(0,0L,1L,2L,3L,4L,5L)),6,1),"self-crossing");
+        rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,1,0),v(2,0,1,0),v(3,1,0,0)),List.of(f(0,0L,1L,2L,3L)),4,1),"zero total area");
+        rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,1,0),v(2,1,2,0),v(3,0,1,0),v(4,2,1,0),v(5,0,3,0)),List.of(f(0,0L,1L,2L,3L,4L,5L)),6,1),"folded");
         rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,0,0),v(2,0,1,0)),List.of(f(0,0L,1L,1L)),3,1),"repeats");
         rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,0,0),v(2,0,1,0)),List.of(f(0,0L,1L,4L)),5,1),"missing");
         rejects(()->PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,0,0),v(2,0,1,0),v(3,4,4,4)),List.of(f(0,0L,1L,2L)),4,1),"Unused");
@@ -84,8 +83,63 @@ public class EditableMeshTest {
         rejects(()->triangle.translateEdge(4,99,Vec3.ZERO),"Unknown editable edge");
 
         var quad=PolygonMesh.parallelogram(Vec3.ZERO,new Vec3(2,0,0),new Vec3(0,2,0));
-        rejects(()->quad.translateVertex(0,new Vec3(0,0,1)),"planar");
+        var warped=quad.translateVertex(0,new Vec3(0,0,1));
+        assertEquals(2,warped.renderPrimitiveCount());
+        assertFalse(warped.capabilities().parallelogramEmitter());
         assertSame(quad,quad.translateVertex(0,Vec3.ZERO));
+    }
+
+    @Test void everyBoxElementTranslatesAlongEveryAxisWithoutChangingStableTopology() {
+        var original = BoxGeometry.UNIT;
+        var deltas = List.of(
+                new Vec3(.1f, 0, 0), new Vec3(-.1f, 0, 0),
+                new Vec3(0, .1f, 0), new Vec3(0, -.1f, 0),
+                new Vec3(0, 0, .1f), new Vec3(0, 0, -.1f));
+
+        for (var vertex : original.editableVertices()) {
+            for (Vec3 delta : deltas) {
+                assertValidDeformedBox(original, original.translateVertex(vertex.id(), delta));
+            }
+        }
+        for (var edge : original.edges()) {
+            for (Vec3 delta : deltas) {
+                assertValidDeformedBox(original, original.translateEdge(
+                        edge.firstVertexId(), edge.secondVertexId(), delta));
+            }
+        }
+        for (var face : original.faces()) {
+            for (Vec3 delta : deltas) {
+                assertValidDeformedBox(original, original.translateFace(face.id(), delta));
+            }
+        }
+
+        assertSame(original, original.translateVertex(0, Vec3.ZERO));
+        assertSame(original, original.translateEdge(0, 1, Vec3.ZERO));
+        assertSame(original, original.translateFace(0, Vec3.ZERO));
+        rejects(() -> original.translateFace(99, Vec3.ZERO), "Unknown editable face");
+    }
+
+    @Test void warpedFansHaveAreaWeightedNormalsAndRejectCollapsedOrFoldedGeometry() {
+        var warped = PolygonMesh.surface(
+                List.of(v(0, 0, 0, 0), v(1, 2, 0, 0), v(2, 2, 2, 1), v(3, 0, 2, 0)),
+                List.of(f(7, 0L, 1L, 2L, 3L)), 4, 8);
+        assertEquals(2, warped.renderPrimitiveCount());
+        assertEquals(List.of(7L, 7L), List.of(
+                warped.preparedGeometry().sourceFaceId(0),
+                warped.preparedGeometry().sourceFaceId(1)));
+        Vec3 expected = new Vec3(-2, -2, 8).normalized();
+        assertTrue(warped.faceNormal(7).sub(expected).length() < 1e-5f);
+
+        rejects(() -> PolygonMesh.surface(
+                List.of(v(0, 0, 0, 0), v(1, 1, 0, 0), v(2, 2, 0, 0), v(3, 0, 1, 0)),
+                List.of(f(0, 0L, 1L, 2L, 3L)), 4, 1), "degenerate fan triangle");
+        rejects(() -> PolygonMesh.surface(
+                List.of(v(0, 0, 0, 0), v(1, 2, 0, -50), v(2, 2, 2, -3), v(3, 0, 2, -49)),
+                List.of(f(0, 0L, 1L, 2L, 3L)), 4, 1), "folded");
+        float huge = Float.MAX_VALUE;
+        rejects(() -> PolygonMesh.surface(
+                List.of(v(0, -huge, 0, 0), v(1, huge, 0, 0), v(2, 0, huge, 0)),
+                List.of(f(0, 0L, 1L, 2L)), 3, 1), "finite render-normal");
     }
 
     @Test void sharedTransactionsQueriesHistoryAndMaterialValidationStayAtomic() {
@@ -106,6 +160,74 @@ public class EditableMeshTest {
         assertInstanceOf(PolygonMesh.class,volume.snapshot().requireGeometry(volumeGeometry[0]).geometry());var beforeVolumeExtrude=volume.snapshot();rejects(()->volume.transact(edit->edit.extrudeFace(volumeGeometry[0],1,.25f)),"Scattering requires");assertSame(beforeVolumeExtrude,volume.snapshot());
         var open=PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,0,0),v(2,0,1,0)),List.of(f(0,0L,1L,2L)),3,1);
         var glass=new SceneDocument();rejects(()->glass.transact(edit->{var g=edit.createGeometry("open",open);var m=edit.createMaterial("glass",new Material("ignored",new Vec3(1,1,1),Material.Kind.DIELECTRIC));var n=edit.createNode("open",null,Transform.IDENTITY);edit.assignGeometry(n,g,m);}),"Glass requires");assertEquals(0,glass.snapshot().nodes().size());
+    }
+
+    @Test void faceTranslationUsesSharedHistoryAndKeepsMaterialValidationAtomic() {
+        var document = new SceneDocument();
+        var history = new UndoHistory(document, 10);
+        var geometryId = new GeometryId[1];
+        var nodeId = new NodeId[1];
+        history.edit("build", edit -> {
+            geometryId[0] = edit.createGeometry("box", BoxGeometry.UNIT);
+            MaterialId materialId = edit.createMaterial("gray", GRAY);
+            nodeId[0] = edit.createNode("box", null, Transform.IDENTITY);
+            edit.assignGeometry(nodeId[0], geometryId[0], materialId);
+        });
+        history.clear();
+        SceneSnapshot baseline = document.snapshot();
+
+        history.edit("move face", edit -> edit.translateFace(
+                geometryId[0], 1, new Vec3(.1f, 0, 0)));
+        var moved = (PolygonMesh) document.snapshot().requireGeometry(geometryId[0]).geometry();
+        assertEquals(new Vec3(-.9f, -1, 1), moved.requireVertex(4).position());
+        assertEquals(1, history.undoSize());
+        assertEquals(1L, SpatialQuery.prepare(document.snapshot())
+                .nearest(new Vec3(0, 0, 5), new Vec3(0, 0, -1))
+                .orElseThrow().sourceFaceId());
+
+        history.undo();
+        assertTrue(document.snapshot().sameContent(baseline));
+        history.redo();
+        history.beginGroup("preview face move");
+        history.updateGroup(edit -> edit.translateFace(
+                geometryId[0], 1, new Vec3(0, .1f, 0)));
+        history.cancelGroup();
+        assertTrue(GeometryValues.equal(moved,
+                document.snapshot().requireGeometry(geometryId[0]).geometry()));
+
+        SceneSnapshot unchanged = document.snapshot();
+        document.transact(edit -> edit.translateFace(geometryId[0], 1, Vec3.ZERO));
+        assertSame(unchanged, document.snapshot());
+
+        var volume = new SceneDocument();
+        var volumeGeometry = new GeometryId[1];
+        volume.transact(edit -> {
+            volumeGeometry[0] = edit.createGeometry("volume box", BoxGeometry.UNIT);
+            MaterialId materialId = edit.createMaterial("cloud", new Material(
+                    "ignored", new Vec3(1, 1, 1), Material.Kind.DIELECTRIC, 1.2f,
+                    Vec3.ZERO, 0, Vec3.ZERO, .5f, 0));
+            NodeId node = edit.createNode("cloud", null, Transform.IDENTITY);
+            edit.assignGeometry(node, volumeGeometry[0], materialId);
+        });
+        SceneSnapshot beforeInvalidVolumeMove = volume.snapshot();
+        rejects(() -> volume.transact(edit -> edit.translateFace(
+                volumeGeometry[0], 1, new Vec3(.1f, 0, 0))), "Scattering requires");
+        assertSame(beforeInvalidVolumeMove, volume.snapshot());
+
+        var emitter = new SceneDocument();
+        var emitterGeometry = new GeometryId[1];
+        emitter.transact(edit -> {
+            emitterGeometry[0] = edit.createGeometry("emitter", PolygonMesh.parallelogram(
+                    Vec3.ZERO, new Vec3(1, 0, 0), new Vec3(0, 1, 0)));
+            MaterialId materialId = edit.createMaterial("emissive", new Material(
+                    "ignored", Vec3.ZERO).withEmission(new Vec3(2, 2, 2)));
+            NodeId node = edit.createNode("emitter", null, Transform.IDENTITY);
+            edit.assignGeometry(node, emitterGeometry[0], materialId);
+        });
+        SceneSnapshot beforeInvalidEmitterMove = emitter.snapshot();
+        rejects(() -> emitter.transact(edit -> edit.translateVertex(
+                emitterGeometry[0], 0, new Vec3(0, 0, .1f))), "Emission requires");
+        assertSame(beforeInvalidEmitterMove, emitter.snapshot());
     }
 
     @Test void analyticParametersAndExplicitApproximationShareUndoAndRejectInvalidMaterialsAtomically() {
@@ -217,8 +339,45 @@ public class EditableMeshTest {
         assertEquals(first,second);assertEquals(first.hashCode(),second.hashCode());assertFalse(GeometryValues.equal(a,b));
     }
 
+    private static void assertValidDeformedBox(PolygonMesh original, PolygonMesh deformed) {
+        assertTrue(deformed.closedBoundary());
+        assertFalse(deformed.capabilities().canonicalBoxVolume());
+        assertEquals(original.editableVertices().stream().map(PolygonMesh.Vertex::id).toList(),
+                deformed.editableVertices().stream().map(PolygonMesh.Vertex::id).toList());
+        assertEquals(original.faces(), deformed.faces());
+        assertEquals(original.nextVertexId(), deformed.nextVertexId());
+        assertEquals(original.nextFaceId(), deformed.nextFaceId());
+        assertEquals(12, deformed.renderPrimitiveCount());
+        for (int primitive = 0; primitive < deformed.renderPrimitiveCount(); primitive++) {
+            assertEquals(original.preparedGeometry().sourceFaceId(primitive),
+                    deformed.preparedGeometry().sourceFaceId(primitive));
+        }
+
+        var document = new SceneDocument();
+        var nodeId = new NodeId[1];
+        document.transact(edit -> {
+            GeometryId geometryId = edit.createGeometry("deformed box", deformed);
+            MaterialId materialId = edit.createMaterial("gray", GRAY);
+            nodeId[0] = edit.createNode("deformed box", null, Transform.IDENTITY);
+            edit.assignGeometry(nodeId[0], geometryId, materialId);
+        });
+        var hit = SpatialQuery.prepare(document.snapshot())
+                .nearest(new Vec3(0, 0, 5), new Vec3(0, 0, -1))
+                .orElseThrow();
+        assertEquals(nodeId[0], hit.nodeId());
+        assertTrue(hit.sourceFaceId() >= 0 && hit.sourceFaceId() < 6);
+    }
+
     private static void rejects(Runnable action,String message) {
-        try{action.run();throw new AssertionError("Expected rejection containing: "+message);}catch(IllegalArgumentException|IllegalStateException expected){assertTrue(expected.getMessage().contains(message));}
+        try {
+            action.run();
+            throw new AssertionError("Expected rejection containing: " + message);
+        } catch (IllegalArgumentException | IllegalStateException expected) {
+            if (!expected.getMessage().contains(message)) {
+                throw new AssertionError("Expected rejection containing '" + message
+                        + "' but was '" + expected.getMessage() + "'");
+            }
+        }
     }
     public static void main(String[] args){SuiteRunner.runThis();}
 }

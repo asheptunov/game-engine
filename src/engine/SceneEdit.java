@@ -81,6 +81,16 @@ public final class SceneEdit {
         geometries.set(index, new GeometryAsset(
                 id, asset.label(), asset.revision(), mesh.translateEdge(firstVertexId, secondVertexId, localDelta)));
     }
+    /** Translate every stable boundary vertex of one polygon face in asset-local units. */
+    public void translateFace(GeometryId id, long faceId, Vec3 localDelta) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof PolygonMesh mesh)) {
+            throw new IllegalArgumentException("Geometry is not a polygon mesh: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), mesh.translateFace(faceId, localDelta)));
+    }
     public void renameMaterial(MaterialId id,String label){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,label,a.revision(),a.material()));}
     public void replaceMaterial(MaterialId id,Material material){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,a.label(),a.revision(),material));}
     public GeometryId makeGeometryUnique(NodeId nodeId){

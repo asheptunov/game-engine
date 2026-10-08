@@ -48,15 +48,54 @@ public class ScenePersistenceTest {
         assertEquals(0,process.waitFor());assertEquals(expected,Files.readString(output));
     }
 
-    @Test void canonicalV3RoundTripPreservesTopologyCountersAndDerivedFaceMapping()throws Exception {
+    @Test void canonicalV4RoundTripPreservesTopologyCountersAndDerivedFaceMapping()throws Exception {
         var document=new SceneDocument();var geometry=new GeometryId[1];var node=new NodeId[1];
         document.transact(edit->{geometry[0]=edit.createGeometry("editable",BoxGeometry.UNIT.extrude(1,.75f));var material=edit.createMaterial("blue",Material.srgb("ignored",0x3b82f6));node[0]=edit.createNode("mesh",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(node[0],geometry[0],material);});
-        var path=temp().resolve("editable.scene.xml");SceneFiles.save(path,document.snapshot());var xml=Files.readString(path);assertTrue(xml.contains("version=\"3\""));assertTrue(xml.contains("<polygon-mesh"));assertFalse(xml.contains("<triangles>"));
+        var path=temp().resolve("editable.scene.xml");SceneFiles.save(path,document.snapshot());var xml=Files.readString(path);assertTrue(xml.contains("version=\"4\""));assertTrue(xml.contains("<polygon-mesh"));assertFalse(xml.contains("<triangles>"));
         var loaded=SceneFiles.load(path);var mesh=(PolygonMesh)loaded.requireGeometry(geometry[0]).geometry();assertEquals(12L,mesh.nextVertexId());assertEquals(10L,mesh.nextFaceId());assertEquals(10,mesh.faces().size());assertEquals(List.of(8L,9L,10L,11L),mesh.requireFace(1).vertexIds());assertTrue(mesh.closedBoundary());
         var hit=SpatialQuery.prepare(loaded).nearest(new Vec3(0,0,10),new Vec3(0,0,-1)).orElseThrow();assertEquals(node[0],hit.nodeId());assertEquals(1L,hit.sourceFaceId());
     }
 
-    @Test void analyticParametersAndChosenApproximationRoundTripAsCanonicalV3()throws Exception {
+    @Test void warpedPolygonRoundTripsOnlyUnderV4SurfaceSemantics() throws Exception {
+        var document = new SceneDocument();
+        var geometryId = new GeometryId[1];
+        var nodeId = new NodeId[1];
+        var warped = BoxGeometry.UNIT.translateVertex(0, new Vec3(0, 0, .1f));
+        document.transact(edit -> {
+            geometryId[0] = edit.createGeometry("warped box", warped);
+            MaterialId materialId = edit.createMaterial(
+                    "glass", new Material("ignored", new Vec3(1, 1, 1), Material.Kind.DIELECTRIC));
+            nodeId[0] = edit.createNode("warped box", null, Transform.IDENTITY);
+            edit.assignGeometry(nodeId[0], geometryId[0], materialId);
+        });
+
+        Path directory = temp();
+        Path v4Path = directory.resolve("warped-v4.scene.xml");
+        SceneFiles.save(v4Path, document.snapshot());
+        String v4Xml = Files.readString(v4Path);
+        assertTrue(v4Xml.contains("version=\"4\""));
+        var loaded = SceneFiles.load(v4Path);
+        var loadedMesh = (PolygonMesh) loaded.requireGeometry(geometryId[0]).geometry();
+        assertTrue(GeometryValues.equal(warped, loadedMesh));
+        assertEquals(warped.nextVertexId(), loadedMesh.nextVertexId());
+        assertEquals(warped.nextFaceId(), loadedMesh.nextFaceId());
+        var hit = SpatialQuery.prepare(loaded)
+                .nearest(new Vec3(0, 0, 5), new Vec3(0, 0, -1))
+                .orElseThrow();
+        assertEquals(nodeId[0], hit.nodeId());
+        assertEquals(1L, hit.sourceFaceId());
+
+        Path v3Path = directory.resolve("warped-v3.scene.xml");
+        Files.writeString(v3Path, v4Xml.replace("version=\"4\"", "version=\"3\""));
+        rejectLoad(v3Path);
+        Path v2Path = directory.resolve("warped-v2.scene.xml");
+        Files.writeString(v2Path, v4Xml
+                .replace("version=\"4\"", "version=\"2\"")
+                .replace("polygon-mesh", "editable-mesh"));
+        rejectLoad(v2Path);
+    }
+
+    @Test void analyticParametersAndChosenApproximationRoundTripAsCanonicalV4()throws Exception {
         var document = new SceneDocument();
         var geometry = new GeometryId[1];
         var first = new NodeId[1];
@@ -76,10 +115,10 @@ public class ScenePersistenceTest {
                 edit.setAnalyticSphere(geometry[0], changed.center(), changed.radius()));
 
         var directory = temp();
-        var analyticPath = directory.resolve("analytic-v3.scene.xml");
+        var analyticPath = directory.resolve("analytic-v4.scene.xml");
         SceneFiles.save(analyticPath, document.snapshot());
         var analyticXml = Files.readString(analyticPath);
-        assertTrue(analyticXml.contains("version=\"3\""));
+        assertTrue(analyticXml.contains("version=\"4\""));
         assertTrue(analyticXml.contains("<sphere"));
         var loadedAnalytic = SceneFiles.load(analyticPath);
         assertEquals(changed, loadedAnalytic.requireGeometry(geometry[0]).geometry());
@@ -87,10 +126,10 @@ public class ScenePersistenceTest {
         assertEquals(geometry[0], loadedAnalytic.requireNode(second[0]).geometry().geometryId());
 
         document.transact(edit -> edit.approximateGeometryAsMesh(geometry[0], 16));
-        var approximationPath = directory.resolve("approximation-v3.scene.xml");
+        var approximationPath = directory.resolve("approximation-v4.scene.xml");
         SceneFiles.save(approximationPath, document.snapshot());
         var approximationXml = Files.readString(approximationPath);
-        assertTrue(approximationXml.contains("version=\"3\""));
+        assertTrue(approximationXml.contains("version=\"4\""));
         assertTrue(approximationXml.contains("<polygon-mesh"));
         assertFalse(approximationXml.contains("<sphere"));
         var loadedApproximation = SceneFiles.load(approximationPath);
@@ -115,7 +154,7 @@ public class ScenePersistenceTest {
 
     @Test void elementLimitAndUnknownVersionAreRejected()throws Exception {
         var dir=temp();var many=dir.resolve("elements.scene.xml");var xml=new StringBuilder("<scene format='ray-tracing-engine-scene' version='1'><geometry-assets>");for(int i=0;i<SceneFiles.MAX_ELEMENTS;i++)xml.append("<x/>");xml.append("</geometry-assets><material-assets/><nodes/></scene>");Files.writeString(many,xml);boolean rejected=false;try{SceneFiles.load(many);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
-        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='4'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='5'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
     }
     @Test void invalidEditableVersionsReferencesCountersAndBoundariesAreRejected()throws Exception {
         var dir=temp();var body="""
@@ -150,6 +189,57 @@ public class ScenePersistenceTest {
             var path=dir.resolve("strict-v3-"+Math.abs(tag.hashCode())+".scene.xml");Files.writeString(path,"<scene format='ray-tracing-engine-scene' version='3'><geometry-assets>"+tag+"</geometry-assets><material-assets/><nodes/></scene>");rejectLoad(path);
         }
     }
+    @Test void obliqueNearCollinearLegacyFacesRetainTheirPlanarAcceptance() throws Exception {
+        var points = List.of(
+                oblique(0, 0),
+                oblique(1, 0),
+                // The 3-D turn is just above the legacy tolerance while its dominant-axis
+                // projection is below that unscaled tolerance. This catches applying a 3-D
+                // epsilon directly to the projected convexity companion check.
+                oblique(1.0000025f, .0000025f),
+                oblique(1, 1),
+                oblique(0, 1));
+        var vertices = new StringBuilder();
+        for (int index = 0; index < points.size(); index++) {
+            Vec3 point = points.get(index);
+            vertices.append("<v id='").append(index)
+                    .append("' x='").append(point.x())
+                    .append("' y='").append(point.y())
+                    .append("' z='").append(point.z()).append("'/>");
+        }
+        String face = "<face id='9'>"
+                + "<vertex id='0'/><vertex id='1'/><vertex id='2'/>"
+                + "<vertex id='3'/><vertex id='4'/></face>";
+        String v3Geometry = "<polygon-mesh id='00000000-0000-0000-0000-000000000001' "
+                + "label='oblique' boundary='surface' next-vertex-id='5' next-face-id='10'>"
+                + "<vertices>" + vertices + "</vertices><faces>" + face
+                + "</faces></polygon-mesh>";
+        Path directory = temp();
+        Path v3Path = directory.resolve("oblique-v3.scene.xml");
+        Files.writeString(v3Path, "<scene format='ray-tracing-engine-scene' version='3'>"
+                + "<geometry-assets>" + v3Geometry + "</geometry-assets>"
+                + "<material-assets/><nodes/></scene>");
+        var v3Mesh = (PolygonMesh) SceneFiles.load(v3Path).geometryAssets().getFirst().geometry();
+        assertEquals(List.of(0L, 1L, 2L, 3L, 4L), v3Mesh.requireFace(9).vertexIds());
+
+        var legacyVertices = new StringBuilder();
+        for (Vec3 point : points) {
+            legacyVertices.append("<v x='").append(point.x())
+                    .append("' y='").append(point.y())
+                    .append("' z='").append(point.z()).append("'/>");
+        }
+        String v1Geometry = "<mesh id='00000000-0000-0000-0000-000000000001' "
+                + "label='oblique' boundary='surface'><vertices>" + legacyVertices
+                + "</vertices><triangles>"
+                + "<t a='0' b='1' c='2' face='9'/><t a='0' b='2' c='3' face='9'/>"
+                + "<t a='0' b='3' c='4' face='9'/></triangles></mesh>";
+        Path v1Path = directory.resolve("oblique-v1.scene.xml");
+        Files.writeString(v1Path, "<scene format='ray-tracing-engine-scene' version='1'>"
+                + "<geometry-assets>" + v1Geometry + "</geometry-assets>"
+                + "<material-assets/><nodes/></scene>");
+        var v1Mesh = (PolygonMesh) SceneFiles.load(v1Path).geometryAssets().getFirst().geometry();
+        assertEquals(List.of(0L, 1L, 2L, 3L, 4L), v1Mesh.requireFace(9).vertexIds());
+    }
     @Test void nestedLeafInvalidValuesAndDeepXmlAreFormatErrors()throws Exception {
         var dir=temp();var nested=dir.resolve("nested.scene.xml");Files.writeString(nested,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets><sphere id='00000000-0000-0000-0000-000000000001' label='s' center-x='0' center-y='0' center-z='0' radius='1'><unsupported/></sphere></geometry-assets><material-assets/><nodes/></scene>");boolean rejected=false;try{SceneFiles.load(nested);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
         var invalid=dir.resolve("invalid.scene.xml");Files.writeString(invalid,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets/><material-assets><material id='00000000-0000-0000-0000-000000000001' label='m' kind='diffuse' red='2' green='0' blue='0' ior='1' absorption-red='0' absorption-green='0' absorption-blue='0' roughness='0' emission-red='0' emission-green='0' emission-blue='0' scattering='0' anisotropy='0'/></material-assets><nodes/></scene>");rejected=false;try{SceneFiles.load(invalid);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
@@ -159,5 +249,10 @@ public class ScenePersistenceTest {
         var sample=sample();var path=temp().resolve("preserved.scene.xml");SceneFiles.save(path,sample.document().snapshot());var before=Files.readAllBytes(path);var nodes=new ArrayList<SceneNode>();for(int i=0;i<=SceneFiles.MAX_NODES;i++)nodes.add(new SceneNode(new NodeId(new UUID(0,i+1)),"n",null,Transform.IDENTITY,null,null,null));var tooMany=new SceneSnapshot(0,0,nodes,List.of(),List.of());boolean rejected=false;try{SceneFiles.save(path,tooMany);}catch(java.io.IOException expected){rejected=true;}assertTrue(rejected);assertEquals(before,Files.readAllBytes(path));assertNotNull(SceneFiles.load(path));
     }
     private static void rejectLoad(Path path)throws Exception{boolean rejected=false;try{SceneFiles.load(path);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);}
+    private static Vec3 oblique(float x, float y) {
+        // x + z = 0 is exactly retained by float storage, so the legacy first-three
+        // float normal tests the turn threshold rather than accumulated plane error.
+        return new Vec3(x, y, -x);
+    }
     public static void main(String[] args){SuiteRunner.runThis();}
 }

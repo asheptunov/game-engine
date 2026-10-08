@@ -612,7 +612,7 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   face mapping and acceleration inputs are derived lazily outside document publication.
 - Cheap validated capabilities preserve skewed parallelogram emission, exact canonical
   local-box volume scattering, analytic sphere/ellipsoid transport and closed-mesh glass.
-  V3 saves canonical sphere/polygon assets; strict V1/V2 reads migrate representable repeated
+  G1 introduced V3 canonical sphere/polygon assets; strict V1/V2 reads migrate representable repeated
   face groups and reject disconnected, holed, folded, pinched or over-budget input.
 - Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e7-g1-final` covers the engine
   boundary, editor and input regressions plus affected material/mesh/volume suites. Exact raw
@@ -646,10 +646,26 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   `mesh approximate <detail>` use the same validated controller transactions as the UI.
   Incompatible scattering rejects without changing geometry, history, selection, or dirty state.
 - PowerShell 5.1 editor/input gates cover shared replacement, chosen tessellation, no-op and
-  failure history, stale picks, v3 analytic/polygon reopen, two-view rendering, and legacy
+  failure history, stale picks, v4 analytic/polygon reopen, two-view rendering, and legacy
   transport/input regression. Window-free evidence is `scene-editor-analytic-preview.png`
   and `scene-editor-approximation-preview.png`; native QA remains pending using the
   [editor QA card](benchmarks/editor/README.md).
+
+## Engine E7 H1 — deformable polygon faces `[implemented]`
+
+- Polygon faces retain stable IDs while allowing validated nonplanar first-vertex fans.
+  Double origin-relative validation rejects degenerate, folded, concave and self-crossing
+  boundaries; area-weighted normals, source-face mapping and deterministic fan order remain
+  coherent for rendering and spatial queries.
+- Vertex, canonical-edge and face-boundary translations rebuild the shared asset atomically.
+  Closed connectivity, opposite winding and finite positive volume remain mandatory; emitter
+  and canonical-box scattering capabilities reject incompatible deformation without changing
+  the snapshot or history.
+- Scene persistence writes V4 for deformable polygon topology and reads V1 through V4. V1
+  grouped triangles and V2/V3 polygon topology retain their earlier planar validation.
+  `EditableMeshTest` covers every canonical-box vertex, edge and face moved by 0.1 on every
+  axis; `ScenePersistenceTest` covers V4 warped round trips, strict legacy reads and stable IDs.
+  Windows PowerShell 5.1 full-gate evidence is recorded in `out/e7-h1-final`.
 
 ## Notes / Decisions
 

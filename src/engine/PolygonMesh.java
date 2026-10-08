@@ -7,10 +7,10 @@ import java.util.*;
 
 /**
  * Immutable editable polygon topology with stable asset-local vertex and face identities.
- * Faces contain 3..{@value #MAX_FACE_VERTICES} vertices and must be finite, planar,
- * simple and strictly convex. Validation uses relative tolerances of 1e-5 for planarity
- * and 1e-6 for turns/intersections, scaled by the polygon extent. Rendering triangulates
- * each face as a deterministic fan from its first listed vertex.
+ * Faces contain 3..{@value #MAX_FACE_VERTICES} finite vertices. Their dominant-axis
+ * projection must be simple and strictly convex, and their deterministic first-vertex
+ * fan must remain nondegenerate and consistently oriented. Faces may be nonplanar;
+ * rendering and queries use that stored fan without allocating new topology identities.
  */
 public final class PolygonMesh implements GeometryData {
     public static final int MAX_FACE_VERTICES=1024;
@@ -149,6 +149,12 @@ public final class PolygonMesh implements GeometryData {
         return translateVertices(Set.of(first, second), localDelta);
     }
 
+    /** Return a validated mesh with every boundary vertex of one stable face translated equally. */
+    public PolygonMesh translateFace(long faceId, Vec3 localDelta) {
+        var face = requireFace(faceId);
+        return translateVertices(new LinkedHashSet<>(face.vertexIds()), localDelta);
+    }
+
     private PolygonMesh translateVertices(Set<Long> vertexIds, Vec3 localDelta) {
         Objects.requireNonNull(localDelta, "localDelta");
         if (!finite(localDelta)) {
@@ -234,8 +240,36 @@ public final class PolygonMesh implements GeometryData {
     private void validateClosedSolid(Map<Long,LinkedHashSet<Long>> adjacency){
         var seen=new HashSet<Long>();var queue=new ArrayDeque<Long>();queue.add(faces.getFirst().id());seen.add(faces.getFirst().id());while(!queue.isEmpty())for(long next:adjacency.get(queue.remove()))if(seen.add(next))queue.add(next);
         if(seen.size()!=faces.size())throw new IllegalArgumentException("Closed polygon mesh must be one connected component");
-        double volume6=0;for(var face:faces){var ids=face.vertexIds();var a=requireVertex(ids.getFirst()).position();for(int i=1;i+1<ids.size();i++){var b=requireVertex(ids.get(i)).position();var c=requireVertex(ids.get(i+1)).position();volume6+=(double)a.x()*(b.y()*c.z()-b.z()*c.y())+(double)a.y()*(b.z()*c.x()-b.x()*c.z())+(double)a.z()*(b.x()*c.y()-b.y()*c.x());}}
-        if(!(volume6>0))throw new IllegalArgumentException("Closed polygon mesh must have positive outward signed volume");
+        Vec3 reference = editableVertices.getFirst().position();
+        double volume6 = 0;
+        for (var face : faces) {
+            var ids = face.vertexIds();
+            Vec3 first = requireVertex(ids.getFirst()).position();
+            for (int index = 1; index + 1 < ids.size(); index++) {
+                Vec3 second = requireVertex(ids.get(index)).position();
+                Vec3 third = requireVertex(ids.get(index + 1)).position();
+                volume6 += signedVolume6(reference, first, second, third);
+            }
+        }
+        if (!Double.isFinite(volume6) || !(volume6 > 0)) {
+            throw new IllegalArgumentException(
+                    "Closed polygon mesh must have finite positive outward signed volume");
+        }
+    }
+
+    private static double signedVolume6(Vec3 reference, Vec3 first, Vec3 second, Vec3 third) {
+        double ax = (double) first.x() - reference.x();
+        double ay = (double) first.y() - reference.y();
+        double az = (double) first.z() - reference.z();
+        double bx = (double) second.x() - reference.x();
+        double by = (double) second.y() - reference.y();
+        double bz = (double) second.z() - reference.z();
+        double cx = (double) third.x() - reference.x();
+        double cy = (double) third.y() - reference.y();
+        double cz = (double) third.z() - reference.z();
+        return ax * (by * cz - bz * cy)
+                + ay * (bz * cx - bx * cz)
+                + az * (bx * cy - by * cx);
     }
 
     private PreparedGeometry buildPrepared() {
@@ -259,26 +293,152 @@ public final class PolygonMesh implements GeometryData {
         return PreparedGeometry.polygon(triangles,positions,capabilities.canonicalBoxVolume()?new int[0]:packed,ids,capabilities);
     }
 
-    private static Vec3 validatePolygon(long faceId,List<Vec3> points) {
-        double scale=extent(points);if(!(scale>0))throw new IllegalArgumentException("Editable face "+faceId+" is degenerate");
-        var a=points.get(0);var b=points.get(1);var c=points.get(2);var raw=b.sub(a).cross(c.sub(a));double length=Math.sqrt(raw.lengthSq());
-        double turnTolerance=scale*scale*1e-6;
-        if(!(length>turnTolerance))throw new IllegalArgumentException("Editable face "+faceId+" has collinear vertices");
-        var normal=raw.scale((float)(1/length));double planeTolerance=scale*1e-5;
-        for(var point:points)if(Math.abs(point.sub(a).dot(normal))>planeTolerance)
-            throw new IllegalArgumentException("Editable face "+faceId+" is not planar");
-        for(int i=0;i<points.size();i++) {
-            var p=points.get(i);var q=points.get((i+1)%points.size());var r=points.get((i+2)%points.size());
-            double turn=q.sub(p).cross(r.sub(q)).dot(normal);
-            if(!(turn>turnTolerance))throw new IllegalArgumentException("Editable face "+faceId+" must be strictly convex with consistent winding");
+    private static Vec3 validatePolygon(long faceId, List<Vec3> points) {
+        double scale = extent(points);
+        if (!(scale > 0)) {
+            throw new IllegalArgumentException("Editable face " + faceId + " is degenerate");
         }
-        int dropped=majorAxis(normal);double intersectionTolerance=scale*scale*1e-6,coordinateTolerance=scale*1e-6;
-        for(int i=0;i<points.size();i++)for(int j=i+1;j<points.size();j++) {
-            if(j==i+1||(i==0&&j==points.size()-1))continue;
-            if(intersects(points.get(i),points.get((i+1)%points.size()),points.get(j),points.get((j+1)%points.size()),dropped,intersectionTolerance,coordinateTolerance))
-                throw new IllegalArgumentException("Editable face "+faceId+" is self-crossing");
+
+        double areaTolerance = scale * scale * 1e-6;
+        Vec3 origin = points.getFirst();
+        var fanCrosses = new ArrayList<double[]>(points.size() - 2);
+        double areaX = 0;
+        double areaY = 0;
+        double areaZ = 0;
+        for (int index = 1; index + 1 < points.size(); index++) {
+            double[] cross = fanCross(origin, points.get(index), points.get(index + 1));
+            double crossLength = length(cross);
+            if (!(crossLength > areaTolerance)) {
+                throw new IllegalArgumentException(
+                        "Editable face " + faceId + " has a degenerate fan triangle");
+            }
+            requireRenderableFloatNormal(faceId, origin, points.get(index), points.get(index + 1));
+            fanCrosses.add(cross);
+            areaX += cross[0];
+            areaY += cross[1];
+            areaZ += cross[2];
+        }
+
+        double[] areaVector = {areaX, areaY, areaZ};
+        double areaLength = length(areaVector);
+        if (!(areaLength > areaTolerance) || !Double.isFinite(areaLength)) {
+            throw new IllegalArgumentException("Editable face " + faceId + " has zero total area");
+        }
+        for (double[] cross : fanCrosses) {
+            double alignedArea = dot(cross, areaVector);
+            double alignmentTolerance = 1e-6 * length(cross) * areaLength;
+            if (!(alignedArea > alignmentTolerance)) {
+                throw new IllegalArgumentException(
+                        "Editable face " + faceId + " has a folded or inconsistently wound fan");
+            }
+        }
+
+        int droppedAxis = majorAxis(areaVector);
+        double projectedWinding = switch (droppedAxis) {
+            case 0 -> areaX;
+            case 1 -> -areaY;
+            default -> areaZ;
+        };
+        double turnTolerance = scale * scale * 1e-6;
+        double projectedTurnTolerance = turnTolerance * Math.abs(projectedWinding) / areaLength;
+        double windingSign = Math.copySign(1.0, projectedWinding);
+        for (int index = 0; index < points.size(); index++) {
+            Vec3 previous = points.get(index);
+            Vec3 current = points.get((index + 1) % points.size());
+            Vec3 next = points.get((index + 2) % points.size());
+            double[] boundaryCross = fanCross(previous, current, next);
+            double alignedTurn = dot(boundaryCross, areaVector) / areaLength;
+            if (!(alignedTurn > turnTolerance)) {
+                throw new IllegalArgumentException(
+                        "Editable face " + faceId + " must have a strictly convex boundary");
+            }
+            double turn = orientation(previous, current, next, droppedAxis) * windingSign;
+            if (!(turn > projectedTurnTolerance)) {
+                throw new IllegalArgumentException(
+                        "Editable face " + faceId + " must have a strictly convex projected boundary");
+            }
+        }
+
+        double coordinateTolerance = scale * 1e-6;
+        for (int first = 0; first < points.size(); first++) {
+            for (int second = first + 1; second < points.size(); second++) {
+                if (second == first + 1 || (first == 0 && second == points.size() - 1)) {
+                    continue;
+                }
+                if (intersects(
+                        points.get(first), points.get((first + 1) % points.size()),
+                        points.get(second), points.get((second + 1) % points.size()),
+                        droppedAxis, turnTolerance, coordinateTolerance)) {
+                    throw new IllegalArgumentException("Editable face " + faceId + " is self-crossing");
+                }
+            }
+        }
+
+        var normal = new Vec3(
+                (float) (areaX / areaLength),
+                (float) (areaY / areaLength),
+                (float) (areaZ / areaLength));
+        if (!finite(normal)) {
+            throw new IllegalArgumentException("Editable face " + faceId + " has a non-finite normal");
         }
         return normal;
+    }
+
+    /** Preserve the v2/v3 first-three-point float planarity contract at load boundaries. */
+    void validateLegacyPlanarity() {
+        for (var face : faces) {
+            var points = face.vertexIds().stream()
+                    .map(vertexById::get)
+                    .map(Vertex::position)
+                    .toList();
+            Vec3 origin = points.get(0);
+            Vec3 rawNormal = points.get(1).sub(origin).cross(points.get(2).sub(origin));
+            double normalLength = Math.sqrt(rawNormal.lengthSq());
+            double scale = extent(points);
+            if (!(normalLength > scale * scale * 1e-6)) {
+                throw new IllegalArgumentException("Editable face " + face.id() + " has collinear vertices");
+            }
+            Vec3 normal = rawNormal.scale((float) (1 / normalLength));
+            double planeTolerance = scale * 1e-5;
+            for (Vec3 point : points) {
+                if (Math.abs(point.sub(origin).dot(normal)) > planeTolerance) {
+                    throw new IllegalArgumentException(
+                            "Editable face " + face.id() + " is not planar in legacy scene format");
+                }
+            }
+        }
+    }
+
+    private static double[] fanCross(Vec3 origin, Vec3 second, Vec3 third) {
+        double secondX = (double) second.x() - origin.x();
+        double secondY = (double) second.y() - origin.y();
+        double secondZ = (double) second.z() - origin.z();
+        double thirdX = (double) third.x() - origin.x();
+        double thirdY = (double) third.y() - origin.y();
+        double thirdZ = (double) third.z() - origin.z();
+        return new double[]{
+                secondY * thirdZ - secondZ * thirdY,
+                secondZ * thirdX - secondX * thirdZ,
+                secondX * thirdY - secondY * thirdX
+        };
+    }
+
+    private static double length(double[] vector) {
+        return Math.hypot(Math.hypot(vector[0], vector[1]), vector[2]);
+    }
+
+    private static double dot(double[] first, double[] second) {
+        return first[0] * second[0] + first[1] * second[1] + first[2] * second[2];
+    }
+
+    private static void requireRenderableFloatNormal(
+            long faceId, Vec3 first, Vec3 second, Vec3 third) {
+        Vec3 floatCross = second.sub(first).cross(third.sub(first));
+        float length = floatCross.length();
+        if (!finite(floatCross) || !Float.isFinite(length) || !(length > 0)) {
+            throw new IllegalArgumentException(
+                    "Editable face " + faceId + " exceeds finite render-normal range");
+        }
     }
     private static double extent(List<Vec3> points) {
         double minX=Double.POSITIVE_INFINITY,minY=minX,minZ=minX,maxX=Double.NEGATIVE_INFINITY,maxY=maxX,maxZ=maxX;
@@ -286,7 +446,12 @@ public final class PolygonMesh implements GeometryData {
         return Math.sqrt(sq(maxX-minX)+sq(maxY-minY)+sq(maxZ-minZ));
     }
     private static double sq(double value){return value*value;}
-    private static int majorAxis(Vec3 normal){double x=Math.abs(normal.x()),y=Math.abs(normal.y()),z=Math.abs(normal.z());return x>=y&&x>=z?0:y>=z?1:2;}
+    private static int majorAxis(double[] vector) {
+        double x = Math.abs(vector[0]);
+        double y = Math.abs(vector[1]);
+        double z = Math.abs(vector[2]);
+        return x >= y && x >= z ? 0 : y >= z ? 1 : 2;
+    }
     private static double x(Vec3 p,int dropped){return dropped==0?p.y():p.x();}
     private static double y(Vec3 p,int dropped){return dropped==2?p.y():p.z();}
     private static double orientation(Vec3 a,Vec3 b,Vec3 c,int dropped){return (x(b,dropped)-x(a,dropped))*(y(c,dropped)-y(a,dropped))-(y(b,dropped)-y(a,dropped))*(x(c,dropped)-x(a,dropped));}

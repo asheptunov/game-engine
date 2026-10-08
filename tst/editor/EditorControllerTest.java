@@ -198,7 +198,7 @@ public class EditorControllerTest {
             var floorMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floor.geometry().geometryId()).geometry());long floorVertex=floorMesh.editableVertices().getFirst().id();
             assertTrue(onEdt(()->controller.selectVertex(floorVertex)));var beforeInvalid=onEdt(controller::snapshot);
             assertTrue(onEdt(()->controller.beginElementGesture(beforeInvalid.revision())));
-            assertFalse(onEdt(()->controller.updateElementGesture(new Vec3(0,1,0))));assertSame(beforeInvalid,onEdt(controller::snapshot));
+            assertFalse(onEdt(()->controller.updateElementGesture(new Vec3(0,0,14))));assertSame(beforeInvalid,onEdt(controller::snapshot));
             assertTrue(onEdt(controller::commitTransformGesture));assertTrue(onEdt(()->controller.state().status()).startsWith("Cancelled invalid edit:"));
             assertTrue(beforeInvalid.sameContent(onEdt(controller::snapshot)));
 

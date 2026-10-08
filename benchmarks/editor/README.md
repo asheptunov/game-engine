@@ -105,7 +105,7 @@ startup failures in `out/editor/editor-error.log`.
     transforms, materials, and geometry identity remain. Polygon controls become available in
     both views. Undo restores the exact analytic sphere. A scattering sphere rejects
     approximation without changing the scene. Save/reopen both states and repeat with
-    `mesh approximate 12`; **EXPECT:** canonical v3 sphere/polygon data and sharing persist.
+    `mesh approximate 12`; **EXPECT:** canonical v4 sphere/polygon data and sharing persist.
 
 Shipped defaults are `assets/bindings/scene-editor.properties` and
 `assets/bindings/scene-editor-mouse.properties`. **Bindings…** saves the single ignored user profile

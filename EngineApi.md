@@ -143,13 +143,17 @@ cannot remove emitter capability; ordinary legacy coordinates retain their exact
 
 `PolygonMesh` stores immutable ordered vertices and polygon faces with stable,
 nonnegative asset-local `long` IDs. Its canonical edges expose adjacent face IDs. A face has
-3..1024 distinct referenced vertices and must be finite, nondegenerate, planar, simple and
-strictly convex. Planarity uses a `1e-5` relative extent tolerance; turns/intersections use
-`1e-6`. Fan triangulation starts at the first listed vertex, preserves winding, and maps all
-derived triangles back to the polygon face ID. Surface meshes may have boundary edges;
+3..1024 distinct referenced vertices and must be finite and nondegenerate. Its dominant-axis
+projection must have a simple, strictly convex, consistently wound boundary; every triangle
+in the stored first-vertex fan must be nondegenerate and consistently oriented. Faces may be
+nonplanar. The area-weighted face normal is the normalized sum of the fan triangle area
+vectors. Validation uses double, origin-relative differences and `1e-6` relative turn/area
+tolerances, while preparation retains the established float render range. Fan triangulation
+preserves listed order and maps every derived triangle back to the stable polygon face ID.
+Surface meshes may have boundary edges;
 closed solids additionally validate two opposite face windings per edge, one connected
-component and positive signed volume. Geometric self-intersection between separate faces
-remains unsupported and undetected.
+component and finite positive signed volume over those same fans. Geometric self-intersection
+between separate faces remains unsupported and undetected.
 
 Renderer/query preparation is internal, immutable and lazy. It expands polygons to an
 ordered fan with source-face mapping and indexed robust triangle intersections; analytic
@@ -175,12 +179,15 @@ allocates cap vertices and side-quad face IDs from persisted monotonic counters.
 validated solid the normal is outward. Side order is `vi, vj, vj', vi'`; repeat extrusion
 remains manifold. Counter exhaustion rejects the edit.
 
-`translateVertex(vertexId, localDelta)` and
-`translateEdge(firstVertexId, secondVertexId, localDelta)` return new, fully validated
-`PolygonMesh` values. Edge IDs are the canonical ascending endpoint pair. Deltas are in the
-geometry asset's local coordinate space. `SceneEdit.translateVertex/translateEdge` replace
-that geometry ID, so every node sharing the asset observes the edit; Make geometry unique is
-the explicit way to isolate one node.
+`translateVertex(vertexId, localDelta)`,
+`translateEdge(firstVertexId, secondVertexId, localDelta)`, and
+`translateFace(faceId, localDelta)` return new, fully validated `PolygonMesh` values. Face
+translation moves each distinct boundary vertex equally without splitting the face or changing
+any vertex/face ID or allocation counter. Edge IDs are the canonical ascending endpoint pair.
+Deltas are in the geometry asset's local coordinate space. The matching `SceneEdit` methods
+replace that geometry ID, so every node sharing the asset observes the edit; Make geometry
+unique is the explicit way to isolate one node. A zero face delta still requires a valid face
+ID and otherwise returns the same mesh.
 
 ## Scene documents and transactions
 
@@ -217,11 +224,13 @@ bounded at 4096. Camera components store exact local `Camera` values; pixel dime
 
 ## Scene files and spatial queries
 
-`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml`. It reads legacy versions 1
-and 2 and writes version 3. V1 boxes/planes/triangles migrate to canonical polygon topology;
+`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml`. It reads versions 1 through 4
+and writes version 4. V1 boxes/planes/triangles migrate to canonical polygon topology;
 representable repeated triangle face IDs merge by the validated rules above. V2 ordered
-polygon IDs, references, boundary intent and counters remain exact. V3 accepts only analytic
-`sphere` and canonical `polygon-mesh` assets and never persists derived triangles. Geometry
+polygon IDs, references, boundary intent and counters remain exact. V2 and V3 polygon inputs
+retain their original planar-face validation; V4 admits the validated nonplanar fan semantics.
+V3 and V4 accept only analytic `sphere` and canonical `polygon-mesh` assets and never persist
+derived triangles. Geometry
 is embedded and external references remain unsupported. Files preserve
 UUIDs, graph order/references, labels, geometry, materials,
 point lights and local cameras while excluding runtime revisions, render settings, jobs,
