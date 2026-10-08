@@ -293,9 +293,11 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     void selectionModeForTest(EditorController.SelectionMode mode){switch(mode){case OBJECT->objectSelect.doClick();case VERTEX->vertexSelect.doClick();case EDGE->edgeSelect.doClick();case FACE->faceSelect.doClick();}}
     void wireframeForTest(int view,boolean enabled){(view==0?viewA:viewB).wireframeForTest(enabled);}
     String meshFaceTextForTest(){return inspector.meshFaceText();}
-    boolean meshConvertEnabledForTest(){return inspector.meshConvertEnabled();}
+    String meshGeometryTextForTest(){return inspector.meshGeometryText();}
+    boolean meshApproximateEnabledForTest(){return inspector.meshApproximateEnabled();}
     boolean meshExtrudeEnabledForTest(){return inspector.meshExtrudeEnabled();}
-    boolean meshConvertForTest(){return inspector.convertGeometry();}
+    boolean applySphereForTest(Vec3 center,float radius){return inspector.applyAnalyticSphere(center,radius);}
+    boolean approximateSphereForTest(int detail){return inspector.approximateAnalyticSphere(detail);}
     boolean meshUniqueForTest(){return inspector.makeGeometryUnique();}
     boolean meshExtrudeForTest(float distance){return inspector.extrude(distance);}
     void cancelActiveGesture() { if (viewA != null) viewA.cancelGizmo(); if (viewB != null) viewB.cancelGizmo(); }
@@ -305,6 +307,50 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     }
 
     private static final class Inspector extends JTabbedPane {
+        private static final class ViewportWidthPanel extends JPanel implements Scrollable {
+            private ViewportWidthPanel() {
+                setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+                setAlignmentX(Component.LEFT_ALIGNMENT);
+            }
+
+            @Override
+            public void doLayout() {
+                super.doLayout();
+                for (Component child : getComponents()) {
+                    if (!child.isVisible()) {
+                        continue;
+                    }
+                    Rectangle bounds = child.getBounds();
+                    child.setBounds(0, bounds.y, getWidth(), bounds.height);
+                }
+            }
+
+            @Override
+            public Dimension getPreferredScrollableViewportSize() {
+                return getPreferredSize();
+            }
+
+            @Override
+            public int getScrollableUnitIncrement(Rectangle visibleRectangle, int orientation, int direction) {
+                return 12;
+            }
+
+            @Override
+            public int getScrollableBlockIncrement(Rectangle visibleRectangle, int orientation, int direction) {
+                return Math.max(12, visibleRectangle.height - 24);
+            }
+
+            @Override
+            public boolean getScrollableTracksViewportWidth() {
+                return true;
+            }
+
+            @Override
+            public boolean getScrollableTracksViewportHeight() {
+                return false;
+            }
+        }
+
         private final EditorController controller;
         private EditorController.State state;
         private final JTextField name = new JTextField();
@@ -320,14 +366,19 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private final JLabel meshFace = new JLabel("No face selected");
         private final JTextField extrusionDistance = new JTextField("0.5");
         private final JTextField[] elementDelta = fields(3, "0");
-        private final JButton convertGeometry = new JButton("Convert to editable mesh");
+        private final JTextField[] sphereCenter = fields(3, "0");
+        private final JTextField sphereRadius = new JTextField("1");
+        private final JSpinner sphereDetail = new JSpinner(new SpinnerNumberModel(12, 4, 64, 1));
+        private final JButton applySphere = new JButton("Apply");
+        private final JButton approximateSphere = new JButton("Approximate as mesh");
         private final JButton uniqueGeometry = new JButton("Make geometry unique");
-        private final JButton translateElement = new JButton("Translate selected vertex / edge");
+        private final JButton translateElement = new JButton("Translate selection");
         private final JButton extrudeFace = new JButton("Extrude face");
         private final JTextField[] light = fields(4, "1");
         private final JComboBox<Camera.Projection> projection = new JComboBox<>(Camera.Projection.values());
         private final JTextField framing = new JTextField("50"), focus = new JTextField("5"), aperture = new JTextField("0");
         private final JPanel componentPanel = stack();
+        private final JPanel geometryEditor = new JPanel(new CardLayout());
         private final JComponent transformPanel;
         private final JComponent meshPanel;
         private final JComponent materialPanel;
@@ -362,9 +413,16 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                         .filter(candidate -> candidate.geometry() != null
                                 && candidate.geometry().geometryId().equals(geometry.id()))
                         .count();
-                boolean editable = geometry.geometry() instanceof PolygonMesh;
-                meshNote.setText(geometryLabel(geometry.geometry()));
+                var geometryValue = geometry.geometry();
+                boolean polygon = geometryValue instanceof PolygonMesh;
+                meshNote.setText(geometryLabel(geometryValue));
                 meshSharing.setText("Shared by " + geometryUses + " node" + (geometryUses == 1 ? "" : "s"));
+                ((CardLayout) geometryEditor.getLayout()).show(
+                        geometryEditor, geometryValue instanceof AnalyticSphere ? "analytic" : "polygon");
+                if (geometryValue instanceof AnalyticSphere sphere) {
+                    put(sphereCenter, sphere.center(), 0);
+                    sphereRadius.setText(Float.toString(sphere.radius()));
+                }
                 var selectedVertex = state.vertexSelection();
                 var selectedEdge = state.edgeSelection();
                 var selectedFace = state.faceSelection();
@@ -375,15 +433,17 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                             + " - " + selectedEdge.secondVertexId());
                 } else if (selectedFace != null && selectedFace.nodeId().equals(node.id())) {
                     meshFace.setText("Selected face ID: " + selectedFace.faceId());
+                } else {
+                    meshFace.setText("No mesh element selected");
                 }
-                else meshFace.setText("No mesh element selected");
-                convertGeometry.setEnabled(!editable);
+                applySphere.setEnabled(geometryValue instanceof AnalyticSphere);
+                approximateSphere.setEnabled(geometryValue instanceof AnalyticSphere);
                 uniqueGeometry.setEnabled(geometryUses > 1);
                 boolean selectedTranslatableElement = (selectedVertex != null
                         && selectedVertex.nodeId().equals(node.id()))
                         || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()));
-                translateElement.setEnabled(editable && selectedTranslatableElement);
-                extrudeFace.setEnabled(editable && selectedFace != null
+                translateElement.setEnabled(polygon && selectedTranslatableElement);
+                extrudeFace.setEnabled(polygon && selectedFace != null
                         && selectedFace.nodeId().equals(node.id()));
                 var asset = state.snapshot().requireMaterial(node.geometry().materialId()); material.setSelectedItem(asset); var m = asset.material();
                 put(color, m.color(), 0); kind.setSelectedItem(m.kind()); roughness.setText(Float.toString(m.roughness())); ior.setText(Float.toString(m.ior()));
@@ -417,19 +477,55 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             var panel = stack();
             panel.add(line(meshNote));
             panel.add(line(meshSharing));
-            convertGeometry.setToolTipText(
-                    "Explicitly replace analytic or legacy geometry with polygon topology; selection never converts it automatically");
-            convertGeometry.addActionListener(_ -> convertGeometry());
-            panel.add(convertGeometry);
             uniqueGeometry.setToolTipText("Copy this shared geometry asset for only the selected node");
             uniqueGeometry.addActionListener(_ -> makeGeometryUnique());
-            panel.add(uniqueGeometry);
+            panel.add(line(uniqueGeometry));
             panel.add(new JSeparator());
+
+            geometryEditor.add(analyticSpherePanel(), "analytic");
+            geometryEditor.add(polygonMeshPanel(), "polygon");
+            geometryEditor.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            panel.add(geometryEditor);
+            return scroll(panel);
+        }
+
+        private JComponent analyticSpherePanel() {
+            var panel = section();
+            panel.add(line(new JLabel("Analytic sphere (asset-local)")));
+            panel.add(row("Center X", sphereCenter[0]));
+            panel.add(row("Center Y", sphereCenter[1]));
+            panel.add(row("Center Z", sphereCenter[2]));
+            panel.add(row("Radius", sphereRadius));
+            applySphere.setToolTipText("Replace this shared analytic asset once; node transforms and materials stay unchanged");
+            applySphere.addActionListener(_ -> {
+                try {
+                    applyAnalyticSphere(vec(sphereCenter, 0), number(sphereRadius));
+                } catch (RuntimeException error) {
+                    showError(error);
+                }
+            });
+            panel.add(line(applySphere));
+            panel.add(new JSeparator());
+            panel.add(infoText("Approximation replaces this shared analytic asset with polygon topology. "
+                    + "It preserves the asset ID, nodes, transforms, and materials, but exact curvature "
+                    + "and analytic parameters are lost until Undo."));
+            panel.add(row("Detail (4..64)", sphereDetail));
+            approximateSphere.setToolTipText(
+                    "Create a polygon approximation at the chosen detail as one validated undoable edit");
+            approximateSphere.addActionListener(_ -> approximateAnalyticSphere((Integer) sphereDetail.getValue()));
+            panel.add(line(approximateSphere));
+            return panel;
+        }
+
+        private JComponent polygonMeshPanel() {
+            var panel = section();
+            panel.add(line(new JLabel("Polygon element controls")));
             panel.add(line(meshFace));
             panel.add(row("Local delta X", elementDelta[0]));
             panel.add(row("Local delta Y", elementDelta[1]));
             panel.add(row("Local delta Z", elementDelta[2]));
-            translateElement.setToolTipText("Translate the selected stable vertex, or both selected edge endpoints, in asset-local units as one validated edit");
+            translateElement.setToolTipText(
+                    "Translate the selected stable vertex, or both selected edge endpoints, in asset-local units as one validated edit");
             translateElement.addActionListener(_ -> {
                 try {
                     controller.translateSelectedElement(vec(elementDelta, 0));
@@ -437,7 +533,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                     showError(error);
                 }
             });
-            panel.add(translateElement);
+            panel.add(line(translateElement));
             panel.add(new JSeparator());
             panel.add(row("Distance (local units)", extrusionDistance));
             extrudeFace.setToolTipText(
@@ -449,9 +545,10 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                     showError(error);
                 }
             });
-            panel.add(extrudeFace);
-            return scroll(panel);
+            panel.add(line(extrudeFace));
+            return panel;
         }
+
         private JComponent componentTab() {
             return scroll(componentPanel);
         }
@@ -484,18 +581,58 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             } catch (RuntimeException e) { showError(e); }
         }
         private SceneNode selected() { return state == null || state.selection() == null ? null : state.snapshot().findNode(state.selection()).orElse(null); }
-        private boolean convertGeometry(){var node=selected();return node!=null&&controller.convertGeometryToEditable(node.id());}
+        private boolean applyAnalyticSphere(Vec3 center,float radius){
+            var node=selected();
+            return node!=null&&controller.applyAnalyticSphere(node.id(),center,radius);
+        }
+        private boolean approximateAnalyticSphere(int detail){
+            var node=selected();
+            return node!=null&&controller.approximateAnalyticSphere(node.id(),detail);
+        }
         private boolean makeGeometryUnique(){var node=selected();return node!=null&&controller.makeGeometryUnique(node.id());}
         private boolean extrude(float distance){return controller.extrudeSelectedFace(distance);}
         private String meshFaceText(){return meshFace.getText();}
-        private boolean meshConvertEnabled(){return convertGeometry.isEnabled();}
+        private String meshGeometryText(){return meshNote.getText();}
+        private boolean meshApproximateEnabled(){return approximateSphere.isEnabled();}
         private boolean meshExtrudeEnabled(){return extrudeFace.isEnabled();}
         private void showError(RuntimeException error) { JOptionPane.showMessageDialog(this, error.getMessage(), "Invalid value", JOptionPane.ERROR_MESSAGE); }
         private boolean hasTab(String title) { for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(title)) return true; return false; }
         private void selectTab(String title) { for (int i = 0; i < getTabCount(); i++) if (getTitleAt(i).equals(title)) { setSelectedIndex(i); return; } throw new IllegalArgumentException("Missing inspector tab: " + title); }
-        private static JPanel stack() { var p = new JPanel(); p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS)); p.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); return p; }
-        private static JPanel line(Component value){var p=new JPanel(new BorderLayout());p.add(value);p.setMaximumSize(new Dimension(Integer.MAX_VALUE,24));return p;}
-        private static JComponent scroll(JComponent value) { var s = new JScrollPane(value); s.getVerticalScrollBar().setUnitIncrement(12); return s; }
+        private static JPanel stack() { var p = section(); p.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8)); return p; }
+        private static JPanel section(){
+            return new ViewportWidthPanel();
+        }
+        private static JTextArea infoText(String value){
+            var text=new JTextArea(value);
+            text.setEditable(false);
+            text.setFocusable(false);
+            text.setOpaque(false);
+            text.setLineWrap(true);
+            text.setWrapStyleWord(true);
+            text.setColumns(20);
+            text.setRows(5);
+            text.setAlignmentX(Component.LEFT_ALIGNMENT);
+            text.setMaximumSize(new Dimension(Integer.MAX_VALUE,90));
+            return text;
+        }
+        private static JPanel line(Component value){
+            var panel=new JPanel(new BorderLayout());
+            if (value instanceof JLabel label) {
+                label.setHorizontalAlignment(SwingConstants.LEFT);
+            }
+            panel.add(value);
+            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.setMinimumSize(new Dimension(0,24));
+            panel.setPreferredSize(new Dimension(0,24));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE,24));
+            return panel;
+        }
+        private static JComponent scroll(JComponent value) {
+            var scroll = new JScrollPane(value);
+            scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            scroll.getVerticalScrollBar().setUnitIncrement(12);
+            return scroll;
+        }
         private static JPanel row(String label, Component value) { var p = new JPanel(new BorderLayout(5, 2)); p.add(new JLabel(label), BorderLayout.WEST); p.add(value); p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30)); return p; }
         private static JTextField[] fields(int count, String value) { var fields = new JTextField[count]; Arrays.setAll(fields, _ -> new JTextField(value)); return fields; }
         private static void put(JTextField[] fields, Vec3 value, int offset) { fields[offset].setText(Float.toString(value.x())); fields[offset + 1].setText(Float.toString(value.y())); fields[offset + 2].setText(Float.toString(value.z())); }

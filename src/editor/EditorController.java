@@ -384,9 +384,21 @@ public final class EditorController implements AutoCloseable {
     public boolean editSharedMaterial(MaterialId id, Material material) { return edit("Edit shared material", e -> e.replaceMaterial(id, material)); }
     public boolean makeMaterialUnique(NodeId id) { return edit("Make material unique", e -> e.makeMaterialUnique(id)); }
     public boolean makeGeometryUnique(NodeId id){return edit("Make geometry unique",e->e.makeGeometryUnique(id));}
-    public boolean convertGeometryToEditable(NodeId id){
-        requireEdt();var node=document.snapshot().requireNode(id);if(node.geometry()==null)return fail("Selected node has no geometry");
-        return edit("Convert to editable mesh",e->e.convertGeometryToEditable(node.geometry().geometryId()));
+    public boolean applyAnalyticSphere(NodeId id, Vec3 center, float radius) {
+        requireEdt();
+        Objects.requireNonNull(center, "center");
+        var node = document.snapshot().requireNode(id);
+        if (node.geometry() == null) return fail("Selected node has no geometry");
+        return edit("Apply analytic sphere parameters", edit ->
+                edit.setAnalyticSphere(node.geometry().geometryId(), center, radius));
+    }
+
+    public boolean approximateAnalyticSphere(NodeId id, int detail) {
+        requireEdt();
+        var node = document.snapshot().requireNode(id);
+        if (node.geometry() == null) return fail("Selected node has no geometry");
+        return edit("Approximate analytic sphere at detail " + detail, edit ->
+                edit.approximateGeometryAsMesh(node.geometry().geometryId(), detail));
     }
     public boolean extrudeSelectedFace(float distance){
         requireEdt();var selectedFace=faceSelection;if(selectionMode!=SelectionMode.FACE||selectedFace==null)return fail("Select an editable face first");

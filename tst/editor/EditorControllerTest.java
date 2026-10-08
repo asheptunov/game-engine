@@ -92,7 +92,6 @@ public class EditorControllerTest {
             assertTrue(onEdt(() -> controller.setSelectionMode(EditorController.SelectionMode.FACE)));
 
             assertTrue(onEdt(()->commands.execute("create box")).contains("Create Box"));var selected=onEdt(controller::selection);
-            assertTrue(onEdt(() -> commands.execute("mesh convert")).contains("editable mesh"));
             var converted = onEdt(controller::snapshot); var convertedNode = converted.requireNode(selected);
             var editable = (PolygonMesh) converted.requireGeometry(convertedNode.geometry().geometryId()).geometry();
             long faceId = editable.faces().getFirst().id();
@@ -148,7 +147,7 @@ public class EditorControllerTest {
         try{
             var sphereNode=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.label().equals("Terracotta sphere")).findFirst().orElseThrow());
             onEdt(()->controller.select(sphereNode.id()));
-            assertTrue(onEdt(()->controller.convertGeometryToEditable(sphereNode.id())));
+            assertTrue(onEdt(()->controller.approximateAnalyticSphere(sphereNode.id(),8)));
             var sharedGeometry=onEdt(()->controller.snapshot().requireNode(sphereNode.id()).geometry().geometryId());
             assertTrue(onEdt(controller::duplicateSelection));var duplicate=onEdt(controller::selection);
             assertEquals(sharedGeometry,onEdt(()->controller.snapshot().requireNode(duplicate).geometry().geometryId()));
@@ -209,6 +208,137 @@ public class EditorControllerTest {
             assertFalse(onEdt(()->controller.acceptVertexPick(floor.id(),floor.geometry().geometryId(),floorVertex,
                     context.snapshot().revision(),staleIntent)));
         }finally{onEdt(()->{controller.close();return null;});}
+    }
+
+    @Test public void analyticSphereParametersApproximationPersistSharingAndRejectStaleOrInvalidEdits() throws Exception {
+        var jobs = new ManualExecutor();
+        var storage = new MemoryStorage();
+        var controller = onEdt(() -> new EditorController(storage, jobs));
+        try {
+            var commands = new EditorCommandProcessor(controller);
+            var sphereNode = onEdt(() -> controller.snapshot().nodes().stream()
+                    .filter(node -> node.label().equals("Terracotta sphere"))
+                    .findFirst().orElseThrow());
+            assertTrue(onEdt(() -> controller.select(sphereNode.id())));
+            var geometryId = sphereNode.geometry().geometryId();
+            var original = (AnalyticSphere) onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry());
+
+            assertTrue(onEdt(controller::duplicateSelection));
+            var duplicate = onEdt(controller::selection);
+            assertEquals(geometryId, onEdt(() ->
+                    controller.snapshot().requireNode(duplicate).geometry().geometryId()));
+            assertTrue(onEdt(() -> controller.select(sphereNode.id())));
+
+            assertTrue(onEdt(() -> commands.execute("sphere set -0.5 0.25 0.75 1.5"))
+                    .contains("Apply analytic sphere parameters"));
+            var changed = new AnalyticSphere(new Vec3(-.5f, .25f, .75f), 1.5f);
+            assertEquals(changed, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+            var afterParameters = onEdt(controller::snapshot);
+            assertTrue(onEdt(() -> commands.execute("sphere set -0.5 0.25 0.75 1.5"))
+                    .contains("made no change"));
+            assertSame(afterParameters, onEdt(controller::snapshot));
+            assertTrue(onEdt(controller::undo));
+            assertEquals(original, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+            assertTrue(onEdt(controller::redo));
+            assertEquals(changed, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+
+            var analyticSave = onEdt(() -> controller.save(Path.of("analytic.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertTrue(analyticSave.get(2, TimeUnit.SECONDS));
+            var savedAnalytic = storage.saved;
+            assertEquals(changed, savedAnalytic.requireGeometry(geometryId).geometry());
+
+            var staleContext = onEdt(controller::state);
+            long staleIntent = onEdt(() -> controller.beginPick(
+                    staleContext.snapshot().revision(), staleContext.selectionMode(),
+                    staleContext.selection(), staleContext.vertexSelection(),
+                    staleContext.edgeSelection(), staleContext.faceSelection()));
+            assertTrue(onEdt(() -> commands.execute("mesh approximate 12"))
+                    .contains("detail 12"));
+            var approximated = onEdt(controller::snapshot);
+            var polygon = (PolygonMesh) approximated.requireGeometry(geometryId).geometry();
+            assertEquals(4 * 12 * 11, polygon.faces().size());
+            assertEquals(geometryId, approximated.requireNode(sphereNode.id()).geometry().geometryId());
+            assertEquals(geometryId, approximated.requireNode(duplicate).geometry().geometryId());
+            assertFalse(onEdt(() -> controller.acceptPick(
+                    null, staleContext.snapshot().revision(), staleIntent)));
+            assertEquals(sphereNode.id(), onEdt(controller::selection));
+
+            var approximationSave = onEdt(() -> controller.save(Path.of("approximation.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertTrue(approximationSave.get(2, TimeUnit.SECONDS));
+            var savedApproximation = storage.saved;
+
+            assertTrue(onEdt(controller::undo));
+            assertEquals(changed, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+            assertTrue(onEdt(controller::redo));
+            assertInstanceOf(PolygonMesh.class, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+
+            storage.loaded = savedAnalytic;
+            var analyticLoad = onEdt(() -> controller.load(Path.of("analytic.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertTrue(analyticLoad.get(2, TimeUnit.SECONDS));
+            assertEquals(changed, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+
+            storage.loaded = savedApproximation;
+            var approximationLoad = onEdt(() -> controller.load(Path.of("approximation.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertTrue(approximationLoad.get(2, TimeUnit.SECONDS));
+            var reopened = (PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry());
+            assertEquals(4 * 12 * 11, reopened.faces().size());
+
+            storage.loaded = savedAnalytic;
+            var restoreAnalytic = onEdt(() -> controller.load(Path.of("analytic.scene.xml")));
+            jobs.runNext();
+            flushEdt();
+            assertTrue(restoreAnalytic.get(2, TimeUnit.SECONDS));
+            assertTrue(onEdt(() -> controller.select(sphereNode.id())));
+            assertTrue(onEdt(() -> controller.makeMaterialUnique(sphereNode.id())));
+            var materialId = onEdt(() ->
+                    controller.snapshot().requireNode(sphereNode.id()).geometry().materialId());
+            var oldMaterial = onEdt(() ->
+                    controller.snapshot().requireMaterial(materialId).material());
+            assertTrue(onEdt(() -> controller.editSharedMaterial(
+                    materialId, oldMaterial.withKind(Material.Kind.DIELECTRIC)
+                            .withIor(1.2f).withScattering(.5f))));
+            var beforeFailure = onEdt(controller::snapshot);
+            var beforeSelection = onEdt(controller::selection);
+            var beforeDirty = onEdt(controller::dirty);
+            assertTrue(onEdt(() -> commands.execute("mesh approximate 8"))
+                    .startsWith("Error: Scattering requires"));
+            assertSame(beforeFailure, onEdt(controller::snapshot));
+            assertEquals(beforeSelection, onEdt(controller::selection));
+            assertEquals(beforeDirty, onEdt(controller::dirty));
+            assertInstanceOf(AnalyticSphere.class, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+            assertTrue(onEdt(controller::undo));
+            assertInstanceOf(AnalyticSphere.class, onEdt(() ->
+                    controller.snapshot().requireGeometry(geometryId).geometry()));
+
+            assertTrue(onEdt(() -> commands.execute("mesh approximate 8 extra")).startsWith("Error:"));
+            assertTrue(onEdt(() -> commands.execute("sphere set 0 0 0 1 extra")).startsWith("Error:"));
+            var help = onEdt(() -> commands.execute("help"));
+            assertTrue(help.contains("sphere set"));
+            assertTrue(help.contains("mesh approximate"));
+            assertFalse(help.contains("mesh convert"));
+        } finally {
+            onEdt(() -> {
+                controller.close();
+                return null;
+            });
+        }
     }
 
     @Test public void asyncSaveTracksDiskBaselineAndLoadBlocksMutation() throws Exception {

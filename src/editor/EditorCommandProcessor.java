@@ -29,6 +29,7 @@ public final class EditorCommandProcessor {
                 case "light" -> light(words);
                 case "camera" -> camera(words);
                 case "mode" -> mode(words);
+                case "sphere" -> sphere(words);
                 case "mesh" -> mesh(words);
                 case "vertex" -> vertex(words);
                 case "edge" -> edge(words);
@@ -160,11 +161,27 @@ public final class EditorCommandProcessor {
             default -> throw new IllegalArgumentException("Use edge select or edge move");
         };
     }
-    private String mesh(List<String> words){
-        require(words,2,"mesh convert|unique");return switch(words.get(1).toLowerCase(Locale.ROOT)){
-            case "convert"->{exact(words,2,"mesh convert");yield done(controller.convertGeometryToEditable(selected()));}
-            case "unique"->{exact(words,2,"mesh unique");yield done(controller.makeGeometryUnique(selected()));}
-            default->throw new IllegalArgumentException("Use mesh convert or mesh unique");
+    private String sphere(List<String> words) {
+        exact(words, 6, "sphere set <center-x> <center-y> <center-z> <radius>");
+        if (!words.get(1).equalsIgnoreCase("set")) {
+            throw new IllegalArgumentException("Use sphere set");
+        }
+        return done(controller.applyAnalyticSphere(
+                selected(), vector(words, 2), Float.parseFloat(words.get(5))));
+    }
+    private String mesh(List<String> words) {
+        require(words, 2, "mesh approximate <detail-4..64> | mesh unique");
+        return switch (words.get(1).toLowerCase(Locale.ROOT)) {
+            case "approximate" -> {
+                exact(words, 3, "mesh approximate <detail-4..64>");
+                yield done(controller.approximateAnalyticSphere(
+                        selected(), Integer.parseInt(words.get(2))));
+            }
+            case "unique" -> {
+                exact(words, 2, "mesh unique");
+                yield done(controller.makeGeometryUnique(selected()));
+            }
+            default -> throw new IllegalArgumentException("Use mesh approximate or mesh unique");
         };
     }
     private String face(List<String> words){
@@ -210,5 +227,5 @@ public final class EditorCommandProcessor {
     private String done(boolean ok) { return ok ? controller.state().status() : "Error: " + controller.state().status(); }
     private static void require(List<String> words, int size, String usage) { if (words.size() < size) throw new IllegalArgumentException("Usage: " + usage); }
     private static void exact(List<String> words, int size, String usage) { if (words.size() != size) throw new IllegalArgumentException("Usage: " + usage); }
-    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|vertex|edge|face, mesh convert|unique, vertex select <id>, vertex move <local dx dy dz>, edge select <a> <b>, edge move <local dx dy dz>, face select <id>, face extrude <distance>, undo, redo, save, load, status"; }
+    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|vertex|edge|face, sphere set <center x y z> <radius>, mesh approximate <detail 4..64>|unique, vertex select <id>, vertex move <local dx dy dz>, edge select <a> <b>, edge move <local dx dy dz>, face select <id>, face extrude <distance>, undo, redo, save, load, status"; }
 }

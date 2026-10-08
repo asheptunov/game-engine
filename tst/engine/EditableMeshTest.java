@@ -45,19 +45,18 @@ public class EditableMeshTest {
     }
 
     @Test void supportedPrimitiveConversionsPreserveIntentAndSourceFaces() {
-        var box=PolygonMesh.from(BoxGeometry.UNIT);assertTrue(box.closedBoundary());assertEquals(6,box.faces().size());assertEquals(12,box.preparedGeometry().primitives().size());
-        var rect=PolygonMesh.from(PolygonMesh.parallelogram(new Vec3(2,3,4),new Vec3(2,0,0),new Vec3(0,1,0)));assertFalse(rect.closedBoundary());assertEquals(1,rect.faces().size());assertEquals(1,rect.preparedGeometry().primitives().size());
-        var sphere=PolygonMesh.from(new AnalyticSphere(new Vec3(2,0,0),2));assertTrue(sphere.closedBoundary());assertEquals(224,sphere.faces().size());
+        var box=BoxGeometry.UNIT;assertTrue(box.closedBoundary());assertEquals(6,box.faces().size());assertEquals(12,box.preparedGeometry().primitives().size());
+        var rect=PolygonMesh.parallelogram(new Vec3(2,3,4),new Vec3(2,0,0),new Vec3(0,1,0));assertFalse(rect.closedBoundary());assertEquals(1,rect.faces().size());assertEquals(1,rect.preparedGeometry().primitives().size());
+        var sphere=PolygonMesh.approximateSphere(new AnalyticSphere(new Vec3(2,0,0),2),8);assertTrue(sphere.closedBoundary());assertEquals(224,sphere.faces().size());
         var triangles=PolygonMesh.triangleSurface(List.of(new Vec3(0,0,0),new Vec3(1,0,0),new Vec3(0,1,0),new Vec3(1,1,0)),new int[]{0,1,2,2,1,3},new long[]{17,29});
-        var converted=PolygonMesh.from(triangles);assertEquals(List.of(17L,29L),converted.faces().stream().map(PolygonMesh.Face::id).toList());assertEquals(30L,converted.nextFaceId());
-        assertSame(converted,PolygonMesh.from(converted));
+        var converted=triangles;assertEquals(List.of(17L,29L),converted.faces().stream().map(PolygonMesh.Face::id).toList());assertEquals(30L,converted.nextFaceId());
         var merged=PolygonMesh.triangleSurface(triangles.preparedGeometry().vertices(),triangles.preparedGeometry().indices(),new long[]{4,4});assertEquals(1,merged.faces().size());assertEquals(4L,merged.faces().getFirst().id());assertEquals(4,merged.faces().getFirst().vertexIds().size());
-        rejects(()->PolygonMesh.from(PolygonMesh.triangleSurface(List.of(new Vec3(0,0,0),new Vec3(1,0,0),new Vec3(0,1,0)),new int[]{0,1,2},new long[]{-1})),"nonnegative");
-        rejects(()->PolygonMesh.from(PolygonMesh.triangleSurface(List.of(new Vec3(0,0,0),new Vec3(1,0,0),new Vec3(0,1,0)),new int[]{0,1,2},new long[]{Long.MAX_VALUE})),"allocatable");
+        rejects(()->PolygonMesh.triangleSurface(List.of(new Vec3(0,0,0),new Vec3(1,0,0),new Vec3(0,1,0)),new int[]{0,1,2},new long[]{-1}),"nonnegative");
+        rejects(()->PolygonMesh.triangleSurface(List.of(new Vec3(0,0,0),new Vec3(1,0,0),new Vec3(0,1,0)),new int[]{0,1,2},new long[]{Long.MAX_VALUE}),"allocatable");
     }
 
     @Test void positiveExtrusionRetainsCapIdentityAddsStableSidesAndCanRepeat() {
-        var box=PolygonMesh.from(BoxGeometry.UNIT);var once=box.extrude(1,1);
+        var box=BoxGeometry.UNIT;var once=box.extrude(1,1);
         assertTrue(once.closedBoundary());assertEquals(12,once.editableVertices().size());assertEquals(10,once.faces().size());assertEquals(20,once.preparedGeometry().primitives().size());
         assertEquals(List.of(8L,9L,10L,11L),once.requireFace(1).vertexIds());assertEquals(6L,once.faces().get(6).id());
         assertEquals(List.of(4L,5L,9L,8L),once.requireFace(6).vertexIds());assertEquals(new Vec3(0,0,1),once.faceNormal(1));
@@ -91,7 +90,7 @@ public class EditableMeshTest {
 
     @Test void sharedTransactionsQueriesHistoryAndMaterialValidationStayAtomic() {
         var document=new SceneDocument();var history=new UndoHistory(document,10);var geometry=new GeometryId[1];var first=new NodeId[1];var second=new NodeId[1];
-        history.edit("build",edit->{geometry[0]=edit.createGeometry("box",PolygonMesh.from(BoxGeometry.UNIT));var material=edit.createMaterial("gray",GRAY);first[0]=edit.createNode("first",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(first[0],geometry[0],material);second[0]=edit.createNode("second",null,new Transform(new Vec3(4,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(second[0],geometry[0],material);});
+        history.edit("build",edit->{geometry[0]=edit.createGeometry("box",BoxGeometry.UNIT);var material=edit.createMaterial("gray",GRAY);first[0]=edit.createNode("first",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(first[0],geometry[0],material);second[0]=edit.createNode("second",null,new Transform(new Vec3(4,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(second[0],geometry[0],material);});
         long before=document.snapshot().revision();history.edit("extrude",edit->edit.extrudeFace(geometry[0],1,1));assertTrue(document.snapshot().revision()>before);
         assertEquals(geometry[0],document.snapshot().requireNode(first[0]).geometry().geometryId());assertEquals(geometry[0],document.snapshot().requireNode(second[0]).geometry().geometryId());
         var query=SpatialQuery.prepare(document.snapshot());var cap=query.nearest(new Vec3(0,0,10),new Vec3(0,0,-1)).orElseThrow();assertEquals(1L,cap.sourceFaceId());assertEquals(first[0],cap.nodeId());
@@ -102,16 +101,82 @@ public class EditableMeshTest {
         assertEquals(10,((PolygonMesh)document.snapshot().requireGeometry(geometry[0]).geometry()).faces().size());assertEquals(14,((PolygonMesh)document.snapshot().requireGeometry(unique).geometry()).faces().size());
 
         var emission=new SceneDocument();var emissionGeometry=new GeometryId[1];emission.transact(edit->{emissionGeometry[0]=edit.createGeometry("light",PolygonMesh.parallelogram(Vec3.ZERO,new Vec3(1,0,0),new Vec3(0,1,0)));var material=edit.createMaterial("emit",new Material("ignored",new Vec3(1,1,1),Material.Kind.DIFFUSE,1,Vec3.ZERO,0,new Vec3(2,2,2),0,0));var node=edit.createNode("light",null,Transform.IDENTITY);edit.assignGeometry(node,emissionGeometry[0],material);});
-        var unchanged=emission.snapshot();emission.transact(edit->edit.convertGeometryToEditable(emissionGeometry[0]));assertSame(unchanged.geometryAssets().getFirst().geometry(),emission.snapshot().geometryAssets().getFirst().geometry());
         rejects(()->emission.transact(edit->edit.extrudeFace(emissionGeometry[0],0,.25f)),"Emission requires");
         var volume=new SceneDocument();var volumeGeometry=new GeometryId[1];volume.transact(edit->{volumeGeometry[0]=edit.createGeometry("volume box",BoxGeometry.UNIT);var material=edit.createMaterial("cloud",new Material("ignored",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1.2f,Vec3.ZERO,0,Vec3.ZERO,.5f,0));var node=edit.createNode("cloud",null,Transform.IDENTITY);edit.assignGeometry(node,volumeGeometry[0],material);});
-        volume.transact(edit->edit.convertGeometryToEditable(volumeGeometry[0]));assertInstanceOf(PolygonMesh.class,volume.snapshot().requireGeometry(volumeGeometry[0]).geometry());var beforeVolumeExtrude=volume.snapshot();rejects(()->volume.transact(edit->edit.extrudeFace(volumeGeometry[0],1,.25f)),"Scattering requires");assertSame(beforeVolumeExtrude,volume.snapshot());
+        assertInstanceOf(PolygonMesh.class,volume.snapshot().requireGeometry(volumeGeometry[0]).geometry());var beforeVolumeExtrude=volume.snapshot();rejects(()->volume.transact(edit->edit.extrudeFace(volumeGeometry[0],1,.25f)),"Scattering requires");assertSame(beforeVolumeExtrude,volume.snapshot());
         var open=PolygonMesh.surface(List.of(v(0,0,0,0),v(1,1,0,0),v(2,0,1,0)),List.of(f(0,0L,1L,2L)),3,1);
         var glass=new SceneDocument();rejects(()->glass.transact(edit->{var g=edit.createGeometry("open",open);var m=edit.createMaterial("glass",new Material("ignored",new Vec3(1,1,1),Material.Kind.DIELECTRIC));var n=edit.createNode("open",null,Transform.IDENTITY);edit.assignGeometry(n,g,m);}),"Glass requires");assertEquals(0,glass.snapshot().nodes().size());
     }
 
+    @Test void analyticParametersAndExplicitApproximationShareUndoAndRejectInvalidMaterialsAtomically() {
+        var document = new SceneDocument();
+        var history = new UndoHistory(document, 10);
+        var geometry = new GeometryId[1];
+        var first = new NodeId[1];
+        var second = new NodeId[1];
+        var original = new AnalyticSphere(new Vec3(1, 2, 3), 2);
+
+        history.edit("build", edit -> {
+            geometry[0] = edit.createGeometry("shared sphere", original);
+            var material = edit.createMaterial("gray", GRAY);
+            first[0] = edit.createNode("first", null, Transform.IDENTITY);
+            second[0] = edit.createNode("second", null,
+                    new Transform(new Vec3(4, 0, 0), Vec3.ZERO, new Vec3(1, 1, 1)));
+            edit.assignGeometry(first[0], geometry[0], material);
+            edit.assignGeometry(second[0], geometry[0], material);
+        });
+        history.clear();
+
+        var changed = new AnalyticSphere(new Vec3(-1, .5f, 2), 1.25f);
+        history.edit("parameters", edit ->
+                edit.setAnalyticSphere(geometry[0], changed.center(), changed.radius()));
+        assertEquals(changed, document.snapshot().requireGeometry(geometry[0]).geometry());
+        assertEquals(1, history.undoSize());
+        var sameSnapshot = document.snapshot();
+        history.edit("same parameters", edit ->
+                edit.setAnalyticSphere(geometry[0], changed.center(), changed.radius()));
+        assertSame(sameSnapshot, document.snapshot());
+        assertEquals(1, history.undoSize());
+
+        history.undo();
+        assertEquals(original, document.snapshot().requireGeometry(geometry[0]).geometry());
+        history.redo();
+        history.edit("approximate", edit -> edit.approximateGeometryAsMesh(geometry[0], 12));
+        var approximation = (PolygonMesh) document.snapshot().requireGeometry(geometry[0]).geometry();
+        assertEquals(4 * 12 * 11, approximation.faces().size());
+        assertEquals(geometry[0], document.snapshot().requireNode(first[0]).geometry().geometryId());
+        assertEquals(geometry[0], document.snapshot().requireNode(second[0]).geometry().geometryId());
+        history.undo();
+        assertEquals(changed, document.snapshot().requireGeometry(geometry[0]).geometry());
+
+        var scattering = new SceneDocument();
+        var scatteringHistory = new UndoHistory(scattering, 10);
+        var scatteringGeometry = new GeometryId[1];
+        scatteringHistory.edit("build", edit -> {
+            scatteringGeometry[0] = edit.createGeometry("cloud sphere", original);
+            var material = edit.createMaterial("cloud", new Material(
+                    "ignored", new Vec3(1, 1, 1), Material.Kind.DIELECTRIC, 1.2f,
+                    Vec3.ZERO, 0, Vec3.ZERO, .5f, 0));
+            var node = edit.createNode("cloud", null, Transform.IDENTITY);
+            edit.assignGeometry(node, scatteringGeometry[0], material);
+        });
+        scatteringHistory.clear();
+        var beforeFailure = scattering.snapshot();
+        rejects(() -> scatteringHistory.edit("invalid approximation",
+                edit -> edit.approximateGeometryAsMesh(scatteringGeometry[0], 8)), "Scattering requires");
+        assertSame(beforeFailure, scattering.snapshot());
+        assertEquals(0, scatteringHistory.undoSize());
+        assertEquals(0, scatteringHistory.redoSize());
+
+        history.redo();
+        rejects(() -> document.transact(edit ->
+                edit.approximateGeometryAsMesh(geometry[0], 3)), "not an analytic sphere");
+        rejects(() -> scattering.transact(edit ->
+                edit.approximateGeometryAsMesh(scatteringGeometry[0], 65)), "4..64");
+    }
+
     @Test void topologyOnlyCounterChangeIsSceneContentButNotTransport() {
-        var document=new SceneDocument();var id=new GeometryId[1];var base=PolygonMesh.from(BoxGeometry.UNIT);document.transact(edit->id[0]=edit.createGeometry("box",base));var before=document.snapshot();
+        var document=new SceneDocument();var id=new GeometryId[1];var base=BoxGeometry.UNIT;document.transact(edit->id[0]=edit.createGeometry("box",base));var before=document.snapshot();
         var changed=PolygonMesh.closedSolid(base.editableVertices(),base.faces(),base.nextVertexId()+10,base.nextFaceId()+10);
         var after=document.transact(edit->edit.replaceGeometry(id[0],changed));assertTrue(after.revision()>before.revision());assertEquals(before.transportRevision(),after.transportRevision());assertTrue(after.requireGeometry(id[0]).revision()>before.requireGeometry(id[0]).revision());
     }

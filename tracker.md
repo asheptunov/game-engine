@@ -636,6 +636,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   using the [editor QA card](benchmarks/editor/README.md). G3 retains analytic parameter editing
   and explicit bounded sphere approximation.
 
+## Engine E7 G3 — analytic parameters and explicit approximation `[implemented; human GUI QA pending]`
+
+- The Mesh inspector exposes shared asset-local center/radius editing for analytic spheres.
+  Explicit approximation requires detail 4..64, preserves geometry identity, references,
+  transforms and materials, and explains that polygon replacement loses analytic parameters.
+  Undo restores the exact sphere; Make unique remains a separate action.
+- The generic conversion API, button and command are removed. `sphere set` and
+  `mesh approximate <detail>` use the same validated controller transactions as the UI.
+  Incompatible scattering rejects without changing geometry, history, selection, or dirty state.
+- PowerShell 5.1 editor/input gates cover shared replacement, chosen tessellation, no-op and
+  failure history, stale picks, v3 analytic/polygon reopen, two-view rendering, and legacy
+  transport/input regression. Window-free evidence is `scene-editor-analytic-preview.png`
+  and `scene-editor-approximation-preview.png`; native QA remains pending using the
+  [editor QA card](benchmarks/editor/README.md).
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

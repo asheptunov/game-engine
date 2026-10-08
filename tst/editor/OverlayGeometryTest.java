@@ -48,7 +48,7 @@ public class OverlayGeometryTest {
     @Test void editableFaceBoundaryProjectsIndependentlyOfObjectGizmos() {
         var document=new SceneDocument();var ids=new Object[3];document.transact(edit->{
             ids[0]=edit.createMaterial("mat",Material.srgb("mat",0xffffff));
-            ids[1]=edit.createGeometry("editable box",PolygonMesh.from(BoxGeometry.UNIT));
+            ids[1]=edit.createGeometry("editable box",BoxGeometry.UNIT);
             ids[2]=edit.createNode("box",null,new Transform(new Vec3(0,0,5),new Vec3(8,17,3),new Vec3(1,1,1)));
             edit.assignGeometry((NodeId)ids[2],(GeometryId)ids[1],(MaterialId)ids[0]);
         });

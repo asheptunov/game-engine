@@ -34,6 +34,12 @@ $meshPreview = Join-Path $output "scene-editor-mesh-extruded-preview.png"
 if (-not (Test-Path $meshPreview) -or (Get-Item $meshPreview).Length -lt 20000) { throw "Window-free mesh-editing preview was not produced" }
 $elementPreview = Join-Path $output "scene-editor-elements-preview.png"
 if (-not (Test-Path $elementPreview) -or (Get-Item $elementPreview).Length -lt 20000) { throw "Window-free element-editing preview was not produced" }
+$analyticPreview = Join-Path $output "scene-editor-analytic-preview.png"
+if (-not (Test-Path $analyticPreview) -or (Get-Item $analyticPreview).Length -lt 20000) { throw "Window-free analytic-sphere preview was not produced" }
+$approximationPreview = Join-Path $output "scene-editor-approximation-preview.png"
+if (-not (Test-Path $approximationPreview) -or (Get-Item $approximationPreview).Length -lt 20000) {
+    throw "Window-free sphere-approximation preview was not produced"
+}
 $bindingsPreview = Join-Path $output "scene-editor-bindings-preview.png"
 if (-not (Test-Path $bindingsPreview) -or (Get-Item $bindingsPreview).Length -lt 10000) { throw "Window-free bindings preview was not produced" }
 Write-Output "Headless editor checks passed: $output"

@@ -38,8 +38,27 @@ public final class SceneEdit {
     public void setCamera(NodeId id,CameraComponent camera){updateNode(id,n->n.withCamera(camera));}
     public void renameGeometry(GeometryId id,String label){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,label,a.revision(),a.geometry()));}
     public void replaceGeometry(GeometryId id,GeometryData geometry){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),geometry));}
-    /** Explicitly convert one shared asset; every referencing node observes the atomic replacement. */
-    public void convertGeometryToEditable(GeometryId id){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),PolygonMesh.from(a.geometry())));}
+    /** Replace the parameters of one shared analytic sphere asset. */
+    public void setAnalyticSphere(GeometryId id, Vec3 center, float radius) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof AnalyticSphere)) {
+            throw new IllegalArgumentException("Geometry is not an analytic sphere: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), new AnalyticSphere(center, radius)));
+    }
+
+    /** Approximate one shared analytic sphere at an explicit bounded detail. */
+    public void approximateGeometryAsMesh(GeometryId id, int detail) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof AnalyticSphere sphere)) {
+            throw new IllegalArgumentException("Geometry is not an analytic sphere: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), PolygonMesh.approximateSphere(sphere, detail)));
+    }
     /** Extrude one stable face on an already-editable shared asset. */
     public void extrudeFace(GeometryId id,long faceId,float distance){int i=requireGeometry(id);var a=geometries.get(i);if(!(a.geometry() instanceof PolygonMesh mesh))throw new IllegalArgumentException("Geometry is not an editable mesh: "+id);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),mesh.extrude(faceId,distance)));}
     /** Translate one stable polygon vertex in asset-local units. */

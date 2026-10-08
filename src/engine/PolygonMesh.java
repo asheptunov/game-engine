@@ -58,14 +58,6 @@ public final class PolygonMesh implements GeometryData {
         return new PolygonMesh(vertices,faces,nextVertexId,nextFaceId,true);
     }
 
-    /** Compatibility conversion; analytic approximation uses the established detail-eight generator. */
-    public static PolygonMesh from(GeometryData geometry) {
-        Objects.requireNonNull(geometry,"geometry");
-        if(geometry instanceof PolygonMesh editable)return editable;
-        if(geometry instanceof AnalyticSphere sphere)return approximateSphere(sphere,8);
-        throw new IllegalArgumentException("Geometry cannot be converted to an editable mesh: "+geometry.getClass().getSimpleName());
-    }
-
     private PolygonMesh(List<Vertex> vertices,List<Face> faces,long nextVertexId,
                                  long nextFaceId,boolean closed) {
         editableVertices=List.copyOf(Objects.requireNonNull(vertices,"vertices"));

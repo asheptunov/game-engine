@@ -1,6 +1,6 @@
 # Engine and authoring tools specification
 
-Status: E1–E4 complete; E5–E6 implemented with human GUI QA pending; E7 G1–G2 implemented, G3 pending. Updated 2026-10-07.
+Status: E1–E4 complete; E5–E7 implemented with human GUI QA pending. Updated 2026-10-07.
 
 ## Intent
 
@@ -336,7 +336,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
       changes only application selection/tool state: no geometry conversion, new asset ID,
       dirty flag, render-content revision or undo entry. Invalidate pending selection
       intents on actual mode transitions; reselecting the active mode is idempotent.
-- [ ] Analytic objects expose parameter controls and object transforms. Mesh-only controls
+- [x] Analytic objects expose parameter controls and object transforms. Mesh-only controls
       are unavailable with a clear explanation; analytic objects cannot yield fake mesh
       element selections. Keep selecting objects practical while a mesh mode is active.
 - [x] Provide stable vertex/edge/face selection and bounded element editing: at minimum
@@ -354,7 +354,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
       Make geometry unique explicitly creates a new asset identity for one node. Show
       reference count and operation scope. Neither entering mesh mode nor approximation
       implicitly makes an asset unique.
-- [ ] Replace the generic Convert to editable mesh prerequisite with an optional
+- [x] Replace the generic Convert to editable mesh prerequisite with an optional
       Approximate as mesh operation on analytic geometry. Offer explicit bounded
       tessellation settings and explain the loss of the analytic representation.
       Publish the approximation as one atomic, undoable shared-asset replacement;
@@ -380,7 +380,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
       the simplified public API. Verify exact analytic sphere intersections, polygon
       construction/triangulation/query mapping, supported material capabilities and seeded
       render compatibility. Document intentional migration differences and adapter removal.
-- [ ] Add automated controller and two-view checks for mode switches without mutations,
+- [x] Add automated controller and two-view checks for mode switches without mutations,
       direct element picking/editing, shared versus unique operations, approximation with
       chosen detail and undo, failed edits, save/reopen and stale asynchronous selections.
       Run the engine boundary, scene/editor and shared-input regression gates; record
@@ -400,9 +400,19 @@ Selected elements and translation handles are published as one coherent two-view
 Numeric and live vertex/edge moves replace the shared asset in asset-local coordinates, validate
 the complete scene, and create one undo entry; an invalid final drag restores its baseline.
 Mode, history, load, Make unique and stale asynchronous completion tests reconcile or clear
-stable selections without dirtying the document on mode switches. The remaining analytic
-parameter and bounded approximation work belongs to G3. Native-window interaction remains
-pending separately from the headless gate.
+stable selections without dirtying the document on mode switches.
+
+G3 editor evidence (2026-10-07): the Mesh inspector exposes asset-local center/radius Apply
+controls only for analytic spheres and polygon controls only for polygon assets. Approximate
+as mesh requires an explicit 4..64 detail and explains shared same-ID replacement and the loss
+of analytic parameters. Controller/engine tests cover chosen detail, exact analytic undo,
+identical-value no-op history, shared references, stale pre-approximation picks, scattering
+failure with unchanged snapshot/history/selection, and v3 analytic/polygon save/reopen.
+`scene-editor-analytic-preview.png` and `scene-editor-approximation-preview.png` are
+window-free two-view evidence. Windows PowerShell 5.1
+`editor-check.ps1 -OutputDirectory out/e7-g3-final` and
+`input-check.ps1 -OutputDirectory out/e7-g3-final` pass with audited logs. Native-window
+interaction remains pending separately using the editor QA card.
 
 Deferred: a general capability/plugin framework, new analytic shape families, generalized
 polygon repair/self-intersection detection, transport algorithms and unrelated optimization.

@@ -166,8 +166,9 @@ Triangle import preserves unique nonnegative source IDs. Repeated IDs reconstruc
 only when their triangles form a connected, consistently wound, coplanar disk with a single
 simple convex boundary and no interior/unused stable vertices. Boundary traversal starts at
 the minimum vertex ID. Disconnected, holed, pinched, folded, overlapping, exhausted or
-over-budget groups reject explicitly. `PolygonMesh.from` returns polygon input unchanged and
-approximates an analytic sphere with the established detail-eight generator.
+over-budget groups reject explicitly. `PolygonMesh.approximateSphere(sphere, detail)`
+requires an explicit detail from 4 through 64; there is no generic conversion or hidden
+default tessellation.
 `extrude(faceId,distance)` accepts a finite positive distance,
 moves a replacement cap along its listed-winding normal, retains the cap face ID, and
 allocates cap vertices and side-quad face IDs from persisted monotonic counters. For a
@@ -186,9 +187,11 @@ the explicit way to isolate one node.
 `SceneDocument` is a single-writer atomic publisher. Create and edit it on one application
 update thread; render/query workers may concurrently retain its immutable `SceneSnapshot`.
 One `transact` callback may create, rename, transform, reparent, assign, duplicate or delete
-nodes and create/edit/make-unique shared assets. `convertGeometryToEditable` and
-`extrudeFace` replace shared geometry within the same transaction. It validates every
-referencing node/material in the complete result before one publication. Failure changes
+nodes and create/edit/make-unique shared assets. `setAnalyticSphere`,
+`approximateGeometryAsMesh`, and `extrudeFace` replace the same shared geometry ID within
+one transaction. Approximation accepts only a current `AnalyticSphere` and requires its
+explicit 4..64 detail. It validates every referencing node/material in the complete result
+before one publication. Failure changes
 neither snapshot nor revision, nested writes are rejected,
 duplicate copies a whole subtree with fresh node UUIDs and shared asset references, delete
 removes a subtree, and `reparentKeepingLocal` deliberately retains the local pose. Labels
@@ -234,10 +237,11 @@ unsupported component combinations. Limits are 16 MiB, 250,000 XML elements, XML
 derived triangles before topology construction. The writer enforces the same reloadable
 structural limits.
 
-Material compatibility is unchanged and validates atomically after conversion/extrusion.
-Closed editable meshes can be dielectric. A canonical converted box can retain scattering
-only while its derived primitives equal the canonical box; extrusion then rejects it.
-Tessellated sphere conversion rejects scattering, and rectangle conversion rejects emission.
+Material compatibility validates atomically after approximation or polygon editing.
+Closed polygon meshes can be dielectric. The canonical local box retains scattering only
+while its exact six-face topology remains intact; extrusion then rejects it. Approximating
+an analytic scattering sphere rejects the entire transaction because the resulting polygon
+sphere is not a supported volume, leaving geometry, materials, history, and selection intact.
 
 `SpatialQuery.prepare(snapshot)` builds immutable query state and never mutates a render
 session. `nearest` scale-safely normalizes finite nonzero directions, so distance is in world
@@ -258,6 +262,15 @@ them asynchronously only when clicked, and accepts the result only if the painte
 mode, node and element selection still match. Camera-only motion reuses this camera-independent
 token, preserving coherent lagging previews. Selected-element highlights and translate handles
 are projected with the exact displayed camera and published with the image as one bundle.
+
+The Mesh inspector shows asset-local center/radius controls only for analytic spheres and
+polygon element controls only for polygon assets. Applying sphere parameters replaces the
+shared asset once and creates at most one undo entry; identical values publish nothing.
+**Approximate as mesh** uses the chosen 4..64 detail, explains the shared replacement and
+loss of analytic parameters, and preserves geometry ID, references, node transforms, and
+materials. Undo restores the exact analytic value. Text commands use
+`sphere set <center-x> <center-y> <center-z> <radius>` and
+`mesh approximate <detail>`; the former generic `mesh convert` route is removed.
 
 The independent example builds open and closed meshes, saves/reloads, picks a source face,
 and renders without application sources:

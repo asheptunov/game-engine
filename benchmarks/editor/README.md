@@ -94,6 +94,18 @@ startup failures in `out/editor/editor-error.log`.
     selection is safely reconciled or cleared if an asset/element disappears. Repeat with
     `mode vertex`, `vertex select <id>`, `vertex move <dx> <dy> <dz>`, `mode edge`,
     `edge select <a> <b>`, `edge move <dx> <dy> <dz>`, `mode face`, and `face extrude <distance>`.
+17. Select `Terracotta sphere` and open **Mesh**. **EXPECT:** asset-local Center X/Y/Z and
+    Radius fields are visible; polygon element controls are absent. Apply a changed positive
+    radius and center, then Undo/Redo. **EXPECT:** both shared instances update together as an
+    exact analytic sphere, identical Apply creates no extra undo step, and Undo restores the
+    exact previous center/radius. Repeat with
+    `sphere set <center-x> <center-y> <center-z> <radius>`.
+18. Set **Detail** to 12 and click **Approximate as mesh**. **EXPECT:** the explanation states
+    that the shared asset is replaced and analytic parameters are lost; the same nodes,
+    transforms, materials, and geometry identity remain. Polygon controls become available in
+    both views. Undo restores the exact analytic sphere. A scattering sphere rejects
+    approximation without changing the scene. Save/reopen both states and repeat with
+    `mesh approximate 12`; **EXPECT:** canonical v3 sphere/polygon data and sharing persist.
 
 Shipped defaults are `assets/bindings/scene-editor.properties` and
 `assets/bindings/scene-editor-mouse.properties`. **Bindings…** saves the single ignored user profile

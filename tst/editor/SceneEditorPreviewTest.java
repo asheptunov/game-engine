@@ -117,11 +117,53 @@ public class SceneEditorPreviewTest {
             assertFalse(chooser.isAcceptAllFileFilterUsed()); assertTrue(filter.accept(new java.io.File("example.SCENE.XML")));
             assertFalse(filter.accept(new java.io.File("example.xml"))); assertEquals(Path.of("Example.SCENE.XML"), SceneEditorPanel.scenePathForTest(Path.of("Example.SCENE.XML")));
 
+            var analyticNode = onEdt(() -> controller.snapshot().nodes().stream()
+                    .filter(node -> node.label().equals("Terracotta sphere"))
+                    .findFirst().orElseThrow().id());
+            onEdt(() -> controller.select(analyticNode));
+            assertTrue(onEdt(() -> panel.hasInspectorTabForTest("Mesh")));
+            assertEquals("Sphere", onEdt(panel::meshGeometryTextForTest));
+            assertTrue(onEdt(panel::meshApproximateEnabledForTest));
+            assertFalse(onEdt(panel::meshExtrudeEnabledForTest));
+            onEdt(() -> {
+                panel.selectInspectorTabForTest("Mesh");
+                return null;
+            });
+            assertTrue(onEdt(() -> panel.applySphereForTest(new Vec3(.2f, -.1f, .3f), 1.15f)));
+            var analyticGeometryId = onEdt(() ->
+                    controller.snapshot().requireNode(analyticNode).geometry().geometryId());
+            assertEquals(new AnalyticSphere(new Vec3(.2f, -.1f, .3f), 1.15f),
+                    onEdt(() -> controller.snapshot().requireGeometry(analyticGeometryId).geometry()));
+            awaitDisplayedRevision(panel, onEdt(() -> controller.snapshot().revision()));
+            awaitOverlay(panel, 0, analyticNode);
+            awaitOverlay(panel, 1, analyticNode);
+            writePanel(panel, canvas, output.resolveSibling("scene-editor-analytic-preview.png"));
+
+            assertTrue(onEdt(() -> panel.approximateSphereForTest(12)));
+            var approximation = (PolygonMesh) onEdt(() ->
+                    controller.snapshot().requireGeometry(analyticGeometryId).geometry());
+            assertEquals(4 * 12 * 11, approximation.faces().size());
+            assertFalse(onEdt(panel::meshApproximateEnabledForTest));
+            awaitDisplayedRevision(panel, onEdt(() -> controller.snapshot().revision()));
+            awaitOverlay(panel, 0, analyticNode);
+            awaitOverlay(panel, 1, analyticNode);
+            onEdt(() -> {
+                panel.selectInspectorTabForTest("Mesh");
+                return null;
+            });
+            writePanel(panel, canvas, output.resolveSibling("scene-editor-approximation-preview.png"));
+            assertTrue(onEdt(controller::undo));
+            assertInstanceOf(AnalyticSphere.class, onEdt(() ->
+                    controller.snapshot().requireGeometry(analyticGeometryId).geometry()));
+            assertTrue(onEdt(controller::redo));
+
             var selected = onEdt(() -> controller.snapshot().nodes().stream().filter(node -> node.label().equals("Teal box")).findFirst().orElseThrow().id()); onEdt(() -> controller.select(selected));
             assertTrue(onEdt(() -> panel.hasInspectorTabForTest("Mesh"))); assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("No mesh element"));
+            assertEquals("Polygon mesh", onEdt(panel::meshGeometryTextForTest));
+            assertFalse(onEdt(panel::meshApproximateEnabledForTest));
             onEdt(() -> { panel.selectInspectorTabForTest("Mesh"); panel.selectionModeForTest(EditorController.SelectionMode.FACE); return null; });
             assertEquals(EditorController.SelectionMode.FACE,onEdt(controller::selectionMode));
-            assertTrue(onEdt(panel::meshConvertForTest)); assertTrue(onEdt(() -> controller.snapshot().requireGeometry(
+            assertTrue(onEdt(() -> controller.snapshot().requireGeometry(
                     controller.snapshot().requireNode(selected).geometry().geometryId()).geometry() instanceof PolygonMesh));
             awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
             assertTrue(pickFaceFromView(panel,controller,selected,0));
@@ -134,7 +176,7 @@ public class SceneEditorPreviewTest {
             onEdt(()->{panel.wireframeForTest(0,false);panel.wireframeForTest(1,false);panel.selectInspectorTabForTest("Mesh");return null;});pumpPaint(panel,4);
             assertFalse(onEdt(()->panel.overlayForTest(0).selectedFace().isEmpty()));assertFalse(onEdt(()->panel.overlayForTest(1).selectedFace().isEmpty()));
             assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("Selected face"));
-            assertFalse(onEdt(panel::meshConvertEnabledForTest));assertTrue(onEdt(panel::meshExtrudeEnabledForTest));
+            assertFalse(onEdt(panel::meshApproximateEnabledForTest));assertTrue(onEdt(panel::meshExtrudeEnabledForTest));
             writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-preview.png"));
             int faceCountBefore=((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size();
             assertTrue(onEdt(()->panel.meshExtrudeForTest(.35f)));

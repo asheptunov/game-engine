@@ -50,10 +50,55 @@ public class ScenePersistenceTest {
 
     @Test void canonicalV3RoundTripPreservesTopologyCountersAndDerivedFaceMapping()throws Exception {
         var document=new SceneDocument();var geometry=new GeometryId[1];var node=new NodeId[1];
-        document.transact(edit->{geometry[0]=edit.createGeometry("editable",PolygonMesh.from(BoxGeometry.UNIT).extrude(1,.75f));var material=edit.createMaterial("blue",Material.srgb("ignored",0x3b82f6));node[0]=edit.createNode("mesh",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(node[0],geometry[0],material);});
+        document.transact(edit->{geometry[0]=edit.createGeometry("editable",BoxGeometry.UNIT.extrude(1,.75f));var material=edit.createMaterial("blue",Material.srgb("ignored",0x3b82f6));node[0]=edit.createNode("mesh",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(node[0],geometry[0],material);});
         var path=temp().resolve("editable.scene.xml");SceneFiles.save(path,document.snapshot());var xml=Files.readString(path);assertTrue(xml.contains("version=\"3\""));assertTrue(xml.contains("<polygon-mesh"));assertFalse(xml.contains("<triangles>"));
         var loaded=SceneFiles.load(path);var mesh=(PolygonMesh)loaded.requireGeometry(geometry[0]).geometry();assertEquals(12L,mesh.nextVertexId());assertEquals(10L,mesh.nextFaceId());assertEquals(10,mesh.faces().size());assertEquals(List.of(8L,9L,10L,11L),mesh.requireFace(1).vertexIds());assertTrue(mesh.closedBoundary());
         var hit=SpatialQuery.prepare(loaded).nearest(new Vec3(0,0,10),new Vec3(0,0,-1)).orElseThrow();assertEquals(node[0],hit.nodeId());assertEquals(1L,hit.sourceFaceId());
+    }
+
+    @Test void analyticParametersAndChosenApproximationRoundTripAsCanonicalV3()throws Exception {
+        var document = new SceneDocument();
+        var geometry = new GeometryId[1];
+        var first = new NodeId[1];
+        var second = new NodeId[1];
+        document.transact(edit -> {
+            geometry[0] = edit.createGeometry(
+                    "shared analytic", new AnalyticSphere(new Vec3(1, 2, 3), 2));
+            var material = edit.createMaterial("gray", Material.srgb("ignored", 0x808080));
+            first[0] = edit.createNode("first", null, Transform.IDENTITY);
+            second[0] = edit.createNode("second", null,
+                    new Transform(new Vec3(4, 0, 0), Vec3.ZERO, new Vec3(1, 1, 1)));
+            edit.assignGeometry(first[0], geometry[0], material);
+            edit.assignGeometry(second[0], geometry[0], material);
+        });
+        var changed = new AnalyticSphere(new Vec3(-.5f, .25f, 1.5f), 1.25f);
+        document.transact(edit ->
+                edit.setAnalyticSphere(geometry[0], changed.center(), changed.radius()));
+
+        var directory = temp();
+        var analyticPath = directory.resolve("analytic-v3.scene.xml");
+        SceneFiles.save(analyticPath, document.snapshot());
+        var analyticXml = Files.readString(analyticPath);
+        assertTrue(analyticXml.contains("version=\"3\""));
+        assertTrue(analyticXml.contains("<sphere"));
+        var loadedAnalytic = SceneFiles.load(analyticPath);
+        assertEquals(changed, loadedAnalytic.requireGeometry(geometry[0]).geometry());
+        assertEquals(geometry[0], loadedAnalytic.requireNode(first[0]).geometry().geometryId());
+        assertEquals(geometry[0], loadedAnalytic.requireNode(second[0]).geometry().geometryId());
+
+        document.transact(edit -> edit.approximateGeometryAsMesh(geometry[0], 16));
+        var approximationPath = directory.resolve("approximation-v3.scene.xml");
+        SceneFiles.save(approximationPath, document.snapshot());
+        var approximationXml = Files.readString(approximationPath);
+        assertTrue(approximationXml.contains("version=\"3\""));
+        assertTrue(approximationXml.contains("<polygon-mesh"));
+        assertFalse(approximationXml.contains("<sphere"));
+        var loadedApproximation = SceneFiles.load(approximationPath);
+        var mesh = (PolygonMesh) loadedApproximation.requireGeometry(geometry[0]).geometry();
+        assertEquals(4 * 16 * 15, mesh.faces().size());
+        assertEquals((long) mesh.faces().size(), mesh.nextFaceId());
+        assertEquals(geometry[0], loadedApproximation.requireNode(first[0]).geometry().geometryId());
+        assertEquals(geometry[0], loadedApproximation.requireNode(second[0]).geometry().geometryId());
     }
 
     @Test void invalidAndHostileFilesDoNotReplaceActiveDocument()throws Exception {
