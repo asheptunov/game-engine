@@ -96,3 +96,13 @@ Root evidence: `out/milestones/e7/e7-root-final` (plus independent G1/G2 gates).
 Human QA: [GeometryEditorQA.md](GeometryEditorQA.md); editor checkout remains unmerged
 into main for native acceptance. Shared edits, strict planar/convex polygons, x-ray
 element picking and canonical-box volume restrictions are documented there.
+
+## E7 native feedback fixes
+
+Plan: [GeometryEditingFeedbackPlan.md](GeometryEditingFeedbackPlan.md). User requests
+usable cube deformation, face translation and visible unselected mesh-mode cues.
+
+| id | title | deps | gui-qa | status | lane | commit | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| H1 | Polygon deformation and face translation | G3 | no | running | existing scene-editor checkout | | Stable faces with derived warped triangulation; v4 persistence |
+| H2 | Mode cues and face editing UI | H1 | yes | blocked | existing scene-editor checkout | | Both-view visible elements, numeric/handle face movement |

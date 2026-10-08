@@ -6,6 +6,10 @@ acceptance separately from automated headless checks. E7 is implemented through
 `940fe72`; independent full engine/editor/transport/input gates and source review passed.
 Native interaction acceptance remains pending.
 
+Native feedback follow-up is in progress: [GeometryEditingFeedbackPlan.md](GeometryEditingFeedbackPlan.md)
+adds face movement, warped-face deformation and visible mode cues. The planar limitation
+below describes `940fe72` and is superseded when that follow-up is delivered.
+
 - Create a box and a plane. Switch Object/Vertex/Edge/Face modes immediately; no
   conversion is required and mode changes do not mark the scene dirty or add undo.
 - Select a vertex or edge in either view. Check its highlight in both views, translate
