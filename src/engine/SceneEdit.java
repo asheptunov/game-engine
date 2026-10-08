@@ -1,5 +1,7 @@
 package engine;
 
+import math.Vec3;
+
 import java.util.*;
 import java.util.function.UnaryOperator;
 
@@ -36,6 +38,59 @@ public final class SceneEdit {
     public void setCamera(NodeId id,CameraComponent camera){updateNode(id,n->n.withCamera(camera));}
     public void renameGeometry(GeometryId id,String label){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,label,a.revision(),a.geometry()));}
     public void replaceGeometry(GeometryId id,GeometryData geometry){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),geometry));}
+    /** Replace the parameters of one shared analytic sphere asset. */
+    public void setAnalyticSphere(GeometryId id, Vec3 center, float radius) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof AnalyticSphere)) {
+            throw new IllegalArgumentException("Geometry is not an analytic sphere: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), new AnalyticSphere(center, radius)));
+    }
+
+    /** Approximate one shared analytic sphere at an explicit bounded detail. */
+    public void approximateGeometryAsMesh(GeometryId id, int detail) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof AnalyticSphere sphere)) {
+            throw new IllegalArgumentException("Geometry is not an analytic sphere: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), PolygonMesh.approximateSphere(sphere, detail)));
+    }
+    /** Extrude one stable face on an already-editable shared asset. */
+    public void extrudeFace(GeometryId id,long faceId,float distance){int i=requireGeometry(id);var a=geometries.get(i);if(!(a.geometry() instanceof PolygonMesh mesh))throw new IllegalArgumentException("Geometry is not an editable mesh: "+id);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),mesh.extrude(faceId,distance)));}
+    /** Translate one stable polygon vertex in asset-local units. */
+    public void translateVertex(GeometryId id, long vertexId, Vec3 localDelta) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof PolygonMesh mesh)) {
+            throw new IllegalArgumentException("Geometry is not a polygon mesh: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), mesh.translateVertex(vertexId, localDelta)));
+    }
+    /** Translate both endpoints of one canonical polygon edge in asset-local units. */
+    public void translateEdge(GeometryId id, long firstVertexId, long secondVertexId, Vec3 localDelta) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof PolygonMesh mesh)) {
+            throw new IllegalArgumentException("Geometry is not a polygon mesh: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), mesh.translateEdge(firstVertexId, secondVertexId, localDelta)));
+    }
+    /** Translate every stable boundary vertex of one polygon face in asset-local units. */
+    public void translateFace(GeometryId id, long faceId, Vec3 localDelta) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof PolygonMesh mesh)) {
+            throw new IllegalArgumentException("Geometry is not a polygon mesh: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), mesh.translateFace(faceId, localDelta)));
+    }
     public void renameMaterial(MaterialId id,String label){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,label,a.revision(),a.material()));}
     public void replaceMaterial(MaterialId id,Material material){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,a.label(),a.revision(),material));}
     public GeometryId makeGeometryUnique(NodeId nodeId){
@@ -50,12 +105,37 @@ public final class SceneEdit {
         materials.add(new MaterialAsset(id,source.label(),0,source.material()));
         nodes.set(ni,node.withGeometry(new GeometryComponent(node.geometry().geometryId(),id)));return id;
     }
-    /** Duplicate an entire subtree with fresh node IDs while preserving shared asset references. */
-    public NodeId duplicateSubtree(NodeId rootId){
-        var root=nodes.get(requireNode(rootId));var descendants=subtree(rootId);
-        var ids=new LinkedHashMap<NodeId,NodeId>();for(var old:descendants)ids.put(old.id(),NodeId.random());
-        for(var old:descendants){NodeId parent=old.id().equals(rootId)?old.parentId():ids.get(old.parentId());nodes.add(new SceneNode(ids.get(old.id()),old.label(),parent,old.localTransform(),old.geometry(),old.light(),old.camera()));}
+    /** Duplicate a subtree with fresh node, geometry, and material identities. */
+    public NodeId duplicateSubtree(NodeId rootId) {
+        requireNode(rootId);
+        var descendants = subtree(rootId);
+        var ids = new LinkedHashMap<NodeId, NodeId>();
+        for (var source : descendants) {
+            ids.put(source.id(), NodeId.random());
+        }
+        for (var source : descendants) {
+            NodeId parent = source.id().equals(rootId)
+                    ? source.parentId()
+                    : ids.get(source.parentId());
+            nodes.add(new SceneNode(ids.get(source.id()), source.label(), parent,
+                    source.localTransform(), copyGeometryComponent(source.geometry()),
+                    source.light(), source.camera()));
+        }
         return ids.get(rootId);
+    }
+    private GeometryComponent copyGeometryComponent(GeometryComponent component) {
+        if (component == null) {
+            return null;
+        }
+        var sourceGeometry = geometries.get(requireGeometry(component.geometryId()));
+        var sourceMaterial = materials.get(requireMaterial(component.materialId()));
+        var geometryId = GeometryId.random();
+        var materialId = MaterialId.random();
+        geometries.add(new GeometryAsset(
+                geometryId, sourceGeometry.label(), 0, sourceGeometry.geometry()));
+        materials.add(new MaterialAsset(
+                materialId, sourceMaterial.label(), 0, sourceMaterial.material()));
+        return new GeometryComponent(geometryId, materialId);
     }
     public void deleteSubtree(NodeId rootId){var remove=subtree(rootId).stream().map(SceneNode::id).collect(java.util.stream.Collectors.toSet());nodes.removeIf(n->remove.contains(n.id()));}
     private List<SceneNode> subtree(NodeId root) {

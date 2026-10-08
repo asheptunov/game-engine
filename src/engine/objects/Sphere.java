@@ -5,7 +5,7 @@ import math.Ray;
 import math.Vec3;
 import java.util.Optional;
 
-public record Sphere(Vec3 center, float radius) implements SceneObject {
+public record Sphere(Vec3 center, float radius) implements RenderPrimitive {
     public Sphere {
         if (!Float.isFinite(radius) || radius <= 0 || !Float.isFinite(center.x())
                 || !Float.isFinite(center.y()) || !Float.isFinite(center.z()))

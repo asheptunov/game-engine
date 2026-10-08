@@ -6,7 +6,7 @@ import harness.Test;
 import math.Ray;
 import math.Vec3;
 import engine.objects.Rect;
-import engine.objects.SceneObject;
+import engine.objects.RenderPrimitive;
 import engine.objects.Tri;
 import java.util.Random;
 import static harness.Assertions.*;
@@ -18,7 +18,7 @@ public class TraceSurfaceTest {
             var origin = vector(random);
             var e1 = vector(random);
             var e2 = vector(random);
-            SceneObject object = shape % 2 == 0
+            RenderPrimitive object = shape % 2 == 0
                     ? new Tri(origin, origin.add(e1), origin.add(e2)) : new Rect(origin, e1, e2);
             var prepared = new TraceSurface(object);
             for (int i = 0; i < 1000; i++) {

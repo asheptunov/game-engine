@@ -2,16 +2,18 @@ package engine;
 
 /** Cached per-instance geometry, conservative world bounds and optional primitive hierarchy. */
 final class PreparedObject {
+    final PreparedGeometry geometry;
     final PreparedPrimitive[] primitives;
     final PrimitiveBvh bvh;
     private final PrimitiveBvh.Bounds bounds;
     PreparedObject(SceneInstance instance) {
-        bvh=instance.geometry().size()>=16?new PrimitiveBvh(instance):null;
+        geometry=PreparedGeometry.prepare(instance.geometry());
+        bvh=geometry.primitives().size()>=16?new PrimitiveBvh(instance,geometry):null;
         bounds=bvh==null?new PrimitiveBvh.Bounds():bvh.nodes[0].bounds;
-        primitives=new PreparedPrimitive[instance.geometry().size()];
+        primitives=new PreparedPrimitive[geometry.primitives().size()];
         for(int i=0;i<primitives.length;i++) {
-            primitives[i]=new PreparedPrimitive(instance,i);
-            if(bvh==null)bounds.include(PrimitiveBvh.bounds(instance,i));
+            primitives[i]=new PreparedPrimitive(instance,geometry,i);
+            if(bvh==null)bounds.include(PrimitiveBvh.bounds(instance,geometry,i));
         }
     }
     boolean overlaps(float ox,float oy,float oz,float dx,float dy,float dz,float maxDistance) {

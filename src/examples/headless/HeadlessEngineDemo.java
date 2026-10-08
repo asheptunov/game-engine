@@ -23,8 +23,8 @@ public final class HeadlessEngineDemo {
         var blue=Material.srgb("blue",0x3b82f6);
         var floor=Material.srgb("floor",0xb8c0cc);
         var world=WorldSnapshot.of(List.of(
-                new SceneInstance("sphere",List.of(new Sphere(new Vec3(0,0,3),1)),Transform.IDENTITY,blue),
-                new SceneInstance("floor",List.of(new Rect(new Vec3(-4,-1,1),new Vec3(0,0,8),new Vec3(8,0,0))),
+                new SceneInstance("sphere",new AnalyticSphere(new Vec3(0,0,3),1),Transform.IDENTITY,blue),
+                new SceneInstance("floor",PolygonMesh.parallelogram(new Vec3(-4,-1,1),new Vec3(0,0,8),new Vec3(8,0,0)),
                         Transform.IDENTITY,floor)),
                 List.of(new PointLight(new Vec3(-2,3,-1),new Vec3(1,1,1),80)));
         var view=new RenderView(camera,160,100);

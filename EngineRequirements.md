@@ -1,8 +1,7 @@
 # Engine and authoring tools specification
 
-Status: E1–E3 complete; E4 engine work complete with editor-consumer proof in E5;
-E5–E7 implemented on `codex/scene-editor` with native GUI acceptance pending.
-Updated 2026-10-07.
+Status: E1–E7 implemented; integration into main authorized 2026-10-08.
+Updated 2026-10-08.
 
 ## Intent
 
@@ -121,10 +120,10 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 | E1 | Public engine scene/render boundary and migrated playground | Existing renderer | Complete |
 | E2 | Independent headless consumer and multiple-view proof | E1 | Complete |
 | E3 | Stable scene graph/assets and versioned persistence | E2 | Complete |
-| E4 | General mesh assets and reusable scene queries | E3 | Engine complete; editor consumer proof in E5 |
-| E5 | Initial scene-authoring application | E4 | Implemented on editor branch; GUI acceptance pending |
-| E6 | Editable topology and first mesh-modelling operation | E5 | Implemented on editor branch; GUI acceptance pending |
-| E7 | Geometry representation simplification and direct mesh editing | E6 | Implemented; native GUI QA pending |
+| E4 | General mesh assets and reusable scene queries | E3 | Complete |
+| E5 | Initial scene-authoring application | E4 | Complete; integration authorized |
+| E6 | Editable topology and first mesh-modelling operation | E5 | Complete; integration authorized |
+| E7 | Geometry representation simplification and direct mesh editing | E6 | Complete; integration authorized |
 
 ### E1 — Extract the engine boundary
 
@@ -193,32 +192,102 @@ verified with the E5 editor rather than attributed to the still-legacy playgroun
 
 ### E5 — Scene-authoring application
 
-- [ ] Provide a hierarchy view, primitive creation, object selection by hierarchy and
+- [x] Provide a hierarchy view, primitive creation, object selection by hierarchy and
       picking, translation/rotation/scale controls, duplication, and deletion.
-- [ ] Provide material assignment/editing and explicit shared-asset versus unique edits.
-- [ ] Route UI and console edits through the same transactions; implement undo/redo in
+- [x] Provide material assignment/editing and explicit shared-asset versus unique edits.
+- [x] Route UI and console edits through the same transactions; implement undo/redo in
       the authoring layer, without requiring games to maintain edit history.
-- [ ] Group a drag or multi-object operation into one undoable edit; clear redo on a new
+- [x] Group a drag or multi-object operation into one undoable edit; clear redo on a new
       branch of edits. Failed operations leave content and history unchanged.
-- [ ] Expose save/load from E3 and demonstrate two views over the same scene.
-- [ ] Record manual UI checks plus automated transaction/history/picking checks.
+- [x] Expose save/load from E3 and demonstrate two views over the same scene.
+- [x] Record manual UI checks plus automated transaction/history/picking checks.
 
 Gate: a user builds a multi-part scene, edits it from either view, undoes/redoes changes,
 saves, and reopens it without writing Java. Existing playground remains a separate consumer.
 
+E5 implementation evidence (2026-10-06):
+
+- `editor.SceneEditorMain` is a separate Swing executable. Its EDT-owned controller routes
+  hierarchy/inspector and text commands through the same `SceneDocument`/`UndoHistory`
+  operations. Box, sphere, open plane, group, point-light, and camera creation; one-Apply
+  transforms; local-pose reparent; subtree duplicate/delete; shared assignment/edit and
+  make-unique; undo/redo; and guarded async `.scene.xml` save/load are available.
+- Two independent `RenderSession`s render the same immutable document at modest grids.
+  Pixel leases are copied and closed on their session owner threads. Picks use the exact
+  EDT-painted frame, captured camera, scene revision, and prepared `SpatialQuery`; stale or
+  unmatched clicks are rejected. `RenderProgress.activeGeneration` exposes the coordinator's
+  captured generation so rapid camera updates retain coherent lagging publications safely.
+- The views draw bounded x-ray wireframes, light/camera markers, and local-axis move/rotate
+  handles from the exact painted camera. A handle drag publishes live previews but records one
+  history entry; Escape or focus loss restores the drag-start snapshot. File-backed editor
+  bindings define right/middle-drag orbit, Space+right/middle-drag pan, wheel zoom, undo,
+  redo, and cancel. The native bindings panel supports validated alternatives, immediate
+  Apply, atomic Save, default restoration, and visible recovery from an invalid override.
+  Camera navigation retains projection, off-center/skew framing, focus, and aperture, and can
+  atomically copy the displayed view back to a selected camera below a supported parent.
+- `./editor-check.ps1 -OutputDirectory out/editor-check-active` passed controller/history/
+  async-file/command/stale-pick tests, a real window-free two-view Swing render/pick test,
+  and the E3–E4 document/persistence/query plus E1 session suites. The generated layout is
+  `out/editor-check-active/scene-editor-preview.png`; no automated check opened a window.
+- Manual native-window expectations and exact PowerShell/Git Bash launch commands are in
+  `benchmarks/editor/README.md`. Human GUI interaction remains pending before merge; automated
+  checks do not claim physical input, window-manager, or scanout verification. E6 topology and
+  mesh modelling remain deferred.
+
+D4 refinement evidence (2026-10-06): mouse chords now carry generic held physical keys
+without changing legacy modes or constructors. The editor clears held-key state across
+typing, dialogs, focus/lifecycle transitions, and close. Each view publishes one immutable
+image/overlay bundle: selection, gizmo-mode, and resize changes keep the prior complete pair
+until off-EDT projection finishes, while camera motion may still show coherent intermediate
+views. Exact painted camera, dimensions, overlay, picking, and handle-drag context therefore
+advance together. `EditorBindingPreferencesTest` covers routing, validation, atomic profile
+failure/restart, and a headless preferences render; `SceneEditorPreviewTest` deterministically
+blocks overlay projection to cover selection, mode-revert, and resize-revert publication.
+
+D5 refinement evidence (2026-10-06): the preferences adapter presents a deterministic,
+grouped action list instead of editable action choices. Undo, Redo, Cancel active handle drag,
+Orbit, Pan, and Zoom remain visible when unbound; each owns scoped Add binding and Remove
+binding controls, and all listed chords are equivalent alternatives. The serialized profile
+and runtime dispatch are unchanged. The headless preferences regression covers fixed action
+ownership, an unbound action, added alternatives, restore, validation preservation, Save, and
+restart using injected paths.
+
 ### E6 — Mesh editing
 
-- [ ] Implement editable vertex/edge/face topology and stable selection identities.
-- [ ] Define supported polygon inputs and deterministic triangulation, including explicit
+- [x] Implement editable vertex/edge/face topology and stable selection identities.
+- [x] Define supported polygon inputs and deterministic triangulation, including explicit
       rejection of unsupported polygon shapes. Preserve render-to-editable face mapping.
-- [ ] Implement face selection and extrusion as the first complete modelling operation.
-- [ ] Publish a new immutable mesh revision atomically; integrate undo/redo, asset sharing,
+- [x] Implement face selection and extrusion as the first complete modelling operation.
+- [x] Publish a new immutable mesh revision atomically; integrate undo/redo, asset sharing,
       scene queries, validation diagnostics, and persistence of editable topology.
-- [ ] Verify topology and winding, picking after edits, undo/redo, save/load, and behavior
+- [x] Verify topology and winding, picking after edits, undo/redo, save/load, and behavior
       when an edit makes a mesh unsuitable for its assigned solid/medium material.
 
 Gate: create a primitive, select and extrude a face, inspect the result in both views,
 undo/redo it, and save/reopen with editable topology and selection mapping intact.
+
+F1 engine evidence (2026-10-07): `EditableMeshGeometry` provides bounded immutable polygon
+topology, canonical edge adjacency, stable IDs/counters, deterministic source-face fan
+triangulation, explicit primitive/triangle conversion, and positive listed-normal face
+extrusion. Closed intent is revalidated as an outward connected manifold on every creation,
+conversion, extrusion and V2 load. `SceneEdit` performs shared conversion/extrusion in one
+atomic publication; existing instance validation rejects incompatible emission/scattering/
+open-glass results without changing history. `EditableMeshTest` covers topology hazards,
+conversion, repeat extrusion, queries through transformed shared instances, make-unique,
+fresh undo/redo revisions, counter-only content, and material rejection. `ScenePersistenceTest`
+covers V1 compatibility, V2 topology/counter round trip and hostile V2 references, counters,
+duplicates, versions, and forged boundary intent.
+
+F2 editor evidence (2026-10-07): Object/Face mode, explicit shared conversion, Make unique,
+stable polygon picking and positive-distance extrusion use the same controller transactions
+from the inspector and command panel. The exact painted frame owns its query, camera and
+face-highlight context in both views; camera-only preview publication remains coherent and
+object gizmos are unavailable in Face mode. Selection reconciliation covers shared-to-unique
+asset changes, edits, undo/redo and load. `EditorControllerTest`, `OverlayGeometryTest` and
+`SceneEditorPreviewTest` cover stale cross-view/mode intents, marker overlap, shared edits,
+unique geometry, extrusion, history, save/reopen and a window-free two-view journey. The
+headless gate writes `scene-editor-mesh-extruded-preview.png`; native-window manual QA remains
+the final human acceptance step.
 
 ### E7 — Geometry representation and direct editing
 
@@ -440,9 +509,10 @@ transport or broken identity. No new FPS promise is made by this specification.
   Caps-on branch prints an explicit skip for that keyboard path, exercises the same
   `ViewportCommand` updates directly without changing production input or operator state,
   and passed three focused reruns under `out/engine-extraction/final`.
-- Transitional limitation: `ViewportState` and `openLegacySession` preserve playground
-  commands/focus/profiling until E3 transactions replace direct state mutation. Stable
-  node/asset identity and general open meshes remain E3–E4 work.
+- Transitional limitation: `ViewportState` and `openLegacySession` still preserve the
+  playground's existing commands/focus/profiling. Scene documents, stable node/asset identity,
+  general open meshes, persistence, and spatial queries are implemented for independent
+  consumers; migrating the legacy playground's direct mutation is separate application work.
 
 ## Deferred scope and coordination
 

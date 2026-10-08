@@ -8,19 +8,14 @@ import java.util.function.Consumer;
  * of {@link InputBindings}: actions are {@code Consumer<MouseEvent>} (they need the cursor position),
  * and {@link #handle} takes the gesture plus the scene's current mode to build the lookup chord.
  */
-public class MouseBindings extends AbstractBindings<MouseChord, Consumer<MouseEvent>> {
+public class MouseBindings extends engine.input.BindingSet<engine.input.MouseChord,Consumer<MouseEvent>> implements Bindings {
     public MouseBindings(ActionRegistry<Consumer<MouseEvent>> registry) {
-        super(registry);
+        super(registry,engine.input.MouseChord::parse,engine.input.MouseChord::format);
     }
 
     public MouseBindings bind(MouseChord chord, String actionId) {
-        bindings.put(chord, actionId);
+        super.put(chord.toEngine(),actionId);
         return this;
-    }
-
-    @Override
-    public void bindParsed(String chordStr, String actionId) {
-        bind(MouseChord.parse(chordStr), actionId);
     }
 
     /**
@@ -28,12 +23,14 @@ public class MouseBindings extends AbstractBindings<MouseChord, Consumer<MouseEv
      * and invoke its registered consumer. Returns true iff an action fired.
      */
     public boolean handle(MouseGesture gesture, MouseEvent e, String mode) {
-        return fire(MouseChord.from(gesture, e, mode), fn -> fn.accept(e));
+        return fire(MouseChord.from(gesture,e,mode).toEngine(),fn->fn.accept(e));
     }
+
+    public java.util.Optional<String> lookup(MouseChord chord){return super.lookup(chord.toEngine());}
 
     @Override
     public MouseBindings validate(String owner) {
-        checkResolved(owner);
+        super.validate(owner);
         return this;
     }
 }

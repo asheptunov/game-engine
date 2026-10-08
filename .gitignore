@@ -2,6 +2,7 @@
 *.iml
 .idea/
 out/
+config/scene-editor-bindings.properties
 
 ### Mac OS ###
 .DS_Store

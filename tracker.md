@@ -7,7 +7,10 @@ The proposed engine/application separation and scene/mesh authoring roadmap is i
 the public render-session boundary, and an independently compiled headless consumer plus
 two-session/fixed-update tests prove reuse. See [EngineApi.md](EngineApi.md). E3–E6 add
 persistent scenes, general meshes/queries,
-a scene editor, and editable mesh topology with face extrusion.
+a scene editor, and editable mesh topology with face extrusion. E7 adds direct
+vertex/edge/face editing, visible mode cues, exact analytic spheres with optional
+mesh approximation, and independent geometry/materials per editor object. Integration
+of the complete editor branch into main was authorized 2026-10-08.
 
 ## E1–E2 — Engine extraction `[done]`
 
@@ -576,6 +579,111 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
 - Engine boundary, 47 focused B/regression tests, fresh-JVM seeded roundtrip and independent
   headless document demo pass. Evidence: [scene-document verification](benchmarks/engine/README.md).
   The E5 editor remains the second interactive document consumer and human picking proof.
+
+## Engine E5 — scene authoring application `[implemented; human QA pending]`
+
+- Separate native Swing executable with hierarchy, two asynchronous camera views, exact
+  publication-bound picking, numeric transform/material/light/camera inspectors, shared versus
+  unique assets, undo/redo, guarded async XML files, and a command panel using the same edits.
+- `editor-check.ps1` compiles the boundary and full product, then runs controller/file/history/
+  picking checks plus document, persistence, query, and session regressions. It paints the real
+  panel and two engine views to `out/editor-check/scene-editor-preview.png` without opening a window.
+- Manual launch and EXPECT card: [editor verification](benchmarks/editor/README.md). Native
+  interaction remains pending; E6 mesh editing is tracked separately below.
+
+## Engine E6 — editable mesh modelling `[implemented; human GUI QA pending]`
+
+- This engine roadmap milestone is distinct from the legacy **M6 — RayTracer** milestone above.
+  Bounded immutable vertex/edge/polygon topology, stable source-face IDs, deterministic fan
+  triangulation, primitive conversion, shared or unique asset edits, positive face extrusion,
+  V2 editable XML and V1 read compatibility are implemented and specified in
+  [EngineRequirements.md](EngineRequirements.md).
+- The editor adds Object/Face selection, exact-painted asynchronous face picking, two-view
+  selected-face boundaries, explicit conversion, Make geometry unique, one-step extrusion,
+  undo/redo reconciliation, command parity and save/reopen behavior. Face mode disables object
+  gizmos, and stale view/mode completions cannot replace current selection.
+- Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e6-f2-final` passed the complete
+  editor/mesh/session gate and shared legacy input regression; its logs were audited for hidden
+  harness failures. Window-free evidence is `scene-editor-mesh-extruded-preview.png`. The native
+  workflow remains for human GUI acceptance using the [editor QA card](benchmarks/editor/README.md).
+
+## Engine E7 G1 — canonical geometry and renderer preparation `[implemented]`
+
+- `GeometryAsset` and public `SceneInstance` now use only `AnalyticSphere` or immutable
+  `PolygonMesh`; boxes, planes and triangle imports are polygon topology. The old public
+  list-backed mesh/primitive model is removed. Renderer/query primitives, indexed fans,
+  face mapping and acceleration inputs are derived lazily outside document publication.
+- Cheap validated capabilities preserve skewed parallelogram emission, exact canonical
+  local-box volume scattering, analytic sphere/ellipsoid transport and closed-mesh glass.
+  G1 introduced V3 canonical sphere/polygon assets; strict V1/V2 reads migrate representable repeated
+  face groups and reject disconnected, holed, folded, pinched or over-budget input.
+- Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e7-g1-final` covers the engine
+  boundary, editor and input regressions plus affected material/mesh/volume suites. Exact raw
+  RGB hashes for analytic sphere, plane, canonical box and mesh detail 4/12/64 match base
+  `404090a`. See [EngineRequirements.md](EngineRequirements.md) and [EngineApi.md](EngineApi.md).
+
+## Engine E7 G2 — direct polygon element editing `[implemented; human GUI QA pending]`
+
+- The native scene editor now exposes Object, Vertex, Edge and Face modes directly for every
+  polygon asset. Stable vertex/edge/face selections, deterministic bounded x-ray picking,
+  two-view highlights, numeric local deltas and grouped live vertex/edge handles share the
+  same transaction and undo path. Entering a mesh mode never converts or clones geometry.
+- Shared edits retain the geometry ID and affect all references; Make geometry unique remaps
+  only the selected node. History, load and asset replacement reconcile stable IDs, while stale
+  cross-view completions and picks during active gestures are rejected against the exact painted
+  semantic context. Invalid drag candidates preserve the last valid preview and an invalid
+  release restores the baseline.
+- The PowerShell 5.1 editor/input gate and a window-free two-view journey cover direct box/plane
+  editing, shared/unique behavior, undo, invalid edits, stale picks and coherent camera motion.
+  Evidence is `scene-editor-elements-preview.png`; native-window interaction remains pending
+  using the [editor QA card](benchmarks/editor/README.md). G3 retains analytic parameter editing
+  and explicit bounded sphere approximation.
+
+## Engine E7 G3 — analytic parameters and explicit approximation `[implemented; human GUI QA pending]`
+
+- The Mesh inspector exposes shared asset-local center/radius editing for analytic spheres.
+  Explicit approximation requires detail 4..64, preserves geometry identity, references,
+  transforms and materials, and explains that polygon replacement loses analytic parameters.
+  Undo restores the exact sphere; Make unique remains a separate action.
+- The generic conversion API, button and command are removed. `sphere set` and
+  `mesh approximate <detail>` use the same validated controller transactions as the UI.
+  Incompatible scattering rejects without changing geometry, history, selection, or dirty state.
+- PowerShell 5.1 editor/input gates cover shared replacement, chosen tessellation, no-op and
+  failure history, stale picks, v4 analytic/polygon reopen, two-view rendering, and legacy
+  transport/input regression. Window-free evidence is `scene-editor-analytic-preview.png`
+  and `scene-editor-approximation-preview.png`; native QA remains pending using the
+  [editor QA card](benchmarks/editor/README.md).
+
+## Engine E7 H1 — deformable polygon faces `[implemented]`
+
+- Polygon faces retain stable IDs while allowing validated nonplanar first-vertex fans.
+  Double origin-relative validation rejects degenerate, folded, concave and self-crossing
+  boundaries; area-weighted normals, source-face mapping and deterministic fan order remain
+  coherent for rendering and spatial queries.
+- Vertex, canonical-edge and face-boundary translations rebuild the shared asset atomically.
+  Closed connectivity, opposite winding and finite positive volume remain mandatory; emitter
+  and canonical-box scattering capabilities reject incompatible deformation without changing
+  the snapshot or history.
+- Scene persistence writes V4 for deformable polygon topology and reads V1 through V4. V1
+  grouped triangles and V2/V3 polygon topology retain their earlier planar validation.
+  `EditableMeshTest` covers every canonical-box vertex, edge and face moved by 0.1 on every
+  axis; `ScenePersistenceTest` covers V4 warped round trips, strict legacy reads and stable IDs.
+  Windows PowerShell 5.1 full-gate evidence is recorded in `out/e7-h1-final`.
+
+## Engine E7 H2 — visible element modes and face movement `[implemented; human GUI QA pending]`
+
+- Face selection now supports numeric asset-local translation and live translate handles in both
+  views. The gesture captures the stable face and immutable mesh baseline, previews validated
+  revisions, commits once, and restores the baseline on Escape or an invalid release.
+- Vertex, Edge and Face modes show deterministic x-ray cues before selection, independently of
+  Wireframe. Cue projection shares the coherent exact-camera display bundle; face centers remain
+  visual labels while face selection stays depth-visible. A separate 10,000 point/segment display
+  cap does not reduce the existing 100,000-candidate click budget or selected highlights.
+- Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e7-h2-final` covers the controller,
+  exact painted-context two-view journey, bounded overlay policy, persistence/transport regressions
+  and shared input routing. Window-free evidence is `scene-editor-vertex-mode-preview.png`,
+  `scene-editor-edge-mode-preview.png`, and `scene-editor-face-mode-preview.png`; native QA remains
+  pending using the [editor QA card](benchmarks/editor/README.md).
 
 ## Notes / Decisions
 

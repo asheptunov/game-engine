@@ -10,7 +10,7 @@ final class PreparedEmitter {
     final float area;
     PreparedEmitter(PreparedObject object, SceneInstance instance) {
         this.object=object;
-        var rect=(Rect)instance.geometry().getFirst();var transform=instance.transform();
+        var rect=(Rect)object.geometry.primitives().getFirst();var transform=instance.transform();
         origin=transform.point(rect.origin());edge1=transform.vector(rect.edge1());edge2=transform.vector(rect.edge2());
         var cross=edge1.cross(edge2);area=cross.length();normal=cross.normalized();
         if(!Float.isFinite(area) || area<=0)throw new IllegalArgumentException("Invalid emitter area");

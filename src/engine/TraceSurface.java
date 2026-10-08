@@ -5,7 +5,7 @@ import math.MollerTrumbore;
 import math.Ray;
 import math.Vec3;
 import engine.objects.Rect;
-import engine.objects.SceneObject;
+import engine.objects.RenderPrimitive;
 import engine.objects.Tri;
 import engine.objects.Sphere;
 
@@ -15,7 +15,7 @@ final class TraceSurface {
     private final boolean triangle;
     private Sphere sphere;
 
-    TraceSurface(SceneObject object) {
+    TraceSurface(RenderPrimitive object) {
         // Exhaustive over the sealed primitive types. A future curved primitive must reconsider self-shadowing.
         switch (object) {
             case Sphere s -> {

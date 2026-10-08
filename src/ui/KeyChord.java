@@ -30,6 +30,51 @@ public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shi
         return new KeyChord(action.raw(), m.ctrl(), m.alt(), m.shift(), m.meta());
     }
 
+    engine.input.KeyChord toEngine() {
+        return new engine.input.KeyChord(physical(key),
+                new engine.input.Modifiers(ctrl, alt, shift || impliedShift(key), meta));
+    }
+
+    static engine.input.KeyCode physical(KeyAction.Key key) {
+        return switch (key) {
+            case TILDE -> engine.input.KeyCode.GRAVE;
+            case BANG -> engine.input.KeyCode.ONE;
+            case AT -> engine.input.KeyCode.TWO;
+            case HASH -> engine.input.KeyCode.THREE;
+            case DOLLAR -> engine.input.KeyCode.FOUR;
+            case PERCENT -> engine.input.KeyCode.FIVE;
+            case CARET -> engine.input.KeyCode.SIX;
+            case AMPERSAND -> engine.input.KeyCode.SEVEN;
+            case ASTERISK -> engine.input.KeyCode.EIGHT;
+            case L_PAREN -> engine.input.KeyCode.NINE;
+            case R_PAREN -> engine.input.KeyCode.ZERO;
+            case UNDERSCORE -> engine.input.KeyCode.MINUS;
+            case PLUS -> engine.input.KeyCode.EQUAL;
+            case L_BRACE -> engine.input.KeyCode.L_BRACKET;
+            case R_BRACE -> engine.input.KeyCode.R_BRACKET;
+            case PIPE -> engine.input.KeyCode.BACKSLASH;
+            case COLON -> engine.input.KeyCode.SEMICOLON;
+            case DOUBLE_QUOTE -> engine.input.KeyCode.SINGLE_QUOTE;
+            case LESS -> engine.input.KeyCode.COMMA;
+            case GREATER -> engine.input.KeyCode.PERIOD;
+            case QUESTION -> engine.input.KeyCode.FORWARD_SLASH;
+            default -> {
+                var name=key.name();
+                if(name.startsWith("LOWER_") || name.startsWith("UPPER_"))name=name.substring(6);
+                yield engine.input.KeyCode.valueOf(name);
+            }
+        };
+    }
+
+    private static boolean impliedShift(KeyAction.Key key) {
+        return key.name().startsWith("UPPER_") || switch (key) {
+            case TILDE, BANG, AT, HASH, DOLLAR, PERCENT, CARET, AMPERSAND, ASTERISK,
+                    L_PAREN, R_PAREN, UNDERSCORE, PLUS, L_BRACE, R_BRACE, PIPE,
+                    COLON, DOUBLE_QUOTE, LESS, GREATER, QUESTION -> true;
+            default -> false;
+        };
+    }
+
     /**
      * Parses chord syntax like {@code "q"}, {@code "ctrl+a"}, {@code "ctrl+shift+z"}, {@code "f5"}.
      * Modifiers (case-insensitive, any order): {@code ctrl}, {@code shift}, {@code alt}, {@code meta}.

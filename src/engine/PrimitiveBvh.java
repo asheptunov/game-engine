@@ -23,9 +23,9 @@ final class PrimitiveBvh {
     static final class Node { final Bounds bounds;final int from,to;int escape;Node(Bounds b,int from,int to){this.bounds=b;this.from=from;this.to=to;}boolean leaf(){return to>=0;} }
     final Node[] nodes;
     final int[] order;
-    PrimitiveBvh(SceneInstance instance) {
-        int n=instance.geometry().size();var bounds=new Bounds[n];var ids=new Integer[n];
-        for(int i=0;i<n;i++){bounds[i]=bounds(instance,i);ids[i]=i;}
+    PrimitiveBvh(SceneInstance instance,PreparedGeometry geometry) {
+        int n=geometry.primitives().size();var bounds=new Bounds[n];var ids=new Integer[n];
+        for(int i=0;i<n;i++){bounds[i]=bounds(instance,geometry,i);ids[i]=i;}
         var list=new ArrayList<Node>();build(list,ids,bounds,0,n);nodes=list.toArray(Node[]::new);
         order=Arrays.stream(ids).mapToInt(Integer::intValue).toArray();
     }
@@ -39,9 +39,9 @@ final class PrimitiveBvh {
         }
         node.escape=nodes.size();
     }
-    static Bounds bounds(SceneInstance instance,int index) {
+    static Bounds bounds(SceneInstance instance,PreparedGeometry geometry,int index) {
         var b=new Bounds();var t=instance.transform();
-        switch(instance.geometry().get(index)) {
+        switch(geometry.primitives().get(index)) {
             case Tri tri->{b.include(t.point(tri.a()));b.include(t.point(tri.b()));b.include(t.point(tri.c()));}
             case Rect r->{b.include(t.point(r.origin()));b.include(t.point(r.origin().add(r.edge1())));b.include(t.point(r.origin().add(r.edge2())));b.include(t.point(r.origin().add(r.edge1()).add(r.edge2())));}
             case Sphere s->{for(int x=-1;x<=1;x+=2)for(int y=-1;y<=1;y+=2)for(int z=-1;z<=1;z+=2)b.include(t.point(s.center().add(new Vec3(x*s.radius(),y*s.radius(),z*s.radius()))));}

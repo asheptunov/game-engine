@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repository = $PSScriptRoot
+. (Join-Path $repository "native-process.ps1")
 $jdk = if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin/java.exe"))) {
     Join-Path $env:JAVA_HOME "bin"
 } else {
@@ -21,9 +22,8 @@ $sources = @(
     (Get-ChildItem (Join-Path $repository "src") -Recurse -Filter *.java).FullName
     (Get-ChildItem (Join-Path $repository "tst") -Recurse -Filter *.java).FullName
 )
-& $javac --enable-preview --release 23 -d $classes $sources 2>&1 |
-    Tee-Object -FilePath (Join-Path $output "compile-all.log")
-if ($LASTEXITCODE -ne 0) { throw "Full compilation failed with exit code $LASTEXITCODE" }
+$compileArguments = @("--enable-preview", "--release", "23", "-d", $classes) + $sources
+Invoke-NativeLogged $javac $compileArguments (Join-Path $output "compile-all.log") "Full compilation failed"
 
 $tests = @(
     "engine.EngineSessionTest",
@@ -36,14 +36,14 @@ $tests = @(
 )
 foreach ($test in $tests) {
     $log = Join-Path $output ($test.Replace(".","_") + ".log")
-    & $java --enable-preview '-Djava.awt.headless=true' -cp $classes $test 2>&1 | Tee-Object -FilePath $log
-    if ($LASTEXITCODE -ne 0) { throw "$test process failed with exit code $LASTEXITCODE" }
+    $testArguments = @("--enable-preview", "-Djava.awt.headless=true", "-cp", $classes, $test)
+    Invoke-NativeLogged $java $testArguments $log "$test process failed"
     $failure = @(Select-String -Path $log -Pattern '\[ERROR\].*harness\.SuiteRunner|failed with exception|AssertionError')
     if ($failure.Count) { throw "$test reported harness failures; inspect $log" }
 }
 
 $image = Join-Path $output "headless-engine.png"
-& $java --enable-preview '-Djava.awt.headless=true' -cp (Join-Path $output "boundary/classes") examples.headless.HeadlessEngineDemo $image 2>&1 |
-    Tee-Object -FilePath (Join-Path $output "headless-consumer.log")
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path $image)) { throw "Headless consumer failed" }
+$consumerArguments = @("--enable-preview", "-Djava.awt.headless=true", "-cp", (Join-Path $output "boundary/classes"), "examples.headless.HeadlessEngineDemo", $image)
+Invoke-NativeLogged $java $consumerArguments (Join-Path $output "headless-consumer.log") "Headless consumer failed"
+if (-not (Test-Path $image)) { throw "Headless consumer failed to produce $image" }
 Write-Output "Engine checks passed: $output"

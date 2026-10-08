@@ -91,15 +91,15 @@ public class FocusControllerTest {
             assertEquals(a,resolver.resolve(source,s.camera(),scene,0,0,()->0));
         }
         ScenePresets.load(s,"glass");
-        s.instances().add(new SceneInstance("first-glass",List.of(new engine.objects.Sphere(new Vec3(0,0,2),.4f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("first-glass",new AnalyticSphere(new Vec3(0,0,2),.4f),Transform.IDENTITY,
                 new Material("first-glass",new Vec3(1,1,1)).withKind(Material.Kind.DIELECTRIC)));
         var glass=resolver.resolve(FocusTargetSource.CENTER,s.camera(),CameraFocus.Scene.capture(s),0,0,()->0);near(2.6,glass.distance(),1e-5);assertEquals("first-glass",glass.subject().name());
         ScenePresets.load(s,"mesh-room");var scene=CameraFocus.Scene.capture(s);
         for(int i=0;i<5;i++)resolver.resolve(new FocusTargetSource.Screen(.3f+i*.1f,.5f),s.camera(),scene,0,0,()->0);
         long prepared=resolver.preparations;resolver.resolve(FocusTargetSource.CENTER,s.camera(),scene,0,0,()->0);assertEquals(prepared,resolver.preparations);
-        assertTrue(resolver.primitiveTests<5L*s.instances().stream().mapToInt(o->o.geometry().size()).sum());
+        assertTrue(resolver.primitiveTests<5L*s.instances().stream().mapToInt(o->o.geometry() instanceof PolygonMesh mesh?mesh.renderPrimitiveCount():1).sum());
         s.instances().clear();s.objects().clear();s.camera(new Camera(new Vec3(0,0,-1),new Rect(new Vec3(-.5f,-.5f,0),new Vec3(1,0,0),new Vec3(0,1,0))));
-        s.instances().add(new SceneInstance("mesh",IndexedMesh.sphere(12),new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(2,2,2)),new Material("mesh",new Vec3(1,1,1))));
+        s.instances().add(new SceneInstance("mesh",PolygonMesh.approximateSphere(new AnalyticSphere(Vec3.ZERO,1),12),new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(2,2,2)),new Material("mesh",new Vec3(1,1,1))));
         scene=CameraFocus.Scene.capture(s);
         var faceA=resolver.resolve(new FocusTargetSource.Screen(.45f,.5f),s.camera(),scene,0,0,()->0);
         var faceB=resolver.resolve(new FocusTargetSource.Screen(.55f,.5f),s.camera(),scene,0,0,()->0);
@@ -108,7 +108,7 @@ public class FocusControllerTest {
     @Test void commandsCenterAliasesManualTakeoverAndFailures() {
         var s=TemporalReconstructionTest.plane();var command=new ViewportCommand(s);
         CameraOpticsTest.command(command,"view camera focus source screen 0.9 0.9");
-        s.instances().add(new SceneInstance("foreground",List.of(new Rect(new Vec3(-.2f,-.2f,2),new Vec3(.4f,0,0),new Vec3(0,.4f,0))),
+        s.instances().add(new SceneInstance("foreground",PolygonMesh.parallelogram(new Vec3(-.2f,-.2f,2),new Vec3(.4f,0,0),new Vec3(0,.4f,0)),
                 Transform.IDENTITY,new Material("fg",new Vec3(1,1,1))));
         CameraOpticsTest.command(command,"view camera focus mode auto");CameraOpticsTest.command(command,"view camera focus center");
         assertEquals(3f,s.camera().focus());assertFalse(s.focusController().isAuto());

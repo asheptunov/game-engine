@@ -13,10 +13,10 @@ public class SceneDocumentTest {
     private static final Camera CAMERA=new Camera(new Vec3(0,0,0),new Rect(new Vec3(-.5f,-.5f,1),new Vec3(1,0,0),new Vec3(0,1,0)));
     private static Transform at(float x,float y,float z){return new Transform(new Vec3(x,y,z),Vec3.ZERO,new Vec3(1,1,1));}
 
-    @Test void transactionsSharingSubtreesAndUniqueAssetsAreAtomic() {
+    @Test void transactionsDuplicateSubtreesWithIndependentAssetsAtomically() {
         var document=new SceneDocument();var ids=new Object[5];
         var first=document.transact(edit->{
-            ids[0]=edit.createGeometry("sphere",new SphereGeometry(Vec3.ZERO,1));
+            ids[0]=edit.createGeometry("sphere",new AnalyticSphere(Vec3.ZERO,1));
             ids[1]=edit.createMaterial("gray",GRAY);
             ids[2]=edit.createNode("root",null,at(0,0,3));
             ids[3]=edit.createNode("part",(NodeId)ids[2],Transform.IDENTITY);
@@ -36,11 +36,17 @@ public class SceneDocumentTest {
         var duplicated=document.transact(e->ids[4]=e.duplicateSubtree((NodeId)ids[2]));
         assertEquals(4,duplicated.nodes().size());
         var duplicateChild=duplicated.nodes().stream().filter(n->ids[4].equals(n.parentId())).findFirst().orElseThrow();
-        assertEquals(((SceneNode)duplicated.requireNode((NodeId)ids[3])).geometry(),duplicateChild.geometry());
-        document.transact(e->e.makeMaterialUnique(duplicateChild.id()));
-        assertNotEquals(document.snapshot().requireNode((NodeId)ids[3]).geometry().materialId(),document.snapshot().requireNode(duplicateChild.id()).geometry().materialId());
-        document.transact(e->e.makeGeometryUnique(duplicateChild.id()));
-        assertNotEquals(document.snapshot().requireNode((NodeId)ids[3]).geometry().geometryId(),document.snapshot().requireNode(duplicateChild.id()).geometry().geometryId());
+        var sourceComponent = duplicated.requireNode((NodeId) ids[3]).geometry();
+        assertNotEquals(sourceComponent.geometryId(), duplicateChild.geometry().geometryId());
+        assertNotEquals(sourceComponent.materialId(), duplicateChild.geometry().materialId());
+        assertEquals(
+                duplicated.requireGeometry(sourceComponent.geometryId()).geometry(),
+                duplicated.requireGeometry(duplicateChild.geometry().geometryId()).geometry());
+        var sourceMaterial = duplicated.requireMaterial(sourceComponent.materialId()).material();
+        var copiedMaterial = duplicated.requireMaterial(duplicateChild.geometry().materialId()).material();
+        assertEquals(sourceMaterial.color(), copiedMaterial.color());
+        assertEquals(sourceMaterial.kind(), copiedMaterial.kind());
+        assertEquals(sourceMaterial.ior(), copiedMaterial.ior());
         document.transact(e->e.deleteSubtree((NodeId)ids[2]));
         assertEquals(2,document.snapshot().nodes().size());
     }
@@ -98,6 +104,36 @@ public class SceneDocumentTest {
     @Test void duplicateAcceptsMaximumLengthLabels() {
         var label="x".repeat(256);var document=new SceneDocument();var id=new NodeId[1];document.transact(e->id[0]=e.createNode(label,null,Transform.IDENTITY));
         document.transact(e->e.duplicateSubtree(id[0]));assertEquals(2,document.snapshot().nodes().size());assertEquals(label,document.snapshot().nodes().getLast().label());
+    }
+    @Test void duplicateSeparatesAliasedAssetsForEveryGeometryNode() {
+        var document = new SceneDocument();
+        var root = new NodeId[1];
+        var sourceChildren = new NodeId[2];
+        document.transact(edit -> {
+            var geometry = edit.createGeometry("sphere", new AnalyticSphere(Vec3.ZERO, 1));
+            var material = edit.createMaterial("gray", GRAY);
+            root[0] = edit.createNode("root", null, Transform.IDENTITY);
+            sourceChildren[0] = edit.createNode("first", root[0], Transform.IDENTITY);
+            sourceChildren[1] = edit.createNode("second", root[0], Transform.IDENTITY);
+            edit.assignGeometry(sourceChildren[0], geometry, material);
+            edit.assignGeometry(sourceChildren[1], geometry, material);
+        });
+        var copiedRoot = new NodeId[1];
+        document.transact(edit -> copiedRoot[0] = edit.duplicateSubtree(root[0]));
+        var snapshot = document.snapshot();
+        var copiedChildren = snapshot.nodes().stream()
+                .filter(node -> copiedRoot[0].equals(node.parentId())).toList();
+        assertEquals(2, copiedChildren.size());
+        assertNotEquals(copiedChildren.get(0).geometry().geometryId(),
+                copiedChildren.get(1).geometry().geometryId());
+        assertNotEquals(copiedChildren.get(0).geometry().materialId(),
+                copiedChildren.get(1).geometry().materialId());
+        for (var copiedChild : copiedChildren) {
+            assertNotEquals(snapshot.requireNode(sourceChildren[0]).geometry().geometryId(),
+                    copiedChild.geometry().geometryId());
+            assertNotEquals(snapshot.requireNode(sourceChildren[0]).geometry().materialId(),
+                    copiedChild.geometry().materialId());
+        }
     }
     private static void near(Vec3 expected,Vec3 actual){assertTrue(expected.sub(actual).length()<2e-4f);}
     public static void main(String[] args){SuiteRunner.runThis();}

@@ -38,7 +38,7 @@ public final class SceneSnapshot {
                 var geometry=requireGeometry(node.geometry().geometryId());
                 var material=requireMaterial(node.geometry().materialId());
                 var value=materialWithIdentity(material);
-                var instance=new SceneInstance(node.id().toString(),geometry.geometry().primitives(),transform,value);
+                var instance=new SceneInstance(node.id().toString(),geometry.geometry(),transform,value);
                 entries.add(new RenderEntry(node,geometry,material,transform,instance));
             }
             if(node.light()!=null)lights.add(new PointLight(transform.point(Vec3.ZERO),node.light().color(),node.light().intensity()));
@@ -48,6 +48,11 @@ public final class SceneSnapshot {
         world=new WorldSnapshot(transportRevision,entries.stream().map(RenderEntry::instance).toList(),List.of(),lights);
     }
     public static SceneSnapshot empty(){return new SceneSnapshot(0,0,List.of(),List.of(),List.of());}
+    /** Build immutable persistent content with fresh runtime revisions. */
+    public static SceneSnapshot content(List<SceneNode> nodes,List<GeometryAsset> geometries,
+                                        List<MaterialAsset> materials) {
+        return new SceneSnapshot(0,0,nodes,geometries,materials);
+    }
     private static <K,V> Map<K,V> unique(List<V> values, java.util.function.Function<V,K> key, String kind) {
         var result=new LinkedHashMap<K,V>();
         for(var value:values) {
@@ -101,7 +106,8 @@ public final class SceneSnapshot {
     public WorldSnapshot toWorldSnapshot(){return world;}
     List<RenderEntry> renderEntries(){return renderEntries;}
 
-    boolean sameContent(SceneSnapshot other) {
+    /** Compare persistent scene content while ignoring runtime publication revisions. */
+    public boolean sameContent(SceneSnapshot other) {
         if(other==null||!nodes.equals(other.nodes)||geometries.size()!=other.geometries.size()||materials.size()!=other.materials.size())return false;
         for(int i=0;i<geometries.size();i++){var a=geometries.get(i);var b=other.geometries.get(i);if(!a.id().equals(b.id())||!a.label().equals(b.label())||!GeometryValues.equal(a.geometry(),b.geometry()))return false;}
         for(int i=0;i<materials.size();i++){var a=materials.get(i);var b=other.materials.get(i);if(!a.id().equals(b.id())||!a.label().equals(b.label())||!a.material().equals(b.material()))return false;}

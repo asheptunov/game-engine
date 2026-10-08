@@ -251,7 +251,10 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   consumes a continuation. Glass blocks direct visibility; reliable refractive caustics
   and direct point lighting across its boundaries remain outside this phase.
 - Keyboard and mouse bindings live in `assets/bindings/*.properties`; action registration
-  stays in the scenes. Binding parsing/validation is in `src/ui/`.
+  stays in the applications. Platform-neutral values, parsing, validation, dispatch and
+  deterministic load/save live in `src/engine/input/`. `src/platform/awt/input/` converts
+  AWT events without Caps Lock state and resolves held drag buttons. The `src/ui/`
+  compatibility layer preserves existing viewport/texture-editor maps and buttonless drag.
   Viewport WASD moves relative to the view, Space/Ctrl moves vertically, and mouse
   movement looks around without clicking (pitch clamped to ±89°). CameraControls tracks physical held keys,
   independent of OS repeat, and integrates normalized movement at 3 scene units/second

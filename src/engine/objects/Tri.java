@@ -7,7 +7,7 @@ import math.Vec3;
 
 import java.util.Optional;
 
-public record Tri(Vec3 a, Vec3 b, Vec3 c) implements SceneObject {
+public record Tri(Vec3 a, Vec3 b, Vec3 c) implements RenderPrimitive {
     public Vec3 normal() {
         return b.sub(a).cross(c.sub(a)).normalized();
     }

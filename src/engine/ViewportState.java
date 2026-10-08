@@ -3,14 +3,14 @@ package engine;
 import math.Vec3;
 import engine.lights.Light;
 import engine.objects.Rect;
-import engine.objects.SceneObject;
+import engine.objects.RenderPrimitive;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ViewportState {
     /** Immutable estimator identity; display and scheduling settings intentionally excluded. */
-    public record RenderKey(List<SceneInstance> instances, List<SceneObject> objects, List<Light> lights,
+    public record RenderKey(List<SceneInstance> instances, List<RenderPrimitive> objects, List<Light> lights,
                             Camera.Identity camera, int width, int height, int depth, long seed, long restart) {
         public Vec3 eye() { return camera.eye(); }
         public Rect sensor() { return camera.sensor(); }
@@ -143,7 +143,7 @@ public class ViewportState {
         @Override public void add(int i,E value) {values.add(i,value);focusSceneRevision++;modCount++;}
         @Override public E remove(int i) {var old=values.remove(i);focusSceneRevision++;modCount++;return old;}
     }
-    private final List<SceneObject> objects = new QueryList<>((a,b)->a==b);
+    private final List<RenderPrimitive> objects = new QueryList<>((a,b)->a==b);
     private final List<Light>       lights          = new ArrayList<>();
     private final List<SceneInstance> instances = new QueryList<>((a,b)->a.name().equals(b.name()) && a.geometry()==b.geometry() && a.transform()==b.transform());
     private float exposure;
@@ -279,12 +279,12 @@ public class ViewportState {
     public void eye(Vec3 e) { camera(camera.withPose(e,camera.sensor())); }
     public int sensorPixelsW() { return sensorPixelsW; }
     public int sensorPixelsH() { return sensorPixelsH; }
-    public List<SceneObject> objects() { return objects; }
+    public List<RenderPrimitive> objects() { return objects; }
     public List<Light> lights() { return lights; }
     public int samplesPerLight() { return samplesPerLight; }
     public void samplesPerLight(int n) { this.samplesPerLight = n; }
     public int maxBounces() { return maxBounces; }
     public void maxBounces(int n) { this.maxBounces = n; }
-    public void addObject(SceneObject o) { objects.add(o); }
+    public void addObject(RenderPrimitive o) { objects.add(o); }
     public void addLight(Light l) { lights.add(l); }
 }

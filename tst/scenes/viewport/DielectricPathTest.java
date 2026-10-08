@@ -19,8 +19,8 @@ public class DielectricPathTest {
     private static void close(double expected,double actual,double tolerance) {
         if(Math.abs(expected-actual)>tolerance) throw new AssertionError(expected+" != "+actual);
     }
-    private static void add(ViewportState st,String name,SceneObject shape,Material material) {
-        st.instances().add(new SceneInstance(name,List.of(shape),Transform.IDENTITY,material));
+    private static void add(ViewportState st,String name,RenderPrimitive shape,Material material) {
+        st.instances().add(new SceneInstance(name,PreparedGeometry.canonical(shape),Transform.IDENTITY,material));
     }
     private static void target(ViewportState st) {
         add(st,"target",new Rect(new Vec3(-20,-20,8),new Vec3(0,40,0),new Vec3(40,0,0)),new Material("white",WHITE));
@@ -65,7 +65,7 @@ public class DielectricPathTest {
         var tracer=new DirectRgbTracer(st);var ray=new Ray(st.eye(),new Vec3(0,0,1));
         var rgb=tracer.radiance(ray,0);
         close(Math.exp(-.2*2),rgb[0],.001);close(Math.exp(-.5*2),rgb[1],.001);close(Math.exp(-2),rgb[2],.001);
-        st.instances().set(1,new SceneInstance("solid",List.of(new Sphere(new Vec3(0,0,4),2)),Transform.IDENTITY,GLASS.withIor(1).withAbsorption(absorption)));
+        st.instances().set(1,new SceneInstance("solid",new AnalyticSphere(new Vec3(0,0,4),2),Transform.IDENTITY,GLASS.withIor(1).withAbsorption(absorption)));
         rgb=tracer.radiance(ray,0);close(Math.exp(-.2*4),rgb[0],.001);close(Math.exp(-4),rgb[2],.001);
         st.pathDepth(1);rgb=tracer.radiance(new Ray(new Vec3(0,0,4),new Vec3(0,0,1)),0);
         close(Math.exp(-.2*2),rgb[0],.001);
@@ -98,7 +98,7 @@ public class DielectricPathTest {
     @Test void transformedBoxAndEllipsoidExitTheirOwnBoundary() {
         for(boolean box:new boolean[]{false,true}) {
             var st=state(1);target(st);st.pathDepth(2);
-            st.instances().add(new SceneInstance("solid",box?SceneInstance.box():List.of(new Sphere(Vec3.ZERO,1)),
+            st.instances().add(new SceneInstance("solid",box?SceneInstance.box():new AnalyticSphere(Vec3.ZERO,1),
                     new Transform(new Vec3(0,0,4),new Vec3(0,0,20),new Vec3(1,2,.5f)),GLASS.withIor(1).withAbsorption(new Vec3(.4f,0,0))));
             var tracer=new DirectRgbTracer(st);var rgb=tracer.radiance(new Ray(st.eye(),new Vec3(0,0,1)),0);
             close(Math.exp(-.4),rgb[0],.001);close(1,rgb[1],1e-5);

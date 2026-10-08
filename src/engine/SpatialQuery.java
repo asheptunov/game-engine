@@ -49,8 +49,7 @@ public final class SpatialQuery {
         var normal=nearestPrimitive.normalAt(world.x(),world.y(),world.z());
         Optional<TriangleCoordinates> coordinates=nearestPrimitive.geometry instanceof Tri tri
                 ?Optional.of(barycentric(local,tri)):Optional.empty();
-        long face=source.geometry().geometry() instanceof MeshGeometry mesh
-                ?mesh.sourceFaceId(nearestPrimitive.primitiveId):nearestPrimitive.primitiveId;
+        long face=nearestEntry.prepared().geometry.sourceFaceId(nearestPrimitive.primitiveId);
         return Optional.of(new RayHit(snapshot.revision(),source.node().id(),source.geometry().id(),source.geometry().revision(),
                 nearestPrimitive.primitiveId,face,nearest,world,local,normal,normal.dot(d)<0,coordinates));
     }

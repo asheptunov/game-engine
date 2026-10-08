@@ -1,10 +1,11 @@
 # E7 native editor QA
 
-Implementation checkout: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
+Implementation checkout after integration: `C:/Users/andri/Documents/RayTracingEngine`.
 Launch `./editor` in Git Bash or `./editor.ps1` in PowerShell. This card records human
 acceptance separately from automated headless checks. E7 is implemented through
 `22e5a0f`; independent full engine/editor/transport/input gates and source review passed.
-Native interaction acceptance remains pending.
+The user authorized main integration on 2026-10-08. Keep this card for native regression
+checks; automated checks do not substitute for every native interaction listed below.
 
 Native feedback follow-up: [GeometryEditingFeedbackPlan.md](GeometryEditingFeedbackPlan.md)
 adds face movement, warped-face deformation and visible mode cues.

@@ -5,6 +5,7 @@ import harness.Test;
 
 import java.awt.Canvas;
 import java.awt.event.MouseEvent;
+import java.awt.event.InputEvent;
 import java.util.function.Consumer;
 
 import static harness.Assertions.assertEquals;
@@ -84,6 +85,18 @@ public class MouseBindingsTest {
                 .bind(MouseChord.of(MouseButton.NONE, MouseGesture.WHEEL, "console"), "scroll");
         assertEquals("scroll",
                 b.lookup(MouseChord.of(MouseButton.NONE, MouseGesture.WHEEL, "console")).orElseThrow());
+    }
+
+    @Test
+    void legacyButtonlessDragStillMatchesNoneDespiteHeldButtonMask() {
+        var fired = new boolean[1];
+        var actions = new ActionRegistry<Consumer<MouseEvent>>().register("drag", e -> fired[0] = true);
+        var bindings = new MouseBindings(actions)
+                .bind(MouseChord.of(MouseButton.NONE, MouseGesture.DRAG, ""), "drag");
+        var drag = new MouseEvent(SRC, MouseEvent.MOUSE_DRAGGED, System.currentTimeMillis(),
+                InputEvent.BUTTON3_DOWN_MASK, 4, 5, 0, false, MouseEvent.NOBUTTON);
+        assertTrue(bindings.handle(MouseGesture.DRAG, drag, ""));
+        assertTrue(fired[0]);
     }
 
     public static void main(String[] args) {

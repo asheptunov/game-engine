@@ -137,14 +137,14 @@ public class CameraModelTest {
     }
     @Test void finiteApertureDepthZeroBrightnessAndOriginMedia() {
         var s=state();s.instances().clear();s.lights().clear();s.pathDepth(0);s.sampleTarget(4);
-        s.instances().add(new SceneInstance("emitter",List.of(new Rect(new Vec3(-20,-20,5),new Vec3(0,40,0),new Vec3(40,0,0))),
+        s.instances().add(new SceneInstance("emitter",PolygonMesh.parallelogram(new Vec3(-20,-20,5),new Vec3(0,40,0),new Vec3(40,0,0)),
                 Transform.IDENTITY,new Material("emitter",Vec3.ZERO).withEmission(new Vec3(2,2,2))));
         var pinhole=completed(s);s.camera(s.camera().withMode("lens").withAperture(.4f));assertEquals(pinhole,completed(s));
         // A closed absorbing sphere crosses the origins: center inside, corners outside.
         s.pathDepth(8);s.sampleTarget(1);
-        s.instances().add(new SceneInstance("medium",List.of(new Sphere(new Vec3(0,0,-1),.5f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("medium",new AnalyticSphere(new Vec3(0,0,-1),.5f),Transform.IDENTITY,
                 new Material("medium",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1,new Vec3(1,1,1))));
-        s.instances().add(new SceneInstance("inner-medium",List.of(new Sphere(new Vec3(0,0,-1),.25f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("inner-medium",new AnalyticSphere(new Vec3(0,0,-1),.25f),Transform.IDENTITY,
                 new Material("inner-medium",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1,new Vec3(2,.5f,1))));
         for(String mode:new String[]{"orthographic","lens"}) {
             s.camera(s.camera().withMode(mode));
@@ -171,7 +171,7 @@ public class CameraModelTest {
         var captured=s.renderSnapshot();s.eye(s.eye().add(new Vec3(.1f,0,0)));assertTrue(cmd.publishFocus(captured,2).isFailure());close(6,s.camera().focus(),0);
         s.instances().clear();var prior=s.camera();assertTrue(cmd.run("view","camera","focus","center").isFailure());assertEquals(prior,s.camera());
         ScenePresets.load(s,"glass");
-        s.instances().add(new SceneInstance("focus-glass",List.of(new Sphere(new Vec3(0,0,2),.4f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("focus-glass",new AnalyticSphere(new Vec3(0,0,2),.4f),Transform.IDENTITY,
                 new Material("focus-glass",new Vec3(1,1,1)).withKind(Material.Kind.DIELECTRIC)));
         command(cmd,"view camera focus center");close(2.6,s.camera().focus(),1e-5);
         // Off-axis legacy reference: axial distance must differ from slanted ray distance.

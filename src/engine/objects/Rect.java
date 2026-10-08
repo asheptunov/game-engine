@@ -12,7 +12,7 @@ import java.util.Optional;
  * Points on the rect: {@code origin + s*edge1 + t*edge2} for {@code s, t ∈ [0, 1]}.
  * Natural normal: {@code edge1 × edge2} normalized — the "sensing side" for camera use.
  */
-public record Rect(Vec3 origin, Vec3 edge1, Vec3 edge2) implements SceneObject {
+public record Rect(Vec3 origin, Vec3 edge1, Vec3 edge2) implements RenderPrimitive {
     public Vec3 normal() {
         return edge1.cross(edge2).normalized();
     }

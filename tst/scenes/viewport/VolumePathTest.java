@@ -18,7 +18,7 @@ public class VolumePathTest {
         if(!Double.isFinite(actual) || Math.abs(expected-actual)>tolerance)throw new AssertionError(expected+" != "+actual);
     }
     static Material medium(float density) {return new Material("medium",WHITE,Material.Kind.DIELECTRIC).withIor(1).withScattering(density);}
-    static void sphere(ViewportState st,float radius,Material m) {st.instances().add(new SceneInstance(m.name(),List.of(new Sphere(Vec3.ZERO,radius)),Transform.IDENTITY,m));}
+    static void sphere(ViewportState st,float radius,Material m) {st.instances().add(new SceneInstance(m.name(),new AnalyticSphere(Vec3.ZERO,radius),Transform.IDENTITY,m));}
     @Test void exponentialAndPhaseStatistics() {
         var rng=new DirectRgbTracer.Sampler();rng.reset(7,0,0);var sample=new Material.Sample();
         int survive=0;double length=0;
@@ -67,7 +67,7 @@ public class VolumePathTest {
     }
     @Test void surfaceLightCrossesCloudWithFullExtinction() {
         var st=state(1);sphere(st,1,medium(.5f).withAbsorption(new Vec3(.1f,.2f,.3f)));
-        st.instances().add(new SceneInstance("receiver",List.of(new Rect(new Vec3(-5,-5,3),new Vec3(0,10,0),new Vec3(10,0,0))),Transform.IDENTITY,new Material("white",WHITE)));
+        st.instances().add(new SceneInstance("receiver",PolygonMesh.parallelogram(new Vec3(-5,-5,3),new Vec3(0,10,0),new Vec3(10,0,0)),Transform.IDENTITY,new Material("white",WHITE)));
         st.addLight(new PointLight(new Vec3(0,0,-3),WHITE,36*(float)Math.PI));
         var tracer=new DirectRgbTracer(st);var ray=new Ray(new Vec3(0,0,2.5f),new Vec3(0,0,1));var rgb=tracer.radiance(ray,0);
         close(Math.exp(-1.2),rgb[0],.0001);close(Math.exp(-1.4),rgb[1],.0001);close(Math.exp(-1.6),rgb[2],.0001);
@@ -76,7 +76,7 @@ public class VolumePathTest {
     }
     @Test void zeroScatteringKeepsBeerAndNoSampledEvents() {
         var st=state(1);st.pathDepth(2);sphere(st,1,medium(0).withAbsorption(new Vec3(.2f,.5f,1)));
-        st.instances().add(new SceneInstance("emitter",List.of(new Rect(new Vec3(-5,-5,3),new Vec3(0,10,0),new Vec3(10,0,0))),Transform.IDENTITY,new Material("light",Vec3.ZERO).withEmission(WHITE)));
+        st.instances().add(new SceneInstance("emitter",PolygonMesh.parallelogram(new Vec3(-5,-5,3),new Vec3(0,10,0),new Vec3(10,0,0)),Transform.IDENTITY,new Material("light",Vec3.ZERO).withEmission(WHITE)));
         var tracer=new DirectRgbTracer(st);var ray=new Ray(new Vec3(0,0,-3),new Vec3(0,0,1));var rgb=tracer.radiance(ray,0);
         close(Math.exp(-.2*1.999),rgb[0],1e-5);close(Math.exp(-.5*1.999),rgb[1],1e-5);close(Math.exp(-1.999),rgb[2],1e-5);
         assertEquals(0L,tracer.volumeEvents);assertEquals(0L,tracer.volumeSegments);
@@ -86,7 +86,7 @@ public class VolumePathTest {
         Vec3[] origins={new Vec3(-3,-3,-3),new Vec3(3,-3,-3),new Vec3(-3,-3,-3),new Vec3(-3,3,-3),new Vec3(-3,-3,-3),new Vec3(-3,-3,3)};
         Vec3[] a={new Vec3(0,6,0),new Vec3(0,0,6),new Vec3(0,0,6),new Vec3(6,0,0),new Vec3(6,0,0),new Vec3(0,6,0)};
         Vec3[] b={new Vec3(0,0,6),new Vec3(0,6,0),new Vec3(6,0,0),new Vec3(0,0,6),new Vec3(0,6,0),new Vec3(6,0,0)};
-        for(int i=0;i<6;i++)st.instances().add(new SceneInstance("light"+i,List.of(new Rect(origins[i],a[i],b[i])),Transform.IDENTITY,new Material("light"+i,Vec3.ZERO).withEmission(WHITE)));
+        for(int i=0;i<6;i++)st.instances().add(new SceneInstance("light"+i,PolygonMesh.parallelogram(origins[i],a[i],b[i]),Transform.IDENTITY,new Material("light"+i,Vec3.ZERO).withEmission(WHITE)));
         var tracer=new DirectRgbTracer(st);var ray=new Ray(Vec3.ZERO,new Vec3(0,0,1));double sum=0;
         for(int i=0;i<100000;i++)sum+=tracer.radiance(ray,i)[0]/100000;
         close(1,sum,.015);System.out.printf("Volume white enclosure: %.6f%n",sum);
