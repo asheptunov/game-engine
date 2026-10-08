@@ -23,8 +23,13 @@ public interface Painter {
 
     default void drawImg(int x, int y, Raster raster, BlendMode blendMode) {
         var rasterReadable = raster.<Color>read();
-        drawImg(x, y, raster.w(), raster.h(),
-                (_, _, _) -> rasterReadable.next(Raster.Reader.READ_COLOR), blendMode);
+        drawImg(
+                x,
+                y,
+                raster.w(),
+                raster.h(),
+                (_, _, _) -> rasterReadable.next(Raster.Reader.READ_COLOR),
+                blendMode);
     }
 
     void drawTri(int x1, int y1, int x2, int y2, int x3, int y3, Color color, BlendMode blendMode);

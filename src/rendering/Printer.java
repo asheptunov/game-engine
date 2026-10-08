@@ -1,9 +1,9 @@
 package rendering;
 
+import static java.util.Collections.synchronizedMap;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import static java.util.Collections.synchronizedMap;
 
 public interface Printer {
     void print(char c, int x, int y, Style... styles);
@@ -49,7 +49,8 @@ public interface Printer {
     }
 
     final class Color implements Style {
-        private static final Map<rendering.Color, Color> FLYWEIGHT = synchronizedMap(new HashMap<>());
+        private static final Map<rendering.Color, Color> FLYWEIGHT =
+                synchronizedMap(new HashMap<>());
 
         private final rendering.Color color;
 
@@ -67,7 +68,8 @@ public interface Printer {
     }
 
     final class BlendMode implements Style {
-        private static final Map<rendering.BlendMode, BlendMode> FLYWEIGHT = synchronizedMap(new HashMap<>());
+        private static final Map<rendering.BlendMode, BlendMode> FLYWEIGHT =
+                synchronizedMap(new HashMap<>());
 
         private final rendering.BlendMode blendMode;
 

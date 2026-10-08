@@ -8,9 +8,9 @@ import math.Vec3;
 import java.util.Optional;
 
 /**
- * Parallelogram with corner at {@code origin}, spanning {@code edge1} and {@code edge2}.
- * Points on the rect: {@code origin + s*edge1 + t*edge2} for {@code s, t ∈ [0, 1]}.
- * Natural normal: {@code edge1 × edge2} normalized — the "sensing side" for camera use.
+ * Parallelogram with corner at {@code origin}, spanning {@code edge1} and {@code edge2}. Points on
+ * the rect: {@code origin + s*edge1 + t*edge2} for {@code s, t ∈ [0, 1]}. Natural normal: {@code
+ * edge1 × edge2} normalized — the "sensing side" for camera use.
  */
 public record Rect(Vec3 origin, Vec3 edge1, Vec3 edge2) implements RenderPrimitive {
     public Vec3 normal() {
@@ -29,12 +29,18 @@ public record Rect(Vec3 origin, Vec3 edge1, Vec3 edge2) implements RenderPrimiti
         return ray.direction().dot(normal()) < 0;
     }
 
-    /** Parameter along {@code edge1} for a point on the rect's plane. {@code [0, 1]} when on the rect. */
+    /**
+     * Parameter along {@code edge1} for a point on the rect's plane. {@code [0, 1]} when on the
+     * rect.
+     */
     public float u(Vec3 point) {
         return point.sub(origin).dot(edge1) / edge1.lengthSq();
     }
 
-    /** Parameter along {@code edge2} for a point on the rect's plane. {@code [0, 1]} when on the rect. */
+    /**
+     * Parameter along {@code edge2} for a point on the rect's plane. {@code [0, 1]} when on the
+     * rect.
+     */
     public float v(Vec3 point) {
         return point.sub(origin).dot(edge2) / edge2.lengthSq();
     }

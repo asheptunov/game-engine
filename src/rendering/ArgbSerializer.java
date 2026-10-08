@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class ArgbSerializer implements RasterSerializer {
-    private static final String UUID         = "17E1BD52E4D7A8B5";
+    private static final String UUID = "17E1BD52E4D7A8B5";
     private static final byte[] VERSION_BLOB = ("ARGB." + UUID).getBytes(StandardCharsets.UTF_8);
 
     public static final ArgbSerializer INSTANCE = new ArgbSerializer();
@@ -72,7 +72,8 @@ public class ArgbSerializer implements RasterSerializer {
         return i;
     }
 
-    private void writeArgb(byte[] a, byte[] r, byte[] g, byte[] b, OutputStream os) throws IOException {
+    private void writeArgb(byte[] a, byte[] r, byte[] g, byte[] b, OutputStream os)
+            throws IOException {
         for (int i = 0; i < a.length; ++i) {
             os.write(a[i]);
             os.write(r[i]);
@@ -92,6 +93,6 @@ public class ArgbSerializer implements RasterSerializer {
             g[i] = (byte) is.read();
             b[i] = (byte) is.read();
         }
-        return new byte[][]{a, r, g, b};
+        return new byte[][] {a, r, g, b};
     }
 }

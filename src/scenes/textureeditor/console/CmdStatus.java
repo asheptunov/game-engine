@@ -1,11 +1,13 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import misc.monads.Result;
+
 import rendering.Color;
+
 import scenes.textureeditor.ColorPicker;
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 
@@ -18,7 +20,10 @@ public class CmdStatus implements Command {
         this.colorPicker = colorPicker;
     }
 
-    @Override public String helpText() { return "Usage: status\n  Show texture editor state."; }
+    @Override
+    public String helpText() {
+        return "Usage: status\n  Show texture editor state.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {
@@ -27,19 +32,21 @@ public class CmdStatus implements Command {
         }
         var texture = state.texture();
         var color = colorPicker.getColor();
-        return Result.success("""
+        return Result.success(
+                """
                 Working dir: %s
                 Open file: %s
                 Width: %d
                 Height: %d
                 Color: %s%#08X%s
-                """.formatted(
-                state.workingDir().getAbsolutePath(),
-                state.workingFile().map(File::getAbsolutePath).orElse("<not set>"),
-                texture.width(),
-                texture.height(),
-                Color.AnsiColor.formatted(color),
-                color.argbInt32(),
-                Color.AnsiColor.NONE.formatted()));
+                """
+                        .formatted(
+                                state.workingDir().getAbsolutePath(),
+                                state.workingFile().map(File::getAbsolutePath).orElse("<not set>"),
+                                texture.width(),
+                                texture.height(),
+                                Color.AnsiColor.formatted(color),
+                                color.argbInt32(),
+                                Color.AnsiColor.NONE.formatted()));
     }
 }

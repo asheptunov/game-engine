@@ -1,8 +1,8 @@
 package rendering;
 
 public class ImageRenderer implements Renderer {
-    private final Raster    image;
-    private final Painter   painter;
+    private final Raster image;
+    private final Painter painter;
     private final BlendMode blendMode;
 
     public ImageRenderer(Raster image, Raster raster, BlendMode blendMode) {

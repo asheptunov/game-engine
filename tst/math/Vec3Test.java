@@ -1,10 +1,10 @@
 package math;
 
-import harness.SuiteRunner;
-import harness.Test;
-
 import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertTrue;
+
+import harness.SuiteRunner;
+import harness.Test;
 
 public class Vec3Test {
     private static final float EPS = 1e-5f;
@@ -62,7 +62,7 @@ public class Vec3Test {
 
     @Test
     void dotComputes() {
-        assertClose(1*4 + 2*5 + 3*6, new Vec3(1, 2, 3).dot(new Vec3(4, 5, 6)));
+        assertClose(1 * 4 + 2 * 5 + 3 * 6, new Vec3(1, 2, 3).dot(new Vec3(4, 5, 6)));
     }
 
     @Test
@@ -87,7 +87,7 @@ public class Vec3Test {
 
     @Test
     void lengthSq() {
-        assertClose(1*1 + 2*2 + 3*3, new Vec3(1, 2, 3).lengthSq());
+        assertClose(1 * 1 + 2 * 2 + 3 * 3, new Vec3(1, 2, 3).lengthSq());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class Vec3Test {
         var u = new Vec3(2, 3, 6).normalized();
         assertClose(1, u.length());
         // direction preserved
-        assertClose(new Vec3(2f/7, 3f/7, 6f/7), u);
+        assertClose(new Vec3(2f / 7, 3f / 7, 6f / 7), u);
     }
 
     @Test

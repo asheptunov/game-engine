@@ -1,19 +1,25 @@
 package ui.console;
 
+import static rendering.Color.AnsiColor;
+import static rendering.Color.RgbInt24Color;
+
 import logging.LogManager;
 import logging.Logger;
+
 import misc.history.CircularBufferHistoryImpl;
 import misc.history.History;
 import misc.spliterators.ChunkedSpliterator;
 import misc.spliterators.ReversedSpliterator;
-import rendering.BlendMode;
+
 import rendering.AwtPrinter;
-import rendering.Raster;
-import rendering.RasterPainter;
+import rendering.BlendMode;
 import rendering.Color;
 import rendering.Painter;
 import rendering.Printer;
+import rendering.Raster;
+import rendering.RasterPainter;
 import rendering.Renderer;
+
 import ui.KeyAction;
 
 import java.awt.Toolkit;
@@ -33,17 +39,15 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static rendering.Color.AnsiColor;
-import static rendering.Color.RgbInt24Color;
-
 public class Console implements Renderer {
     private static final Logger LOG = LogManager.instance().getThis();
 
     // todo add resize command
-    private static final Pattern CHAR_ACCEPT_LIST          = Pattern.compile("[ -~]+");
-    private static final Pattern ANSI_COLOR_ESCAPE_PATTERN = Pattern.compile("\\\\033\\[(?<colors>[0-9]{1,3}(;[0-9]{1,3})*)m");
-    private static final String  PROMPT                    = "$ ";
-    private static final String  CURSOR                    = "_";
+    private static final Pattern CHAR_ACCEPT_LIST = Pattern.compile("[ -~]+");
+    private static final Pattern ANSI_COLOR_ESCAPE_PATTERN =
+            Pattern.compile("\\\\033\\[(?<colors>[0-9]{1,3}(;[0-9]{1,3})*)m");
+    private static final String PROMPT = "$ ";
+    private static final String CURSOR = "_";
 
     private record CommandAndResult(String command, String result) {
         static CommandAndResult empty() {
@@ -51,18 +55,18 @@ public class Console implements Renderer {
         }
     }
 
-    private final Painter                   painter;
-    private final Printer                   printer;
-    private final int                       width;
-    private final int                       height;
-    private final int                       hzStride;
-    private final int                       vtStride;
-    private final int                       maxLineWidth;
-    private final int                       maxLines;
-    private final Runnable                  onClose;
+    private final Painter painter;
+    private final Printer printer;
+    private final int width;
+    private final int height;
+    private final int hzStride;
+    private final int vtStride;
+    private final int maxLineWidth;
+    private final int maxLines;
+    private final Runnable onClose;
     private final History<CommandAndResult> history;
-    private final StringBuilder             buf;
-    private final Command                   cmd;
+    private final StringBuilder buf;
+    private final Command cmd;
 
     private double vtOffset = 0;
     private final List<String> commandHistory = new ArrayList<>();
@@ -71,26 +75,60 @@ public class Console implements Renderer {
     private String draft = "";
 
     /** Console text uses native glyph metrics rather than square bitmap cells. */
-    public static Console withAwtText(Raster display, Runnable onClose, int historySize, Command command) {
+    public static Console withAwtText(
+            Raster display, Runnable onClose, int historySize, Command command) {
         var printer = new AwtPrinter(display, 16);
-        return new Console(new RasterPainter(display), printer, display.width(), display.height(),
-                printer.cellWidth(), printer.cellHeight(), 0, 2, onClose, historySize, command);
+        return new Console(
+                new RasterPainter(display),
+                printer,
+                display.width(),
+                display.height(),
+                printer.cellWidth(),
+                printer.cellHeight(),
+                0,
+                2,
+                onClose,
+                historySize,
+                command);
     }
 
-    public Console(Painter painter,
-                   Printer printer,
-                   int width, int height,
-                   int fontSize, int charSpacing, int lineSpacing,
-                   Runnable onClose,
-                   int historySize,
-                   Command rootCommand) {
-        this(painter, printer, width, height, fontSize, fontSize, charSpacing, lineSpacing,
-                onClose, historySize, rootCommand);
+    public Console(
+            Painter painter,
+            Printer printer,
+            int width,
+            int height,
+            int fontSize,
+            int charSpacing,
+            int lineSpacing,
+            Runnable onClose,
+            int historySize,
+            Command rootCommand) {
+        this(
+                painter,
+                printer,
+                width,
+                height,
+                fontSize,
+                fontSize,
+                charSpacing,
+                lineSpacing,
+                onClose,
+                historySize,
+                rootCommand);
     }
 
-    public Console(Painter painter, Printer printer, int width, int height,
-                   int cellWidth, int cellHeight, int charSpacing, int lineSpacing,
-                   Runnable onClose, int historySize, Command rootCommand) {
+    public Console(
+            Painter painter,
+            Printer printer,
+            int width,
+            int height,
+            int cellWidth,
+            int cellHeight,
+            int charSpacing,
+            int lineSpacing,
+            Runnable onClose,
+            int historySize,
+            Command rootCommand) {
         this.painter = painter;
         this.printer = printer;
         this.width = width;
@@ -117,12 +155,24 @@ public class Console implements Renderer {
                         case UP -> recallCommand(-1);
                         case DOWN -> recallCommand(1);
                         case ENTER -> {
-                            if (buf.toString().isBlank()) { fastClear(); historyPosition = -1; draft = ""; break; }
+                            if (buf.toString().isBlank()) {
+                                fastClear();
+                                historyPosition = -1;
+                                draft = "";
+                                break;
+                            }
                             String submitted = buf.toString();
-                            var res = cmd.run(buf.toString().split(" ")).fold(
-                                    s -> new CommandAndResult(buf.toString(), s),
-                                    e -> new CommandAndResult(buf.toString(),
-                                            AnsiColor.RED.formatted() + e + AnsiColor.NONE.formatted()));
+                            var res =
+                                    cmd.run(buf.toString().split(" "))
+                                            .fold(
+                                                    s -> new CommandAndResult(buf.toString(), s),
+                                                    e ->
+                                                            new CommandAndResult(
+                                                                    buf.toString(),
+                                                                    AnsiColor.RED.formatted()
+                                                                            + e
+                                                                            + AnsiColor.NONE
+                                                                                    .formatted()));
                             history.record(res);
                             commandHistory.add(submitted);
                             if (commandHistory.size() > historyLimit) commandHistory.removeFirst();
@@ -148,7 +198,10 @@ public class Console implements Renderer {
                             LOG.info("Cut buffer to clipboard: [%s]", str);
                         }
                         case LOWER_V -> {
-                            var contents = Toolkit.getDefaultToolkit().getSystemClipboard().getContents(this);
+                            var contents =
+                                    Toolkit.getDefaultToolkit()
+                                            .getSystemClipboard()
+                                            .getContents(this);
                             if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
                                 try (var r = DataFlavor.stringFlavor.getReaderForText(contents)) {
                                     try (var br = new BufferedReader(r)) {
@@ -174,7 +227,10 @@ public class Console implements Renderer {
         vtOffset -= e.getPreciseWheelRotation();
     }
 
-    /** {@link MouseEvent}-typed adapter for binding registries that store {@code Consumer<MouseEvent>}. */
+    /**
+     * {@link MouseEvent}-typed adapter for binding registries that store {@code
+     * Consumer<MouseEvent>}.
+     */
     public void acceptScroll(MouseEvent e) {
         accept((MouseWheelEvent) e);
     }
@@ -184,9 +240,10 @@ public class Console implements Renderer {
     private record AnsiSequence(int start, int end, Color color) {}
 
     private AnsiSequence parseAnsiEscape(Matcher matcher) {
-        var colors = Arrays.stream(matcher.group("colors").split(";"))
-                .mapToInt(Integer::parseInt)
-                .toArray();
+        var colors =
+                Arrays.stream(matcher.group("colors").split(";"))
+                        .mapToInt(Integer::parseInt)
+                        .toArray();
         var color = (Color) AnsiColor.NONE;
         if (colors.length == 5 && colors[0] == 38 && colors[1] == 2) {
             color = RgbInt24Color.of((byte) colors[2], (byte) colors[3], (byte) colors[4]);
@@ -204,47 +261,63 @@ public class Console implements Renderer {
     public void render() {
         String allChars;
         double scroll;
-        synchronized(this) { allChars=concatAllChars(); scroll=vtOffset; }
+        synchronized (this) {
+            allChars = concatAllChars();
+            scroll = vtOffset;
+        }
         renderBackground();
         var ansiSequences = computeAnsiSequences(allChars);
         var displayLines = convertToDisplayLines(allChars, ansiSequences);
-        renderLines(displayLines,scroll);
+        renderLines(displayLines, scroll);
     }
 
     private void renderBackground() {
-        painter.drawImg(0, 0, width, height, Color.NamedColor.BLACK.withAlpha(0.8f), BlendMode.OVER_PRE);
+        painter.drawImg(
+                0, 0, width, height, Color.NamedColor.BLACK.withAlpha(0.8f), BlendMode.OVER_PRE);
     }
 
     private String concatAllChars() {
         return Stream.concat(
-                // history, oldest first (reverse because history.past() returns newest first)
-                ReversedSpliterator.reverse(history.getPast()).stream().flatMap(cnr -> Stream.concat(
-                        Optional.ofNullable(cnr.command()).stream().map(PROMPT::concat),
-                        Optional.ofNullable(cnr.result()).stream()
-                )),
-                // current buf is last line
-                Stream.of(PROMPT + buf.toString() + CURSOR)
-        ).collect(Collectors.joining("\n"));
+                        // history, oldest first (reverse because history.past() returns newest
+                        // first)
+                        ReversedSpliterator.reverse(history.getPast()).stream()
+                                .flatMap(
+                                        cnr ->
+                                                Stream.concat(
+                                                        Optional.ofNullable(cnr.command()).stream()
+                                                                .map(PROMPT::concat),
+                                                        Optional.ofNullable(cnr.result())
+                                                                .stream())),
+                        // current buf is last line
+                        Stream.of(PROMPT + buf.toString() + CURSOR))
+                .collect(Collectors.joining("\n"));
     }
 
     private ArrayList<AnsiSequence> computeAnsiSequences(String all) {
         var ansiSequences = new ArrayList<AnsiSequence>();
         //noinspection StatementWithEmptyBody
         for (var ansiMatcher = ANSI_COLOR_ESCAPE_PATTERN.matcher(all);
-             ansiMatcher.find();
-             ansiSequences.addLast(parseAnsiEscape(ansiMatcher))) {}
+                ansiMatcher.find();
+                ansiSequences.addLast(parseAnsiEscape(ansiMatcher))) {}
         return ansiSequences;
     }
 
-    private List<List<StyledChar>> convertToDisplayLines(String allChars, List<AnsiSequence> ansiSequences) {
+    private List<List<StyledChar>> convertToDisplayLines(
+            String allChars, List<AnsiSequence> ansiSequences) {
         int rowI = 0;
         int allI = -1;
-        var style = new ArrayList<Printer.Style>() {{
-            add(Printer.Color.of(Color.NamedColor.WHITE));
-        }};
-        var lines = new ArrayList<List<StyledChar>>() {{
-            add(new ArrayList<>());
-        }};
+        var style =
+                new ArrayList<Printer.Style>() {
+                    {
+                        add(Printer.Color.of(Color.NamedColor.WHITE));
+                    }
+                };
+        var lines =
+                new ArrayList<List<StyledChar>>() {
+                    {
+                        add(new ArrayList<>());
+                    }
+                };
         for (char c : allChars.toCharArray()) {
             ++allI;
             if (!ansiSequences.isEmpty()
@@ -254,58 +327,76 @@ public class Console implements Renderer {
                 continue;
             }
             if (!ansiSequences.isEmpty() && allI == ansiSequences.getFirst().end()) {
-                // finished an escape sequence (pointing at the first char right after); update the color
+                // finished an escape sequence (pointing at the first char right after); update the
+                // color
                 style.clear();
                 var color = ansiSequences.removeFirst().color();
-                style.add(color == AnsiColor.NONE
-                        ? Printer.Color.of(Color.NamedColor.WHITE)
-                        : Printer.Color.of(color));
+                style.add(
+                        color == AnsiColor.NONE
+                                ? Printer.Color.of(Color.NamedColor.WHITE)
+                                : Printer.Color.of(color));
             }
             switch (c) {
                 // not close to an escape sequence
-                case '\r': {
-                    rowI = 0;  // return carriage
-                    break;
-                }
-                case '\n': {
-                    if (!lines.getLast().isEmpty()) {  // this check prevents empty lines from being swallowed
-                        lines.addAll(
-                                ChunkedSpliterator.chunk(  // wrap the current line before committing it
-                                                lines.removeLast().iterator(), maxLineWidth, ArrayList::new)
-                                        .stream().toList());
+                case '\r':
+                    {
+                        rowI = 0; // return carriage
+                        break;
                     }
-                    lines.addLast(new ArrayList<>());  // start next line
-                    rowI = 0;  // return carriage
-                    break;
-                }
-                default: {
-                    var line = lines.getLast();
-                    var sc = new StyledChar(c, List.copyOf(style));
-                    if (rowI >= line.size()) {  // extend line
-                        line.addLast(sc);
-                    } else {  // within line (returned carriage earlier)
-                        line.set(rowI, sc);
+                case '\n':
+                    {
+                        if (!lines.getLast()
+                                .isEmpty()) { // this check prevents empty lines from being
+                            // swallowed
+                            lines.addAll(
+                                    ChunkedSpliterator
+                                            .chunk( // wrap the current line before committing it
+                                                    lines.removeLast().iterator(),
+                                                    maxLineWidth,
+                                                    ArrayList::new)
+                                            .stream()
+                                            .toList());
+                        }
+                        lines.addLast(new ArrayList<>()); // start next line
+                        rowI = 0; // return carriage
+                        break;
                     }
-                    ++rowI;
-                }
+                default:
+                    {
+                        var line = lines.getLast();
+                        var sc = new StyledChar(c, List.copyOf(style));
+                        if (rowI >= line.size()) { // extend line
+                            line.addLast(sc);
+                        } else { // within line (returned carriage earlier)
+                            line.set(rowI, sc);
+                        }
+                        ++rowI;
+                    }
             }
         }
         lines.addAll(
-                ChunkedSpliterator.chunk(  // don't forget to wrap the last line, even if it doesn't end with \n
+                ChunkedSpliterator
+                        .chunk( // don't forget to wrap the last line, even if it doesn't end with
+                                // \n
                                 lines.removeLast().iterator(), maxLineWidth, ArrayList::new)
-                        .stream().toList());
+                        .stream()
+                        .toList());
         return lines;
     }
 
-    private void renderLines(List<List<StyledChar>> lines,double scroll) {
+    private void renderLines(List<List<StyledChar>> lines, double scroll) {
         int row = 0;
         int n = lines.size();
         for (var line : lines) {
             int col = 0;
             int y = (int) ((row - (n - maxLines) + scroll) * vtStride);
-            if (y + vtStride <= 0 || y >= height) { ++row; continue; }
+            if (y + vtStride <= 0 || y >= height) {
+                ++row;
+                continue;
+            }
             for (var sc : line) {
-                printer.print(sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
+                printer.print(
+                        sc.c(), col++ * hzStride, y, sc.styles().toArray(Printer.Style[]::new));
             }
             ++row;
         }

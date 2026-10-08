@@ -1,9 +1,10 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import misc.monads.Result;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,7 +12,7 @@ import java.nio.file.Path;
 import java.util.function.Supplier;
 
 public class CmdCd implements Command {
-    private final EditorState    state;
+    private final EditorState state;
     private final Supplier<Path> root;
 
     public CmdCd(EditorState state, Supplier<Path> root) {
@@ -19,16 +20,22 @@ public class CmdCd implements Command {
         this.root = root;
     }
 
-    @Override public String helpText() { return "Usage: cd [dir]\n  Change the working directory; omit dir to return to the starting directory."; }
+    @Override
+    public String helpText() {
+        return "Usage: cd [dir]\n"
+                + "  Change the working directory; omit dir to return to the starting"
+                + " directory.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {
         if (args.length > 2) {
             return Result.failure("Usage: cd [dir]");
         }
-        var targetPath = args.length == 1
-                ? root.get()
-                : state.workingDir().toPath().resolve(Path.of(args[1]));
+        var targetPath =
+                args.length == 1
+                        ? root.get()
+                        : state.workingDir().toPath().resolve(Path.of(args[1]));
         File targetFile;
         try {
             targetFile = targetPath.toFile().getCanonicalFile();

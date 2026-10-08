@@ -1,9 +1,9 @@
 package math;
 
+import static harness.Assertions.assertEquals;
+
 import harness.SuiteRunner;
 import harness.Test;
-
-import static harness.Assertions.assertEquals;
 
 public class IntersectionTest {
     private static final float EPS = 1e-5f;
@@ -26,7 +26,8 @@ public class IntersectionTest {
 
     @Test
     void grazingIncidenceUnchanged() {
-        // Ray going +x hits surface with normal +z. Direction is parallel to surface — reflection ≈ incoming.
+        // Ray going +x hits surface with normal +z. Direction is parallel to surface — reflection ≈
+        // incoming.
         var incoming = new Ray(Vec3.ZERO, new Vec3(1, 0, 0));
         var hit = new Intersection(new Vec3(5, 0, 0), new Vec3(0, 0, 1), 5, incoming);
         assertClose(new Vec3(1, 0, 0), hit.reflectDirection());
@@ -34,7 +35,8 @@ public class IntersectionTest {
 
     @Test
     void fortyFiveDegreeReflection() {
-        // Ray going (1,0,-1)/sqrt2 hits floor with normal +y? No, easier: ray going (1,0,-1) normalized hits surface
+        // Ray going (1,0,-1)/sqrt2 hits floor with normal +y? No, easier: ray going (1,0,-1)
+        // normalized hits surface
         // with normal +z. Reflected should be (1,0,1) normalized.
         var dir = new Vec3(1, 0, -1).normalized();
         var incoming = new Ray(new Vec3(0, 0, 10), dir);

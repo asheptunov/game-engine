@@ -10,7 +10,7 @@ import java.util.stream.StreamSupport;
 
 public class ChunkedSpliterator<T, C extends Collection<T>> implements Spliterator<C> {
     private final Iterator<T> delegate;
-    private final int         chunkSize;
+    private final int chunkSize;
     private final Supplier<C> chunkSupplier;
 
     public static <T, C extends Collection<T>> ChunkedSpliterator<T, C> chunk(
@@ -63,7 +63,7 @@ public class ChunkedSpliterator<T, C extends Collection<T>> implements Spliterat
     @Override
     public boolean tryAdvance(Consumer<? super C> action) {
         C chunk = chunkSupplier.get();
-        while (chunk.size() < chunkSize && delegate.hasNext()) {  // pack the chunk
+        while (chunk.size() < chunkSize && delegate.hasNext()) { // pack the chunk
             chunk.add(delegate.next());
         }
         // packed the chunk, or ran out of elements (or both)

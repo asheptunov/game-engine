@@ -1,0 +1,2 @@
+# Keep Java layout identical across Windows and WSL; the formatter uses LF.
+*.java text eol=lf

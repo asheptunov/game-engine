@@ -2,10 +2,12 @@ package scenes.textureeditor.model;
 
 import logging.LogManager;
 import logging.Logger;
-import rendering.Raster;
+
 import misc.history.CircularBufferHistoryImpl;
 import misc.history.History;
 import misc.history.LoggingHistory;
+
+import rendering.Raster;
 
 import java.io.File;
 import java.util.Optional;
@@ -13,24 +15,23 @@ import java.util.Optional;
 public class EditorState {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private       Mode            mode;
-    private       File            workingDir;
-    private       File            workingFile;
-    private       Raster          texture;
+    private Mode mode;
+    private File workingDir;
+    private File workingFile;
+    private Raster texture;
     private final History<Raster> textureHistory;
-    private       Selection       selection;
-    private       Coordinates     boxStart;
-    private       boolean         isToolCardShown;
+    private Selection selection;
+    private Coordinates boxStart;
+    private boolean isToolCardShown;
 
-    public EditorState(Mode mode,
-                       File workingDir,
-                       Raster texture,
-                       int textureHistorySize) {
+    public EditorState(Mode mode, File workingDir, Raster texture, int textureHistorySize) {
         this.mode = mode;
         this.workingDir = workingDir;
         this.texture = texture;
-        this.textureHistory = new LoggingHistory<>(Logger.Level.TRACE,
-                new CircularBufferHistoryImpl<>(textureHistorySize, texture.clone()));
+        this.textureHistory =
+                new LoggingHistory<>(
+                        Logger.Level.TRACE,
+                        new CircularBufferHistoryImpl<>(textureHistorySize, texture.clone()));
         this.isToolCardShown = false;
     }
 

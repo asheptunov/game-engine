@@ -10,58 +10,66 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class FsFontLoader implements FontLoader {
-    private static final Logger                 LOG         = LogManager.instance().getThis();
-    private static final Map<Character, String> FONT_FS_MAP = new HashMap<>() {{
-        for (char c = 'a'; c <= 'z'; ++c) {
-            put(c, Character.toString(c));
-        }
-        for (char c = '0'; c <= '9'; ++c) {
-            put(c, Character.toString(c));
-        }
-        put('\0', "nil");
-        put(' ', "space");
-        put('!', "bang");
-        put('"', "quotation");
-        put('#', "hash");
-        put('$', "dollar");
-        put('%', "percent");
-        put('&', "ampersand");
-        put('\'', "apostrophe");
-        put('(', "left_paren");
-        put(')', "right_paren");
-        put('*', "star");
-        put('+', "plus");
-        put(',', "comma");
-        put('-', "hyphen");
-        put('.', "dot");
-        put('/', "slash");
-        put(':', "colon");
-        put(';', "semicolon");
-        put('<', "less_than");
-        put('=', "equal");
-        put('>', "greater_than");
-        put('?', "question");
-        put('@', "at");
-        put('[', "left_square_bracket");
-        put('\\', "backslash");
-        put(']', "right_square_bracket");
-        put('^', "caret");
-        put('_', "underscore");
-        put('`', "grave");
-        put('{', "left_curly_brace");
-        put('|', "pipe");
-        put('}', "right_curly_brace");
-        put('~', "tilde");
-        forEach((c, filename) -> put(c, filename + ".tx"));
-    }};
+    private static final Logger LOG = LogManager.instance().getThis();
+    private static final Map<Character, String> FONT_FS_MAP =
+            new HashMap<>() {
+                {
+                    for (char c = 'a'; c <= 'z'; ++c) {
+                        put(c, Character.toString(c));
+                    }
+                    for (char c = '0'; c <= '9'; ++c) {
+                        put(c, Character.toString(c));
+                    }
+                    put('\0', "nil");
+                    put(' ', "space");
+                    put('!', "bang");
+                    put('"', "quotation");
+                    put('#', "hash");
+                    put('$', "dollar");
+                    put('%', "percent");
+                    put('&', "ampersand");
+                    put('\'', "apostrophe");
+                    put('(', "left_paren");
+                    put(')', "right_paren");
+                    put('*', "star");
+                    put('+', "plus");
+                    put(',', "comma");
+                    put('-', "hyphen");
+                    put('.', "dot");
+                    put('/', "slash");
+                    put(':', "colon");
+                    put(';', "semicolon");
+                    put('<', "less_than");
+                    put('=', "equal");
+                    put('>', "greater_than");
+                    put('?', "question");
+                    put('@', "at");
+                    put('[', "left_square_bracket");
+                    put('\\', "backslash");
+                    put(']', "right_square_bracket");
+                    put('^', "caret");
+                    put('_', "underscore");
+                    put('`', "grave");
+                    put('{', "left_curly_brace");
+                    put('|', "pipe");
+                    put('}', "right_curly_brace");
+                    put('~', "tilde");
+                    forEach((c, filename) -> put(c, filename + ".tx"));
+                }
+            };
 
     private final RasterRepository repository;
-    private final Clock            clock;
-    private final Path             fontPath;
-    private final int              size;
-    private final RasterFilter     filter;
+    private final Clock clock;
+    private final Path fontPath;
+    private final int size;
+    private final RasterFilter filter;
 
-    private FsFontLoader(RasterRepository repository, Clock clock, Path fontPath, int size, RasterFilter filter) {
+    private FsFontLoader(
+            RasterRepository repository,
+            Clock clock,
+            Path fontPath,
+            int size,
+            RasterFilter filter) {
         this.repository = repository;
         this.clock = clock;
         this.fontPath = fontPath;
@@ -82,10 +90,10 @@ public class FsFontLoader implements FontLoader {
 
     public static class Builder {
         private RasterRepository repository;
-        private Clock            clock;
-        private Path             fontPath;
-        private Integer          size;
-        private RasterFilter     filter;
+        private Clock clock;
+        private Path fontPath;
+        private Integer size;
+        private RasterFilter filter;
 
         private Builder() {}
 
@@ -152,24 +160,36 @@ public class FsFontLoader implements FontLoader {
         if (!fontDir.isDirectory()) {
             throw new IllegalArgumentException("Font path is not a directory: " + fontPath);
         }
-        FONT_FS_MAP.forEach((c, filename) -> {
-            var assetPath = fontPath.resolve("standard").resolve(filename);
-            var loadResult = repository.load(assetPath.toFile());
-            loadResult
-                    .ifFailure(ex -> LOG.warn(ex, "Failed to read asset file for char '%c': %s", c, filename))
-                    .mapFailure(Exception::getMessage)
-                    .filter(asset -> asset.width() == size,
-                            asset -> "Font has incorrect width %d for char '%c' (baseWidth=%d)".formatted(
-                                    asset.width(), c, size))
-                    .filter(asset -> asset.height() == size,
-                            asset -> "Font has incorrect height %d for char '%c' (baseHeight=%d)".formatted(
-                                    asset.height(), c, size))
-                    .ifFailure(LOG::warn)
-                    .ifSuccess(asset -> {
-                        LOG.debug("Loaded asset for '%c' from %s", c, filename);
-                        res.put(c, asset);
-                    });
-        });
+        FONT_FS_MAP.forEach(
+                (c, filename) -> {
+                    var assetPath = fontPath.resolve("standard").resolve(filename);
+                    var loadResult = repository.load(assetPath.toFile());
+                    loadResult
+                            .ifFailure(
+                                    ex ->
+                                            LOG.warn(
+                                                    ex,
+                                                    "Failed to read asset file for char '%c': %s",
+                                                    c,
+                                                    filename))
+                            .mapFailure(Exception::getMessage)
+                            .filter(
+                                    asset -> asset.width() == size,
+                                    asset ->
+                                            "Font has incorrect width %d for char '%c' (baseWidth=%d)"
+                                                    .formatted(asset.width(), c, size))
+                            .filter(
+                                    asset -> asset.height() == size,
+                                    asset ->
+                                            "Font has incorrect height %d for char '%c' (baseHeight=%d)"
+                                                    .formatted(asset.height(), c, size))
+                            .ifFailure(LOG::warn)
+                            .ifSuccess(
+                                    asset -> {
+                                        LOG.debug("Loaded asset for '%c' from %s", c, filename);
+                                        res.put(c, asset);
+                                    });
+                });
         // nil must be loadable (to render missing textures), but can be overridden
         res.putIfAbsent('\0', new PixelRaster(size, size, Color.NamedColor.BLACK));
         res.replaceAll((_, v) -> filter.apply(v));

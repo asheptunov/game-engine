@@ -1,10 +1,10 @@
 package scenes.textureeditor.model;
 
-import java.util.Set;
-
 import static scenes.textureeditor.model.Selection.BoxSelection;
 import static scenes.textureeditor.model.Selection.LassoSelection;
 import static scenes.textureeditor.model.Selection.PixelSelection;
+
+import java.util.Set;
 
 public sealed interface Selection permits PixelSelection, BoxSelection, LassoSelection {
     record PixelSelection(Coordinates px) implements Selection {

@@ -1,6 +1,7 @@
 package profiling;
 
 import jdk.jfr.consumer.RecordingStream;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -8,11 +9,22 @@ import java.util.List;
 
 /** Opt-in JFR execution sampling: no clocks, counters, or callbacks in the per-ray loop. */
 public final class TraceSampler implements AutoCloseable {
-    public enum Work { GENERATION, INTERSECTION, LIGHTING, SHADOW }
-    public record Snapshot(long generation, long intersection, long lighting, long shadow, String status) {
-        public long total() { return generation + intersection + lighting + shadow; }
+    public enum Work {
+        GENERATION,
+        INTERSECTION,
+        LIGHTING,
+        SHADOW
     }
+
+    public record Snapshot(
+            long generation, long intersection, long lighting, long shadow, String status) {
+        public long total() {
+            return generation + intersection + lighting + shadow;
+        }
+    }
+
     private record Sample(long time, Work work) {}
+
     private final ArrayDeque<Sample> samples = new ArrayDeque<>();
     private RecordingStream stream;
     private volatile String status = "off";
@@ -21,23 +33,40 @@ public final class TraceSampler implements AutoCloseable {
     public void enabled(boolean value) {
         if (value == enabled) return;
         enabled = value;
-        if (!value) { close(); return; }
-        synchronized (samples) { samples.clear(); }
+        if (!value) {
+            close();
+            return;
+        }
+        synchronized (samples) {
+            samples.clear();
+        }
         try {
             stream = new RecordingStream();
             stream.setMaxAge(Duration.ofSeconds(15));
             stream.setMaxSize(16 * 1024 * 1024);
             stream.enable("jdk.ExecutionSample").withPeriod(Duration.ofMillis(10)).withStackTrace();
-            stream.onEvent("jdk.ExecutionSample", event -> {
-                if (event.getStackTrace() == null) return;
-                var methods = event.getStackTrace().getFrames().stream()
-                        .map(f -> f.getMethod().getType().getName() + "." + f.getMethod().getName()).toList();
-                Work work = classify(methods);
-                if (work != null) {
-                    long age = Math.max(0, Duration.between(event.getStartTime(), Instant.now()).toNanos());
-                    record(System.nanoTime() - age, work);
-                }
-            });
+            stream.onEvent(
+                    "jdk.ExecutionSample",
+                    event -> {
+                        if (event.getStackTrace() == null) return;
+                        var methods =
+                                event.getStackTrace().getFrames().stream()
+                                        .map(
+                                                f ->
+                                                        f.getMethod().getType().getName()
+                                                                + "."
+                                                                + f.getMethod().getName())
+                                        .toList();
+                        Work work = classify(methods);
+                        if (work != null) {
+                            long age =
+                                    Math.max(
+                                            0,
+                                            Duration.between(event.getStartTime(), Instant.now())
+                                                    .toNanos());
+                            record(System.nanoTime() - age, work);
+                        }
+                    });
             stream.onError(error -> status = "unavailable: " + error.getClass().getSimpleName());
             status = "warming up (JFR events arrive in batches)";
             stream.startAsync();
@@ -49,14 +78,21 @@ public final class TraceSampler implements AutoCloseable {
 
     static Work classify(List<String> methods) {
         boolean worker = methods.contains("engine.DirectRgbTracer$Worker.call");
-        String tracer = worker ? "engine.DirectRgbTracer$Worker."
-                : methods.contains("engine.DirectRgbTracer.trace")
-                ? "engine.DirectRgbTracer." : "engine.BackwardRayTracer.";
+        String tracer =
+                worker
+                        ? "engine.DirectRgbTracer$Worker."
+                        : methods.contains("engine.DirectRgbTracer.trace")
+                                ? "engine.DirectRgbTracer."
+                                : "engine.BackwardRayTracer.";
         if (!worker && !methods.contains(tracer + "trace")) return null;
-        if (methods.contains(tracer + "occluded") || methods.contains(tracer + "volumeVisibility")) return Work.SHADOW;
+        if (methods.contains(tracer + "occluded") || methods.contains(tracer + "volumeVisibility"))
+            return Work.SHADOW;
         if (methods.contains(tracer + "nearestHit")) return Work.INTERSECTION;
-        if (methods.contains(tracer + "light") || methods.contains(tracer + "shade")
-                || methods.contains(tracer + "volumeLight") || methods.contains(tracer + "areaLight") || methods.contains(tracer + "roughPointLight")) return Work.LIGHTING;
+        if (methods.contains(tracer + "light")
+                || methods.contains(tracer + "shade")
+                || methods.contains(tracer + "volumeLight")
+                || methods.contains(tracer + "areaLight")
+                || methods.contains(tracer + "roughPointLight")) return Work.LIGHTING;
         return Work.GENERATION;
     }
 
@@ -68,7 +104,10 @@ public final class TraceSampler implements AutoCloseable {
         status = "active";
     }
 
-    public Snapshot snapshot() { return snapshot(System.nanoTime()); }
+    public Snapshot snapshot() {
+        return snapshot(System.nanoTime());
+    }
+
     Snapshot snapshot(long now) {
         long[] counts = new long[Work.values().length];
         synchronized (samples) {
@@ -77,12 +116,22 @@ public final class TraceSampler implements AutoCloseable {
         }
         return new Snapshot(counts[0], counts[1], counts[2], counts[3], status);
     }
+
     private void prune(long now) {
-        while (!samples.isEmpty() && (samples.peekFirst().time() < now - 10_000_000_000L || samples.size() > 4096)) samples.removeFirst();
+        while (!samples.isEmpty()
+                && (samples.peekFirst().time() < now - 10_000_000_000L || samples.size() > 4096))
+            samples.removeFirst();
     }
-    @Override public void close() {
-        if (stream != null) { stream.close(); stream = null; }
-        synchronized (samples) { samples.clear(); }
+
+    @Override
+    public void close() {
+        if (stream != null) {
+            stream.close();
+            stream = null;
+        }
+        synchronized (samples) {
+            samples.clear();
+        }
         status = "off";
     }
 }

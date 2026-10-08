@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public class GraphImpl implements Graph {
     private final Map<Key<?>, Node<?>> edges;
-    private final Map<Key<?>, Scope>   scopes;
+    private final Map<Key<?>, Scope> scopes;
 
     GraphImpl(Map<Key<?>, Node<?>> edges, Map<Key<?>, Scope> scopes) {
         this.edges = Map.copyOf(edges);
@@ -15,8 +15,7 @@ public class GraphImpl implements Graph {
     @Override
     public synchronized <T> Optional<Node<? extends T>> follow(Key<T> key) {
         //noinspection unchecked
-        return Optional.ofNullable(edges.get(key))
-                .map(n -> (Node<T>) n);
+        return Optional.ofNullable(edges.get(key)).map(n -> (Node<T>) n);
     }
 
     @Override

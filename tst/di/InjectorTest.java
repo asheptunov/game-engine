@@ -1,9 +1,16 @@
 package di;
 
+import static harness.Assertions.assertEquals;
+import static harness.Assertions.assertInstanceOf;
+import static harness.Assertions.assertNotNull;
+import static harness.Assertions.assertNotSame;
+import static harness.Assertions.assertSame;
+
 import di.annotations.Inject;
 import di.annotations.Named;
 import di.annotations.Provides;
 import di.annotations.Qualifier;
+
 import harness.SuiteRunner;
 import harness.Test;
 
@@ -17,16 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static harness.Assertions.assertEquals;
-import static harness.Assertions.assertInstanceOf;
-import static harness.Assertions.assertNotNull;
-import static harness.Assertions.assertNotSame;
-import static harness.Assertions.assertSame;
-
 class InjectorTest {
     static class A {
         private final IB b;
-        private final C  c;
+        private final C c;
 
         @Inject
         A(IB b, C c) {
@@ -79,8 +80,10 @@ class InjectorTest {
 
             @Override
             public int hashCode() {
-                // other qualifier annotations should implement this using the documentation in java.lang.Annotation's
-                // hashCode method so that manually created instances are comparable to natively created ones.
+                // other qualifier annotations should implement this using the documentation in
+                // java.lang.Annotation's
+                // hashCode method so that manually created instances are comparable to natively
+                // created ones.
                 return 0;
             }
         }
@@ -106,7 +109,8 @@ class InjectorTest {
 
     @Test
     void injectCtorWithNamedQualifier() {
-        var injector = Injector.create(b -> b.bind(String.class).named("named1").toInstance("value"));
+        var injector =
+                Injector.create(b -> b.bind(String.class).named("named1").toInstance("value"));
         assertEquals("value", injector.get(WithNamedParam.class).s);
     }
 
@@ -122,10 +126,15 @@ class InjectorTest {
     @Test
     void provider() {
         var lastD = new AtomicReference<D>();
-        var injector = Injector.create(b -> b.bind(D.class).toProvider(() -> {
-            lastD.set(new D());
-            return lastD.get();
-        }));
+        var injector =
+                Injector.create(
+                        b ->
+                                b.bind(D.class)
+                                        .toProvider(
+                                                () -> {
+                                                    lastD.set(new D());
+                                                    return lastD.get();
+                                                }));
         var d1 = assertInstanceOf(D.class, injector.get(D.class));
         assertNotNull(lastD.get());
         assertSame(lastD.get(), d1);
@@ -146,94 +155,100 @@ class InjectorTest {
 
     @Test
     void providerMethod() {
-        var injector = Injector.create(new Module() {
-            @Override
-            public void configure(GraphBuilder graphBuilder) {}
+        var injector =
+                Injector.create(
+                        new Module() {
+                            @Override
+                            public void configure(GraphBuilder graphBuilder) {}
 
-            @Provides
-            String nonGeneric() {
-                return "str";
-            }
+                            @Provides
+                            String nonGeneric() {
+                                return "str";
+                            }
 
-            @Provides
-            List<String> genericParameterized() {
-                return List.of("1", "2", "3");
-            }
+                            @Provides
+                            List<String> genericParameterized() {
+                                return List.of("1", "2", "3");
+                            }
 
-            @Provides
-            @SuppressWarnings("rawtypes")
-            List genericParameterless() {
-                return List.of("a", "b", "c");
-            }
+                            @Provides
+                            @SuppressWarnings("rawtypes")
+                            List genericParameterless() {
+                                return List.of("a", "b", "c");
+                            }
 
-            @Provides
-            @Named("myName")
-            String named() {
-                return "namedStr";
-            }
+                            @Provides
+                            @Named("myName")
+                            String named() {
+                                return "namedStr";
+                            }
 
-            @Provides
-            @MyQualifier
-            String qualified() {
-                return "qualifiedStr";
-            }
+                            @Provides
+                            @MyQualifier
+                            String qualified() {
+                                return "qualifiedStr";
+                            }
 
-            @Provides
-            @SuppressWarnings("rawtypes")
-            byte[] dependent(String nonGeneric,
-                             List<String> genericParameterized,
-                             List genericParameterless,
-                             @Named("myName") String named,
-                             @MyQualifier String qualified) {
-                assertEquals("str", nonGeneric);
-                assertEquals(List.of("1", "2", "3"), genericParameterized);
-                assertEquals(List.of("a", "b", "c"), genericParameterless);
-                assertEquals("namedStr", named);
-                assertEquals("qualifiedStr", qualified);
-                return "dependentStr".getBytes(StandardCharsets.UTF_8);
-            }
-        });
-        assertEquals("str",
-                injector.get(String.class));
-        assertEquals(List.of("1", "2", "3"),
-                injector.get(new GenericType<List<String>>() {}));
-        assertEquals(List.of("a", "b", "c"),
-                injector.get(List.class));
-        assertEquals("namedStr",
-                injector.get(Key.get(String.class).named("myName")));
-        assertEquals("qualifiedStr",
-                injector.get(Key.get(String.class).annotated(MyQualifier.MyQualifierImpl.instance())));
+                            @Provides
+                            @SuppressWarnings("rawtypes")
+                            byte[] dependent(
+                                    String nonGeneric,
+                                    List<String> genericParameterized,
+                                    List genericParameterless,
+                                    @Named("myName") String named,
+                                    @MyQualifier String qualified) {
+                                assertEquals("str", nonGeneric);
+                                assertEquals(List.of("1", "2", "3"), genericParameterized);
+                                assertEquals(List.of("a", "b", "c"), genericParameterless);
+                                assertEquals("namedStr", named);
+                                assertEquals("qualifiedStr", qualified);
+                                return "dependentStr".getBytes(StandardCharsets.UTF_8);
+                            }
+                        });
+        assertEquals("str", injector.get(String.class));
+        assertEquals(List.of("1", "2", "3"), injector.get(new GenericType<List<String>>() {}));
+        assertEquals(List.of("a", "b", "c"), injector.get(List.class));
+        assertEquals("namedStr", injector.get(Key.get(String.class).named("myName")));
+        assertEquals(
+                "qualifiedStr",
+                injector.get(
+                        Key.get(String.class).annotated(MyQualifier.MyQualifierImpl.instance())));
         assertEquals("dependentStr".getBytes(StandardCharsets.UTF_8), injector.get(byte[].class));
     }
 
     @Test
     void providerClass() {
-        var injector = Injector.create(new Module() {
-            @Override
-            public void configure(GraphBuilder graphBuilder) {
-                graphBuilder.bind(String.class).toProvider(MyStringProvider.class);
-                graphBuilder.bind(String.class).named("dependent").toProvider(DependentProvider.class);
-            }
+        var injector =
+                Injector.create(
+                        new Module() {
+                            @Override
+                            public void configure(GraphBuilder graphBuilder) {
+                                graphBuilder.bind(String.class).toProvider(MyStringProvider.class);
+                                graphBuilder
+                                        .bind(String.class)
+                                        .named("dependent")
+                                        .toProvider(DependentProvider.class);
+                            }
 
-            static class MyStringProvider implements Provider<String> {
-                @Override
-                public String get() {
-                    return "myString";
-                }
-            }
+                            static class MyStringProvider implements Provider<String> {
+                                @Override
+                                public String get() {
+                                    return "myString";
+                                }
+                            }
 
-            static class DependentProvider implements Provider<String> {
-                @Inject
-                DependentProvider(String myString) {
-                    assertEquals("myString", myString);
-                }
+                            static class DependentProvider implements Provider<String> {
+                                @Inject
+                                DependentProvider(String myString) {
+                                    assertEquals("myString", myString);
+                                }
 
-                @Override
-                public String get() {
-                    return "dependentString";
-                }
-            }
-        });
+                                @Override
+                                public String get() {
+                                    return "dependentString";
+                                }
+                            }
+                        });
         assertEquals("myString", injector.get(String.class));
         assertEquals("dependentString", injector.get(Key.get(String.class).named("dependent")));
     }
@@ -279,30 +294,34 @@ class InjectorTest {
 
     @Test
     void listBinding() {
-        var injector = Injector.create(b -> {
-            var lb = b.bindList().of(String.class);
-            lb.add(String.class).named("1");
-            lb.add(String.class).named("2");
-            lb.add(String.class).named("3");
-            b.bind(String.class).named("1").toInstance("a");
-            b.bind(String.class).named("2").toInstance("b");
-            b.bind(String.class).named("3").toInstance("c");
-        });
+        var injector =
+                Injector.create(
+                        b -> {
+                            var lb = b.bindList().of(String.class);
+                            lb.add(String.class).named("1");
+                            lb.add(String.class).named("2");
+                            lb.add(String.class).named("3");
+                            b.bind(String.class).named("1").toInstance("a");
+                            b.bind(String.class).named("2").toInstance("b");
+                            b.bind(String.class).named("3").toInstance("c");
+                        });
         var list = injector.get(new GenericType<List<String>>() {});
         assertEquals(List.of("a", "b", "c"), list);
     }
 
     @Test
     void mapBinding() {
-        var injector = Injector.create(b -> {
-            var lb = b.bindMap().from(Integer.class).to(String.class);
-            lb.key(1).value(String.class).named("1");
-            lb.key(2).value(String.class).named("2");
-            lb.key(3).value(String.class).named("3");
-            b.bind(String.class).named("1").toInstance("a");
-            b.bind(String.class).named("2").toInstance("b");
-            b.bind(String.class).named("3").toInstance("c");
-        });
+        var injector =
+                Injector.create(
+                        b -> {
+                            var lb = b.bindMap().from(Integer.class).to(String.class);
+                            lb.key(1).value(String.class).named("1");
+                            lb.key(2).value(String.class).named("2");
+                            lb.key(3).value(String.class).named("3");
+                            b.bind(String.class).named("1").toInstance("a");
+                            b.bind(String.class).named("2").toInstance("b");
+                            b.bind(String.class).named("3").toInstance("c");
+                        });
         var map = injector.get(new GenericType<Map<Integer, String>>() {});
         assertEquals(Map.of(1, "a", 2, "b", 3, "c"), map);
     }

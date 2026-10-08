@@ -1,9 +1,9 @@
 package math;
 
+import static harness.Assertions.assertEquals;
+
 import harness.SuiteRunner;
 import harness.Test;
-
-import static harness.Assertions.assertEquals;
 
 public class RayTest {
     @Test

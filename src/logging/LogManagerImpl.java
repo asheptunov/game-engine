@@ -14,14 +14,20 @@ import java.util.stream.Collectors;
 public class LogManagerImpl implements LogManager {
     static final LogManagerImpl INSTANCE = new LogManagerImpl();
 
-    private final Map<String, Logger>           loggerFlyweight = new ConcurrentHashMap<>();
-    private final Map<String, LoggerImpl.Level> levels          = new ConcurrentHashMap<>();
-    private final Clock                         clock           = Clock.systemDefaultZone();
+    private final Map<String, Logger> loggerFlyweight = new ConcurrentHashMap<>();
+    private final Map<String, LoggerImpl.Level> levels = new ConcurrentHashMap<>();
+    private final Clock clock = Clock.systemDefaultZone();
 
     private LogManagerImpl() {
-        var pattern = Pattern.compile(String.format("^(root|[a-zA-Z][a-zA-Z0-9\\._]*)=(%s)$",
-                Arrays.stream(LoggerImpl.Level.values()).map(Enum::name).collect(Collectors.joining("|"))));
-        try (var propFileStream = this.getClass().getClassLoader().getResourceAsStream("logging.txt")) {
+        var pattern =
+                Pattern.compile(
+                        String.format(
+                                "^(root|[a-zA-Z][a-zA-Z0-9\\._]*)=(%s)$",
+                                Arrays.stream(LoggerImpl.Level.values())
+                                        .map(Enum::name)
+                                        .collect(Collectors.joining("|"))));
+        try (var propFileStream =
+                this.getClass().getClassLoader().getResourceAsStream("logging.txt")) {
             if (propFileStream != null) {
                 var reader = new BufferedReader(new InputStreamReader(propFileStream));
                 var line = reader.readLine();
@@ -32,14 +38,18 @@ public class LogManagerImpl implements LogManager {
                     }
                     var matcher = pattern.matcher(line);
                     if (!matcher.find()) {
-                        System.err.printf("malformed logging.txt on line %d: %s; should be empty or match %s%n",
+                        System.err.printf(
+                                "malformed logging.txt on line %d: %s; should be empty or match"
+                                        + " %s%n",
                                 i, line, pattern.pattern());
                         System.exit(1);
                     }
                     var name = matcher.group(1);
                     var level = LoggerImpl.Level.valueOf(matcher.group(2));
                     if (levels.containsKey(name)) {
-                        System.err.printf("duplicate log level definition in logging.txt on line %d: %s; previously set to %s%n",
+                        System.err.printf(
+                                "duplicate log level definition in logging.txt on line %d: %s;"
+                                        + " previously set to %s%n",
                                 i, line, levels.get(name));
                         System.exit(1);
                     }
@@ -48,7 +58,8 @@ public class LogManagerImpl implements LogManager {
                     ++i;
                 }
             }
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
         levels.putIfAbsent("root", LoggerImpl.Level.INFO);
     }
 

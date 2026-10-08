@@ -5,7 +5,7 @@ import static rendering.Color.NamedColor;
 public class RasterPrinter implements Printer {
     private final Painter painter;
     // TODO bezier fonts
-    private final Font    font;
+    private final Font font;
 
     public RasterPrinter(Raster raster, Font font) {
         this.painter = new RasterPainter(raster);
@@ -25,7 +25,7 @@ public class RasterPrinter implements Printer {
                 case Spacing _ -> {}
             }
         }
-        var asset = font.getChar(Character.toLowerCase(c));  // todo add uppercase
+        var asset = font.getChar(Character.toLowerCase(c)); // todo add uppercase
         asset = PixelFilter.chromaMap(NamedColor.BLACK, color).asRasterFilter().apply(asset);
         var scaled = asset.scale(size, size);
         painter.drawImg(x, y, scaled, blendMode);

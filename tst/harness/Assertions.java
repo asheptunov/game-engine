@@ -5,15 +5,17 @@ import java.util.Objects;
 public class Assertions {
     public static void assertEquals(Object expected, Object actual) {
         if (!Objects.deepEquals(expected, actual)) {
-            throw new RuntimeException("Expected equal objects, but got two non-equal ones:\nexpected:\n%s\nactual:\n%s"
-                    .formatted(expected, actual));
+            throw new RuntimeException(
+                    "Expected equal objects, but got two non-equal ones:\nexpected:\n%s\nactual:\n%s"
+                            .formatted(expected, actual));
         }
     }
 
     public static void assertNotEquals(Object expected, Object actual) {
         if (Objects.deepEquals(expected, actual)) {
-            throw new RuntimeException("Expected non-equal objects, but go two that equal:\nexpected:\n%s\nactual:\n%s"
-                    .formatted(expected, actual));
+            throw new RuntimeException(
+                    "Expected non-equal objects, but go two that equal:\nexpected:\n%s\nactual:\n%s"
+                            .formatted(expected, actual));
         }
     }
 
@@ -57,7 +59,9 @@ public class Assertions {
 
     public static <T> T assertInstanceOf(Class<T> klass, Object actual) {
         if (!klass.isInstance(actual)) {
-            throw new RuntimeException("Expected\n%s\nto be an instance of %s, but it wasn't".formatted(actual, klass));
+            throw new RuntimeException(
+                    "Expected\n%s\nto be an instance of %s, but it wasn't"
+                            .formatted(actual, klass));
         }
         //noinspection unchecked
         return (T) actual;

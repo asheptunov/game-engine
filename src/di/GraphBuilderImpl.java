@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.Map;
 
 public class GraphBuilderImpl implements GraphBuilder {
-    private final Map<Key<?>, Graph.Node<?>> edges       = new HashMap<>();
-    private final Map<Key<?>, Scope>         scopes      = new HashMap<>();
-    private final List<ListBinderImpl<?>>    listBinders = new ArrayList<>();
-    private final List<MapBinderImpl<?, ?>>  mapBinders  = new ArrayList<>();
+    private final Map<Key<?>, Graph.Node<?>> edges = new HashMap<>();
+    private final Map<Key<?>, Scope> scopes = new HashMap<>();
+    private final List<ListBinderImpl<?>> listBinders = new ArrayList<>();
+    private final List<MapBinderImpl<?, ?>> mapBinders = new ArrayList<>();
 
     GraphBuilderImpl() {}
 
@@ -53,7 +53,9 @@ public class GraphBuilderImpl implements GraphBuilder {
     public class BindingBuilderImpl<T> implements BindingBuilder<T> {
         private final Key<T> from;
 
-        private BindingBuilderImpl(Key<T> from) {this.from = from;}
+        private BindingBuilderImpl(Key<T> from) {
+            this.from = from;
+        }
 
         @Override
         public BindingBuilderImpl<T> qualified(Qualifier qualifier) {

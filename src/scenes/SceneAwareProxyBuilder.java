@@ -10,9 +10,9 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 public class SceneAwareProxyBuilder {
-    private       Class<?>[]                          interfaces;
+    private Class<?>[] interfaces;
     private final Map<Class<? extends Scene>, Object> targetByScene = new HashMap<>();
-    private       Supplier<Scene>                     sceneSupplier;
+    private Supplier<Scene> sceneSupplier;
 
     private SceneAwareProxyBuilder() {}
 
@@ -40,7 +40,8 @@ public class SceneAwareProxyBuilder {
         return this;
     }
 
-    public SceneAwareProxyBuilder withTargetForScene(Class<? extends Scene> sceneClass, Object target) {
+    public SceneAwareProxyBuilder withTargetForScene(
+            Class<? extends Scene> sceneClass, Object target) {
         if (sceneClass == null) {
             throw new IllegalArgumentException();
         }
@@ -75,13 +76,14 @@ public class SceneAwareProxyBuilder {
     }
 
     private static class SceneAwareInvocationHandler implements InvocationHandler {
-//        private static final Set<Method> SHORT_CIRCUIT_METHODS = Set.of(Object.class.getMethods());
+        //        private static final Set<Method> SHORT_CIRCUIT_METHODS =
+        // Set.of(Object.class.getMethods());
 
         private final Map<Class<? extends Scene>, Object> targetsByScene;
-        private final Supplier<Scene>                     sceneSupplier;
+        private final Supplier<Scene> sceneSupplier;
 
-        private SceneAwareInvocationHandler(Map<Class<? extends Scene>, Object> targetsByScene,
-                                            Supplier<Scene> sceneSupplier) {
+        private SceneAwareInvocationHandler(
+                Map<Class<? extends Scene>, Object> targetsByScene, Supplier<Scene> sceneSupplier) {
             this.targetsByScene = targetsByScene;
             this.sceneSupplier = sceneSupplier;
         }
@@ -89,15 +91,16 @@ public class SceneAwareProxyBuilder {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             // TODO don't quite remember why I had to do this... something related to hashCode?
-//            if (SHORT_CIRCUIT_METHODS.contains(method)) {
-//                // toString / equals / hashCode / etc.
-//                return method.invoke(this, args);
-//            }
+            //            if (SHORT_CIRCUIT_METHODS.contains(method)) {
+            //                // toString / equals / hashCode / etc.
+            //                return method.invoke(this, args);
+            //            }
             var scene = sceneSupplier.get();
-            var target = Optional.of(scene.getClass())
-                    .filter(targetsByScene::containsKey)
-                    .map(targetsByScene::get)
-                    .orElseThrow(IllegalArgumentException::new);
+            var target =
+                    Optional.of(scene.getClass())
+                            .filter(targetsByScene::containsKey)
+                            .map(targetsByScene::get)
+                            .orElseThrow(IllegalArgumentException::new);
             try {
                 return method.invoke(target, args);
             } catch (InvocationTargetException ex) {

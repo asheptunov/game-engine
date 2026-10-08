@@ -1,22 +1,21 @@
 package engine.objects;
 
-import harness.SuiteRunner;
-import harness.Test;
-import math.Ray;
-import math.Vec3;
-
 import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertFalse;
 import static harness.Assertions.assertTrue;
 
+import harness.SuiteRunner;
+import harness.Test;
+
+import math.Ray;
+import math.Vec3;
+
 public class RectTest {
     private static final float EPS = 1e-4f;
 
-    // Unit square in z=0 plane: corners (0,0), (1,0), (1,1), (0,1). Natural normal: edge1×edge2 = +z.
-    private final Rect rect = new Rect(
-            new Vec3(0, 0, 0),
-            new Vec3(1, 0, 0),
-            new Vec3(0, 1, 0));
+    // Unit square in z=0 plane: corners (0,0), (1,0), (1,1), (0,1). Natural normal: edge1×edge2 =
+    // +z.
+    private final Rect rect = new Rect(new Vec3(0, 0, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0));
 
     @Test
     void normalIsPositiveZ() {

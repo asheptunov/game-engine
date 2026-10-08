@@ -2,6 +2,7 @@ package rendering;
 
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
 
 import java.io.File;
@@ -14,7 +15,7 @@ import java.time.Duration;
 public class FileSystemRasterRepository implements RasterRepository {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final Clock            clock;
+    private final Clock clock;
     private final RasterSerializer serializer;
 
     public FileSystemRasterRepository(Clock clock, RasterSerializer serializer) {
@@ -77,8 +78,7 @@ public class FileSystemRasterRepository implements RasterRepository {
             }
         }
         try (var fos = new FileOutputStream(file)) {
-            return serializer.serialize(raster)
-                    .ifSuccess(fos::write);
+            return serializer.serialize(raster).ifSuccess(fos::write);
         } catch (IOException e) {
             return Result.failure(e);
         } finally {

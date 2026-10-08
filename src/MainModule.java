@@ -5,6 +5,12 @@ import di.Module;
 import di.annotations.Named;
 import di.annotations.Provides;
 import di.annotations.Singleton;
+
+import profiling.FrameProfiler;
+import profiling.PerformanceOverlay;
+import profiling.ProfiledFrame;
+import profiling.ProfilingInput;
+
 import rendering.ArgbSerializer;
 import rendering.AwtViewer;
 import rendering.ChainRasterSerializer;
@@ -21,15 +27,12 @@ import rendering.RasterFilter;
 import rendering.RasterRepository;
 import rendering.Renderer;
 import rendering.RgbSerializer;
+
 import scenes.Scene;
 import scenes.SceneAwareProxyBuilder;
 import scenes.SceneSwitcher;
 import scenes.textureeditor.TextureEditor;
 import scenes.viewport.Viewport;
-import profiling.FrameProfiler;
-import profiling.PerformanceOverlay;
-import profiling.ProfiledFrame;
-import profiling.ProfilingInput;
 
 import java.awt.event.KeyListener;
 import java.awt.event.MouseListener;
@@ -59,8 +62,7 @@ public class MainModule implements Module {
 
         // Mutable scene registry. Bound as an empty map at config time and populated post-injection
         // by registerScenes(). Breaks the cycle Scene → Console → Command → CmdScene → Map → Scene.
-        b.bind(new GenericType<Map<String, Scene>>() {})
-                .toInstance(new HashMap<String, Scene>());
+        b.bind(new GenericType<Map<String, Scene>>() {}).toInstance(new HashMap<String, Scene>());
 
         // Ordered list for the F12 cycle.
         var scenesList = b.bindList().of(Scene.class);
@@ -82,7 +84,7 @@ public class MainModule implements Module {
         var vp = injector.get(Viewport.class);
         map.put("editor", te);
         map.put("viewport", vp);
-        ref.set(te);  // startup scene
+        ref.set(te); // startup scene
     }
 
     @Provides
@@ -93,19 +95,23 @@ public class MainModule implements Module {
 
     @Provides
     @Singleton
-    Renderer renderer(List<Renderer> pipeline, FrameProfiler profiler,
-                      AtomicReference<Scene> sceneRef) {
+    Renderer renderer(
+            List<Renderer> pipeline, FrameProfiler profiler, AtomicReference<Scene> sceneRef) {
         var timed = new java.util.ArrayList<Renderer>();
         for (var delegate : pipeline) {
-            var stage = switch (delegate) {
-                case Eraser _, Checkerboard _ -> FrameProfiler.Stage.BACKGROUND;
-                case PerformanceOverlay _ -> FrameProfiler.Stage.OVERLAY;
-                case AwtViewer _ -> FrameProfiler.Stage.PRESENT;
-                default -> FrameProfiler.Stage.SCENE;
-            };
-            Renderer active = stage == FrameProfiler.Stage.BACKGROUND
-                    ? () -> { if (!(sceneRef.get() instanceof Viewport)) delegate.render(); }
-                    : delegate;
+            var stage =
+                    switch (delegate) {
+                        case Eraser _, Checkerboard _ -> FrameProfiler.Stage.BACKGROUND;
+                        case PerformanceOverlay _ -> FrameProfiler.Stage.OVERLAY;
+                        case AwtViewer _ -> FrameProfiler.Stage.PRESENT;
+                        default -> FrameProfiler.Stage.SCENE;
+                    };
+            Renderer active =
+                    stage == FrameProfiler.Stage.BACKGROUND
+                            ? () -> {
+                                if (!(sceneRef.get() instanceof Viewport)) delegate.render();
+                            }
+                            : delegate;
             timed.add(ProfiledFrame.stage(profiler, stage, active));
         }
         return new ProfiledFrame(profiler, new CompositeRenderer(timed));
@@ -132,8 +138,8 @@ public class MainModule implements Module {
     @Provides
     @Singleton
     RasterRepository repo(Clock clock) {
-        return new FileSystemRasterRepository(clock, ChainRasterSerializer.of(
-                ArgbSerializer.INSTANCE, RgbSerializer.INSTANCE));
+        return new FileSystemRasterRepository(
+                clock, ChainRasterSerializer.of(ArgbSerializer.INSTANCE, RgbSerializer.INSTANCE));
     }
 
     @Provides
@@ -160,16 +166,23 @@ public class MainModule implements Module {
     @Provides
     @Named("input_listener")
     @Singleton
-    Object inputListener(TextureEditor te, Viewport vp,
-                         AtomicReference<Scene> sceneRef,
-                         List<Scene> scenes, FrameProfiler profiler) {
-        var proxy = SceneAwareProxyBuilder.create()
-                .withInterfaces(KeyListener.class, MouseListener.class,
-                        MouseWheelListener.class, MouseMotionListener.class)
-                .withTargetForScene(TextureEditor.class, te)
-                .withTargetForScene(Viewport.class, vp)
-                .withSceneSupplier(sceneRef::get)
-                .build();
+    Object inputListener(
+            TextureEditor te,
+            Viewport vp,
+            AtomicReference<Scene> sceneRef,
+            List<Scene> scenes,
+            FrameProfiler profiler) {
+        var proxy =
+                SceneAwareProxyBuilder.create()
+                        .withInterfaces(
+                                KeyListener.class,
+                                MouseListener.class,
+                                MouseWheelListener.class,
+                                MouseMotionListener.class)
+                        .withTargetForScene(TextureEditor.class, te)
+                        .withTargetForScene(Viewport.class, vp)
+                        .withSceneSupplier(sceneRef::get)
+                        .build();
         return new ProfilingInput(profiler, new SceneSwitcher(scenes, sceneRef, proxy));
     }
 
@@ -177,12 +190,13 @@ public class MainModule implements Module {
     @Named("scene_renderer")
     @Singleton
     Renderer sceneRenderer(TextureEditor te, Viewport vp, AtomicReference<Scene> sceneRef) {
-        return (Renderer) SceneAwareProxyBuilder.create()
-                .withInterface(Renderer.class)
-                .withTargetForScene(TextureEditor.class, te)
-                .withTargetForScene(Viewport.class, vp)
-                .withSceneSupplier(sceneRef::get)
-                .build();
+        return (Renderer)
+                SceneAwareProxyBuilder.create()
+                        .withInterface(Renderer.class)
+                        .withTargetForScene(TextureEditor.class, te)
+                        .withTargetForScene(Viewport.class, vp)
+                        .withSceneSupplier(sceneRef::get)
+                        .build();
     }
 
     @Provides

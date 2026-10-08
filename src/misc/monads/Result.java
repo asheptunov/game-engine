@@ -37,52 +37,44 @@ public class Result<S, F> {
 
     public Result<S, F> ifSuccess(TConsumer<S, ?> consumer) {
         var newEither = delegate.ifLeft(consumer);
-        return delegate == newEither
-                ? this
-                : new Result<>(newEither);
+        return delegate == newEither ? this : new Result<>(newEither);
     }
 
     public Result<S, F> ifFailure(TConsumer<F, ?> consumer) {
         var newDelegate = delegate.ifRight(consumer);
-        return delegate == newDelegate
-                ? this
-                : new Result<>(newDelegate);
+        return delegate == newDelegate ? this : new Result<>(newDelegate);
     }
 
     @SuppressWarnings("unchecked")
     public <SS> Result<SS, F> mapSuccess(TFunction<S, SS, ?> map) {
         var newDelegate = delegate.mapLeft(map);
-        return delegate == newDelegate
-                ? (Result<SS, F>) this
-                : new Result<>(newDelegate);
+        return delegate == newDelegate ? (Result<SS, F>) this : new Result<>(newDelegate);
     }
 
     @SuppressWarnings("unchecked")
     public <FF> Result<S, FF> mapFailure(TFunction<F, FF, ?> map) {
         var newDelegate = delegate.mapRight(map);
-        return delegate == newDelegate
-                ? (Result<S, FF>) this
-                : new Result<>(newDelegate);
+        return delegate == newDelegate ? (Result<S, FF>) this : new Result<>(newDelegate);
     }
 
     @SuppressWarnings("unchecked")
-    public <SS> Result<SS, F> flatMapSuccess(TFunction<? super S, ? extends Result<? extends SS, ? extends F>, ?> map) {
-        var newDelegate = delegate.<SS>flatMapLeft(map
-                .andThen(r -> (Result<? extends SS, ? extends F>) r)
-                .andThen(r -> r.delegate));
-        return delegate == newDelegate
-                ? (Result<SS, F>) this
-                : new Result<>(newDelegate);
+    public <SS> Result<SS, F> flatMapSuccess(
+            TFunction<? super S, ? extends Result<? extends SS, ? extends F>, ?> map) {
+        var newDelegate =
+                delegate.<SS>flatMapLeft(
+                        map.andThen(r -> (Result<? extends SS, ? extends F>) r)
+                                .andThen(r -> r.delegate));
+        return delegate == newDelegate ? (Result<SS, F>) this : new Result<>(newDelegate);
     }
 
     @SuppressWarnings("unchecked")
-    public <FF> Result<S, FF> flatMapFailure(TFunction<? super F, Result<? extends S, ? extends FF>, ?> map) {
-        var newDelegate = delegate.<FF>flatMapRight(map
-                .andThen(r -> (Result<? extends S, ? extends FF>) r)
-                .andThen(r -> r.delegate));
-        return delegate == newDelegate
-                ? (Result<S, FF>) this
-                : new Result<>(newDelegate);
+    public <FF> Result<S, FF> flatMapFailure(
+            TFunction<? super F, Result<? extends S, ? extends FF>, ?> map) {
+        var newDelegate =
+                delegate.<FF>flatMapRight(
+                        map.andThen(r -> (Result<? extends S, ? extends FF>) r)
+                                .andThen(r -> r.delegate));
+        return delegate == newDelegate ? (Result<S, FF>) this : new Result<>(newDelegate);
     }
 
     public Result<S, F> filter(TPredicate<S, ?> predicate, TFunction<S, F, ?> toFailureFunction) {
@@ -105,8 +97,9 @@ public class Result<S, F> {
         return new Result<>(Either.left(toSuccessFunction.apply(getFailure())));
     }
 
-    public <T> T fold(TFunction<? super S, ? extends T, ?> successMap,
-                      TFunction<? super F, ? extends T, ?> failureMap) {
+    public <T> T fold(
+            TFunction<? super S, ? extends T, ?> successMap,
+            TFunction<? super F, ? extends T, ?> failureMap) {
         return delegate.fold(successMap, failureMap);
     }
 }

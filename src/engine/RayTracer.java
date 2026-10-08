@@ -12,7 +12,7 @@ public class RayTracer {
 
     public record PixelHit(int x, int y) {}
 
-    private final ViewportState  state;
+    private final ViewportState state;
     private final RandomGenerator rng;
 
     public RayTracer(ViewportState state, long seed) {
@@ -32,7 +32,10 @@ public class RayTracer {
         return buf;
     }
 
-    /** Trace one batch and accumulate hits into {@code buf}. Used per-frame for progressive refinement. */
+    /**
+     * Trace one batch and accumulate hits into {@code buf}. Used per-frame for progressive
+     * refinement.
+     */
     public void traceInto(float[][] buf) {
         for (var light : state.lights()) {
             for (var ray : light.sample(state.samplesPerLight(), rng)) {
@@ -55,14 +58,16 @@ public class RayTracer {
         Intersection nearestObj = null;
         for (var obj : state.objects()) {
             var hit = obj.intersect(ray);
-            if (hit.isPresent() && (nearestObj == null || hit.get().distance() < nearestObj.distance())) {
+            if (hit.isPresent()
+                    && (nearestObj == null || hit.get().distance() < nearestObj.distance())) {
                 nearestObj = hit.get();
             }
         }
 
         if (cameraHit.isPresent()
                 && (nearestObj == null || cameraHit.get().distance() < nearestObj.distance())) {
-            // Camera is the nearest hit. Front-side → record; back-side → discard. Either way, stop.
+            // Camera is the nearest hit. Front-side → record; back-side → discard. Either way,
+            // stop.
             if (camera.isFrontHit(ray)) {
                 return Optional.of(toPixel(cameraHit.get().point()));
             }

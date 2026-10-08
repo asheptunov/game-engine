@@ -17,9 +17,9 @@ public class RgbSerializer implements RasterSerializer {
         int w = raster.width();
         int h = raster.height();
         try (var os = new ByteArrayOutputStream()) {
-            os.write(iToB(w));  // width - BE int32
-            os.write(iToB(h));  // height - BE int32
-            os.write(toBytes(raster));  // pixel data - BE int24 array
+            os.write(iToB(w)); // width - BE int32
+            os.write(iToB(h)); // height - BE int32
+            os.write(toBytes(raster)); // pixel data - BE int24 array
             os.flush();
             return Result.success(os.toByteArray());
         } catch (IOException e) {
@@ -30,13 +30,24 @@ public class RgbSerializer implements RasterSerializer {
     @Override
     public Result<Raster, Exception> deserialize(byte[] bytes) {
         try (var is = new ByteArrayInputStream(bytes)) {
-            var w = readInt(is);  // width - BE int32
-            var h = readInt(is);  // height - BE int32
-            return w.flatMapSuccess(ww ->
-                    h.flatMapSuccess(hh -> readBytes(3 * ww * hh, is)  // pixel data - BE int24 array
-                            .mapSuccess(pxBytes -> toRaster(ww, hh, pxBytes))
-                            .filter(_ -> is.read() == -1,
-                                    _ -> new RuntimeException("Expected end of stream; got more bytes"))));
+            var w = readInt(is); // width - BE int32
+            var h = readInt(is); // height - BE int32
+            return w.flatMapSuccess(
+                    ww ->
+                            h.flatMapSuccess(
+                                    hh ->
+                                            readBytes(
+                                                            3 * ww * hh,
+                                                            is) // pixel data - BE int24 array
+                                                    .mapSuccess(
+                                                            pxBytes -> toRaster(ww, hh, pxBytes))
+                                                    .filter(
+                                                            _ -> is.read() == -1,
+                                                            _ ->
+                                                                    new RuntimeException(
+                                                                            "Expected end of"
+                                                                                + " stream; got"
+                                                                                + " more bytes"))));
         } catch (IOException e) {
             return Result.failure(e);
         }
@@ -44,19 +55,17 @@ public class RgbSerializer implements RasterSerializer {
 
     private byte[] iToB(int i) {
         // big-endian
-        return new byte[]{
-                (byte) ((i & 0xff000000) >> 24),
-                (byte) ((i & 0xff0000) >> 16),
-                (byte) ((i & 0xff00) >> 8),
-                (byte) (i & 0xff)};
+        return new byte[] {
+            (byte) ((i & 0xff000000) >> 24),
+            (byte) ((i & 0xff0000) >> 16),
+            (byte) ((i & 0xff00) >> 8),
+            (byte) (i & 0xff)
+        };
     }
 
     private int bToI(byte[] b) {
         // big-endian
-        return (b[0] << 24)
-                | (b[1] << 16)
-                | (b[2] << 8)
-                | (b[3]);
+        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     }
 
     private static byte[] toBytes(Raster raster) {
@@ -93,16 +102,17 @@ public class RgbSerializer implements RasterSerializer {
     }
 
     private Result<Integer, Exception> readInt(InputStream inputStream) {
-        return readBytes(4, inputStream)
-                .mapSuccess(this::bToI);
+        return readBytes(4, inputStream).mapSuccess(this::bToI);
     }
 
     private Result<byte[], Exception> readBytes(int n, InputStream inputStream) {
         try {
             var res = inputStream.readNBytes(n);
             if (n != res.length) {
-                return Result.failure(new RuntimeException(
-                        "Unexpected end of buffer (expected %d b; got %d b)".formatted(n, res.length)));
+                return Result.failure(
+                        new RuntimeException(
+                                "Unexpected end of buffer (expected %d b; got %d b)"
+                                        .formatted(n, res.length)));
             }
             return Result.success(res);
         } catch (IOException e) {

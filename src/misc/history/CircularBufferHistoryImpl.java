@@ -6,9 +6,9 @@ import java.util.Optional;
 
 public class CircularBufferHistoryImpl<T> implements History<T> {
     private final T[] buf;
-    private       int cur    = 0;
-    private       int oldest = 0;
-    private       int newest = 0;
+    private int cur = 0;
+    private int oldest = 0;
+    private int newest = 0;
 
     public CircularBufferHistoryImpl(int maxSize, T initial) {
         if (maxSize < 1) {
@@ -79,9 +79,7 @@ public class CircularBufferHistoryImpl<T> implements History<T> {
 
     @Override
     public int size() {
-        int newest = this.newest >= oldest
-                ? this.newest
-                : this.newest + buf.length;
+        int newest = this.newest >= oldest ? this.newest : this.newest + buf.length;
         return newest - oldest + 1;
     }
 

@@ -5,8 +5,8 @@ import misc.lambdas.TFunction;
 
 public class Either<L, R> {
     private final boolean isLeft;
-    private final L       left;
-    private final R       right;
+    private final L left;
+    private final R right;
 
     private Either(boolean isLeft, L left, R right) {
         this.isLeft = isLeft;
@@ -75,7 +75,8 @@ public class Either<L, R> {
     }
 
     @SuppressWarnings("unchecked")
-    public <LL> Either<LL, R> flatMapLeft(TFunction<? super L, ? extends Either<? extends LL, ? extends R>, ?> map) {
+    public <LL> Either<LL, R> flatMapLeft(
+            TFunction<? super L, ? extends Either<? extends LL, ? extends R>, ?> map) {
         if (isLeft) {
             return (Either<LL, R>) map.apply(left);
         }
@@ -83,17 +84,17 @@ public class Either<L, R> {
     }
 
     @SuppressWarnings("unchecked")
-    public <RR> Either<L, RR> flatMapRight(TFunction<? super R, ? extends Either<? extends L, ? extends RR>, ?> map) {
+    public <RR> Either<L, RR> flatMapRight(
+            TFunction<? super R, ? extends Either<? extends L, ? extends RR>, ?> map) {
         if (!isLeft) {
             return (Either<L, RR>) map.apply(right);
         }
         return (Either<L, RR>) this;
     }
 
-    public <T> T fold(TFunction<? super L, ? extends T, ?> leftMap,
-                      TFunction<? super R, ? extends T, ?> rightMap) {
-        return isLeft
-                ? leftMap.apply(left)
-                : rightMap.apply(right);
+    public <T> T fold(
+            TFunction<? super L, ? extends T, ?> leftMap,
+            TFunction<? super R, ? extends T, ?> rightMap) {
+        return isLeft ? leftMap.apply(left) : rightMap.apply(right);
     }
 }

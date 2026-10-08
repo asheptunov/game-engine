@@ -1,9 +1,10 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import misc.monads.Result;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.IOException;
 
@@ -14,7 +15,10 @@ public class CmdPwd implements Command {
         this.state = state;
     }
 
-    @Override public String helpText() { return "Usage: pwd\n  Show the current working directory."; }
+    @Override
+    public String helpText() {
+        return "Usage: pwd\n  Show the current working directory.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {

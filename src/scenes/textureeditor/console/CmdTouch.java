@@ -1,13 +1,16 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
+
 import rendering.Raster;
 import rendering.RasterRepository;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +20,7 @@ import java.util.function.Supplier;
 public class CmdTouch implements Command {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final EditorState      state;
+    private final EditorState state;
     private final RasterRepository repo;
     private final Supplier<Raster> emptyRasterFactory;
 
@@ -27,7 +30,10 @@ public class CmdTouch implements Command {
         this.emptyRasterFactory = emptyRasterFactory;
     }
 
-    @Override public String helpText() { return "Usage: touch <file>.tx\n  Create a new texture file."; }
+    @Override
+    public String helpText() {
+        return "Usage: touch <file>.tx\n  Create a new texture file.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {

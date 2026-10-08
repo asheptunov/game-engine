@@ -6,8 +6,8 @@ import java.util.Map;
 
 public class InMemoryFont implements Font {
     private final Map<Character, Raster> font;
-    private final Raster                 nil;
-    private final int                    size;
+    private final Raster nil;
+    private final int size;
 
     public InMemoryFont(Map<Character, Raster> font, int size) {
         this.font = Collections.synchronizedMap(new HashMap<>(font));

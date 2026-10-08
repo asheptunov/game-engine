@@ -1,10 +1,10 @@
 package ui;
 
-import harness.SuiteRunner;
-import harness.Test;
-
 import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertNotEquals;
+
+import harness.SuiteRunner;
+import harness.Test;
 
 public class KeyChordTest {
     @Test
@@ -53,7 +53,9 @@ public class KeyChordTest {
     @Test
     void fromActionPicksUpModifiers() {
         var mods = new KeyAction.Modifiers(true, false, false, false, true, false, false, false);
-        var action = new KeyAction(KeyAction.Key.LOWER_W, KeyAction.Key.LOWER_W, KeyAction.Action.PRESS, mods);
+        var action =
+                new KeyAction(
+                        KeyAction.Key.LOWER_W, KeyAction.Key.LOWER_W, KeyAction.Action.PRESS, mods);
         var chord = KeyChord.from(action);
         assertEquals(KeyAction.Key.LOWER_W, chord.key());
         assertEquals(true, chord.ctrl());

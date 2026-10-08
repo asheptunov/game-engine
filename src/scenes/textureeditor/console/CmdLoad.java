@@ -1,12 +1,15 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
+
 import rendering.RasterRepository;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +18,7 @@ import java.nio.file.Path;
 public class CmdLoad implements Command {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final EditorState      state;
+    private final EditorState state;
     private final RasterRepository repo;
 
     public CmdLoad(EditorState state, RasterRepository repo) {
@@ -23,7 +26,11 @@ public class CmdLoad implements Command {
         this.repo = repo;
     }
 
-    @Override public String helpText() { return "Usage: load [<file>.tx]\n  Load a texture; omit the path to reload the active file."; }
+    @Override
+    public String helpText() {
+        return "Usage: load [<file>.tx]\n"
+                + "  Load a texture; omit the path to reload the active file.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {
@@ -58,11 +65,12 @@ public class CmdLoad implements Command {
         return repo.load(targetFile)
                 .ifFailure(e -> LOG.error(e, "Failed to load from %s", targetFile))
                 .mapFailure(Throwable::getMessage)
-                .ifSuccess(texture -> {
-                    state.texture(texture);
-                    state.snapshot();
-                    state.workingFile(targetFile);
-                })
+                .ifSuccess(
+                        texture -> {
+                            state.texture(texture);
+                            state.snapshot();
+                            state.workingFile(targetFile);
+                        })
                 .mapSuccess(_ -> "Loaded from and set active file to " + targetFile);
     }
 }

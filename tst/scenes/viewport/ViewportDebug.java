@@ -1,18 +1,17 @@
 package engine;
 
-import scenes.viewport.*;
-import math.Vec3;
 import engine.lights.PointLight;
 import engine.objects.Rect;
 import engine.objects.Tri;
 
+import math.Vec3;
+
+import scenes.viewport.*;
+
 /** One-off debug harness — backward ray-trace the default viewport scene and ASCII-render it. */
 public class ViewportDebug {
     public static void main(String[] args) {
-        var sensor = new Rect(
-                new Vec3(-0.5f, -0.5f, 0),
-                new Vec3(1, 0, 0),
-                new Vec3(0, 1, 0));
+        var sensor = new Rect(new Vec3(-0.5f, -0.5f, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0));
         int W = 100, H = 100;
         var st = new ViewportState(sensor, W, H);
         st.eye(new Vec3(0, 0, -1));
@@ -31,8 +30,10 @@ public class ViewportDebug {
         double ms = tracer.traceNanos() / 1e6;
         double mraysPerSec = tracer.primaryRays() / (tracer.traceNanos() / 1e3);
         System.out.printf("traced in %.2f ms (%.1f Mrays/s)%n", ms, mraysPerSec);
-        System.out.printf("primary rays: %d, hits: %d%n", tracer.primaryRays(), tracer.primaryHits());
-        System.out.printf("shadow rays: %d, occluded: %d%n", tracer.shadowRays(), tracer.shadowsOccluded());
+        System.out.printf(
+                "primary rays: %d, hits: %d%n", tracer.primaryRays(), tracer.primaryHits());
+        System.out.printf(
+                "shadow rays: %d, occluded: %d%n", tracer.shadowRays(), tracer.shadowsOccluded());
         System.out.printf("lit pixels: %d / %d%n", tracer.litPixels(), W * H);
         System.out.printf("max intensity: %.3f%n", max);
 

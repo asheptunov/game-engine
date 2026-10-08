@@ -6,13 +6,14 @@ package engine;
  * that output pixel.
  *
  * <p>The same routine collapses to:
+ *
  * <ul>
  *   <li><b>Upscale</b> (output &gt; input at integer ratio): each output pixel falls fully inside
- *       one input pixel → nearest-neighbor replication.</li>
- *   <li><b>1:1</b>: pure copy.</li>
+ *       one input pixel → nearest-neighbor replication.
+ *   <li><b>1:1</b>: pure copy.
  *   <li><b>Downscale</b> (input &gt; output): each output pixel averages an input region — the SSAA
- *       path. At integer ratios this is a uniform box average over an N×N block.</li>
- *   <li><b>Non-integer ratios</b>: pixels on region boundaries contribute fractional weights.</li>
+ *       path. At integer ratios this is a uniform box average over an N×N block.
+ *   <li><b>Non-integer ratios</b>: pixels on region boundaries contribute fractional weights.
  * </ul>
  *
  * <p>No Y-flip is performed; the caller owns the row-0-is-top vs row-0-is-bottom convention.
@@ -35,7 +36,8 @@ public final class Resampler {
                 var row = sensor[y / blockH];
                 for (int x = 0; x < dispW; x++) {
                     float value = row[x / blockW];
-                    out[y][x] = value; max = Math.max(max, value);
+                    out[y][x] = value;
+                    max = Math.max(max, value);
                 }
             }
             return new Result(out, max);
@@ -63,23 +65,23 @@ public final class Resampler {
         float max = 0;
         for (int dy = 0; dy < dispH; dy++) {
             float syStart = dy * syPerDy;
-            float syEnd   = (dy + 1) * syPerDy;
-            int   sy0     = (int) Math.floor(syStart);
-            int   sy1     = Math.min(sensorH - 1, (int) Math.ceil(syEnd) - 1);
+            float syEnd = (dy + 1) * syPerDy;
+            int sy0 = (int) Math.floor(syStart);
+            int sy1 = Math.min(sensorH - 1, (int) Math.ceil(syEnd) - 1);
             for (int dx = 0; dx < dispW; dx++) {
-                float sxStart     = dx * sxPerDx;
-                float sxEnd       = (dx + 1) * sxPerDx;
-                int   sx0         = (int) Math.floor(sxStart);
-                int   sx1         = Math.min(sensorW - 1, (int) Math.ceil(sxEnd) - 1);
+                float sxStart = dx * sxPerDx;
+                float sxEnd = (dx + 1) * sxPerDx;
+                int sx0 = (int) Math.floor(sxStart);
+                int sx1 = Math.min(sensorW - 1, (int) Math.ceil(sxEnd) - 1);
                 float weightedSum = 0;
                 float totalWeight = 0;
                 for (int sy = sy0; sy <= sy1; sy++) {
                     float overlapY = Math.min(sy + 1, syEnd) - Math.max(sy, syStart);
                     for (int sx = sx0; sx <= sx1; sx++) {
                         float overlapX = Math.min(sx + 1, sxEnd) - Math.max(sx, sxStart);
-                        float w        = overlapX * overlapY;
-                        weightedSum   += sensor[sy][sx] * w;
-                        totalWeight   += w;
+                        float w = overlapX * overlapY;
+                        weightedSum += sensor[sy][sx] * w;
+                        totalWeight += w;
                     }
                 }
                 float v = totalWeight > 0 ? weightedSum / totalWeight : 0;

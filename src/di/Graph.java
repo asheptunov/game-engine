@@ -6,11 +6,13 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface Graph {
-    sealed interface Node<T> permits KeyNode, ProviderKeyNode, ProviderMethodNode, ProviderNode, ListNode, MapNode {}
+    sealed interface Node<T>
+            permits KeyNode, ProviderKeyNode, ProviderMethodNode, ProviderNode, ListNode, MapNode {}
 
     record KeyNode<T>(Key<T> key) implements Node<T> {}
 
-    record ProviderKeyNode<T>(Key<? extends Provider<? extends T>> providerKey) implements Node<T> {}
+    record ProviderKeyNode<T>(Key<? extends Provider<? extends T>> providerKey)
+            implements Node<T> {}
 
     record ProviderMethodNode<T>(Module moduleInstance, Method providerMethod) implements Node<T> {}
 

@@ -1,15 +1,21 @@
 package scenes;
 
 import misc.monads.Result;
+
 import ui.console.Command;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CmdScene implements Command {
-    @Override public String helpText() { return "Usage: scene <name>\n  Available: " + String.join(", ", new java.util.TreeSet<>(scenesByName.keySet())); }
-    private final Map<String, Scene>       scenesByName;
-    private final AtomicReference<Scene>   activeScene;
+    @Override
+    public String helpText() {
+        return "Usage: scene <name>\n  Available: "
+                + String.join(", ", new java.util.TreeSet<>(scenesByName.keySet()));
+    }
+
+    private final Map<String, Scene> scenesByName;
+    private final AtomicReference<Scene> activeScene;
 
     public CmdScene(Map<String, Scene> scenesByName, AtomicReference<Scene> activeScene) {
         this.scenesByName = scenesByName;
@@ -27,7 +33,7 @@ public class CmdScene implements Command {
             return Result.failure("no scene: " + name + "; available: " + scenesByName.keySet());
         }
         var previous = activeScene.get();
-        boolean focused=previous==null||previous.windowFocused();
+        boolean focused = previous == null || previous.windowFocused();
         if (previous != null) previous.suspendInput();
         activeScene.set(target);
         target.windowFocus(focused);

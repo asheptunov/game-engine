@@ -14,17 +14,21 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SceneSwitcher
-        implements KeyListener, MouseListener, MouseMotionListener, MouseWheelListener, java.awt.event.FocusListener {
+        implements KeyListener,
+                MouseListener,
+                MouseMotionListener,
+                MouseWheelListener,
+                java.awt.event.FocusListener {
     private static final Logger LOG = LogManager.instance().getThis();
-    private static final int    SWITCH_KEY = KeyEvent.VK_F12;
+    private static final int SWITCH_KEY = KeyEvent.VK_F12;
 
-    private final List<Scene>            scenes;
+    private final List<Scene> scenes;
     private final AtomicReference<Scene> activeScene;
-    private final KeyListener            kl;
-    private final MouseListener          ml;
-    private final MouseMotionListener    mml;
-    private final MouseWheelListener     mwl;
-    private boolean windowFocused=true;
+    private final KeyListener kl;
+    private final MouseListener ml;
+    private final MouseMotionListener mml;
+    private final MouseWheelListener mwl;
+    private boolean windowFocused = true;
 
     public SceneSwitcher(List<Scene> scenes, AtomicReference<Scene> activeScene, Object delegate) {
         if (scenes == null || scenes.isEmpty()) {
@@ -58,24 +62,67 @@ public class SceneSwitcher
         LOG.info("Switched scene: %s -> %s", current, next);
     }
 
-    @Override public void keyTyped(KeyEvent e) { kl.keyTyped(e); }
-    @Override public void focusGained(java.awt.event.FocusEvent e) {
-        windowFocused=true;var scene=activeScene.get();if(scene!=null)scene.windowFocus(true);
+    @Override
+    public void keyTyped(KeyEvent e) {
+        kl.keyTyped(e);
     }
-    @Override public void focusLost(java.awt.event.FocusEvent e) {
+
+    @Override
+    public void focusGained(java.awt.event.FocusEvent e) {
+        windowFocused = true;
         var scene = activeScene.get();
-        windowFocused=false;if (scene != null) scene.windowFocus(false);
+        if (scene != null) scene.windowFocus(true);
     }
-    @Override public void keyReleased(KeyEvent e) { kl.keyReleased(e); }
 
-    @Override public void mouseClicked(MouseEvent e) { ml.mouseClicked(e); }
-    @Override public void mousePressed(MouseEvent e) { ml.mousePressed(e); }
-    @Override public void mouseReleased(MouseEvent e) { ml.mouseReleased(e); }
-    @Override public void mouseEntered(MouseEvent e) { ml.mouseEntered(e); }
-    @Override public void mouseExited(MouseEvent e) { ml.mouseExited(e); }
+    @Override
+    public void focusLost(java.awt.event.FocusEvent e) {
+        var scene = activeScene.get();
+        windowFocused = false;
+        if (scene != null) scene.windowFocus(false);
+    }
 
-    @Override public void mouseDragged(MouseEvent e) { mml.mouseDragged(e); }
-    @Override public void mouseMoved(MouseEvent e) { mml.mouseMoved(e); }
+    @Override
+    public void keyReleased(KeyEvent e) {
+        kl.keyReleased(e);
+    }
 
-    @Override public void mouseWheelMoved(MouseWheelEvent e) { mwl.mouseWheelMoved(e); }
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        ml.mouseClicked(e);
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        ml.mousePressed(e);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        ml.mouseReleased(e);
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+        ml.mouseEntered(e);
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+        ml.mouseExited(e);
+    }
+
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        mml.mouseDragged(e);
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        mml.mouseMoved(e);
+    }
+
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent e) {
+        mwl.mouseWheelMoved(e);
+    }
 }

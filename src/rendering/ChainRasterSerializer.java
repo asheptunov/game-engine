@@ -2,6 +2,7 @@ package rendering;
 
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
 
 import java.util.Arrays;
@@ -43,6 +44,7 @@ public class ChainRasterSerializer implements RasterSerializer {
                 .peek(nrs -> LOG.debug("Deserialized using %s", nrs.name()))
                 .findFirst()
                 .map(Named::t)
-                .orElseGet(() -> Result.failure(new RuntimeException("No applicable deserializers")));
+                .orElseGet(
+                        () -> Result.failure(new RuntimeException("No applicable deserializers")));
     }
 }

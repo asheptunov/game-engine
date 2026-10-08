@@ -1,36 +1,42 @@
 package ui;
 
+import static harness.Assertions.assertEquals;
+
 import harness.SuiteRunner;
 import harness.Test;
-
-import static harness.Assertions.assertEquals;
 
 public class MouseChordParseTest {
     @Test
     void gestureOnly() {
-        assertEquals(MouseChord.of(MouseButton.NONE, MouseGesture.PRESS, ""), MouseChord.parse("press"));
+        assertEquals(
+                MouseChord.of(MouseButton.NONE, MouseGesture.PRESS, ""), MouseChord.parse("press"));
     }
 
     @Test
     void buttonAndGesture() {
-        assertEquals(MouseChord.of(MouseButton.LEFT, MouseGesture.PRESS, ""), MouseChord.parse("left+press"));
+        assertEquals(
+                MouseChord.of(MouseButton.LEFT, MouseGesture.PRESS, ""),
+                MouseChord.parse("left+press"));
     }
 
     @Test
     void buttonGestureMode() {
-        assertEquals(MouseChord.of(MouseButton.LEFT, MouseGesture.PRESS, "brush"),
+        assertEquals(
+                MouseChord.of(MouseButton.LEFT, MouseGesture.PRESS, "brush"),
                 MouseChord.parse("left+press+brush"));
     }
 
     @Test
     void gestureAndMode() {
-        assertEquals(MouseChord.of(MouseButton.NONE, MouseGesture.DRAG, "box_select"),
+        assertEquals(
+                MouseChord.of(MouseButton.NONE, MouseGesture.DRAG, "box_select"),
                 MouseChord.parse("drag+box_select"));
     }
 
     @Test
     void wheelGesture() {
-        assertEquals(MouseChord.of(MouseButton.NONE, MouseGesture.WHEEL, "console"),
+        assertEquals(
+                MouseChord.of(MouseButton.NONE, MouseGesture.WHEEL, "console"),
                 MouseChord.parse("wheel+console"));
     }
 

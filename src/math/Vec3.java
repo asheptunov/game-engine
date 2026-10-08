@@ -24,10 +24,7 @@ public record Vec3(float x, float y, float z) {
     }
 
     public Vec3 cross(Vec3 o) {
-        return new Vec3(
-                y * o.z - z * o.y,
-                z * o.x - x * o.z,
-                x * o.y - y * o.x);
+        return new Vec3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x);
     }
 
     public float lengthSq() {

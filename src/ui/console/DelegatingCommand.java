@@ -2,10 +2,10 @@ package ui.console;
 
 import misc.monads.Result;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Arrays;
 
 public class DelegatingCommand implements Command {
     private final Map<String, Command> delegates;
@@ -23,12 +23,15 @@ public class DelegatingCommand implements Command {
             if (command == null) {
                 throw new IllegalArgumentException(name);
             }
-            map.compute(name, (k, v) -> {
-                if (v == null) {
-                    return command;
-                }
-                throw new IllegalArgumentException("There is already a command with name " + k);
-            });
+            map.compute(
+                    name,
+                    (k, v) -> {
+                        if (v == null) {
+                            return command;
+                        }
+                        throw new IllegalArgumentException(
+                                "There is already a command with name " + k);
+                    });
             return this;
         }
 
@@ -52,17 +55,26 @@ public class DelegatingCommand implements Command {
             return Result.failure("Unknown command: " + name);
         }
         var command = delegates.get(name);
-        if (args.length > 1 && args[1].equals("help")) return command.help(Arrays.copyOfRange(args, 2, args.length));
-        if (args.length > 1 && (args[args.length - 1].equals("help") || args[args.length - 1].equals("--help")))
+        if (args.length > 1 && args[1].equals("help"))
+            return command.help(Arrays.copyOfRange(args, 2, args.length));
+        if (args.length > 1
+                && (args[args.length - 1].equals("help") || args[args.length - 1].equals("--help")))
             return command.help(Arrays.copyOfRange(args, 1, args.length - 1));
         return command.run(args);
     }
 
-    @Override public Result<String, String> help(String... path) {
-        if (path.length == 0) return Result.success("Commands:\n  " + String.join("\n  ", new java.util.TreeSet<>(delegates.keySet()))
-                + "\nUse help <command> or <command> help.\nUp/Down recalls commands; Esc closes the console.");
+    @Override
+    public Result<String, String> help(String... path) {
+        if (path.length == 0)
+            return Result.success(
+                    "Commands:\n  "
+                            + String.join("\n  ", new java.util.TreeSet<>(delegates.keySet()))
+                            + "\n"
+                            + "Use help <command> or <command> help.\n"
+                            + "Up/Down recalls commands; Esc closes the console.");
         var command = delegates.get(path[0]);
-        return command == null ? Result.failure("Unknown command: " + path[0])
+        return command == null
+                ? Result.failure("Unknown command: " + path[0])
                 : command.help(Arrays.copyOfRange(path, 1, path.length));
     }
 }

@@ -1,5 +1,10 @@
 package rendering;
 
+import static rendering.Color.AnsiColor;
+import static rendering.Color.ArgbInt32Color;
+import static rendering.Color.NamedColor;
+import static rendering.Color.RgbInt24Color;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,11 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
-
-import static rendering.Color.AnsiColor;
-import static rendering.Color.ArgbInt32Color;
-import static rendering.Color.NamedColor;
-import static rendering.Color.RgbInt24Color;
 
 public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, RgbInt24Color {
     int rgbInt24();
@@ -68,27 +68,31 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
     }
 
     final class AnsiColor implements Color {
-        private static final Map<Integer, AnsiColor> CODE_INDEX = Collections.synchronizedMap(new HashMap<>());
+        private static final Map<Integer, AnsiColor> CODE_INDEX =
+                Collections.synchronizedMap(new HashMap<>());
 
-        public static final AnsiColor NONE    = new AnsiColor(0, NamedColor.WHITE.withAlpha(0));
-        public static final AnsiColor BLACK   = new AnsiColor(30, NamedColor.BLACK);
-        public static final AnsiColor RED     = new AnsiColor(31, NamedColor.RED);
-        public static final AnsiColor GREEN   = new AnsiColor(32, NamedColor.GREEN);
-        public static final AnsiColor YELLOW  = new AnsiColor(33, NamedColor.YELLOW);
-        public static final AnsiColor BLUE    = new AnsiColor(34, NamedColor.BLUE);
+        public static final AnsiColor NONE = new AnsiColor(0, NamedColor.WHITE.withAlpha(0));
+        public static final AnsiColor BLACK = new AnsiColor(30, NamedColor.BLACK);
+        public static final AnsiColor RED = new AnsiColor(31, NamedColor.RED);
+        public static final AnsiColor GREEN = new AnsiColor(32, NamedColor.GREEN);
+        public static final AnsiColor YELLOW = new AnsiColor(33, NamedColor.YELLOW);
+        public static final AnsiColor BLUE = new AnsiColor(34, NamedColor.BLUE);
         public static final AnsiColor MAGENTA = new AnsiColor(35, NamedColor.MAGENTA);
-        public static final AnsiColor CYAN    = new AnsiColor(36, NamedColor.CYAN);
-        public static final AnsiColor WHITE   = new AnsiColor(37, NamedColor.WHITE);
+        public static final AnsiColor CYAN = new AnsiColor(36, NamedColor.CYAN);
+        public static final AnsiColor WHITE = new AnsiColor(37, NamedColor.WHITE);
 
         private final Color color;
-        private final int   code;
+        private final int code;
 
         private AnsiColor(int code, Color color) {
             this.code = code;
             this.color = color;
-            CODE_INDEX.computeIfPresent(code, (k, v) -> {
-                throw new IllegalArgumentException("There is already a color with ANSI code '" + k + "': " + v);
-            });
+            CODE_INDEX.computeIfPresent(
+                    code,
+                    (k, v) -> {
+                        throw new IllegalArgumentException(
+                                "There is already a color with ANSI code '" + k + "': " + v);
+                    });
             CODE_INDEX.put(code, this);
         }
 
@@ -100,16 +104,19 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
             if (color instanceof AnsiColor ansi) {
                 return ansi.formatted();
             }
-            return "\\033[38;2;%d;%d;%dm".formatted(
-                    (int) color.red() & 0xff,
-                    (int) color.green() & 0xff,
-                    (int) color.blue() & 0xff);
+            return "\\033[38;2;%d;%d;%dm"
+                    .formatted(
+                            (int) color.red() & 0xff,
+                            (int) color.green() & 0xff,
+                            (int) color.blue() & 0xff);
         }
 
         public static String formatted(AnsiColor... colors) {
             return "\\033["
-                    + Arrays.stream(colors).map(AnsiColor::code).map(String::valueOf)
-                    .collect(Collectors.joining(";"))
+                    + Arrays.stream(colors)
+                            .map(AnsiColor::code)
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(";"))
                     + "m";
         }
 
@@ -178,28 +185,34 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
     }
 
     final class NamedColor implements Color {
-        private static final Map<String, NamedColor> NAME_INDEX = Collections.synchronizedMap(new HashMap<>());
-        private static final Random                  RANDOM     = new Random();
+        private static final Map<String, NamedColor> NAME_INDEX =
+                Collections.synchronizedMap(new HashMap<>());
+        private static final Random RANDOM = new Random();
 
-        public static final NamedColor NONE    = new NamedColor("none", new ArgbInt32Color(0x0));
-        public static final NamedColor BLACK   = new NamedColor("black", new RgbInt24Color(0x0));
-        public static final NamedColor WHITE   = new NamedColor("white", new RgbInt24Color(0xffffff));
-        public static final NamedColor RED     = new NamedColor("red", new RgbInt24Color(0xff0000));
-        public static final NamedColor YELLOW  = new NamedColor("yellow", new RgbInt24Color(0xffff00));
-        public static final NamedColor GREEN   = new NamedColor("green", new RgbInt24Color(0xff00));
-        public static final NamedColor CYAN    = new NamedColor("cyan", new RgbInt24Color(0x00ffff));
-        public static final NamedColor BLUE    = new NamedColor("blue", new RgbInt24Color(0xff));
-        public static final NamedColor MAGENTA = new NamedColor("magenta", new RgbInt24Color(0xff00ff));
+        public static final NamedColor NONE = new NamedColor("none", new ArgbInt32Color(0x0));
+        public static final NamedColor BLACK = new NamedColor("black", new RgbInt24Color(0x0));
+        public static final NamedColor WHITE = new NamedColor("white", new RgbInt24Color(0xffffff));
+        public static final NamedColor RED = new NamedColor("red", new RgbInt24Color(0xff0000));
+        public static final NamedColor YELLOW =
+                new NamedColor("yellow", new RgbInt24Color(0xffff00));
+        public static final NamedColor GREEN = new NamedColor("green", new RgbInt24Color(0xff00));
+        public static final NamedColor CYAN = new NamedColor("cyan", new RgbInt24Color(0x00ffff));
+        public static final NamedColor BLUE = new NamedColor("blue", new RgbInt24Color(0xff));
+        public static final NamedColor MAGENTA =
+                new NamedColor("magenta", new RgbInt24Color(0xff00ff));
 
         private final String name;
-        private final Color  color;
+        private final Color color;
 
         private NamedColor(String name, Color color) {
             this.name = name;
             this.color = color;
-            NAME_INDEX.computeIfPresent(name, (k, v) -> {
-                throw new IllegalArgumentException("There is already a color named '" + k + "': " + v);
-            });
+            NAME_INDEX.computeIfPresent(
+                    name,
+                    (k, v) -> {
+                        throw new IllegalArgumentException(
+                                "There is already a color named '" + k + "': " + v);
+                    });
             NAME_INDEX.put(name, this);
         }
 
@@ -212,7 +225,11 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         }
 
         public static NamedColor random() {
-            return of(names().stream().skip(RANDOM.nextInt(names().size())).findFirst().orElseThrow()).orElseThrow();
+            return of(names().stream()
+                            .skip(RANDOM.nextInt(names().size()))
+                            .findFirst()
+                            .orElseThrow())
+                    .orElseThrow();
         }
 
         public String name() {
@@ -289,14 +306,14 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         }
 
         public static RgbInt24Color of(byte red, byte green, byte blue) {
-            return of(((int) red & 0xff) << 16
-                    | ((int) green & 0xff) << 8
-                    | (int) blue & 0xff);
+            return of(((int) red & 0xff) << 16 | ((int) green & 0xff) << 8 | (int) blue & 0xff);
         }
 
         // Cached so per-pixel hot paths (e.g. the viewport's grayscale fill at 800×800 × 144 Hz)
-        // don't allocate ~92M RgbInt24Color objects per second. Inputs outside [0, 255] are clamped.
+        // don't allocate ~92M RgbInt24Color objects per second. Inputs outside [0, 255] are
+        // clamped.
         private static final RgbInt24Color[] GRAYS = new RgbInt24Color[256];
+
         static {
             for (int i = 0; i < 256; i++) {
                 GRAYS[i] = new RgbInt24Color((i << 16) | (i << 8) | i);
@@ -338,7 +355,9 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public Color withRed(byte red) {
-            return red == red() ? this : new RgbInt24Color(rgb & 0xff0000 | ((int) red & 0xff) << 16);
+            return red == red()
+                    ? this
+                    : new RgbInt24Color(rgb & 0xff0000 | ((int) red & 0xff) << 16);
         }
 
         @Override
@@ -348,7 +367,9 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public Color withGreen(byte green) {
-            return green == green() ? this : new RgbInt24Color(rgb & 0xff00ff | ((int) green & 0xff) << 8);
+            return green == green()
+                    ? this
+                    : new RgbInt24Color(rgb & 0xff00ff | ((int) green & 0xff) << 8);
         }
 
         @Override
@@ -381,10 +402,11 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
         }
 
         public static ArgbInt32Color of(byte alpha, byte red, byte green, byte blue) {
-            return of(((int) alpha & 0xff) << 24
-                    | ((int) red & 0xff) << 16
-                    | ((int) green & 0xff) << 8
-                    | (int) blue & 0xff);
+            return of(
+                    ((int) alpha & 0xff) << 24
+                            | ((int) red & 0xff) << 16
+                            | ((int) green & 0xff) << 8
+                            | (int) blue & 0xff);
         }
 
         public static ArgbInt32Color random() {
@@ -408,7 +430,9 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public Color withAlpha(byte alpha) {
-            return alpha == alpha() ? this : new ArgbInt32Color(argb & 0x00ffffff | ((int) alpha & 0xff) << 24);
+            return alpha == alpha()
+                    ? this
+                    : new ArgbInt32Color(argb & 0x00ffffff | ((int) alpha & 0xff) << 24);
         }
 
         @Override
@@ -418,7 +442,9 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public Color withRed(byte red) {
-            return red == red() ? this : new ArgbInt32Color(argb & 0xff00ffff | ((int) red & 0xff) << 16);
+            return red == red()
+                    ? this
+                    : new ArgbInt32Color(argb & 0xff00ffff | ((int) red & 0xff) << 16);
         }
 
         @Override
@@ -428,7 +454,9 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public Color withGreen(byte green) {
-            return green == green() ? this : new ArgbInt32Color(argb & 0xffff00ff | ((int) green & 0xff) << 8);
+            return green == green()
+                    ? this
+                    : new ArgbInt32Color(argb & 0xffff00ff | ((int) green & 0xff) << 8);
         }
 
         @Override
@@ -438,7 +466,9 @@ public sealed interface Color permits AnsiColor, ArgbInt32Color, NamedColor, Rgb
 
         @Override
         public Color withBlue(byte blue) {
-            return blue == blue() ? this : new ArgbInt32Color(argb & 0xffffff00 | (int) blue & 0xff);
+            return blue == blue()
+                    ? this
+                    : new ArgbInt32Color(argb & 0xffffff00 | (int) blue & 0xff);
         }
 
         @Override

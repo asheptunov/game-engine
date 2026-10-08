@@ -1,10 +1,14 @@
 package di;
 
+import static di.Scope.PROTOTYPE;
+import static di.Scope.SINGLETON;
+
 import di.annotations.Inject;
 import di.annotations.Named;
 import di.annotations.Provides;
 import di.annotations.Qualifier;
 import di.annotations.Singleton;
+
 import logging.LogManager;
 import logging.Logger;
 
@@ -21,18 +25,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static di.Scope.PROTOTYPE;
-import static di.Scope.SINGLETON;
-
 public class Injector {
-    private static final Logger LOG           = LogManager.instance().getThis();
-    private static final Scope  DEFAULT_SCOPE = PROTOTYPE;
+    private static final Logger LOG = LogManager.instance().getThis();
+    private static final Scope DEFAULT_SCOPE = PROTOTYPE;
 
-    private final Graph                    graph;
+    private final Graph graph;
     private final Map<Key<?>, Provider<?>> providerCache = new HashMap<>();
-    private final Map<Key<?>, Object>      singletons    = new HashMap<>();
+    private final Map<Key<?>, Object> singletons = new HashMap<>();
 
-    private Injector(Graph graph) {this.graph = graph;}
+    private Injector(Graph graph) {
+        this.graph = graph;
+    }
 
     public static Injector create(Module... modules) {
         var graphBuilder = new GraphBuilderImpl();
@@ -61,22 +64,25 @@ public class Injector {
         return getProvider(key).get();
     }
 
-    private static void configureUsingProviderMethods(Module module, GraphBuilderImpl graphBuilder) {
+    private static void configureUsingProviderMethods(
+            Module module, GraphBuilderImpl graphBuilder) {
         Arrays.stream(module.getClass().getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(Provides.class))
-                .forEach(method -> {
-                    var bindingBuilder = graphBuilder
-                            .bind(inferKey(method))
-                            .addEdgeTo(new Graph.ProviderMethodNode<>(module, method));
-                    inferScope(method).ifPresent(bindingBuilder::addScope);
-                });
+                .forEach(
+                        method -> {
+                            var bindingBuilder =
+                                    graphBuilder
+                                            .bind(inferKey(method))
+                                            .addEdgeTo(
+                                                    new Graph.ProviderMethodNode<>(module, method));
+                            inferScope(method).ifPresent(bindingBuilder::addScope);
+                        });
     }
 
     private static Key<?> inferKey(Method providerMethod) {
         return typeToKey(
                 getAnnotatedType(
-                        providerMethod.getGenericReturnType(),
-                        providerMethod.getAnnotations()));
+                        providerMethod.getGenericReturnType(), providerMethod.getAnnotations()));
     }
 
     private static AnnotatedType getAnnotatedType(Type type, Annotation[] annotations) {
@@ -89,10 +95,11 @@ public class Injector {
             @Override
             public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
                 //noinspection unchecked
-                return (T) Arrays.stream(getAnnotations())
-                        .filter(annotationClass::isInstance)
-                        .findFirst()
-                        .orElse(null);
+                return (T)
+                        Arrays.stream(getAnnotations())
+                                .filter(annotationClass::isInstance)
+                                .findFirst()
+                                .orElse(null);
             }
 
             @Override
@@ -108,7 +115,9 @@ public class Injector {
     }
 
     private static Optional<Scope> inferScope(Method providerMethod) {
-        return providerMethod.isAnnotationPresent(Singleton.class) ? Optional.of(SINGLETON) : Optional.empty();
+        return providerMethod.isAnnotationPresent(Singleton.class)
+                ? Optional.of(SINGLETON)
+                : Optional.empty();
     }
 
     private synchronized <T> Provider<T> getProvider(Key<T> key) {
@@ -124,33 +133,42 @@ public class Injector {
     }
 
     private <T> Provider<T> initProvider(Key<T> key) {
-        var node = graph.follow(key)
-                .orElseGet(() -> new Graph.ProviderNode<>(initProtoProvider(key)));
-        Provider<T> provider = switch (node) {
-            case Graph.KeyNode<? extends T> kn -> //noinspection rawtypes,unchecked
-                    new DelegatingProvider(key, kn.key(), getProvider(kn.key()));
-            case Graph.ProviderKeyNode<? extends T> pkn ->
-                    new PrototypeProvider<>(key, () -> getProvider(pkn.providerKey()).get().get());
-            case Graph.ProviderMethodNode<? extends T> pmn ->
-                    new MethodProvider<>(key, pmn.moduleInstance(), pmn.providerMethod());
-            case Graph.ProviderNode<? extends T> sn -> new PrototypeProvider<>(key, sn.provider());
-            case Graph.ListNode<?> ln -> new PrototypeProvider<>(key, () -> {
-                //noinspection unchecked
-                var elementKeys = (List<Key<?>>) (List<?>) ln.elementKeys();
-                //noinspection unchecked
-                return (T) elementKeys.stream().map(this::get).toList();
-            });
-            case Graph.MapNode<?, ?> mn -> new PrototypeProvider<>(key, () -> {
-                //noinspection unchecked
-                var entryKeys = (Map<Object, Key<?>>) (Map<?, ?>) mn.entryKeys();
-                var result = new LinkedHashMap<>();
-                entryKeys.forEach((k, vKey) -> result.put(k, get(vKey)));
-                //noinspection unchecked
-                return (T) result;
-            });
-        };
-        var scope = graph.scope(key)
-                .orElse(DEFAULT_SCOPE);
+        var node =
+                graph.follow(key).orElseGet(() -> new Graph.ProviderNode<>(initProtoProvider(key)));
+        Provider<T> provider =
+                switch (node) {
+                    case Graph.KeyNode<? extends T> kn -> // noinspection rawtypes,unchecked
+                            new DelegatingProvider(key, kn.key(), getProvider(kn.key()));
+                    case Graph.ProviderKeyNode<? extends T> pkn ->
+                            new PrototypeProvider<>(
+                                    key, () -> getProvider(pkn.providerKey()).get().get());
+                    case Graph.ProviderMethodNode<? extends T> pmn ->
+                            new MethodProvider<>(key, pmn.moduleInstance(), pmn.providerMethod());
+                    case Graph.ProviderNode<? extends T> sn ->
+                            new PrototypeProvider<>(key, sn.provider());
+                    case Graph.ListNode<?> ln ->
+                            new PrototypeProvider<>(
+                                    key,
+                                    () -> {
+                                        //noinspection unchecked
+                                        var elementKeys = (List<Key<?>>) (List<?>) ln.elementKeys();
+                                        //noinspection unchecked
+                                        return (T) elementKeys.stream().map(this::get).toList();
+                                    });
+                    case Graph.MapNode<?, ?> mn ->
+                            new PrototypeProvider<>(
+                                    key,
+                                    () -> {
+                                        //noinspection unchecked
+                                        var entryKeys =
+                                                (Map<Object, Key<?>>) (Map<?, ?>) mn.entryKeys();
+                                        var result = new LinkedHashMap<>();
+                                        entryKeys.forEach((k, vKey) -> result.put(k, get(vKey)));
+                                        //noinspection unchecked
+                                        return (T) result;
+                                    });
+                };
+        var scope = graph.scope(key).orElse(DEFAULT_SCOPE);
         return switch (scope) {
             case PROTOTYPE -> provider;
             case SINGLETON -> new SingletonProvider<>(singletons, key, provider);
@@ -159,31 +177,39 @@ public class Injector {
 
     private <T> Provider<T> initProtoProvider(Key<T> key) {
         var rawType = Types.keyToRawType(key);
-        return new PrototypeProvider<>(key, () -> {
-            var ctor = getCtor(rawType);
-            // getParameterAnnotations() exposes parameter-level annotations like @Named;
-            // getAnnotatedParameterTypes() only sees TYPE_USE annotations and would silently drop them.
-            var paramTypes = ctor.getGenericParameterTypes();
-            var paramAnnotations = ctor.getParameterAnnotations();
-            var args = new Object[paramTypes.length];
-            for (int i = 0; i < paramTypes.length; ++i) {
-                args[i] = get(typeToKey(getAnnotatedType(paramTypes[i], paramAnnotations[i])));
-            }
-            try {
-                ctor.setAccessible(true);
-                return ctor.newInstance(args);
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            } catch (InvocationTargetException e) {
-                throw new RuntimeException(e.getCause());
-            }
-        });
+        return new PrototypeProvider<>(
+                key,
+                () -> {
+                    var ctor = getCtor(rawType);
+                    // getParameterAnnotations() exposes parameter-level annotations like @Named;
+                    // getAnnotatedParameterTypes() only sees TYPE_USE annotations and would
+                    // silently drop them.
+                    var paramTypes = ctor.getGenericParameterTypes();
+                    var paramAnnotations = ctor.getParameterAnnotations();
+                    var args = new Object[paramTypes.length];
+                    for (int i = 0; i < paramTypes.length; ++i) {
+                        args[i] =
+                                get(
+                                        typeToKey(
+                                                getAnnotatedType(
+                                                        paramTypes[i], paramAnnotations[i])));
+                    }
+                    try {
+                        ctor.setAccessible(true);
+                        return ctor.newInstance(args);
+                    } catch (InstantiationException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    } catch (InvocationTargetException e) {
+                        throw new RuntimeException(e.getCause());
+                    }
+                });
     }
 
     private static <T> Key<T> typeToKey(AnnotatedType type) {
-        var qualifiers = Arrays.stream(type.getAnnotations())
-                .filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class))
-                .toList();
+        var qualifiers =
+                Arrays.stream(type.getAnnotations())
+                        .filter(a -> a.annotationType().isAnnotationPresent(Qualifier.class))
+                        .toList();
         if (qualifiers.isEmpty()) {
             return new Key.TypeKey<>(type.getType());
         }
@@ -192,23 +218,27 @@ public class Injector {
                     "Only one qualifier is allowed; got " + qualifiers.size() + " on " + type);
         }
         var qualAnnotation = qualifiers.getFirst();
-        var qualifier = switch (qualAnnotation) {
-            case Named n -> new di.Qualifier.Name(n.value());
-            default -> new di.Qualifier.Annotation(qualAnnotation);
-        };
+        var qualifier =
+                switch (qualAnnotation) {
+                    case Named n -> new di.Qualifier.Name(n.value());
+                    default -> new di.Qualifier.Annotation(qualAnnotation);
+                };
         return new Key.QualifiedKey<>(qualifier, new Key.TypeKey<>(type.getType()));
     }
 
     @SuppressWarnings("unchecked")
     private <T> Constructor<T> getCtor(Class<T> rawType) {
         var ctors = rawType.getDeclaredConstructors();
-        var injectAnnotatedCtors = Arrays.stream(ctors)
-                .filter(c -> c.isAnnotationPresent(Inject.class))
-                .toList();
+        var injectAnnotatedCtors =
+                Arrays.stream(ctors).filter(c -> c.isAnnotationPresent(Inject.class)).toList();
         if (injectAnnotatedCtors.size() > 1) {
             throw new IllegalArgumentException(
-                    "Class must have exactly one constructor annotated with " + Inject.class + "; "
-                            + rawType + " has " + injectAnnotatedCtors.size());
+                    "Class must have exactly one constructor annotated with "
+                            + Inject.class
+                            + "; "
+                            + rawType
+                            + " has "
+                            + injectAnnotatedCtors.size());
         }
         if (injectAnnotatedCtors.size() == 1) {
             return (Constructor<T>) injectAnnotatedCtors.getFirst();
@@ -218,13 +248,19 @@ public class Injector {
                 .filter(c -> c.getParameterCount() == 0)
                 .findFirst()
                 .map(c -> (Constructor<T>) c)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "To be injectable, " + rawType + " must have either one constructor annotated with "
-                                + Inject.class + ", or a default constructor"));
+                .orElseThrow(
+                        () ->
+                                new IllegalArgumentException(
+                                        "To be injectable, "
+                                                + rawType
+                                                + " must have either one constructor annotated with"
+                                                + " "
+                                                + Inject.class
+                                                + ", or a default constructor"));
     }
 
-    private record DelegatingProvider<T, U extends T>(Key<T> key, Key<U> delegateKey, Provider<U> delegateProvider)
-            implements Provider<T> {
+    private record DelegatingProvider<T, U extends T>(
+            Key<T> key, Key<U> delegateKey, Provider<U> delegateProvider) implements Provider<T> {
         private static final Logger LOG = LogManager.instance().getThis();
 
         @Override
@@ -252,9 +288,10 @@ public class Injector {
             LOG.debug("Invoking provider method %s", providerMethod);
             var args = new Object[providerMethod.getParameterCount()];
             for (int i = 0; i < providerMethod.getParameterCount(); ++i) {
-                var paramType = getAnnotatedType(
-                        providerMethod.getGenericParameterTypes()[i],
-                        providerMethod.getParameterAnnotations()[i]);
+                var paramType =
+                        getAnnotatedType(
+                                providerMethod.getGenericParameterTypes()[i],
+                                providerMethod.getParameterAnnotations()[i]);
                 var paramKey = typeToKey(paramType);
                 var arg = Injector.this.get(paramKey);
                 args[i] = arg;
@@ -271,7 +308,8 @@ public class Injector {
         }
     }
 
-    private record PrototypeProvider<T>(Key<T> key, Provider<? extends T> delegate) implements Provider<T> {
+    private record PrototypeProvider<T>(Key<T> key, Provider<? extends T> delegate)
+            implements Provider<T> {
         private static final Logger LOG = LogManager.instance().getThis();
 
         @Override
@@ -281,7 +319,8 @@ public class Injector {
         }
     }
 
-    private record SingletonProvider<T>(Map<Key<?>, Object> singletons, Key<T> key, Provider<T> delegate)
+    private record SingletonProvider<T>(
+            Map<Key<?>, Object> singletons, Key<T> key, Provider<T> delegate)
             implements Provider<T> {
         private static final Logger LOG = LogManager.instance().getThis();
 

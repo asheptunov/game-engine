@@ -1,11 +1,13 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +22,11 @@ public class CmdRm implements Command {
         this.state = state;
     }
 
-    @Override public String helpText() { return "Usage: rm [-r] <file|dir>\n  Remove a file; -r also removes directories recursively."; }
+    @Override
+    public String helpText() {
+        return "Usage: rm [-r] <file|dir>\n"
+                + "  Remove a file; -r also removes directories recursively.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {
@@ -34,13 +40,13 @@ public class CmdRm implements Command {
                 continue;
             }
             var arg = args[i];
-            if (arg.startsWith("-")) {  // option cluster
+            if (arg.startsWith("-")) { // option cluster
                 if ("-r".equals(arg)) {
                     recursive = true;
                 } else {
                     return Result.failure("Unknown option: " + arg);
                 }
-            } else {  // target
+            } else { // target
                 path = Path.of(arg);
             }
         }
@@ -59,14 +65,15 @@ public class CmdRm implements Command {
         }
         return delete(targetFile, recursive)
                 .ifFailure(LOG::error)
-                .mapSuccess(_ -> {
-                    if (state.workingFile().filter(targetFile::equals).isPresent()) {
-                        state.clearWorkingFile();
-                        return "Deleted and un-set active file: " + targetFile;
-                    } else {
-                        return "Deleted file: " + targetFile;
-                    }
-                });
+                .mapSuccess(
+                        _ -> {
+                            if (state.workingFile().filter(targetFile::equals).isPresent()) {
+                                state.clearWorkingFile();
+                                return "Deleted and un-set active file: " + targetFile;
+                            } else {
+                                return "Deleted file: " + targetFile;
+                            }
+                        });
     }
 
     private Result<String, String> delete(File file, boolean recursive) {

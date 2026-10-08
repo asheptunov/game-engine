@@ -2,6 +2,7 @@ package timing;
 
 import di.annotations.Inject;
 import di.annotations.Named;
+
 import logging.LogManager;
 import logging.Logger;
 
@@ -15,13 +16,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.DoubleStream;
 
 public class PeriodicExecutor {
-    private static final Logger LOG             = LogManager.instance().getThis();
-    private static final int    LOOKBEHIND_SIZE = 100;
+    private static final Logger LOG = LogManager.instance().getThis();
+    private static final int LOOKBEHIND_SIZE = 100;
 
     private final Duration period;
-    private final Clock    clock;
+    private final Clock clock;
     private final Runnable runnable;
-    private final Stats    stats;
+    private final Stats stats;
 
     @Inject
     public PeriodicExecutor(@Named("frame_rate") int hertz, Clock clock, Runnable runnable) {
@@ -30,7 +31,8 @@ public class PeriodicExecutor {
         this.runnable = runnable;
         this.stats = new Stats(LOOKBEHIND_SIZE);
         LOG.info("Will execute %s at a frequency of %d hz (period of %s)", runnable, hertz, period);
-        LOG.info("Using a lookbehind window of %d executions for drift correction", LOOKBEHIND_SIZE);
+        LOG.info(
+                "Using a lookbehind window of %d executions for drift correction", LOOKBEHIND_SIZE);
     }
 
     public void execute() throws InterruptedException {
@@ -39,12 +41,13 @@ public class PeriodicExecutor {
         //noinspection InfiniteLoopStatement
         while (true) {
             var now = clock.instant();
-            var wait = (long) (period.minus(Duration.between(prev, now)).toMillis() - stats.driftMs);
+            var wait =
+                    (long) (period.minus(Duration.between(prev, now)).toMillis() - stats.driftMs);
             if (wait > 0) {
                 LOG.debug("sleeping %d ms (adjusted %+.2f ms for drift)", wait, stats.driftMs);
                 //noinspection BusyWait
                 Thread.sleep(wait);
-                now = clock.instant();  // update if we waited
+                now = clock.instant(); // update if we waited
             }
             runnable.run();
             stats.add(now);
@@ -53,14 +56,14 @@ public class PeriodicExecutor {
     }
 
     private class Stats {
-        private final Deque<Instant>  rWindow       = new LinkedList<>();
-        private final Deque<Duration> dWindow       = new LinkedList<>();
-        private final int             maxSize;
-        private       double          periodMeanMs  = period.toMillis();
-        private       double          periodHzMean  = 1_000. / periodMeanMs;
-        private       double          periodMsStdev = 0.;
-        private       double          driftMs       = 0.;
-        private       double          driftPct      = 0.;
+        private final Deque<Instant> rWindow = new LinkedList<>();
+        private final Deque<Duration> dWindow = new LinkedList<>();
+        private final int maxSize;
+        private double periodMeanMs = period.toMillis();
+        private double periodHzMean = 1_000. / periodMeanMs;
+        private double periodMsStdev = 0.;
+        private double driftMs = 0.;
+        private double driftPct = 0.;
 
         private Stats(int maxSize) {
             this.maxSize = maxSize;
@@ -82,13 +85,17 @@ public class PeriodicExecutor {
         }
 
         private void log() {
-            LOG.info("mean %.2f ms between runs (%.2f hz). std deviation %.2f ms. drift %+.2f ms (%+.2f%%).",
+            LOG.info(
+                    "mean %.2f ms between runs (%.2f hz). std deviation %.2f ms. drift %+.2f ms"
+                            + " (%+.2f%%).",
                     periodMeanMs, periodHzMean, periodMsStdev, driftMs, driftPct);
         }
 
         private void recompute() {
             assert !rWindow.isEmpty();
-            periodMeanMs = Duration.between(rWindow.peek(), rWindow.getLast()).toMillis() / (rWindow.size() - 1.);
+            periodMeanMs =
+                    Duration.between(rWindow.peek(), rWindow.getLast()).toMillis()
+                            / (rWindow.size() - 1.);
             periodHzMean = 1_000. / periodMeanMs;
             periodMsStdev = stdev(dWindow.stream().mapToDouble(Duration::toMillis), periodMeanMs);
             driftMs = periodMeanMs - period.toMillis();
@@ -96,9 +103,7 @@ public class PeriodicExecutor {
         }
 
         private static double stdev(DoubleStream samples, double mean) {
-            return Math.sqrt(samples
-                    .map(s -> Math.pow(s - mean, 2))
-                    .average().orElse(0.));
+            return Math.sqrt(samples.map(s -> Math.pow(s - mean, 2)).average().orElse(0.));
         }
     }
 }

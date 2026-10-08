@@ -1,10 +1,26 @@
 package scenes.textureeditor;
 
+import static rendering.Color.NamedColor;
+
+import static scenes.textureeditor.model.Mode.BOX_SELECT;
+import static scenes.textureeditor.model.Mode.BRUSH;
+import static scenes.textureeditor.model.Mode.COLOR_PICKER;
+import static scenes.textureeditor.model.Mode.COMMAND_ENTRY;
+import static scenes.textureeditor.model.Mode.FILL;
+import static scenes.textureeditor.model.Mode.LASSO_SELECT;
+import static scenes.textureeditor.model.Mode.PIXEL_SELECT;
+import static scenes.textureeditor.model.Selection.BoxSelection;
+import static scenes.textureeditor.model.Selection.LassoSelection;
+import static scenes.textureeditor.model.Selection.PixelSelection;
+
 import di.annotations.Inject;
 import di.annotations.Named;
+
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
+
 import rendering.BlendMode;
 import rendering.Color;
 import rendering.Font;
@@ -16,6 +32,7 @@ import rendering.RasterPainter;
 import rendering.RasterPrinter;
 import rendering.RasterRepository;
 import rendering.Renderer;
+
 import scenes.CmdScene;
 import scenes.Scene;
 import scenes.textureeditor.console.CmdCanvas;
@@ -31,6 +48,7 @@ import scenes.textureeditor.console.CmdTouch;
 import scenes.textureeditor.model.Coordinates;
 import scenes.textureeditor.model.EditorState;
 import scenes.textureeditor.model.Mode;
+
 import ui.ActionRegistry;
 import ui.BindingsLoader;
 import ui.InputBindings;
@@ -57,27 +75,18 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static rendering.Color.NamedColor;
-import static scenes.textureeditor.model.Mode.BOX_SELECT;
-import static scenes.textureeditor.model.Mode.BRUSH;
-import static scenes.textureeditor.model.Mode.COLOR_PICKER;
-import static scenes.textureeditor.model.Mode.COMMAND_ENTRY;
-import static scenes.textureeditor.model.Mode.FILL;
-import static scenes.textureeditor.model.Mode.LASSO_SELECT;
-import static scenes.textureeditor.model.Mode.PIXEL_SELECT;
-import static scenes.textureeditor.model.Selection.BoxSelection;
-import static scenes.textureeditor.model.Selection.LassoSelection;
-import static scenes.textureeditor.model.Selection.PixelSelection;
-
 // not thread safe. stateful. evil. thriving.
-public class TextureEditor implements
-        Scene,
-        Renderer,
-        KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
-    private static final Logger              LOG          = LogManager.instance().getThis();
-    private static final Mode                DEFAULT_MODE = BRUSH;
+public class TextureEditor
+        implements Scene,
+                Renderer,
+                KeyListener,
+                MouseListener,
+                MouseMotionListener,
+                MouseWheelListener {
+    private static final Logger LOG = LogManager.instance().getThis();
+    private static final Mode DEFAULT_MODE = BRUSH;
     // Lower-cased mode names, precomputed so MouseBindings lookups don't allocate per event.
-    private static final Map<Mode, String>   MODE_NAMES   = lowerCasedModeNames();
+    private static final Map<Mode, String> MODE_NAMES = lowerCasedModeNames();
 
     private static Map<Mode, String> lowerCasedModeNames() {
         var m = new EnumMap<Mode, String>(Mode.class);
@@ -87,113 +96,146 @@ public class TextureEditor implements
         return m;
     }
 
-    private static final Painter.LineSampler SELECTION_PATTERN
-            = (i, _, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
+    private static final Painter.LineSampler SELECTION_PATTERN =
+            (i, _, _) -> (i / 8) % 2 == 0 ? NamedColor.BLACK : NamedColor.WHITE;
 
     private final RasterRepository repo;
-    private final Raster           display;
-    private final Painter          painter;
-    private final Font             font;
-    private final Printer          printer;
-    private final Clock            clock;
-    private final EditorState      state;
-    private final ToolCard         toolCard;
-    private final ColorPicker      colorPicker;
-    private final Console          console;
-    private final ActionRegistry<Runnable>             actions;
-    private final InputBindings                        bindings;
+    private final Raster display;
+    private final Painter painter;
+    private final Font font;
+    private final Printer printer;
+    private final Clock clock;
+    private final EditorState state;
+    private final ToolCard toolCard;
+    private final ColorPicker colorPicker;
+    private final Console console;
+    private final ActionRegistry<Runnable> actions;
+    private final InputBindings bindings;
     private final ActionRegistry<Consumer<MouseEvent>> mouseActions;
-    private final MouseBindings                        mouseBindings;
+    private final MouseBindings mouseBindings;
 
     @Inject
-    public TextureEditor(Raster display,
-                         Clock clock,
-                         Font font,
-                         RasterRepository repo,
-                         @Named("texture_width") int width,
-                         @Named("texture_height") int height,
-                         Map<String, Scene> scenes,
-                         AtomicReference<Scene> sceneRef) {
+    public TextureEditor(
+            Raster display,
+            Clock clock,
+            Font font,
+            RasterRepository repo,
+            @Named("texture_width") int width,
+            @Named("texture_height") int height,
+            Map<String, Scene> scenes,
+            AtomicReference<Scene> sceneRef) {
         this.repo = repo;
         this.display = display;
         this.painter = new RasterPainter(display);
         this.font = font;
         this.printer = new RasterPrinter(display, font);
         this.clock = clock;
-        this.state = new EditorState(
-                DEFAULT_MODE,
-                Path.of("assets/icons").toFile(),
-                new PixelRaster(width, height, NamedColor.NONE),
-                100);
+        this.state =
+                new EditorState(
+                        DEFAULT_MODE,
+                        Path.of("assets/icons").toFile(),
+                        new PixelRaster(width, height, NamedColor.NONE),
+                        100);
         this.toolCard = new ToolCard(this);
         this.colorPicker = new ColorPicker(this, NamedColor.WHITE);
-        var rootCmd = new TrimmingCommand(DelegatingCommand.builder()
-                .withCommand("canvas", new CmdCanvas(state))
-                .withCommand("cd", new CmdCd(state, () -> Path.of(".")))
-                .withCommand("exit", new CmdExit())
-                .withCommand("load", new CmdLoad(state, repo))
-                .withCommand("ls", new CmdLs(state, clock))
-                .withCommand("mkdir", new CmdMkdir(state))
-                .withCommand("pwd", new CmdPwd(state))
-                .withCommand("rm", new CmdRm(state))
-                .withCommand("save", new CmdSave(state, repo))
-                .withCommand("scene", new CmdScene(scenes, sceneRef))
-                .withCommand("status", new CmdStatus(state, colorPicker))
-                .withCommand("touch", new CmdTouch(state, repo,
-                        () -> new PixelRaster(state.texture().width(), state.texture().height())))
-                .build());
-        this.console = Console.withAwtText(display,
-                this::escape,
-                500,
-                rootCmd);
+        var rootCmd =
+                new TrimmingCommand(
+                        DelegatingCommand.builder()
+                                .withCommand("canvas", new CmdCanvas(state))
+                                .withCommand("cd", new CmdCd(state, () -> Path.of(".")))
+                                .withCommand("exit", new CmdExit())
+                                .withCommand("load", new CmdLoad(state, repo))
+                                .withCommand("ls", new CmdLs(state, clock))
+                                .withCommand("mkdir", new CmdMkdir(state))
+                                .withCommand("pwd", new CmdPwd(state))
+                                .withCommand("rm", new CmdRm(state))
+                                .withCommand("save", new CmdSave(state, repo))
+                                .withCommand("scene", new CmdScene(scenes, sceneRef))
+                                .withCommand("status", new CmdStatus(state, colorPicker))
+                                .withCommand(
+                                        "touch",
+                                        new CmdTouch(
+                                                state,
+                                                repo,
+                                                () ->
+                                                        new PixelRaster(
+                                                                state.texture().width(),
+                                                                state.texture().height())))
+                                .build());
+        this.console = Console.withAwtText(display, this::escape, 500, rootCmd);
 
-        this.actions = new ActionRegistry<Runnable>()
-                .register("mode.pixel_select", () -> state.mode(PIXEL_SELECT))
-                .register("mode.box_select", () -> state.mode(BOX_SELECT))
-                .register("mode.lasso_select", () -> state.mode(LASSO_SELECT))
-                .register("mode.brush", () -> state.mode(BRUSH))
-                .register("mode.fill", () -> state.mode(FILL))
-                .register("mode.color_picker", () -> state.mode(COLOR_PICKER))
-                .register("mode.command_entry", () -> state.mode(COMMAND_ENTRY))
-                .register("selection.clear", this::clearSelection)
-                .register("selection.all", this::selectAll)
-                .register("help.toggle", this::toggleHelp)
-                .register("toolcard.toggle", state::toggleToolCard)
-                .register("file.save", () -> saveToFile(state.workingFile().orElseThrow()))
-                .register("file.load", () -> loadFromFile(state.workingFile().orElseThrow()))
-                .register("history.undo", this::undo)
-                .register("history.redo", this::redo);
+        this.actions =
+                new ActionRegistry<Runnable>()
+                        .register("mode.pixel_select", () -> state.mode(PIXEL_SELECT))
+                        .register("mode.box_select", () -> state.mode(BOX_SELECT))
+                        .register("mode.lasso_select", () -> state.mode(LASSO_SELECT))
+                        .register("mode.brush", () -> state.mode(BRUSH))
+                        .register("mode.fill", () -> state.mode(FILL))
+                        .register("mode.color_picker", () -> state.mode(COLOR_PICKER))
+                        .register("mode.command_entry", () -> state.mode(COMMAND_ENTRY))
+                        .register("selection.clear", this::clearSelection)
+                        .register("selection.all", this::selectAll)
+                        .register("help.toggle", this::toggleHelp)
+                        .register("toolcard.toggle", state::toggleToolCard)
+                        .register("file.save", () -> saveToFile(state.workingFile().orElseThrow()))
+                        .register(
+                                "file.load", () -> loadFromFile(state.workingFile().orElseThrow()))
+                        .register("history.undo", this::undo)
+                        .register("history.redo", this::redo);
 
-        this.bindings = BindingsLoader
-                .loadInto(Path.of("assets/bindings/texture-editor.properties"), new InputBindings(actions))
-                .validate("TextureEditor");
+        this.bindings =
+                BindingsLoader.loadInto(
+                                Path.of("assets/bindings/texture-editor.properties"),
+                                new InputBindings(actions))
+                        .validate("TextureEditor");
 
-        this.mouseActions = new ActionRegistry<Consumer<MouseEvent>>()
-                .register("select.pixel", e -> {
-                    var c = normalize(e);
-                    LOG.info("Selected pixel %s", c);
-                    state.selection(new PixelSelection(c));
-                })
-                .register("box.start", e -> {
-                    var c = normalize(e);
-                    LOG.debug("Started box selection at %s", c);
-                    state.selection(new BoxSelection(c.x(), c.y()));
-                    state.boxStart(new Coordinates(c.x(), c.y()));
-                })
-                .register("box.update", e -> resizeBox(e, false))
-                .register("box.finish", e -> resizeBox(e, true))
-                .register("lasso.start", _ -> { throw new UnsupportedOperationException("start lasso select"); })
-                .register("lasso.update", _ -> { throw new UnsupportedOperationException("update lasso selection"); })
-                .register("lasso.finish", _ -> { throw new UnsupportedOperationException("terminate lasso select"); })
-                .register("brush.paint", this::paintBrush)
-                .register("fill.apply", this::applyFill)
-                .register("history.save", _ -> saveToHistory())
-                .register("colorpicker.mouse", colorPicker::accept)
-                .register("console.scroll", console::acceptScroll);
+        this.mouseActions =
+                new ActionRegistry<Consumer<MouseEvent>>()
+                        .register(
+                                "select.pixel",
+                                e -> {
+                                    var c = normalize(e);
+                                    LOG.info("Selected pixel %s", c);
+                                    state.selection(new PixelSelection(c));
+                                })
+                        .register(
+                                "box.start",
+                                e -> {
+                                    var c = normalize(e);
+                                    LOG.debug("Started box selection at %s", c);
+                                    state.selection(new BoxSelection(c.x(), c.y()));
+                                    state.boxStart(new Coordinates(c.x(), c.y()));
+                                })
+                        .register("box.update", e -> resizeBox(e, false))
+                        .register("box.finish", e -> resizeBox(e, true))
+                        .register(
+                                "lasso.start",
+                                _ -> {
+                                    throw new UnsupportedOperationException("start lasso select");
+                                })
+                        .register(
+                                "lasso.update",
+                                _ -> {
+                                    throw new UnsupportedOperationException(
+                                            "update lasso selection");
+                                })
+                        .register(
+                                "lasso.finish",
+                                _ -> {
+                                    throw new UnsupportedOperationException(
+                                            "terminate lasso select");
+                                })
+                        .register("brush.paint", this::paintBrush)
+                        .register("fill.apply", this::applyFill)
+                        .register("history.save", _ -> saveToHistory())
+                        .register("colorpicker.mouse", colorPicker::accept)
+                        .register("console.scroll", console::acceptScroll);
 
-        this.mouseBindings = BindingsLoader
-                .loadInto(Path.of("assets/bindings/texture-editor-mouse.properties"), new MouseBindings(mouseActions))
-                .validate("TextureEditor mouse");
+        this.mouseBindings =
+                BindingsLoader.loadInto(
+                                Path.of("assets/bindings/texture-editor-mouse.properties"),
+                                new MouseBindings(mouseActions))
+                        .validate("TextureEditor mouse");
     }
 
     @Override
@@ -222,8 +264,15 @@ public class TextureEditor implements
         LOG.trace("Handling %s", e);
     }
 
-    @Override public void mousePressed(MouseEvent e)         { route(MouseGesture.PRESS, e); }
-    @Override public void mouseReleased(MouseEvent e)        { route(MouseGesture.RELEASE, e); }
+    @Override
+    public void mousePressed(MouseEvent e) {
+        route(MouseGesture.PRESS, e);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        route(MouseGesture.RELEASE, e);
+    }
 
     @Override
     public void mouseEntered(MouseEvent e) {
@@ -235,9 +284,20 @@ public class TextureEditor implements
         LOG.trace("Handling %s", e);
     }
 
-    @Override public void mouseDragged(MouseEvent e)         { route(MouseGesture.DRAG, e); }
-    @Override public void mouseMoved(MouseEvent e)           { LOG.trace("Handling %s", e); }
-    @Override public void mouseWheelMoved(MouseWheelEvent e) { route(MouseGesture.WHEEL, e); }
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        route(MouseGesture.DRAG, e);
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        LOG.trace("Handling %s", e);
+    }
+
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent e) {
+        route(MouseGesture.WHEEL, e);
+    }
 
     private void route(MouseGesture gesture, MouseEvent e) {
         LOG.trace("Handling %s", e);
@@ -266,15 +326,17 @@ public class TextureEditor implements
     }
 
     public Result<?, Exception> saveToFile(File file) {
-        return repo.save(state.workingDir().toPath().resolve(file.toPath()).toFile(), state.texture());
+        return repo.save(
+                state.workingDir().toPath().resolve(file.toPath()).toFile(), state.texture());
     }
 
     public Result<Raster, Exception> loadFromFile(File file) {
         return repo.load(state.workingDir().toPath().resolve(file.toPath()).toFile())
-                .ifSuccess(raster -> {
-                    state.texture(raster);
-                    saveToHistory();
-                });
+                .ifSuccess(
+                        raster -> {
+                            state.texture(raster);
+                            saveToHistory();
+                        });
     }
 
     public RasterRepository repo() {
@@ -329,88 +391,117 @@ public class TextureEditor implements
     private void renderSelection() {
         var xScale = 1. * display.width() / state.texture().width();
         var yScale = 1. * display.height() / state.texture().height();
-        state.selection().ifPresentOrElse(s -> {
-            switch (s) {
-                case PixelSelection px -> {
-                    int l = (int) (px.px().x() * xScale);
-                    int t = (int) (px.px().y() * yScale);
-                    int r = (int) ((px.px().x() + 1) * xScale) - 1;
-                    int b = (int) ((px.px().y() + 1) * yScale) - 1;
-                    painter.drawLine(l, t, r, t, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                    painter.drawLine(l, t, l, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                    painter.drawLine(r, t, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                    painter.drawLine(l, b, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                }
-                case BoxSelection box -> {
-                    int l = (int) (box.tl().x() * xScale);
-                    int t = (int) (box.tl().y() * yScale);
-                    int r = (int) ((box.br().x() + 1) * xScale) - 1;
-                    int b = (int) ((box.br().y() + 1) * yScale) - 1;
-                    painter.drawLine(l, t, r, t, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                    painter.drawLine(l, t, l, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                    painter.drawLine(r, t, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                    painter.drawLine(l, b, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
-                }
-                default -> throw new UnsupportedOperationException(state.selection().getClass().getName());
-            }
-        }, () -> {});
+        state.selection()
+                .ifPresentOrElse(
+                        s -> {
+                            switch (s) {
+                                case PixelSelection px -> {
+                                    int l = (int) (px.px().x() * xScale);
+                                    int t = (int) (px.px().y() * yScale);
+                                    int r = (int) ((px.px().x() + 1) * xScale) - 1;
+                                    int b = (int) ((px.px().y() + 1) * yScale) - 1;
+                                    painter.drawLine(
+                                            l, t, r, t, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                    painter.drawLine(
+                                            l, t, l, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                    painter.drawLine(
+                                            r, t, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                    painter.drawLine(
+                                            l, b, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                }
+                                case BoxSelection box -> {
+                                    int l = (int) (box.tl().x() * xScale);
+                                    int t = (int) (box.tl().y() * yScale);
+                                    int r = (int) ((box.br().x() + 1) * xScale) - 1;
+                                    int b = (int) ((box.br().y() + 1) * yScale) - 1;
+                                    painter.drawLine(
+                                            l, t, r, t, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                    painter.drawLine(
+                                            l, t, l, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                    painter.drawLine(
+                                            r, t, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                    painter.drawLine(
+                                            l, b, r, b, SELECTION_PATTERN, BlendMode.SUBTRACT);
+                                }
+                                default ->
+                                        throw new UnsupportedOperationException(
+                                                state.selection().getClass().getName());
+                            }
+                        },
+                        () -> {});
     }
 
     private Coordinates normalize(MouseEvent e) {
         // todo zoom / pan
-        int x = (int) (1. * Math.min(e.getX(), display.width() - 1) / display.width() * state.texture().width());
-        int y = (int) (1. * Math.min(e.getY(), display.height() - 1) / display.height() * state.texture().height());
+        int x =
+                (int)
+                        (1.
+                                * Math.min(e.getX(), display.width() - 1)
+                                / display.width()
+                                * state.texture().width());
+        int y =
+                (int)
+                        (1.
+                                * Math.min(e.getY(), display.height() - 1)
+                                / display.height()
+                                * state.texture().height());
         return new Coordinates(x, y);
     }
 
-    private void paintBrush(MouseEvent e) {  // selection acts as a mask
+    private void paintBrush(MouseEvent e) { // selection acts as a mask
         var c = normalize(e);
         int x = c.x();
         int y = c.y();
-        state.selection().ifPresentOrElse(s -> {
-            switch (s) {
-                case PixelSelection px -> {
-                    if (px.is(x, y)) {
-                        state.texture().pixel(x, y, colorPicker.getColor());
-                    }
-                }
-                case BoxSelection box -> {
-                    if (box.contains(x, y)) {
-                        state.texture().pixel(x, y, colorPicker.getColor());
-                    }
-                }
-                case LassoSelection lasso -> {
-                    if (lasso.contains(c)) {
-                        state.texture().pixel(x, y, colorPicker.getColor());
-                    }
-                }
-            }
-        }, () -> state.texture().pixel(x, y, colorPicker.getColor()));
+        state.selection()
+                .ifPresentOrElse(
+                        s -> {
+                            switch (s) {
+                                case PixelSelection px -> {
+                                    if (px.is(x, y)) {
+                                        state.texture().pixel(x, y, colorPicker.getColor());
+                                    }
+                                }
+                                case BoxSelection box -> {
+                                    if (box.contains(x, y)) {
+                                        state.texture().pixel(x, y, colorPicker.getColor());
+                                    }
+                                }
+                                case LassoSelection lasso -> {
+                                    if (lasso.contains(c)) {
+                                        state.texture().pixel(x, y, colorPicker.getColor());
+                                    }
+                                }
+                            }
+                        },
+                        () -> state.texture().pixel(x, y, colorPicker.getColor()));
     }
 
-    private void applyFill(MouseEvent e) {  // selection acts as an invert toggle
+    private void applyFill(MouseEvent e) { // selection acts as an invert toggle
         var c = normalize(e);
         int x = c.x();
         int y = c.y();
-        state.selection().ifPresentOrElse(s -> {
-            switch (s) {
-                case PixelSelection px -> {
-                    fillPixel(px, colorPicker.getColor(), !px.is(x, y));
-                    saveToHistory();
-                }
-                case BoxSelection box -> {
-                    fillBox(box, colorPicker.getColor(), !box.contains(x, y));
-                    saveToHistory();
-                }
-                case LassoSelection lasso -> {
-                    fillLasso(lasso, colorPicker.getColor(), !lasso.contains(c));
-                    saveToHistory();
-                }
-            }
-        }, () -> {
-            fillEverything(colorPicker.getColor());
-            saveToHistory();
-        });
+        state.selection()
+                .ifPresentOrElse(
+                        s -> {
+                            switch (s) {
+                                case PixelSelection px -> {
+                                    fillPixel(px, colorPicker.getColor(), !px.is(x, y));
+                                    saveToHistory();
+                                }
+                                case BoxSelection box -> {
+                                    fillBox(box, colorPicker.getColor(), !box.contains(x, y));
+                                    saveToHistory();
+                                }
+                                case LassoSelection lasso -> {
+                                    fillLasso(lasso, colorPicker.getColor(), !lasso.contains(c));
+                                    saveToHistory();
+                                }
+                            }
+                        },
+                        () -> {
+                            fillEverything(colorPicker.getColor());
+                            saveToHistory();
+                        });
     }
 
     private void resizeBox(MouseEvent e, boolean finish) {
@@ -419,7 +510,8 @@ public class TextureEditor implements
         var boxStart = state.boxStart().orElseThrow();
         box.update(boxStart.x(), boxStart.y(), c.x(), c.y());
         if (finish) {
-            LOG.info("Finished box selection from [%d, %d] at [%d, %d]",
+            LOG.info(
+                    "Finished box selection from [%d, %d] at [%d, %d]",
                     boxStart.x(), boxStart.y(), c.x(), c.y());
             state.clearBoxStart();
         } else {
@@ -435,8 +527,8 @@ public class TextureEditor implements
     }
 
     private void selectAll() {
-        state.selection(new BoxSelection(0, 0,
-                state.texture().width() - 1, state.texture().height() - 1));
+        state.selection(
+                new BoxSelection(0, 0, state.texture().width() - 1, state.texture().height() - 1));
     }
 
     private void toggleHelp() {
@@ -491,7 +583,9 @@ public class TextureEditor implements
     }
 
     private void fillPixel(PixelSelection px, Color color, boolean inverse) {
-        LOG.info("Filling %s pixel %s with color %s", inverse ? "everything outside" : "only", px, color);
+        LOG.info(
+                "Filling %s pixel %s with color %s",
+                inverse ? "everything outside" : "only", px, color);
         if (inverse) {
             for (int r = 0; r < state.texture().height(); ++r) {
                 for (int c = 0; c < state.texture().width(); ++c) {
@@ -506,7 +600,9 @@ public class TextureEditor implements
     }
 
     private void fillBox(BoxSelection box, Color color, boolean inverse) {
-        LOG.info("Filling everything %s box %s with color %s", inverse ? "outside" : "inside", box, color);
+        LOG.info(
+                "Filling everything %s box %s with color %s",
+                inverse ? "outside" : "inside", box, color);
         int l = box.tl().x();
         int r = box.br().x();
         int t = box.tl().y();
@@ -540,7 +636,9 @@ public class TextureEditor implements
     }
 
     private void fillLasso(LassoSelection lasso, Color color, boolean inverse) {
-        LOG.info("Filling everything %s lasso %s with color %s", inverse ? "outside" : "inside", lasso, color);
+        LOG.info(
+                "Filling everything %s lasso %s with color %s",
+                inverse ? "outside" : "inside", lasso, color);
         if (inverse) {
             for (int r = 0; r < state.texture().height(); ++r) {
                 for (int c = 0; c < state.texture().width(); ++c) {

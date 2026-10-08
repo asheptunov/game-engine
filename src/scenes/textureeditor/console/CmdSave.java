@@ -1,12 +1,15 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
+
 import rendering.RasterRepository;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +18,7 @@ import java.nio.file.Path;
 public class CmdSave implements Command {
     private final Logger LOG = LogManager.instance().getThis();
 
-    private final EditorState      state;
+    private final EditorState state;
     private final RasterRepository repo;
 
     public CmdSave(EditorState state, RasterRepository repo) {
@@ -23,7 +26,10 @@ public class CmdSave implements Command {
         this.repo = repo;
     }
 
-    @Override public String helpText() { return "Usage: save [<file>.tx]\n  Save the texture to the supplied or active file."; }
+    @Override
+    public String helpText() {
+        return "Usage: save [<file>.tx]\n  Save the texture to the supplied or active file.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {

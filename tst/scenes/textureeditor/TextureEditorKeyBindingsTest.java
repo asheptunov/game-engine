@@ -1,14 +1,21 @@
 package scenes.textureeditor;
 
+import static harness.Assertions.assertEquals;
+import static harness.Assertions.assertInstanceOf;
+import static harness.Assertions.assertTrue;
+
 import harness.SuiteRunner;
 import harness.Test;
+
 import misc.monads.Result;
+
 import rendering.Color.NamedColor;
 import rendering.Font;
 import rendering.InMemoryFont;
 import rendering.PixelRaster;
 import rendering.Raster;
 import rendering.RasterRepository;
+
 import scenes.Scene;
 import scenes.textureeditor.model.Mode;
 import scenes.textureeditor.model.Selection.BoxSelection;
@@ -20,38 +27,51 @@ import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static harness.Assertions.assertEquals;
-import static harness.Assertions.assertInstanceOf;
-import static harness.Assertions.assertTrue;
-
 /**
  * End-to-end regression tests for the TextureEditor key bindings refactor. Each test feeds a real
  * {@link KeyEvent} through {@link TextureEditor#keyPressed(KeyEvent)} — the exact same entry point
- * AWT uses — and asserts the resulting state mutation. Covers the full path:
- * AWT KeyEvent → KeyAction.fromAwt → mode switch → InputBindings.handle → action runnable.
+ * AWT uses — and asserts the resulting state mutation. Covers the full path: AWT KeyEvent →
+ * KeyAction.fromAwt → mode switch → InputBindings.handle → action runnable.
  */
 public class TextureEditorKeyBindingsTest {
     private static final Canvas SRC = new Canvas();
-    private static final int    TW  = 32;
-    private static final int    TH  = 32;
+    private static final int TW = 32;
+    private static final int TH = 32;
 
     private static TextureEditor newEditor() {
         Raster display = new PixelRaster(64, 64);
         Font font = new InMemoryFont(Map.of('\0', new PixelRaster(1, 1)), 16);
-        RasterRepository repo = new RasterRepository() {
-            @Override public Result<Raster, Exception> load(File f) {
-                return Result.failure(new UnsupportedOperationException());
-            }
-            @Override public Result<?, Exception> save(File f, Raster r) {
-                return Result.failure(new UnsupportedOperationException());
-            }
-        };
-        return new TextureEditor(display, Clock.systemUTC(), font, repo, TW, TH,
-                Map.of(), new AtomicReference<Scene>());
+        RasterRepository repo =
+                new RasterRepository() {
+                    @Override
+                    public Result<Raster, Exception> load(File f) {
+                        return Result.failure(new UnsupportedOperationException());
+                    }
+
+                    @Override
+                    public Result<?, Exception> save(File f, Raster r) {
+                        return Result.failure(new UnsupportedOperationException());
+                    }
+                };
+        return new TextureEditor(
+                display,
+                Clock.systemUTC(),
+                font,
+                repo,
+                TW,
+                TH,
+                Map.of(),
+                new AtomicReference<Scene>());
     }
 
     private static KeyEvent press(int vk, char ch, int extMods) {
-        return new KeyEvent(SRC, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), extMods, vk, ch,
+        return new KeyEvent(
+                SRC,
+                KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(),
+                extMods,
+                vk,
+                ch,
                 KeyEvent.KEY_LOCATION_STANDARD);
     }
 

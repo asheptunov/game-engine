@@ -6,13 +6,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class MapBinderImpl<K, V> implements GraphBuilder.MapBinder<K, V>, GraphBuilder.QualifyingMapBinder<K, V> {
+public class MapBinderImpl<K, V>
+        implements GraphBuilder.MapBinder<K, V>, GraphBuilder.QualifyingMapBinder<K, V> {
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private final Optional<Qualifier>        qualifier;
-    private final Type                       keyType;
-    private final Type                       valueType;
-    private final Map<K, Key<? extends V>>   map = new HashMap<>();
-    private final List<MapBinderImpl<?, ?>>  registry;
+    private final Optional<Qualifier> qualifier;
+
+    private final Type keyType;
+    private final Type valueType;
+    private final Map<K, Key<? extends V>> map = new HashMap<>();
+    private final List<MapBinderImpl<?, ?>> registry;
 
     private MapBinderImpl(List<MapBinderImpl<?, ?>> registry, Type keyType, Type valueType) {
         this.registry = registry;
@@ -21,7 +23,8 @@ public class MapBinderImpl<K, V> implements GraphBuilder.MapBinder<K, V>, GraphB
         this.valueType = valueType;
     }
 
-    private MapBinderImpl(List<MapBinderImpl<?, ?>> registry, Qualifier qualifier, Type keyType, Type valueType) {
+    private MapBinderImpl(
+            List<MapBinderImpl<?, ?>> registry, Qualifier qualifier, Type keyType, Type valueType) {
         this.registry = registry;
         this.qualifier = Optional.of(qualifier);
         this.keyType = keyType;
@@ -64,7 +67,8 @@ public class MapBinderImpl<K, V> implements GraphBuilder.MapBinder<K, V>, GraphB
             return new KeyedMapBinderBuilderImpl<>(registry, fromType);
         }
 
-        public static class KeyedMapBinderBuilderImpl<K> implements GraphBuilder.KeyedMapBinderBuilder<K> {
+        public static class KeyedMapBinderBuilderImpl<K>
+                implements GraphBuilder.KeyedMapBinderBuilder<K> {
             private final List<MapBinderImpl<?, ?>> registry;
             private final Type keyType;
 
@@ -85,7 +89,9 @@ public class MapBinderImpl<K, V> implements GraphBuilder.MapBinder<K, V>, GraphB
     public class KeyedBuilderImpl implements KeyedBuilder<K, V> {
         private final K key;
 
-        private KeyedBuilderImpl(K key) {this.key = key;}
+        private KeyedBuilderImpl(K key) {
+            this.key = key;
+        }
 
         @Override
         public void value(Key<V> value) {
@@ -111,8 +117,11 @@ public class MapBinderImpl<K, V> implements GraphBuilder.MapBinder<K, V>, GraphB
             throw new IllegalArgumentException("Key is not a " + this.keyType);
         }
         if (!Types.typeToRawType(valueType).isAssignableFrom(Types.keyToRawType(valueKey))) {
-            throw new IllegalArgumentException("Value type " + Types.keyToType(valueKey)
-                    + " is not compatible with map value type " + this.valueType);
+            throw new IllegalArgumentException(
+                    "Value type "
+                            + Types.keyToType(valueKey)
+                            + " is not compatible with map value type "
+                            + this.valueType);
         }
         map.put(key, valueKey);
     }

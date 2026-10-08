@@ -1,13 +1,16 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import logging.LogManager;
 import logging.Logger;
+
 import misc.monads.Result;
+
 import rendering.Color;
 import rendering.PixelRaster;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 public class CmdCanvas implements Command {
     private static final Logger LOG = LogManager.instance().getThis();
@@ -18,7 +21,11 @@ public class CmdCanvas implements Command {
         this.state = state;
     }
 
-    @Override public String helpText() { return "Usage: canvas [<size> | <width> <height>]\n  Show dimensions or expand the texture canvas."; }
+    @Override
+    public String helpText() {
+        return "Usage: canvas [<size> | <width> <height>]\n"
+                + "  Show dimensions or expand the texture canvas.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {
@@ -64,13 +71,18 @@ public class CmdCanvas implements Command {
         int oldWidth = tx.width();
         int oldHeight = tx.height();
         if (width < oldWidth || height < oldHeight) {
-            return Result.failure("Target canvas dimensions [w=%d, h=%d] must be no smaller than current: [w=%d, h=%d]"
-                    .formatted(width, height, oldWidth, oldHeight));
+            return Result.failure(
+                    "Target canvas dimensions [w=%d, h=%d] must be no smaller than current: [w=%d, h=%d]"
+                            .formatted(width, height, oldWidth, oldHeight));
         }
-        state.texture(new PixelRaster(width, height, (_, x, y)
-                -> x >= oldWidth || y >= oldHeight
-                ? Color.NamedColor.BLACK
-                : tx.pixel(x, y)));
+        state.texture(
+                new PixelRaster(
+                        width,
+                        height,
+                        (_, x, y) ->
+                                x >= oldWidth || y >= oldHeight
+                                        ? Color.NamedColor.BLACK
+                                        : tx.pixel(x, y)));
         state.snapshot();
         return Result.success("Expanded canvas to [w=%d, h=%d]".formatted(width, height));
     }

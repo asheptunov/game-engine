@@ -1,9 +1,9 @@
 package rendering;
 
-import harness.Test;
-
 import static harness.Assertions.assertEquals;
 import static harness.SuiteRunner.runThis;
+
+import harness.Test;
 
 class ArgbRasterSerializerTest {
     ArgbSerializer cut = ArgbSerializer.INSTANCE;
@@ -11,8 +11,20 @@ class ArgbRasterSerializerTest {
     @Test
     void testSerializeDeserialize() {
         Raster raster = new PixelRaster(40, 50, Color.NamedColor.WHITE);
-        byte[] bytes = cut.serialize(raster).fold(b -> b, e -> {throw e;});
-        Raster deserializedRaster = cut.deserialize(bytes).fold(r -> r, e -> {throw e;});
+        byte[] bytes =
+                cut.serialize(raster)
+                        .fold(
+                                b -> b,
+                                e -> {
+                                    throw e;
+                                });
+        Raster deserializedRaster =
+                cut.deserialize(bytes)
+                        .fold(
+                                r -> r,
+                                e -> {
+                                    throw e;
+                                });
         assertEquals(raster, deserializedRaster);
     }
 

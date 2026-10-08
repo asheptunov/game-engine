@@ -1,21 +1,19 @@
 package engine.objects;
 
-import harness.SuiteRunner;
-import harness.Test;
-import math.Ray;
-import math.Vec3;
-
 import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertTrue;
+
+import harness.SuiteRunner;
+import harness.Test;
+
+import math.Ray;
+import math.Vec3;
 
 public class TriTest {
     private static final float EPS = 1e-4f;
 
     // Unit triangle in z=0 plane with corners (0,0,0), (1,0,0), (0,1,0). Natural normal: +z.
-    private final Tri tri = new Tri(
-            new Vec3(0, 0, 0),
-            new Vec3(1, 0, 0),
-            new Vec3(0, 1, 0));
+    private final Tri tri = new Tri(new Vec3(0, 0, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0));
 
     @Test
     void normalIsPositiveZ() {
@@ -59,14 +57,16 @@ public class TriTest {
 
     @Test
     void rayBehindTriangleMisses() {
-        // Ray from (0.3, 0.3, -5) going -z. Triangle is at z=0, in front (-z would go away from it).
+        // Ray from (0.3, 0.3, -5) going -z. Triangle is at z=0, in front (-z would go away from
+        // it).
         var ray = new Ray(new Vec3(0.3f, 0.3f, -5), new Vec3(0, 0, -1));
         assertEquals(true, tri.intersect(ray).isEmpty());
     }
 
     @Test
     void hitFromBackSide() {
-        // Ray from below going +z still hits — backside hits are detected. Caller can decide significance.
+        // Ray from below going +z still hits — backside hits are detected. Caller can decide
+        // significance.
         var ray = new Ray(new Vec3(0.3f, 0.3f, -5), new Vec3(0, 0, 1));
         var hit = tri.intersect(ray);
         assertTrue(hit.isPresent());

@@ -25,13 +25,19 @@ final class Types {
         // against types produced by reflection (e.g. from GenericType<List<String>>(){}).
         return new ParameterizedType() {
             @Override
-            public Type[] getActualTypeArguments() { return typeArgs.clone(); }
+            public Type[] getActualTypeArguments() {
+                return typeArgs.clone();
+            }
 
             @Override
-            public Type getRawType() { return rawType; }
+            public Type getRawType() {
+                return rawType;
+            }
 
             @Override
-            public Type getOwnerType() { return null; }
+            public Type getOwnerType() {
+                return null;
+            }
 
             @Override
             public boolean equals(Object o) {
@@ -50,9 +56,12 @@ final class Types {
 
             @Override
             public String toString() {
-                return rawType.getName() + "<"
-                        + Arrays.stream(typeArgs).map(Type::getTypeName)
-                        .collect(Collectors.joining(", ")) + ">";
+                return rawType.getName()
+                        + "<"
+                        + Arrays.stream(typeArgs)
+                                .map(Type::getTypeName)
+                                .collect(Collectors.joining(", "))
+                        + ">";
             }
         };
     }
@@ -61,7 +70,8 @@ final class Types {
         return switch (type) {
             case Class<?> c -> {
                 if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
-                    throw new UnsupportedOperationException("Cannot instantiate non-static inner classes");
+                    throw new UnsupportedOperationException(
+                            "Cannot instantiate non-static inner classes");
                 }
                 yield c;
             }

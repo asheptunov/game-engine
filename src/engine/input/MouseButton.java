@@ -1,3 +1,8 @@
 package engine.input;
 
-public enum MouseButton { LEFT, MIDDLE, RIGHT, NONE }
+public enum MouseButton {
+    LEFT,
+    MIDDLE,
+    RIGHT,
+    NONE
+}

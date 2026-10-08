@@ -191,7 +191,8 @@ public interface GraphBuilder {
             return toProvider(new Key.TypeKey<>(providerClass));
         }
 
-        default ScopingBuilder<T> toProvider(GenericType<? extends Provider<? extends T>> providerGenericType) {
+        default ScopingBuilder<T> toProvider(
+                GenericType<? extends Provider<? extends T>> providerGenericType) {
             return toProvider(new Key.TypeKey<>(providerGenericType.getType()));
         }
 

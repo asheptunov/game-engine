@@ -1,9 +1,10 @@
 package scenes.textureeditor.console;
 
-import ui.console.Command;
-
 import misc.monads.Result;
+
 import scenes.textureeditor.model.EditorState;
+
+import ui.console.Command;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,7 +17,10 @@ public class CmdMkdir implements Command {
         this.state = state;
     }
 
-    @Override public String helpText() { return "Usage: mkdir <dir>\n  Create a directory."; }
+    @Override
+    public String helpText() {
+        return "Usage: mkdir <dir>\n  Create a directory.";
+    }
 
     @Override
     public Result<String, String> run(String... args) {

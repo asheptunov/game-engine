@@ -1,10 +1,10 @@
 package math;
 
-import harness.SuiteRunner;
-import harness.Test;
-
 import static harness.Assertions.assertEquals;
 import static harness.Assertions.assertTrue;
+
+import harness.SuiteRunner;
+import harness.Test;
 
 public class PlaneTest {
     private static final float EPS = 1e-4f;
@@ -55,13 +55,14 @@ public class PlaneTest {
 
     @Test
     void obliqueIntersection() {
-        // Plane at z=10 normal +z. Ray from origin going (1,0,1)/sqrt(2). t such that 0+t*(1/sqrt2)*z=10 → t=10*sqrt(2).
+        // Plane at z=10 normal +z. Ray from origin going (1,0,1)/sqrt(2). t such that
+        // 0+t*(1/sqrt2)*z=10 → t=10*sqrt(2).
         var plane = new Plane(new Vec3(0, 0, 10), new Vec3(0, 0, 1));
         var dir = new Vec3(1, 0, 1).normalized();
         var ray = new Ray(Vec3.ZERO, dir);
         var t = plane.intersect(ray);
         assertTrue(t.isPresent());
-        assertTrue(Math.abs(t.get() - 10f * (float)Math.sqrt(2)) < EPS);
+        assertTrue(Math.abs(t.get() - 10f * (float) Math.sqrt(2)) < EPS);
     }
 
     public static void main(String[] args) {

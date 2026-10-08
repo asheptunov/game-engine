@@ -1,6 +1,7 @@
 package rendering;
 
 import di.annotations.Inject;
+
 import logging.LogManager;
 import logging.Logger;
 

@@ -2,6 +2,7 @@ package misc.history;
 
 import logging.LogManager;
 import logging.Logger;
+
 import misc.spliterators.ReversedSpliterator;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import java.util.stream.Stream;
 public class LoggingHistory<T> implements History<T> {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final History<T>   history;
+    private final History<T> history;
     private final Logger.Level level;
 
     public LoggingHistory(Logger.Level level, History<T> history) {
@@ -72,7 +73,9 @@ public class LoggingHistory<T> implements History<T> {
         */
         var future = history.getFuture();
         var past = history.getPast();
-        var all = ReversedSpliterator.reverse(Stream.concat(future.stream(), past.stream())).stream().toList();
+        var all =
+                ReversedSpliterator.reverse(Stream.concat(future.stream(), past.stream())).stream()
+                        .toList();
         int cur = past.size() - 1;
         int newest = all.size() - 1;
         int i = 0;
@@ -93,6 +96,11 @@ public class LoggingHistory<T> implements History<T> {
             ++i;
         }
         assert elements.size() == history.size();
-        LOG.log(level, "History (size=%d, maxSize=%d): %s", elements.size(), history.maxSize(), elements);
+        LOG.log(
+                level,
+                "History (size=%d, maxSize=%d): %s",
+                elements.size(),
+                history.maxSize(),
+                elements);
     }
 }

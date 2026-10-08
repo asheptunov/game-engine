@@ -1,11 +1,5 @@
 package ui;
 
-import java.awt.Toolkit;
-import java.awt.event.KeyEvent;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import static java.awt.event.KeyEvent.KEY_LOCATION_LEFT;
 import static java.awt.event.KeyEvent.KEY_LOCATION_RIGHT;
 import static java.awt.event.KeyEvent.KEY_LOCATION_STANDARD;
@@ -111,18 +105,20 @@ import static java.awt.event.KeyEvent.VK_X;
 import static java.awt.event.KeyEvent.VK_Y;
 import static java.awt.event.KeyEvent.VK_Z;
 
-public record KeyAction(Key raw,
-                        Key reified,
-                        Action action,
-                        Modifiers mods) {
+import java.awt.Toolkit;
+import java.awt.event.KeyEvent;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+public record KeyAction(Key raw, Key reified, Action action, Modifiers mods) {
     public static KeyAction fromAwt(KeyEvent awt) {
         var raw = Key.fromAwt(awt);
-        var shifted = awt.isShiftDown()
-                ? raw.shift()
-                : raw;
-        var reified = Toolkit.getDefaultToolkit().getLockingKeyState(VK_CAPS_LOCK)
-                ? shifted.caps()
-                : shifted;
+        var shifted = awt.isShiftDown() ? raw.shift() : raw;
+        var reified =
+                Toolkit.getDefaultToolkit().getLockingKeyState(VK_CAPS_LOCK)
+                        ? shifted.caps()
+                        : shifted;
         var mods = Modifiers.fromAwt(awt);
         var action = Action.fromAwt(awt);
         return new KeyAction(raw, reified, action, mods);
@@ -317,10 +313,11 @@ public record KeyAction(Key raw,
         }
 
         static Key fromAwt(KeyEvent awt) {
-            var keyCode = switch (awt.getID()) {
-                case KEY_PRESSED, KEY_RELEASED -> awt.getKeyCode();
-                default -> throw new UnsupportedOperationException();
-            };
+            var keyCode =
+                    switch (awt.getID()) {
+                        case KEY_PRESSED, KEY_RELEASED -> awt.getKeyCode();
+                        default -> throw new UnsupportedOperationException();
+                    };
             var keyLocation = awt.getKeyLocation();
             return switch (keyCode) {
                 case VK_ESCAPE -> Key.ESCAPE;
@@ -400,11 +397,12 @@ public record KeyAction(Key raw,
                 case VK_ENTER -> Key.ENTER;
                 case VK_COLON -> Key.COLON;
                 case VK_QUOTEDBL -> Key.DOUBLE_QUOTE;
-                case VK_SHIFT -> switch (keyLocation) {
-                    case KEY_LOCATION_STANDARD, KEY_LOCATION_LEFT -> Key.L_SHIFT;
-                    case KEY_LOCATION_RIGHT -> Key.R_SHIFT;
-                    default -> Key.UNKNOWN;
-                };
+                case VK_SHIFT ->
+                        switch (keyLocation) {
+                            case KEY_LOCATION_STANDARD, KEY_LOCATION_LEFT -> Key.L_SHIFT;
+                            case KEY_LOCATION_RIGHT -> Key.R_SHIFT;
+                            default -> Key.UNKNOWN;
+                        };
                 case VK_Z -> Key.LOWER_Z;
                 case VK_X -> Key.LOWER_X;
                 case VK_C -> Key.LOWER_C;
@@ -421,26 +419,30 @@ public record KeyAction(Key raw,
                 case VK_LEFT -> Key.LEFT;
                 case VK_DOWN -> Key.DOWN;
                 case VK_RIGHT -> Key.RIGHT;
-                case VK_CONTROL -> switch (keyLocation) {
-                    case KEY_LOCATION_LEFT -> Key.L_CTRL;
-                    case KEY_LOCATION_RIGHT -> Key.R_CTRL;
-                    default -> Key.UNKNOWN;
-                };
-                case VK_WINDOWS -> switch (keyLocation) {
-                    case KEY_LOCATION_LEFT -> Key.L_WIN;
-                    case KEY_LOCATION_RIGHT -> Key.R_WIN;
-                    default -> Key.UNKNOWN;
-                };
-                case VK_ALT -> switch (keyLocation) {
-                    case KEY_LOCATION_LEFT -> Key.L_ALT;
-                    case KEY_LOCATION_RIGHT -> Key.R_ALT;
-                    default -> Key.UNKNOWN;
-                };
-                case VK_META -> switch (keyLocation) {
-                    case KEY_LOCATION_LEFT -> Key.L_META;
-                    case KEY_LOCATION_RIGHT -> Key.R_META;
-                    default -> Key.UNKNOWN;
-                };
+                case VK_CONTROL ->
+                        switch (keyLocation) {
+                            case KEY_LOCATION_LEFT -> Key.L_CTRL;
+                            case KEY_LOCATION_RIGHT -> Key.R_CTRL;
+                            default -> Key.UNKNOWN;
+                        };
+                case VK_WINDOWS ->
+                        switch (keyLocation) {
+                            case KEY_LOCATION_LEFT -> Key.L_WIN;
+                            case KEY_LOCATION_RIGHT -> Key.R_WIN;
+                            default -> Key.UNKNOWN;
+                        };
+                case VK_ALT ->
+                        switch (keyLocation) {
+                            case KEY_LOCATION_LEFT -> Key.L_ALT;
+                            case KEY_LOCATION_RIGHT -> Key.R_ALT;
+                            default -> Key.UNKNOWN;
+                        };
+                case VK_META ->
+                        switch (keyLocation) {
+                            case KEY_LOCATION_LEFT -> Key.L_META;
+                            case KEY_LOCATION_RIGHT -> Key.R_META;
+                            default -> Key.UNKNOWN;
+                        };
                 case VK_SPACE -> Key.SPACE;
                 default -> Key.UNKNOWN;
             };
@@ -571,14 +573,15 @@ public record KeyAction(Key raw,
         }
     }
 
-    public record Modifiers(boolean lCtrl,
-                            boolean rCtrl,
-                            boolean lAlt,
-                            boolean rAlt,
-                            boolean lShift,
-                            boolean rShift,
-                            boolean lMeta,
-                            boolean rMeta) {
+    public record Modifiers(
+            boolean lCtrl,
+            boolean rCtrl,
+            boolean lAlt,
+            boolean rAlt,
+            boolean lShift,
+            boolean rShift,
+            boolean lMeta,
+            boolean rMeta) {
         public boolean ctrl() {
             return lCtrl || rCtrl;
         }

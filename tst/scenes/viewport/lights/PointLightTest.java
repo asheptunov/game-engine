@@ -1,14 +1,15 @@
 package engine.lights;
 
+import static harness.Assertions.assertEquals;
+import static harness.Assertions.assertTrue;
+
 import harness.SuiteRunner;
 import harness.Test;
+
 import math.Vec3;
 
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
-
-import static harness.Assertions.assertEquals;
-import static harness.Assertions.assertTrue;
 
 public class PointLightTest {
     private static final float EPS = 1e-4f;

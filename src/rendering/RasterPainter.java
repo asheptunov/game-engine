@@ -39,7 +39,8 @@ public class RasterPainter implements Painter {
             double progress = 0.;
             int n = 0;
             // can do this more accurately using pythagorean, but much slower.
-            // maybe amortize by periodically recomputing basis with pythagorean, if accuracy is bad for long runs.
+            // maybe amortize by periodically recomputing basis with pythagorean, if accuracy is bad
+            // for long runs.
             for (int y = startY; y < endY; ++y) {
                 // rounding might be more accurate, but maybe slower
                 var color = sampler.apply(n++, length, progress);
@@ -79,7 +80,13 @@ public class RasterPainter implements Painter {
     }
 
     @Override
-    public void drawImg(final int x, final int y, final int w, final int h, ImageSampler sampler, BlendMode blendMode) {
+    public void drawImg(
+            final int x,
+            final int y,
+            final int w,
+            final int h,
+            ImageSampler sampler,
+            BlendMode blendMode) {
         int imgMinX = x < 0 ? -x : 0;
         int imgMinY = y < 0 ? -y : 0;
         int imgMaxX = w - Math.max(0, x + w - this.raster.width());
@@ -101,7 +108,8 @@ public class RasterPainter implements Painter {
     }
 
     @Override
-    public void drawTri(int x1, int y1, int x2, int y2, int x3, int y3, Color color, BlendMode blendMode) {
+    public void drawTri(
+            int x1, int y1, int x2, int y2, int x3, int y3, Color color, BlendMode blendMode) {
         throw new UnsupportedOperationException();
     }
 
@@ -118,24 +126,24 @@ public class RasterPainter implements Painter {
         raster.b()[i] = blended.b();
     }
 
-//    private void fastDrawPoint(int i, Color c) {
-//        float imgA = ((int) c.a() & 0xff) / 255f;
-//        float imgR = ((int) c.r() & 0xff) / 255f;
-//        float imgG = ((int) c.g() & 0xff) / 255f;
-//        float imgB = ((int) c.b() & 0xff) / 255f;
-//        float myA = ((int) raster.a()[i] & 0xff) / 255f;
-//        float myR = ((int) raster.r()[i] & 0xff) / 255f;
-//        float myG = ((int) raster.g()[i] & 0xff) / 255f;
-//        float myB = ((int) raster.b()[i] & 0xff) / 255f;
-//        float oneMinusImgA = 1 - imgA;
-//        raster.a()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgA + myA * oneMinusImgA))));
-//        // straight
-//        raster.r()[i] = (byte) (255. * (imgR * imgA + myR * myA * oneMinusImgA) / imgA);
-//        raster.g()[i] = (byte) (255. * (imgG * imgA + myG * myA * oneMinusImgA) / imgA);
-//        raster.b()[i] = (byte) (255. * (imgB * imgA + myB * myA * oneMinusImgA) / imgA);
-//        // pre-multiplied
-//        raster.r()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgR + myR * oneMinusImgA))));
-//        raster.g()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgG + myG * oneMinusImgA))));
-//        raster.b()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgB + myB * oneMinusImgA))));
-//    }
+    //    private void fastDrawPoint(int i, Color c) {
+    //        float imgA = ((int) c.a() & 0xff) / 255f;
+    //        float imgR = ((int) c.r() & 0xff) / 255f;
+    //        float imgG = ((int) c.g() & 0xff) / 255f;
+    //        float imgB = ((int) c.b() & 0xff) / 255f;
+    //        float myA = ((int) raster.a()[i] & 0xff) / 255f;
+    //        float myR = ((int) raster.r()[i] & 0xff) / 255f;
+    //        float myG = ((int) raster.g()[i] & 0xff) / 255f;
+    //        float myB = ((int) raster.b()[i] & 0xff) / 255f;
+    //        float oneMinusImgA = 1 - imgA;
+    //        raster.a()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgA + myA * oneMinusImgA))));
+    //        // straight
+    //        raster.r()[i] = (byte) (255. * (imgR * imgA + myR * myA * oneMinusImgA) / imgA);
+    //        raster.g()[i] = (byte) (255. * (imgG * imgA + myG * myA * oneMinusImgA) / imgA);
+    //        raster.b()[i] = (byte) (255. * (imgB * imgA + myB * myA * oneMinusImgA) / imgA);
+    //        // pre-multiplied
+    //        raster.r()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgR + myR * oneMinusImgA))));
+    //        raster.g()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgG + myG * oneMinusImgA))));
+    //        raster.b()[i] = (byte) (255. * Math.max(0, Math.min(1, (imgB + myB * oneMinusImgA))));
+    //    }
 }

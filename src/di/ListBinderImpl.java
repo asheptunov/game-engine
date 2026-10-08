@@ -5,11 +5,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ListBinderImpl<T> implements GraphBuilder.ListBinder<T>, GraphBuilder.QualifyingListBinder<T> {
+public class ListBinderImpl<T>
+        implements GraphBuilder.ListBinder<T>, GraphBuilder.QualifyingListBinder<T> {
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private final Optional<Qualifier>    qualifier;
-    private final Type                   elementType;
-    private final List<Key<? extends T>> list     = new ArrayList<>();
+    private final Optional<Qualifier> qualifier;
+
+    private final Type elementType;
+    private final List<Key<? extends T>> list = new ArrayList<>();
     private final List<ListBinderImpl<?>> registry;
 
     private ListBinderImpl(List<ListBinderImpl<?>> registry, Type elementType) {
@@ -18,7 +20,8 @@ public class ListBinderImpl<T> implements GraphBuilder.ListBinder<T>, GraphBuild
         this.elementType = elementType;
     }
 
-    private ListBinderImpl(List<ListBinderImpl<?>> registry, Qualifier qualifier, Type elementType) {
+    private ListBinderImpl(
+            List<ListBinderImpl<?>> registry, Qualifier qualifier, Type elementType) {
         this.registry = registry;
         this.qualifier = Optional.of(qualifier);
         this.elementType = elementType;
@@ -32,7 +35,7 @@ public class ListBinderImpl<T> implements GraphBuilder.ListBinder<T>, GraphBuild
     @Override
     public QualifyingBuilderImpl add(Type type) {
         addElement(new Key.TypeKey<>(type));
-        return new QualifyingBuilderImpl(list.size() - 1);  // gives opportunity to qualify
+        return new QualifyingBuilderImpl(list.size() - 1); // gives opportunity to qualify
     }
 
     @Override
@@ -83,10 +86,12 @@ public class ListBinderImpl<T> implements GraphBuilder.ListBinder<T>, GraphBuild
     }
 
     private void addElement(Key<? extends T> key) {
-        if (!Types.typeToRawType(this.elementType)
-                .isAssignableFrom(Types.keyToRawType(key))) {
-            throw new IllegalArgumentException("Element type " + Types.keyToType(key)
-                    + " is not compatible with list element type " + this.elementType);
+        if (!Types.typeToRawType(this.elementType).isAssignableFrom(Types.keyToRawType(key))) {
+            throw new IllegalArgumentException(
+                    "Element type "
+                            + Types.keyToType(key)
+                            + " is not compatible with list element type "
+                            + this.elementType);
         }
         list.add(key);
     }

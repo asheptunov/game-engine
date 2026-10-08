@@ -16,11 +16,11 @@ import java.util.Map;
 import java.util.Optional;
 
 public class SuiteRunner {
-    private static final SuiteRunner INSTANCE  = new SuiteRunner();
-    private static final Logger      LOG       = LogManager.instance().getThis();
-    private static final Clock       CLOCK     = Clock.systemDefaultZone();
-    public static final  String      CHECKMARK = "✅";
-    public static final  String      X_MARK    = "❌";
+    private static final SuiteRunner INSTANCE = new SuiteRunner();
+    private static final Logger LOG = LogManager.instance().getThis();
+    private static final Clock CLOCK = Clock.systemDefaultZone();
+    public static final String CHECKMARK = "✅";
+    public static final String X_MARK = "❌";
 
     private sealed interface TestResult permits Success, Failure {}
 
@@ -82,7 +82,8 @@ public class SuiteRunner {
         } catch (InstantiationException | IllegalAccessException e) {
             throw new RuntimeException("Failed to instantiate suite instance: " + suite, e);
         } catch (InvocationTargetException e) {
-            throw new RuntimeException("Failed to instantiate suite instance; suite constructor threw: " + suite,
+            throw new RuntimeException(
+                    "Failed to instantiate suite instance; suite constructor threw: " + suite,
                     e.getCause());
         }
     }
@@ -104,20 +105,24 @@ public class SuiteRunner {
                 continue;
             }
             if (0 != method.getParameterCount()) {
-                throw new IllegalArgumentException("Test method must have no arguments: " + formatTest(suite, method));
+                throw new IllegalArgumentException(
+                        "Test method must have no arguments: " + formatTest(suite, method));
             }
             if (Modifier.isStatic(method.getModifiers())) {
-                throw new IllegalArgumentException("Test method must not be static: " + formatTest(suite, method));
+                throw new IllegalArgumentException(
+                        "Test method must not be static: " + formatTest(suite, method));
             }
             if (Modifier.isPrivate(method.getModifiers())) {
-                throw new IllegalArgumentException("Test method must not be private: " + formatTest(suite, method));
+                throw new IllegalArgumentException(
+                        "Test method must not be private: " + formatTest(suite, method));
             }
             tests.add(method);
         }
         return tests;
     }
 
-    private Map<Method, TestResult> runTests(Class<?> suite, Object instance, Collection<Method> tests) {
+    private Map<Method, TestResult> runTests(
+            Class<?> suite, Object instance, Collection<Method> tests) {
         var results = new HashMap<Method, TestResult>();
         for (Method test : tests) {
             var result = runTest(suite, instance, test);
@@ -128,33 +133,43 @@ public class SuiteRunner {
 
     private void displayResults(Class<?> suite, Map<Method, TestResult> results) {
         LOG.info("======Test Results======");
-        LOG.info("%s %s [%s]",
+        LOG.info(
+                "%s %s [%s]",
                 results.values().stream().anyMatch(r -> r instanceof Failure) ? X_MARK : CHECKMARK,
                 formatSuite(suite),
-                results.values().stream().map(r -> switch (r) {
-                    case Success s -> s.time();
-                    case Failure f -> f.time();
-                }).reduce(Duration.ZERO, Duration::plus));
-        results.forEach((test, result) -> {
-            LOG.info("%s %s [%s]",
-                    switch (result) {
-                        case Success _ -> CHECKMARK;
-                        case Failure _ -> X_MARK;
-                    },
-                    formatTest(suite, test),
-                    switch (result) {
-                        case Success s -> s.time();
-                        case Failure f -> f.time();
-                    });
-        });
+                results.values().stream()
+                        .map(
+                                r ->
+                                        switch (r) {
+                                            case Success s -> s.time();
+                                            case Failure f -> f.time();
+                                        })
+                        .reduce(Duration.ZERO, Duration::plus));
+        results.forEach(
+                (test, result) -> {
+                    LOG.info(
+                            "%s %s [%s]",
+                            switch (result) {
+                                case Success _ -> CHECKMARK;
+                                case Failure _ -> X_MARK;
+                            },
+                            formatTest(suite, test),
+                            switch (result) {
+                                case Success s -> s.time();
+                                case Failure f -> f.time();
+                            });
+                });
         results.entrySet().stream()
                 .filter(r -> r.getValue() instanceof Failure)
-                .forEach(r -> {
-                    LOG.error(((Failure) r.getValue()).ex(), "%s failed with exception: %s",
-                            formatTest(suite, r.getKey()),
-                            ((Failure) r.getValue()).ex().getClass());
-                    ((Failure) r.getValue()).ex.printStackTrace(System.err);
-                });
+                .forEach(
+                        r -> {
+                            LOG.error(
+                                    ((Failure) r.getValue()).ex(),
+                                    "%s failed with exception: %s",
+                                    formatTest(suite, r.getKey()),
+                                    ((Failure) r.getValue()).ex().getClass());
+                            ((Failure) r.getValue()).ex.printStackTrace(System.err);
+                        });
         LOG.info("========================");
     }
 
@@ -165,7 +180,8 @@ public class SuiteRunner {
             test.invoke(instance);
             return new Success(Duration.between(start, CLOCK.instant()));
         } catch (IllegalAccessException e) {
-            throw new RuntimeException("Failed to invoke test method: " + formatTest(suite, test), e);
+            throw new RuntimeException(
+                    "Failed to invoke test method: " + formatTest(suite, test), e);
         } catch (InvocationTargetException e) {
             return new Failure(Duration.between(start, CLOCK.instant()), e.getCause());
         }

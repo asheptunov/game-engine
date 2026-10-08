@@ -13,14 +13,17 @@ public class TrimmingCommand implements Command {
     }
 
     @Override
-    public Result<String, String> help(String... path) { return delegate.help(path); }
+    public Result<String, String> help(String... path) {
+        return delegate.help(path);
+    }
 
     @Override
     public Result<String, String> run(String... args) {
-        var trimmedArgs = Arrays.stream(args)
-                .map(String::strip)
-                .filter(Predicate.not(String::isEmpty))
-                .toArray(String[]::new);
+        var trimmedArgs =
+                Arrays.stream(args)
+                        .map(String::strip)
+                        .filter(Predicate.not(String::isEmpty))
+                        .toArray(String[]::new);
         if (trimmedArgs.length == 0) {
             return Result.success(null);
         }

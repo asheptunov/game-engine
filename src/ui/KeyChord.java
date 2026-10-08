@@ -1,8 +1,9 @@
 package ui;
 
 /**
- * Key + modifier set used as the lookup key in {@link InputBindings}. Strict matching: a chord with no
- * modifiers does <i>not</i> match an event that has Shift held. Define separate chords if needed.
+ * Key + modifier set used as the lookup key in {@link InputBindings}. Strict matching: a chord with
+ * no modifiers does <i>not</i> match an event that has Shift held. Define separate chords if
+ * needed.
  */
 public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shift, boolean meta) {
     public static KeyChord of(KeyAction.Key key) {
@@ -31,7 +32,8 @@ public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shi
     }
 
     engine.input.KeyChord toEngine() {
-        return new engine.input.KeyChord(physical(key),
+        return new engine.input.KeyChord(
+                physical(key),
                 new engine.input.Modifiers(ctrl, alt, shift || impliedShift(key), meta));
     }
 
@@ -59,26 +61,47 @@ public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shi
             case GREATER -> engine.input.KeyCode.PERIOD;
             case QUESTION -> engine.input.KeyCode.FORWARD_SLASH;
             default -> {
-                var name=key.name();
-                if(name.startsWith("LOWER_") || name.startsWith("UPPER_"))name=name.substring(6);
+                var name = key.name();
+                if (name.startsWith("LOWER_") || name.startsWith("UPPER_"))
+                    name = name.substring(6);
                 yield engine.input.KeyCode.valueOf(name);
             }
         };
     }
 
     private static boolean impliedShift(KeyAction.Key key) {
-        return key.name().startsWith("UPPER_") || switch (key) {
-            case TILDE, BANG, AT, HASH, DOLLAR, PERCENT, CARET, AMPERSAND, ASTERISK,
-                    L_PAREN, R_PAREN, UNDERSCORE, PLUS, L_BRACE, R_BRACE, PIPE,
-                    COLON, DOUBLE_QUOTE, LESS, GREATER, QUESTION -> true;
-            default -> false;
-        };
+        return key.name().startsWith("UPPER_")
+                || switch (key) {
+                    case TILDE,
+                                    BANG,
+                                    AT,
+                                    HASH,
+                                    DOLLAR,
+                                    PERCENT,
+                                    CARET,
+                                    AMPERSAND,
+                                    ASTERISK,
+                                    L_PAREN,
+                                    R_PAREN,
+                                    UNDERSCORE,
+                                    PLUS,
+                                    L_BRACE,
+                                    R_BRACE,
+                                    PIPE,
+                                    COLON,
+                                    DOUBLE_QUOTE,
+                                    LESS,
+                                    GREATER,
+                                    QUESTION ->
+                            true;
+                    default -> false;
+                };
     }
 
     /**
      * Parses chord syntax like {@code "q"}, {@code "ctrl+a"}, {@code "ctrl+shift+z"}, {@code "f5"}.
-     * Modifiers (case-insensitive, any order): {@code ctrl}, {@code shift}, {@code alt}, {@code meta}.
-     * The last {@code +}-separated token is the key (see {@link KeyAction.Key#parse}).
+     * Modifiers (case-insensitive, any order): {@code ctrl}, {@code shift}, {@code alt}, {@code
+     * meta}. The last {@code +}-separated token is the key (see {@link KeyAction.Key#parse}).
      */
     public static KeyChord parse(String chord) {
         var trimmed = chord.trim();
@@ -103,8 +126,9 @@ public record KeyChord(KeyAction.Key key, boolean ctrl, boolean alt, boolean shi
                 case "shift" -> shift = true;
                 case "alt" -> alt = true;
                 case "meta" -> meta = true;
-                default -> throw new IllegalArgumentException(
-                        "Unknown modifier '" + mod + "' in chord '" + chord + "'");
+                default ->
+                        throw new IllegalArgumentException(
+                                "Unknown modifier '" + mod + "' in chord '" + chord + "'");
             }
         }
         return new KeyChord(KeyAction.Key.parse(keyToken), ctrl, alt, shift, meta);

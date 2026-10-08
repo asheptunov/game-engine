@@ -24,8 +24,13 @@ public sealed interface Key<T> permits Key.TypeKey, Key.QualifiedKey {
 
     default Key<T> qualified(Qualifier qualifier) {
         if (this instanceof Key.QualifiedKey<T> qk) {
-            throw new IllegalArgumentException("Cannot qualify " + this + " with '" + qualifier
-                    + "' because it's already qualified with " + qk.qualifier());
+            throw new IllegalArgumentException(
+                    "Cannot qualify "
+                            + this
+                            + " with '"
+                            + qualifier
+                            + "' because it's already qualified with "
+                            + qk.qualifier());
         }
         return new QualifiedKey<>(qualifier, this);
     }

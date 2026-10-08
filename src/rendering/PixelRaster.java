@@ -4,15 +4,21 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public class PixelRaster implements Raster {
-    private final int    w;
-    private final int    h;
+    private final int w;
+    private final int h;
     private final byte[] a;
     private final byte[] r;
     private final byte[] g;
     private final byte[] b;
 
     public PixelRaster(Raster other) {
-        this(other.width(), other.height(), other.alpha(), other.red(), other.green(), other.blue());
+        this(
+                other.width(),
+                other.height(),
+                other.alpha(),
+                other.red(),
+                other.green(),
+                other.blue());
     }
 
     public PixelRaster(int width, int height) {
@@ -103,7 +109,8 @@ public class PixelRaster implements Raster {
         int i = 0;
         for (int r = Math.max(0, y); r < Math.min(this.h, h); ++r) {
             for (int c = Math.min(0, x); c < Math.max(this.w, w); ++c) {
-                reader.apply(x, y, Color.ArgbInt32Color.of(this.a[i], this.r[i], this.g[i], this.b[i]));
+                reader.apply(
+                        x, y, Color.ArgbInt32Color.of(this.a[i], this.r[i], this.g[i], this.b[i]));
                 ++i;
             }
         }
@@ -171,10 +178,13 @@ public class PixelRaster implements Raster {
         }
         double xScale = 1. * this.w / w;
         double yScale = 1. * this.h / h;
-        return new PixelRaster(w, h, (_, x, y) -> {
-            int i = ((int) (yScale * y) * this.w) + (int) (xScale * x);
-            return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
-        });
+        return new PixelRaster(
+                w,
+                h,
+                (_, x, y) -> {
+                    int i = ((int) (yScale * y) * this.w) + (int) (xScale * x);
+                    return Color.ArgbInt32Color.of(a[i], r[i], g[i], b[i]);
+                });
     }
 
     @Override
@@ -187,7 +197,8 @@ public class PixelRaster implements Raster {
         if (!(o instanceof PixelRaster that)) {
             return false;
         }
-        return w == that.w && h == that.h
+        return w == that.w
+                && h == that.h
                 && Objects.deepEquals(a, that.a)
                 && Objects.deepEquals(r, that.r)
                 && Objects.deepEquals(g, that.g)
@@ -196,7 +207,13 @@ public class PixelRaster implements Raster {
 
     @Override
     public int hashCode() {
-        return Objects.hash(w, h, Arrays.hashCode(a), Arrays.hashCode(r), Arrays.hashCode(g), Arrays.hashCode(b));
+        return Objects.hash(
+                w,
+                h,
+                Arrays.hashCode(a),
+                Arrays.hashCode(r),
+                Arrays.hashCode(g),
+                Arrays.hashCode(b));
     }
 
     private static byte[][] initBytes(int width, int height, Painter.ImageSampler color) {
@@ -205,10 +222,10 @@ public class PixelRaster implements Raster {
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 int c = color.apply(i, x, y).argbInt32();
-                res[0][i] = (byte) (c >> 24);  // alpha
-                res[1][i] = (byte) (c >> 16);  // red
-                res[2][i] = (byte) (c >> 8);  // green
-                res[3][i] = (byte) c;  // blue
+                res[0][i] = (byte) (c >> 24); // alpha
+                res[1][i] = (byte) (c >> 16); // red
+                res[2][i] = (byte) (c >> 8); // green
+                res[3][i] = (byte) c; // blue
                 ++i;
             }
         }

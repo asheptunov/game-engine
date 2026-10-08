@@ -4,7 +4,8 @@ import java.util.Optional;
 
 /**
  * Shared ray-vs-parallelogram parameterization. Tri and Rect both build on this — they only differ
- * in how (u, v) bounds are interpreted (triangle: u >= 0 && v >= 0 && u + v <= 1; rect: each in [0, 1]).
+ * in how (u, v) bounds are interpreted (triangle: u >= 0 && v >= 0 && u + v <= 1; rect: each in [0,
+ * 1]).
  */
 public final class MollerTrumbore {
     private MollerTrumbore() {}
@@ -13,13 +14,34 @@ public final class MollerTrumbore {
 
     /** Bounded surface intersection without allocating a result for each candidate. */
     public static float distance(Ray ray, Vec3 origin, Vec3 edge1, Vec3 edge2, boolean triangle) {
-        return distance(ray.origin().x(), ray.origin().y(), ray.origin().z(),
-                ray.direction().x(), ray.direction().y(), ray.direction().z(), origin, edge1, edge2, triangle);
+        return distance(
+                ray.origin().x(),
+                ray.origin().y(),
+                ray.origin().z(),
+                ray.direction().x(),
+                ray.direction().y(),
+                ray.direction().z(),
+                origin,
+                edge1,
+                edge2,
+                triangle);
     }
 
-    /** Scalar hot path; preserves the vector implementation's operation order without temporary vectors. */
-    public static float distance(float ox, float oy, float oz, float dx, float dy, float dz,
-                                 Vec3 origin, Vec3 edge1, Vec3 edge2, boolean triangle) {
+    /**
+     * Scalar hot path; preserves the vector implementation's operation order without temporary
+     * vectors.
+     */
+    public static float distance(
+            float ox,
+            float oy,
+            float oz,
+            float dx,
+            float dy,
+            float dz,
+            Vec3 origin,
+            Vec3 edge1,
+            Vec3 edge2,
+            boolean triangle) {
         float hx = dy * edge2.z() - dz * edge2.y();
         float hy = dz * edge2.x() - dx * edge2.z();
         float hz = dx * edge2.y() - dy * edge2.x();

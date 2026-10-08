@@ -2,10 +2,10 @@ package rendering;
 
 import di.annotations.Inject;
 import di.annotations.Named;
+
 import logging.LogManager;
 import logging.Logger;
 
-import javax.swing.JFrame;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -14,12 +14,14 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 
+import javax.swing.JFrame;
+
 public class AwtViewer implements Renderer {
     private static final Logger LOG = LogManager.instance().getThis();
 
-    private final Raster         raster;
+    private final Raster raster;
     private final BufferStrategy bs;
-    private final BufferedImage  image;
+    private final BufferedImage image;
 
     @Inject
     public AwtViewer(Raster raster, @Named("input_listener") Object listener) {
@@ -43,9 +45,10 @@ public class AwtViewer implements Renderer {
 
     @Override
     public void render() {
-        // Pack directly into the reusable image, avoiding a 3-channel int[] allocation and setPixels.
+        // Pack directly into the reusable image, avoiding a 3-channel int[] allocation and
+        // setPixels.
         var pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
-        RgbPacking.copy(raster,pixels);
+        RgbPacking.copy(raster, pixels);
         int i = 0;
         do {
             LOG.debug("Render attempt %d...", i);
