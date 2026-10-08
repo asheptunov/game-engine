@@ -121,7 +121,7 @@ public class SceneEditorPreviewTest {
             onEdt(() -> { panel.selectInspectorTabForTest("Mesh"); panel.selectionModeForTest(EditorController.SelectionMode.FACE); return null; });
             assertEquals(EditorController.SelectionMode.FACE,onEdt(controller::selectionMode));
             assertTrue(onEdt(panel::meshConvertForTest)); assertTrue(onEdt(() -> controller.snapshot().requireGeometry(
-                    controller.snapshot().requireNode(selected).geometry().geometryId()).geometry() instanceof EditableMeshGeometry));
+                    controller.snapshot().requireNode(selected).geometry().geometryId()).geometry() instanceof PolygonMesh));
             awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
             assertTrue(pickFaceFromView(panel,controller,selected,0));
             awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
@@ -135,12 +135,12 @@ public class SceneEditorPreviewTest {
             assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("Selected face"));
             assertFalse(onEdt(panel::meshConvertEnabledForTest));assertTrue(onEdt(panel::meshExtrudeEnabledForTest));
             writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-preview.png"));
-            int faceCountBefore=((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size();
+            int faceCountBefore=((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size();
             assertTrue(onEdt(()->panel.meshExtrudeForTest(.35f)));
-            assertTrue(((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size()>faceCountBefore);
+            assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size()>faceCountBefore);
             awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
             onEdt(()->{panel.selectInspectorTabForTest("Mesh");return null;});writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-extruded-preview.png"));
-            assertTrue(onEdt(controller::undo));assertEquals(faceCountBefore,((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size());
+            assertTrue(onEdt(controller::undo));assertEquals(faceCountBefore,((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size());
             assertTrue(onEdt(controller::redo));awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
             onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.selectionModeForTest(EditorController.SelectionMode.FACE);return null;});
             assertTrue(pickFaceFromView(panel,controller,selected,1));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);

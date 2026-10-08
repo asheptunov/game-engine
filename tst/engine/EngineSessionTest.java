@@ -23,10 +23,10 @@ public class EngineSessionTest {
 
     private static WorldSnapshot world(long revision,float x) {
         return new WorldSnapshot(revision,List.of(
-                new SceneInstance("sphere",List.of(new Sphere(Vec3.ZERO,1)),
+                new SceneInstance("sphere",new AnalyticSphere(Vec3.ZERO,1),
                         new Transform(new Vec3(x,0,4),Vec3.ZERO,new Vec3(1,1,1)),
                         Material.srgb("blue",0x3b82f6)),
-                new SceneInstance("floor",List.of(new Rect(new Vec3(-4,-1,1),new Vec3(0,0,8),new Vec3(8,0,0))),
+                new SceneInstance("floor",PolygonMesh.parallelogram(new Vec3(-4,-1,1),new Vec3(0,0,8),new Vec3(8,0,0)),
                         Transform.IDENTITY,Material.srgb("floor",0xb8c0cc))),
                 List.of(),List.of(new PointLight(new Vec3(-2,3,-1),new Vec3(1,1,1),80)));
     }
@@ -110,7 +110,7 @@ public class EngineSessionTest {
 
     @Test void fixedUpdatesRunDuringPendingTraceAndFinalPublicationMatchesFreshSession() throws Exception {
         var many=new ArrayList<SceneInstance>();
-        for(int i=0;i<48;i++)many.add(new SceneInstance("sphere-"+i,List.of(new Sphere(Vec3.ZERO,.35f)),
+        for(int i=0;i<48;i++)many.add(new SceneInstance("sphere-"+i,new AnalyticSphere(Vec3.ZERO,.35f),
                 new Transform(new Vec3((i%8-3.5f)*.6f,(i/8-2.5f)*.6f,4+(i%3)*.3f),Vec3.ZERO,new Vec3(1,1,1)),
                 Material.srgb("gray",0x8899aa)));
         var heavy=new WorldSnapshot(0,many,List.of(),List.of(new PointLight(new Vec3(-2,3,-1),new Vec3(1,1,1),80)));
@@ -172,8 +172,8 @@ public class EngineSessionTest {
     }
 
     @Test void temporalHistoryBelongsToEachSession() throws Exception {
-        var wall=new WorldSnapshot(0,List.of(new SceneInstance("wall",List.of(
-                new Rect(new Vec3(-10,-10,5),new Vec3(0,20,0),new Vec3(20,0,0))),
+        var wall=new WorldSnapshot(0,List.of(new SceneInstance("wall",PolygonMesh.parallelogram(
+                new Vec3(-10,-10,5),new Vec3(0,20,0),new Vec3(20,0,0)),
                 Transform.IDENTITY,new Material("wall",new Vec3(.5f,.5f,.5f)))),List.of(),
                 List.of(new PointLight(new Vec3(0,3,0),new Vec3(1,1,1),50)));
         var initial=new RenderView(CAMERA,64,64);

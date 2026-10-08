@@ -116,7 +116,7 @@ public final class OverlayGeometry {
             if(faceSelection!=null&&faceSelection.nodeId().equals(selection)&&selected.geometry()!=null
                     &&selected.geometry().geometryId().equals(faceSelection.geometryId())) {
                 var asset=snapshot.requireGeometry(faceSelection.geometryId());
-                if(asset.geometry() instanceof EditableMeshGeometry mesh) {
+                if(asset.geometry() instanceof PolygonMesh mesh) {
                     var face=mesh.requireFace(faceSelection.faceId());var transform=snapshot.worldTransform(selection);
                     for(int i=0;i<face.vertexIds().size();i++) {
                         var a=mesh.requireVertex(face.vertexIds().get(i)).position();var b=mesh.requireVertex(face.vertexIds().get((i+1)%face.vertexIds().size())).position();
@@ -205,36 +205,21 @@ public final class OverlayGeometry {
     }
     private static Cached wireframe(GeometryData geometry) {
         var output=new ArrayList<LocalLine>();boolean truncated=false;
-        if(geometry instanceof BoxGeometry) {
-            Vec3[] v=new Vec3[8];for(int i=0;i<8;i++)v[i]=new Vec3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1);
-            for(int i=0;i<8;i++)for(int bit:new int[]{1,2,4})if((i&bit)==0)output.add(new LocalLine(v[i],v[i|bit]));
-        } else if(geometry instanceof RectGeometry rect) {
-            var a=rect.origin();var b=a.add(rect.edge1());var c=b.add(rect.edge2());var d=a.add(rect.edge2());
-            output.add(new LocalLine(a,b));output.add(new LocalLine(b,c));output.add(new LocalLine(c,d));output.add(new LocalLine(d,a));
-        } else if(geometry instanceof SphereGeometry sphere) {
+        if(geometry instanceof AnalyticSphere sphere) {
             for(int plane=0;plane<3;plane++)for(int i=0;i<SPHERE_SEGMENTS;i++) {
                 double a=i*2*Math.PI/SPHERE_SEGMENTS,b=(i+1)*2*Math.PI/SPHERE_SEGMENTS;
                 output.add(new LocalLine(circle(sphere,plane,a),circle(sphere,plane,b)));
             }
-        } else if(geometry instanceof EditableMeshGeometry mesh) {
+        } else if(geometry instanceof PolygonMesh mesh) {
             var vertices=new HashMap<Long,Vec3>();for(var vertex:mesh.editableVertices())vertices.put(vertex.id(),vertex.position());
             for(var edge:mesh.edges()) {
                 if(output.size()==MAX_WIREFRAME_SEGMENTS){truncated=true;break;}
                 output.add(new LocalLine(vertices.get(edge.firstVertexId()),vertices.get(edge.secondVertexId())));
             }
-        } else if(geometry instanceof TriangleMesh mesh) {
-            var vertices=mesh.vertices();var indices=mesh.indices();var edges=new HashSet<Long>();
-            scan: for(int i=0;i<indices.length;i+=3)for(int e=0;e<3;e++) {
-                int a=indices[i+e],b=indices[i+(e+1)%3],lo=Math.min(a,b),hi=Math.max(a,b);long key=((long)lo<<32)|(hi&0xffffffffL);
-                if(edges.add(key)) {
-                    if(output.size()==MAX_WIREFRAME_SEGMENTS){truncated=true;break scan;}
-                    output.add(new LocalLine(vertices.get(a),vertices.get(b)));
-                }
-            }
         } else throw new IllegalArgumentException("Unsupported overlay geometry: "+geometry.getClass().getName());
         return new Cached(output,truncated);
     }
-    private static Vec3 circle(SphereGeometry sphere,int plane,double angle) {
+    private static Vec3 circle(AnalyticSphere sphere,int plane,double angle) {
         float a=sphere.radius()*(float)Math.cos(angle),b=sphere.radius()*(float)Math.sin(angle);var c=sphere.center();
         return switch(plane){case 0->c.add(new Vec3(a,b,0));case 1->c.add(new Vec3(a,0,b));default->c.add(new Vec3(0,a,b));};
     }

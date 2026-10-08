@@ -38,7 +38,7 @@ public final class SceneSnapshot {
                 var geometry=requireGeometry(node.geometry().geometryId());
                 var material=requireMaterial(node.geometry().materialId());
                 var value=materialWithIdentity(material);
-                var instance=new SceneInstance(node.id().toString(),geometry.geometry().primitives(),transform,value);
+                var instance=new SceneInstance(node.id().toString(),geometry.geometry(),transform,value);
                 entries.add(new RenderEntry(node,geometry,material,transform,instance));
             }
             if(node.light()!=null)lights.add(new PointLight(transform.point(Vec3.ZERO),node.light().color(),node.light().intensity()));

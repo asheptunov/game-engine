@@ -44,8 +44,8 @@ public final class ViewportCommand implements Command {
                     case "mesh" -> {
                         require(args,4);if(!args[2].equals("detail"))throw new IllegalArgumentException("view mesh detail <4..64>");
                         var geometry=state.instances().get(index(selected)).geometry();
-                        if(!(geometry instanceof IndexedMesh))throw new IllegalArgumentException("Select a procedural mesh instance");
-                        var mesh=IndexedMesh.sphere(Integer.parseInt(args[3]));
+                        if(!(geometry instanceof PolygonMesh))throw new IllegalArgumentException("Select a procedural mesh instance");
+                        var mesh=PolygonMesh.approximateSphere(new AnalyticSphere(Vec3.ZERO,1),Integer.parseInt(args[3]));
                         var next=state.instances().stream().map(o->o.geometry()==geometry?new SceneInstance(o.name(),mesh,o.transform(),o.material()):o).toList();
                         for(int i=0;i<next.size();i++)state.instances().set(i,next.get(i));
                     }
@@ -187,7 +187,7 @@ public final class ViewportCommand implements Command {
         var materials=state.instances().stream().map(o->o.material().name()).distinct().toList();
         String object=state.instances().stream().filter(o->o.name().equals(selected)).findFirst().map(o->o.name()+" "+o.transform()+" material="+o.material().name()+" type="+o.material().kind()+" linear RGB="+o.material().color()+" IOR="+o.material().ior()+" absorption="+o.material().absorption()+" scattering="+o.material().scattering()+" anisotropy="+o.material().anisotropy()+" roughness="+o.material().roughness()+" emission="+o.material().emission()).orElse("none");
         return "Preset="+state.preset()+" exposure="+state.exposure()+" stops; sensor="+state.sensorPixelsW()+"x"+state.sensorPixelsH()
-                +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry().size()).sum()
+                +"; acceleration="+(state.acceleration()?"bvh":"brute")+"; primitives="+state.instances().stream().mapToInt(o->o.geometry() instanceof PolygonMesh mesh?mesh.renderPrimitiveCount():1).sum()
                 +"; workers="+state.workers()+"; tile="+state.tileSize()
                 +"; "+state.interactiveStatus()
                 +"; "+state.camera().summary()+"; "+state.temporalStatus()+"; "+state.focusStatus()

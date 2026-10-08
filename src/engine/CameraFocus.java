@@ -5,7 +5,7 @@ import java.util.*;
 
 /** Query-owned geometry cache and BVH traversal; never uses transport scratch or RNG. */
 public final class CameraFocus {
-    public record Scene(List<SceneInstance> instances,List<engine.objects.SceneObject> objects,long revision) {
+    public record Scene(List<SceneInstance> instances,List<engine.objects.RenderPrimitive> objects,long revision) {
         public static Scene capture(ViewportState state) {return new Scene(List.copyOf(state.instances()),List.copyOf(state.objects()),state.focusSceneRevision());}
         @Override public boolean equals(Object other) {
             if(!(other instanceof Scene s)||revision!=s.revision||instances.size()!=s.instances.size()||objects.size()!=s.objects.size())return false;
@@ -68,13 +68,12 @@ public final class CameraFocus {
     private void prepare(Scene scene) {
         if(scene.equals(cachedScene))return;
         var instances=new ArrayList<>(scene.instances());
-        for(int i=0;i<scene.objects().size();i++)instances.add(new SceneInstance("legacy-"+i,List.of(scene.objects().get(i)),
+        for(int i=0;i<scene.objects().size();i++)instances.add(new SceneInstance("legacy-"+i,PreparedGeometry.canonical(scene.objects().get(i)),
                 Transform.IDENTITY,new Material("focus",new Vec3(1,1,1))));
         var next=new ArrayList<Entry>(instances.size());
         for(var instance:instances) {
             var prior=cache.stream().filter(e->e.instance().name().equals(instance.name())
-                    && (e.instance().geometry()==instance.geometry() || instance.name().startsWith("legacy-")
-                    && e.instance().geometry().getFirst()==instance.geometry().getFirst())
+                    && e.instance().geometry()==instance.geometry()
                     && e.instance().transform()==instance.transform()).findFirst();
             if(prior.isPresent())next.add(prior.get());
             else {next.add(new Entry(instance,new PreparedObject(instance),new Subject(instance.name(),instance.geometry())));preparations++;}

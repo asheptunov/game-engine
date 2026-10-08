@@ -1,6 +1,6 @@
 # Engine and authoring tools specification
 
-Status: E1–E4 complete; E5 implemented with human GUI QA pending; E6 pending. Recorded 2026-10-06.
+Status: E1–E4 complete; E5–E6 implemented with human GUI QA pending; E7 G1 implemented, G2–G3 pending. Updated 2026-10-07.
 
 ## Intent
 
@@ -121,7 +121,8 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 | E3 | Stable scene graph/assets and versioned persistence | E2 | Complete |
 | E4 | General mesh assets and reusable scene queries | E3 | Complete |
 | E5 | Initial scene-authoring application | E4 | Implemented; human GUI QA pending |
-| E6 | Editable topology and first mesh-modelling operation | E5 | Pending |
+| E6 | Editable topology and first mesh-modelling operation | E5 | Implemented; human GUI QA pending |
+| E7 | Geometry representation simplification and direct mesh editing | E6 | Specified; not implemented |
 
 ### E1 — Extract the engine boundary
 
@@ -286,6 +287,113 @@ asset changes, edits, undo/redo and load. `EditorControllerTest`, `OverlayGeomet
 unique geometry, extrusion, history, save/reopen and a window-free two-view journey. The
 headless gate writes `scene-editor-mesh-extruded-preview.png`; native-window manual QA remains
 the final human acceptance step.
+
+### E7 — Geometry representation and direct editing
+
+Intent: geometry is editable according to its representation. Entering mesh selection
+mode must not require converting polygon geometry, cloning assets, or changing scene
+content. Analytic geometry supports a different set of operations; approximation is an
+explicit, optional representation change. These requirements supersede E6's explicit
+conversion prerequisite for boxes, planes and already-polygonal geometry.
+
+#### Asset model and renderer boundary
+
+- [x] Retain `GeometryAsset` identity, label, sharing and revision independently of its
+      geometry contents. Use two primary asset representations: analytic geometry and
+      polygon meshes. Concrete names may differ; responsibilities must remain explicit.
+- [x] Analytic geometry stores mathematical parameters, initially sphere center/radius.
+      It supports node translation/rotation/scale and applicable parameter edits without
+      tessellation. Nonuniform node scaling retains the existing exact ellipsoid behavior.
+      It has no invented editable vertices, edges or polygon faces.
+- [x] Polygon geometry always stores immutable topology: stable vertex IDs/positions,
+      stable face IDs/ordered vertex references, allocation counters and boundary intent.
+      Derive canonical edges and adjacency from face boundaries. Preserve E6 validation,
+      supported polygon restrictions, winding and deterministic triangulation contracts.
+- [x] Box and plane constructors produce polygon meshes directly (six quads and one quad).
+      Imported triangle geometry is polygon topology with three vertices per face;
+      triangle source-face grouping must be preserved or explicitly migrated, never
+      silently duplicated, discarded or guessed. Curved-looking polygon meshes remain
+      polygon meshes; operation availability follows representation, not appearance.
+- [x] Unify `EditableMeshGeometry` and asset-level `TriangleMesh` around polygon geometry.
+      Remove public `MeshGeometry extends List<SceneObject>` coupling. Geometry descriptions
+      must not masquerade as primitive collections. Render triangulation is a derived
+      representation, not a second independently editable or persisted source of truth.
+- [x] Introduce an explicit geometry preparation boundary producing immutable render/query
+      geometry: analytic intersection shapes or indexed triangles with source-element
+      mapping, validated capabilities, bounds and acceleration data as applicable.
+      Preparation/expensive caching stays outside scene mutation locks and UI painting.
+      Rename or replace `SceneObject` with a clearly scoped internal intersection/render
+      primitive; actual scene identity remains with nodes/instances and assets.
+- [x] Rendering, picking and overlays consume consistent prepared geometry from the same
+      immutable asset revision. Preserve public query face identity, stale-result checks,
+      transport invalidation, independent sessions, leases and coherent motion previews.
+      Compilation gates continue to exclude application, AWT and editor dependencies.
+
+#### Editing behavior
+
+- [ ] Every geometry node supports Object mode and node transforms. Polygon geometry
+      additionally supports Vertex, Edge and Face selection modes directly. Switching mode
+      changes only application selection/tool state: no geometry conversion, new asset ID,
+      dirty flag, render-content revision or undo entry. Invalidate pending selection
+      intents on actual mode transitions; reselecting the active mode is idempotent.
+- [ ] Analytic objects expose parameter controls and object transforms. Mesh-only controls
+      are unavailable with a clear explanation; analytic objects cannot yield fake mesh
+      element selections. Keep selecting objects practical while a mesh mode is active.
+- [ ] Provide stable vertex/edge/face selection and bounded element editing: at minimum
+      vertex translation, edge translation of its endpoint vertices, and the existing
+      positive face extrusion. Each operation publishes one validated immutable revision
+      and one undo entry; a drag previews live and commits once or cancels fully.
+      Failed edits preserve geometry/history, including invalid polygons and incompatible
+      solid/media assignments. Topology repair, subdivision, bevels and multi-element
+      workflows are not prerequisites for E7.
+- [ ] Element highlighting and picking use the exact displayed camera, scene/asset revision
+      and prepared selection context. Define deterministic screen-pick tolerances and
+      tie breaks for vertices/edges; document x-ray versus depth-visible behavior. Both
+      views reflect shared edits and reconcile stable selections across undo/redo/load.
+- [ ] Keep geometry sharing independent of editing mode. Shared edits affect all references;
+      Make geometry unique explicitly creates a new asset identity for one node. Show
+      reference count and operation scope. Neither entering mesh mode nor approximation
+      implicitly makes an asset unique.
+- [ ] Replace the generic Convert to editable mesh prerequisite with an optional
+      Approximate as mesh operation on analytic geometry. Offer explicit bounded
+      tessellation settings and explain the loss of the analytic representation.
+      Publish the approximation as one atomic, undoable shared-asset replacement;
+      preserve asset identity/references and let users make unique separately. Undo restores
+      the analytic geometry and parameters. Object transforms/materials remain unchanged
+      unless existing compatibility validation rejects the operation atomically.
+
+#### Compatibility and completion gates
+
+- [x] Replace class/list-equality special cases for rectangular emission and box scattering
+      with explicit geometry-derived, validated rendering capabilities. Ordinary polygon
+      boxes/rectangles must retain existing transport support; edited shapes retain it only
+      when they satisfy the documented capability criteria. Never silently disable a
+      material, assert capabilities without validation, or broaden physical support as
+      part of this refactor. Preserve closed-mesh dielectric and current volume limits.
+- [x] Specify scene-format evolution before writing new files. Read existing v1 analytic
+      primitives/triangle assets and v2 editable topology; preserve scene/asset/element IDs,
+      sharing, transforms, boundary validity and rendered meaning. Legacy box/plane assets
+      migrate deterministically to polygon topology; spheres remain analytic. Diagnose
+      unrepresentable source-face groupings explicitly. Persist only canonical geometry;
+      retain strict bounded validation, atomic save and failure-safe load guarantees.
+- [x] Demonstrate engine-only consumers constructing analytic and polygon geometry through
+      the simplified public API. Verify exact analytic sphere intersections, polygon
+      construction/triangulation/query mapping, supported material capabilities and seeded
+      render compatibility. Document intentional migration differences and adapter removal.
+- [ ] Add automated controller and two-view checks for mode switches without mutations,
+      direct element picking/editing, shared versus unique operations, approximation with
+      chosen detail and undo, failed edits, save/reopen and stale asynchronous selections.
+      Run the engine boundary, scene/editor and shared-input regression gates; record
+      actual commands/results and native human QA separately.
+
+Gate: create a box or plane and immediately select/edit its mesh elements without a
+conversion step. Create an analytic sphere, edit its parameters/transform while retaining
+exact curvature, then explicitly approximate it at a chosen detail and edit that mesh.
+Undo/redo, both views, asset sharing and old/new scene-file round trips remain coherent.
+
+Deferred: a general capability/plugin framework, new analytic shape families, generalized
+polygon repair/self-intersection detection, transport algorithms and unrelated optimization.
+Concrete representation types and validated operations are sufficient for this phase.
 
 ## Verification and implementation tracking
 

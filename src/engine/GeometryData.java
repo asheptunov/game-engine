@@ -1,10 +1,6 @@
 package engine;
 
-import engine.objects.SceneObject;
-import java.util.List;
-
-/** Immutable render geometry stored by a shared geometry asset. */
-public sealed interface GeometryData permits SphereGeometry, RectGeometry, BoxGeometry, TriangleMesh, EditableMeshGeometry {
-    List<SceneObject> primitives();
-    default boolean closedBoundary() { return false; }
+/** Canonical immutable geometry stored by a shared asset, separate from renderer primitives. */
+public sealed interface GeometryData permits AnalyticSphere,PolygonMesh {
+    GeometryCapabilities capabilities();
 }

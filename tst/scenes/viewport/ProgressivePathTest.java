@@ -18,8 +18,8 @@ public class ProgressivePathTest {
     private static void close(float expected, float actual) {
         if (Math.abs(expected-actual)>2e-5f) throw new AssertionError(expected+" != "+actual);
     }
-    private static void add(ViewportState st, String name, SceneObject shape, Material material) {
-        st.instances().add(new SceneInstance(name,List.of(shape),Transform.IDENTITY,material));
+    private static void add(ViewportState st, String name, RenderPrimitive shape, Material material) {
+        st.instances().add(new SceneInstance(name,PreparedGeometry.canonical(shape),Transform.IDENTITY,material));
     }
     private static float[][][] copy(float[][][] source) {
         var result = new float[3][][];

@@ -17,9 +17,9 @@ public final class SceneDocumentDemo {
         Path imagePath=Path.of(args.length>1?args[1]:"out/engine/document-demo.png");
         var document=new SceneDocument();var cameraId=new NodeId[1];
         document.transact(edit->{
-            var open=edit.createGeometry("open backdrop",TriangleMesh.surface(
+            var open=edit.createGeometry("open backdrop",PolygonMesh.triangleSurface(
                     List.of(new Vec3(-4,-3,0),new Vec3(0,4,0),new Vec3(4,-3,0)),new int[]{0,1,2},new long[]{410}));
-            var closed=edit.createGeometry("closed tetrahedron",TriangleMesh.closedSolid(
+            var closed=edit.createGeometry("closed tetrahedron",PolygonMesh.triangleClosedSolid(
                     List.of(Vec3.ZERO,new Vec3(1,0,0),new Vec3(0,1,0),new Vec3(0,0,1)),
                     new int[]{0,2,1,0,1,3,0,3,2,1,2,3},new long[]{500,501,502,503}));
             var wall=edit.createMaterial("wall",Material.srgb("ignored",0x8090a8));

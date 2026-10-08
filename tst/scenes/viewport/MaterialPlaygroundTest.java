@@ -17,7 +17,7 @@ public class MaterialPlaygroundTest {
         return new ViewportState(new Rect(new Vec3(-.5f,-.5f,0),new Vec3(1,0,0),new Vec3(0,1,0)),size,size);
     }
     private static void close(float expected,float actual) {assertTrue(Math.abs(expected-actual)<2e-4f);}
-    private static SceneInstance instance(String name,List<SceneObject> geometry,Transform t) {
+    private static SceneInstance instance(String name,GeometryData geometry,Transform t) {
         return new SceneInstance(name,geometry,t,WHITE);
     }
     @Test void sphereOutsideInsideTangentMissAndUnnormalizedRay() {
@@ -32,7 +32,7 @@ public class MaterialPlaygroundTest {
     @Test void transformedSphereKeepsDistanceNormalAndExitIdentity() {
         var st=state(1);
         var t=new Transform(new Vec3(1,2,6),new Vec3(20,35,10),new Vec3(2,1,.5f));
-        st.instances().add(instance("ellipsoid",List.of(new Sphere(Vec3.ZERO,1)),t));
+        st.instances().add(instance("ellipsoid",new AnalyticSphere(Vec3.ZERO,1),t));
         var tracer=new DirectRgbTracer(st);
         var origin=t.point(new Vec3(0,0,-3));var direction=t.vector(new Vec3(0,0,1)).normalized();
         var enter=tracer.intersect(new Ray(origin,direction));
@@ -58,7 +58,7 @@ public class MaterialPlaygroundTest {
         var st=state(1);var random=new Random(4721);
         var t=new Transform(new Vec3(.2f,-.3f,5),new Vec3(20,45,15),new Vec3(1,2,.7f));
         var geometry=SceneInstance.box();st.instances().add(instance("box",geometry,t));
-        var world=geometry.stream().map(p->{var tri=(Tri)p;return new Tri(t.point(tri.a()),t.point(tri.b()),t.point(tri.c()));}).toList();
+        var world=geometry.preparedGeometry().primitives().stream().map(p->{var tri=(Tri)p;return new Tri(t.point(tri.a()),t.point(tri.b()),t.point(tri.c()));}).toList();
         var tracer=new DirectRgbTracer(st);
         for(int i=0;i<2000;i++) {
             var ray=new Ray(new Vec3(0,0,-1),new Vec3(random.nextFloat()*2-1,random.nextFloat()*2-1,1).normalized());
@@ -71,12 +71,12 @@ public class MaterialPlaygroundTest {
     }
     @Test void rgbLambertianInverseSquareAndFixedExposure() {
         var st=state(1);
-        st.instances().add(new SceneInstance("target",List.of(new Rect(new Vec3(-2,-2,3),new Vec3(4,0,0),new Vec3(0,4,0))),
+        st.instances().add(new SceneInstance("target",PolygonMesh.parallelogram(new Vec3(-2,-2,3),new Vec3(4,0,0),new Vec3(0,4,0)),
                 Transform.IDENTITY,new Material("red",new Vec3(.5f,.25f,0))));
         st.addLight(new PointLight(new Vec3(0,0,1),new Vec3(1,.5f,1),(float)(4*Math.PI)));
         var tracer=new DirectRgbTracer(st);var rgb=tracer.trace();close(.5f,rgb[0][0][0]);close(.125f,rgb[1][0][0]);close(0,rgb[2][0][0]);
         byte pixel=DisplayMapping.encode(rgb[0][0][0],1);
-        st.instances().add(instance("bright",List.of(new Sphere(new Vec3(10,10,5),1)),Transform.IDENTITY));
+        st.instances().add(instance("bright",new AnalyticSphere(new Vec3(10,10,5),1),Transform.IDENTITY));
         close(.5f,tracer.trace()[0][0][0]);assertEquals(pixel,DisplayMapping.encode(rgb[0][0][0],1));
         st.lights().set(0,new PointLight(new Vec3(0,0,-1),new Vec3(1,.5f,1),(float)(4*Math.PI)));
         close(.125f,tracer.trace()[0][0][0]);
@@ -85,16 +85,16 @@ public class MaterialPlaygroundTest {
         st.exposure(4);close(.125f,tracer.trace()[0][0][0]);
     }
     @Test void shadowsBoundedAndSphereMustShadowItsInterior() {
-        var st=state(1);st.instances().add(instance("sphere",List.of(new Sphere(Vec3.ZERO,2)),Transform.IDENTITY));
+        var st=state(1);st.instances().add(instance("sphere",new AnalyticSphere(Vec3.ZERO,2),Transform.IDENTITY));
         st.eye(Vec3.ZERO);st.cameraSensor(new Rect(new Vec3(-.5f,-.5f,1),new Vec3(1,0,0),new Vec3(0,1,0)));
         st.addLight(new PointLight(new Vec3(0,0,-5),new Vec3(1,1,1),100));
         var tracer=new DirectRgbTracer(st);assertEquals(0f,tracer.trace()[0][0][0]);assertEquals(1,tracer.shadowsOccluded);
         st.instances().clear();st.eye(new Vec3(0,0,-1));
-        st.instances().add(instance("target",List.of(new Rect(new Vec3(-2,-2,3),new Vec3(4,0,0),new Vec3(0,4,0))),Transform.IDENTITY));
+        st.instances().add(instance("target",PolygonMesh.parallelogram(new Vec3(-2,-2,3),new Vec3(4,0,0),new Vec3(0,4,0)),Transform.IDENTITY));
         st.lights().set(0,new PointLight(new Vec3(2,0,1),new Vec3(1,1,1),100));
-        st.instances().add(instance("blocker",List.of(new Sphere(new Vec3(1,0,2),.3f)),Transform.IDENTITY));
+        st.instances().add(instance("blocker",new AnalyticSphere(new Vec3(1,0,2),.3f),Transform.IDENTITY));
         assertEquals(0f,tracer.trace()[0][0][0]);
-        st.instances().set(1,instance("beyond",List.of(new Sphere(new Vec3(3,0,0),.3f)),Transform.IDENTITY));
+        st.instances().set(1,instance("beyond",new AnalyticSphere(new Vec3(3,0,0),.3f),Transform.IDENTITY));
         assertTrue(tracer.trace()[0][0][0]>0);
     }
     @Test void trianglesWithinSameBoxMustShadowEachOther() {

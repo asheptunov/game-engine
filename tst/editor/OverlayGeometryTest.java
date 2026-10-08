@@ -48,11 +48,11 @@ public class OverlayGeometryTest {
     @Test void editableFaceBoundaryProjectsIndependentlyOfObjectGizmos() {
         var document=new SceneDocument();var ids=new Object[3];document.transact(edit->{
             ids[0]=edit.createMaterial("mat",Material.srgb("mat",0xffffff));
-            ids[1]=edit.createGeometry("editable box",EditableMeshGeometry.from(BoxGeometry.UNIT));
+            ids[1]=edit.createGeometry("editable box",PolygonMesh.from(BoxGeometry.UNIT));
             ids[2]=edit.createNode("box",null,new Transform(new Vec3(0,0,5),new Vec3(8,17,3),new Vec3(1,1,1)));
             edit.assignGeometry((NodeId)ids[2],(GeometryId)ids[1],(MaterialId)ids[0]);
         });
-        var snapshot=document.snapshot();var mesh=(EditableMeshGeometry)snapshot.requireGeometry((GeometryId)ids[1]).geometry();
+        var snapshot=document.snapshot();var mesh=(PolygonMesh)snapshot.requireGeometry((GeometryId)ids[1]).geometry();
         long faceId=mesh.faces().getFirst().id();var overlays=new OverlayGeometry();
         var prepared=overlays.prepare(snapshot,(NodeId)ids[2],new OverlayGeometry.FaceSelection((NodeId)ids[2],(GeometryId)ids[1],faceId));
         assertEquals(mesh.requireFace(faceId).vertexIds().size(),prepared.selectedFace().size());
@@ -75,7 +75,7 @@ public class OverlayGeometryTest {
         var document=new SceneDocument();var ids=new Object[7];document.transact(e->{
             ids[0]=e.createMaterial("mat",Material.srgb("mat",0xffffff));
             ids[1]=e.createNode("group",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));
-            var mesh=TriangleMesh.surface(List.of(new Vec3(-1,-1,0),new Vec3(1,-1,0),new Vec3(1,1,0),new Vec3(-1,1,0)),new int[]{0,1,2,0,2,3});
+            var mesh=PolygonMesh.triangleSurface(List.of(new Vec3(-1,-1,0),new Vec3(1,-1,0),new Vec3(1,1,0),new Vec3(-1,1,0)),new int[]{0,1,2,0,2,3});
             var mg=e.createGeometry("mesh",mesh);ids[2]=e.createNode("mesh",(NodeId)ids[1],new Transform(Vec3.ZERO,new Vec3(0,0,90),new Vec3(2,1,1)));e.assignGeometry((NodeId)ids[2],mg,(MaterialId)ids[0]);
             var bg=e.createGeometry("box",BoxGeometry.UNIT);ids[3]=e.createNode("box",(NodeId)ids[1],new Transform(new Vec3(0,0,-1),Vec3.ZERO,new Vec3(.5f,.5f,.5f)));e.assignGeometry((NodeId)ids[3],bg,(MaterialId)ids[0]);
             ids[4]=e.createNode("light",null,new Transform(new Vec3(-1,0,5),Vec3.ZERO,new Vec3(1,1,1)));e.setPointLight((NodeId)ids[4],new PointLightComponent(new Vec3(1,1,1),5));

@@ -20,10 +20,10 @@ public final class StarterScene {
             var clayMaterial = edit.createMaterial("Terracotta", Material.srgb("terracotta", 0xd66f43));
             var tealMaterial = edit.createMaterial("Teal", Material.srgb("teal", 0x319795));
             var darkMaterial = edit.createMaterial("Charcoal", Material.srgb("charcoal", 0x26313a));
-            var floorGeometry = edit.createGeometry("Floor plane", new RectGeometry(
+            var floorGeometry = edit.createGeometry("Floor plane", PolygonMesh.parallelogram(
                     new Vec3(-7, -1, -3), new Vec3(0, 0, 14), new Vec3(14, 0, 0)));
             var boxGeometry = edit.createGeometry("Unit box", BoxGeometry.UNIT);
-            var sphereGeometry = edit.createGeometry("Unit sphere", new SphereGeometry(Vec3.ZERO, 1));
+            var sphereGeometry = edit.createGeometry("Unit sphere", new AnalyticSphere(Vec3.ZERO, 1));
             var floor = edit.createNode("Floor", null, Transform.IDENTITY);
             edit.assignGeometry(floor, floorGeometry, floorMaterial);
             var composition = edit.createNode("Composition", null, Transform.IDENTITY);

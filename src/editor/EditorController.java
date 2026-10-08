@@ -90,7 +90,7 @@ public final class EditorController implements AutoCloseable {
         if(selection==null)return fail("Select a geometry node first");
         try{
             var node=document.snapshot().requireNode(selection);if(node.geometry()==null)return fail("Selected node has no geometry");
-            var asset=document.snapshot().requireGeometry(node.geometry().geometryId());if(!(asset.geometry() instanceof EditableMeshGeometry mesh))return fail("Convert selected geometry to an editable mesh first");
+            var asset=document.snapshot().requireGeometry(node.geometry().geometryId());if(!(asset.geometry() instanceof PolygonMesh mesh))return fail("Convert selected geometry to an editable mesh first");
             mesh.requireFace(faceId);faceSelection=new FaceSelection(selection,asset.id(),faceId);status="Selected face "+faceId+" on "+node.label();publish();return true;
         }catch(RuntimeException error){return fail(message(error));}
     }
@@ -113,7 +113,7 @@ public final class EditorController implements AutoCloseable {
         var node=document.snapshot().requireNode(hit.nodeId());selection=node.id();faceSelection=null;
         if(node.geometry()==null){status="Selected "+node.label()+"; it has no geometry";publish();return true;}
         var asset=document.snapshot().requireGeometry(node.geometry().geometryId());
-        if(!(asset.geometry() instanceof EditableMeshGeometry mesh)){status="Selected "+node.label()+"; use Convert to editable mesh in the Mesh inspector";publish();return true;}
+        if(!(asset.geometry() instanceof PolygonMesh mesh)){status="Selected "+node.label()+"; use Convert to editable mesh in the Mesh inspector";publish();return true;}
         try{mesh.requireFace(hit.sourceFaceId());faceSelection=new FaceSelection(node.id(),asset.id(),hit.sourceFaceId());status="Selected face "+hit.sourceFaceId()+" on "+node.label();publish();return true;}
         catch(IllegalArgumentException error){return fail("Picked face is no longer editable; click again");}
     }
@@ -135,8 +135,8 @@ public final class EditorController implements AutoCloseable {
                             .orElseGet(() -> e.createMaterial("Default", Material.srgb("default", 0xc8ccd2)));
                     GeometryData geometry = switch (primitive) {
                         case BOX -> BoxGeometry.UNIT;
-                        case SPHERE -> new SphereGeometry(Vec3.ZERO, 1);
-                        case PLANE -> new RectGeometry(new Vec3(-1, 0, -1), new Vec3(0, 0, 2), new Vec3(2, 0, 0));
+                        case SPHERE -> new AnalyticSphere(Vec3.ZERO, 1);
+                        case PLANE -> PolygonMesh.parallelogram(new Vec3(-1, 0, -1), new Vec3(0, 0, 2), new Vec3(2, 0, 0));
                         default -> throw new IllegalStateException();
                     };
                     var geometryId = e.createGeometry(pretty(primitive) + " geometry", geometry);
@@ -319,7 +319,7 @@ public final class EditorController implements AutoCloseable {
         if(faceSelection==null)return;
         try{
             var node=snapshot.requireNode(faceSelection.nodeId());if(!Objects.equals(selection,node.id())||node.geometry()==null)throw new IllegalArgumentException();
-            var asset=snapshot.requireGeometry(node.geometry().geometryId());if(!(asset.geometry() instanceof EditableMeshGeometry mesh))throw new IllegalArgumentException();
+            var asset=snapshot.requireGeometry(node.geometry().geometryId());if(!(asset.geometry() instanceof PolygonMesh mesh))throw new IllegalArgumentException();
             mesh.requireFace(faceSelection.faceId());faceSelection=new FaceSelection(node.id(),asset.id(),faceSelection.faceId());
         }catch(RuntimeException ignored){faceSelection=null;}
     }

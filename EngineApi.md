@@ -131,15 +131,17 @@ The camera plane spans `edge1` horizontally and `edge2` vertically; its forward 
 distance, absorption, focus, and camera movement. Triangle winding uses
 `(b - a) × (c - a)`. Ray intersections report the ray parameter; engine-generated primary
 directions are normalized, while transformed local rays deliberately remain unnormalized so
-the same parameter measures world-ray distance. `IndexedMesh` represents a closed,
-connected, outward-wound solid. `TriangleMesh.surface` accepts general open/disconnected
-indexed triangles; `TriangleMesh.closedSolid` additionally validates a connected,
-two-faces-per-edge, oppositely wound, positive-volume boundary. Triangle meshes implement
-position indices, faceted geometric normals, and one material asset per node. Normals, UVs,
-and material slots are never silently discarded. Analytic `SphereGeometry`, open
-`RectGeometry`, and canonical `BoxGeometry.UNIT` retain existing transport paths.
+the same parameter measures world-ray distance. `GeometryAsset` holds one of two canonical
+values: `AnalyticSphere` or `PolygonMesh`. `SceneInstance` also accepts these descriptions;
+geometry no longer exposes or implements a render-primitive `List`. `AnalyticSphere` retains
+the exact sphere/nonuniformly-scaled ellipsoid kernel. `PolygonMesh.parallelogram`,
+`PolygonMesh.unitBox`, `triangleSurface`, `triangleClosedSolid`, and `approximateSphere`
+construct polygon topology directly. The parallelogram factory and v1/v2 plane migration
+store the fourth corner reconstructed from the already-rounded adjacent corners. This is the
+rectangle kernel's exact float representation, so extreme-coordinate sub-ULP cancellation
+cannot remove emitter capability; ordinary legacy coordinates retain their exact values.
 
-`EditableMeshGeometry` stores immutable ordered vertices and polygon faces with stable,
+`PolygonMesh` stores immutable ordered vertices and polygon faces with stable,
 nonnegative asset-local `long` IDs. Its canonical edges expose adjacent face IDs. A face has
 3..1024 distinct referenced vertices and must be finite, nondegenerate, planar, simple and
 strictly convex. Planarity uses a `1e-5` relative extent tolerance; turns/intersections use
@@ -147,13 +149,26 @@ strictly convex. Planarity uses a `1e-5` relative extent tolerance; turns/inters
 derived triangles back to the polygon face ID. Surface meshes may have boundary edges;
 closed solids additionally validate two opposite face windings per edge, one connected
 component and positive signed volume. Geometric self-intersection between separate faces
-remains unsupported and undetected, matching closed triangle meshes.
+remains unsupported and undetected.
 
-`EditableMeshGeometry.from` explicitly converts boxes to six quads, rectangles to one quad,
-analytic spheres to the fixed `IndexedMesh.sphere(8)` tessellation, and triangle meshes to
-one editable face per source triangle. Triangle conversion preserves unique nonnegative
-source face IDs and rejects duplicate, negative or exhausted IDs. Editable input returns
-the same immutable value. `extrude(faceId,distance)` accepts a finite positive distance,
+Renderer/query preparation is internal, immutable and lazy. It expands polygons to an
+ordered fan with source-face mapping and indexed robust triangle intersections; analytic
+spheres, a single validated parallelogram and the canonical local `-1..1` box retain their
+established sphere, rectangle and flat-triangle kernels. Preparation happens when a renderer
+or query builds its cache, outside document publication and Swing painting. Cheap canonical
+capabilities validate materials atomically: any outward closed polygon mesh may be glass; an
+emitter must be one open ordered parallelogram; scattering requires an analytic sphere or the
+exact outward six-face canonical local box. Node transforms still provide rotated and scaled
+boxes. Asset-coordinate box edits that no longer match this exact topology reject volume
+materials rather than broadening containment support.
+
+Triangle import preserves unique nonnegative source IDs. Repeated IDs reconstruct one face
+only when their triangles form a connected, consistently wound, coplanar disk with a single
+simple convex boundary and no interior/unused stable vertices. Boundary traversal starts at
+the minimum vertex ID. Disconnected, holed, pinched, folded, overlapping, exhausted or
+over-budget groups reject explicitly. `PolygonMesh.from` returns polygon input unchanged and
+approximates an analytic sphere with the established detail-eight generator.
+`extrude(faceId,distance)` accepts a finite positive distance,
 moves a replacement cap along its listed-winding normal, retains the cap face ID, and
 allocates cap vertices and side-quad face IDs from persisted monotonic counters. For a
 validated solid the normal is outward. Side order is `vi, vj, vj', vi'`; repeat extrusion
@@ -192,11 +207,12 @@ bounded at 4096. Camera components store exact local `Camera` values; pixel dime
 
 ## Scene files and spatial queries
 
-`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml`. It reads version 1 unchanged;
-the writer retains version 1 unless editable topology is present, then writes version 2.
-V2 persists ordered vertex/face IDs, polygon references, boundary intent and both next-ID
-counters, never the derived triangles. Editable topology under V1 and unknown versions are
-rejected. Geometry is embedded and external references remain unsupported. Files preserve
+`SceneFiles.save/load/loadInto` uses strict UTF-8 `.scene.xml`. It reads legacy versions 1
+and 2 and writes version 3. V1 boxes/planes/triangles migrate to canonical polygon topology;
+representable repeated triangle face IDs merge by the validated rules above. V2 ordered
+polygon IDs, references, boundary intent and counters remain exact. V3 accepts only analytic
+`sphere` and canonical `polygon-mesh` assets and never persists derived triangles. Geometry
+is embedded and external references remain unsupported. Files preserve
 UUIDs, graph order/references, labels, geometry, materials,
 point lights and local cameras while excluding runtime revisions, render settings, jobs,
 caches, accumulation and undo history. Loading fully validates before `loadInto` publishes.
@@ -207,7 +223,7 @@ The reader disables DTDs, entities, external DTD/schema access and XInclude. It 
 unknown elements/attributes/version, non-finite values, duplicate/dangling IDs, cycles and
 unsupported component combinations. Limits are 16 MiB, 250,000 XML elements, XML depth 32,
 50,000 nodes, 16,000 assets of each kind, 250,000 vertices, 500,000 derived triangles,
-1024 vertices per polygon and graph depth 4096. Checked totals cover editable corners and
+1,500,000 face corners, 1024 vertices per polygon, bounded legacy grouping work, and graph depth 4096. Checked totals cover polygon corners and
 derived triangles before topology construction. The writer enforces the same reloadable
 structural limits.
 

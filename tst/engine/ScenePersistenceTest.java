@@ -14,8 +14,8 @@ public class ScenePersistenceTest {
     private static Sample sample() {
         var d=new SceneDocument();var ids=new Object[12];
         d.transact(e->{
-            ids[0]=e.createGeometry("sphere",new SphereGeometry(Vec3.ZERO,1));
-            ids[1]=e.createGeometry("open",TriangleMesh.surface(List.of(new Vec3(-2,-1,0),new Vec3(2,-1,0),new Vec3(0,2,0)),new int[]{0,1,2},new long[]{91}));
+            ids[0]=e.createGeometry("sphere",new AnalyticSphere(Vec3.ZERO,1));
+            ids[1]=e.createGeometry("open",PolygonMesh.triangleSurface(List.of(new Vec3(-2,-1,0),new Vec3(2,-1,0),new Vec3(0,2,0)),new int[]{0,1,2},new long[]{91}));
             ids[2]=e.createGeometry("box",BoxGeometry.UNIT);
             ids[3]=e.createMaterial("blue",Material.srgb("ignored",0x3b82f6));
             ids[4]=e.createMaterial("glass",new Material("ignored",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1.4f,new Vec3(.1f,.2f,.3f),0,Vec3.ZERO,.2f,.1f));
@@ -39,7 +39,7 @@ public class ScenePersistenceTest {
         assertEquals(loaded.requireNode(sample.sharedA()).geometry(),loaded.requireNode(sample.sharedB()).geometry());
         assertEquals(before.camera(sample.camera()),loaded.camera(sample.camera()));assertNotEquals(loaded.camera(sample.camera()),loaded.camera(sample.secondCamera()));
         assertEquals(before.toWorldSnapshot().lights(),loaded.toWorldSnapshot().lights());
-        var mesh=(TriangleMesh)loaded.geometryAssets().stream().filter(a->a.geometry() instanceof TriangleMesh).findFirst().orElseThrow().geometry();assertEquals(91L,mesh.sourceFaceId(0));assertFalse(mesh.closedBoundary());
+        var mesh=(PolygonMesh)loaded.geometryAssets().stream().filter(a->a.geometry() instanceof PolygonMesh).findFirst().orElseThrow().geometry();assertEquals(91L,mesh.preparedGeometry().sourceFaceId(0));assertFalse(mesh.closedBoundary());
     }
 
     @Test void freshJvmLoadProducesMatchingSeededRender()throws Exception {
@@ -48,11 +48,11 @@ public class ScenePersistenceTest {
         assertEquals(0,process.waitFor());assertEquals(expected,Files.readString(output));
     }
 
-    @Test void editableV2RoundTripPreservesTopologyCountersAndDerivedFaceMapping()throws Exception {
+    @Test void canonicalV3RoundTripPreservesTopologyCountersAndDerivedFaceMapping()throws Exception {
         var document=new SceneDocument();var geometry=new GeometryId[1];var node=new NodeId[1];
-        document.transact(edit->{geometry[0]=edit.createGeometry("editable",EditableMeshGeometry.from(BoxGeometry.UNIT).extrude(1,.75f));var material=edit.createMaterial("blue",Material.srgb("ignored",0x3b82f6));node[0]=edit.createNode("mesh",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(node[0],geometry[0],material);});
-        var path=temp().resolve("editable.scene.xml");SceneFiles.save(path,document.snapshot());var xml=Files.readString(path);assertTrue(xml.contains("version=\"2\""));assertTrue(xml.contains("<editable-mesh"));assertFalse(xml.contains("<triangles>"));
-        var loaded=SceneFiles.load(path);var mesh=(EditableMeshGeometry)loaded.requireGeometry(geometry[0]).geometry();assertEquals(12L,mesh.nextVertexId());assertEquals(10L,mesh.nextFaceId());assertEquals(10,mesh.faces().size());assertEquals(List.of(8L,9L,10L,11L),mesh.requireFace(1).vertexIds());assertTrue(mesh.closedBoundary());
+        document.transact(edit->{geometry[0]=edit.createGeometry("editable",PolygonMesh.from(BoxGeometry.UNIT).extrude(1,.75f));var material=edit.createMaterial("blue",Material.srgb("ignored",0x3b82f6));node[0]=edit.createNode("mesh",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(node[0],geometry[0],material);});
+        var path=temp().resolve("editable.scene.xml");SceneFiles.save(path,document.snapshot());var xml=Files.readString(path);assertTrue(xml.contains("version=\"3\""));assertTrue(xml.contains("<polygon-mesh"));assertFalse(xml.contains("<triangles>"));
+        var loaded=SceneFiles.load(path);var mesh=(PolygonMesh)loaded.requireGeometry(geometry[0]).geometry();assertEquals(12L,mesh.nextVertexId());assertEquals(10L,mesh.nextFaceId());assertEquals(10,mesh.faces().size());assertEquals(List.of(8L,9L,10L,11L),mesh.requireFace(1).vertexIds());assertTrue(mesh.closedBoundary());
         var hit=SpatialQuery.prepare(loaded).nearest(new Vec3(0,0,10),new Vec3(0,0,-1)).orElseThrow();assertEquals(node[0],hit.nodeId());assertEquals(1L,hit.sourceFaceId());
     }
 
@@ -70,7 +70,7 @@ public class ScenePersistenceTest {
 
     @Test void elementLimitAndUnknownVersionAreRejected()throws Exception {
         var dir=temp();var many=dir.resolve("elements.scene.xml");var xml=new StringBuilder("<scene format='ray-tracing-engine-scene' version='1'><geometry-assets>");for(int i=0;i<SceneFiles.MAX_ELEMENTS;i++)xml.append("<x/>");xml.append("</geometry-assets><material-assets/><nodes/></scene>");Files.writeString(many,xml);boolean rejected=false;try{SceneFiles.load(many);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
-        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='3'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
+        var version=dir.resolve("version.scene.xml");Files.writeString(version,"<scene format='ray-tracing-engine-scene' version='4'><geometry-assets/><material-assets/><nodes/></scene>");rejected=false;try{SceneFiles.load(version);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);
     }
     @Test void invalidEditableVersionsReferencesCountersAndBoundariesAreRejected()throws Exception {
         var dir=temp();var body="""
@@ -83,6 +83,27 @@ public class ScenePersistenceTest {
         var counter=dir.resolve("editable-counter.scene.xml");Files.writeString(counter,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("next-vertex-id='3'","next-vertex-id='2'")+"</scene>");rejectLoad(counter);
         var duplicate=dir.resolve("editable-duplicate.scene.xml");Files.writeString(duplicate,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("<v id='2'", "<v id='1'")+"</scene>");rejectLoad(duplicate);
         var forgedClosed=dir.resolve("editable-open-closed.scene.xml");Files.writeString(forgedClosed,"<scene format='ray-tracing-engine-scene' version='2'>"+body.replace("boundary='surface'","boundary='closed-solid'")+"</scene>");rejectLoad(forgedClosed);
+    }
+    @Test void legacyRepeatedFacesReconstructAndV3RejectsLegacyGeometryTags()throws Exception {
+        var dir=temp();var mesh="""
+                <mesh id='00000000-0000-0000-0000-000000000001' label='quad' boundary='surface'><vertices>
+                <v x='0' y='0' z='0'/><v x='1' y='0' z='0'/><v x='1' y='1' z='0'/><v x='0' y='1' z='0'/>
+                </vertices><triangles><t a='0' b='1' c='2' face='17'/><t a='0' b='2' c='3' face='17'/></triangles></mesh>
+                """;
+        var legacy=dir.resolve("legacy-group.scene.xml");Files.writeString(legacy,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets>"+mesh+"</geometry-assets><material-assets/><nodes/></scene>");
+        var polygon=(PolygonMesh)SceneFiles.load(legacy).geometryAssets().getFirst().geometry();assertEquals(List.of(0L,1L,2L,3L),polygon.requireFace(17).vertexIds());
+        var largeRect=dir.resolve("legacy-large-rect.scene.xml");Files.writeString(largeRect,"""
+                <scene format='ray-tracing-engine-scene' version='1'><geometry-assets>
+                <rect id='00000000-0000-0000-0000-000000000001' label='large' origin-x='-524865.9375' origin-y='0' origin-z='0' edge1-x='415.4455261' edge1-y='100' edge1-z='0' edge2-x='454.0234375' edge2-y='-60' edge2-z='0'/>
+                </geometry-assets><material-assets/><nodes/></scene>
+                """);
+        var migrated=(PolygonMesh)SceneFiles.load(largeRect).geometryAssets().getFirst().geometry();assertTrue(migrated.capabilities().parallelogramEmitter());assertInstanceOf(Rect.class,migrated.preparedGeometry().primitives().getFirst());
+        var invalid=dir.resolve("legacy-disconnected.scene.xml");Files.writeString(invalid,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets>"+mesh.replace("<t a='0' b='2' c='3' face='17'/>","<t a='1' b='2' c='3' face='18'/>").replace("face='18'","face='17'")+"</geometry-assets><material-assets/><nodes/></scene>");
+        // A repeated group with same-direction shared edge is not representable as one polygon.
+        Files.writeString(invalid,Files.readString(invalid).replace("a='1' b='2' c='3'","a='0' b='1' c='3'"));rejectLoad(invalid);
+        for(String tag:List.of("<rect id='00000000-0000-0000-0000-000000000001' label='r' origin-x='0' origin-y='0' origin-z='0' edge1-x='1' edge1-y='0' edge1-z='0' edge2-x='0' edge2-y='1' edge2-z='0'/>","<box id='00000000-0000-0000-0000-000000000001' label='b'/>",mesh)){
+            var path=dir.resolve("strict-v3-"+Math.abs(tag.hashCode())+".scene.xml");Files.writeString(path,"<scene format='ray-tracing-engine-scene' version='3'><geometry-assets>"+tag+"</geometry-assets><material-assets/><nodes/></scene>");rejectLoad(path);
+        }
     }
     @Test void nestedLeafInvalidValuesAndDeepXmlAreFormatErrors()throws Exception {
         var dir=temp();var nested=dir.resolve("nested.scene.xml");Files.writeString(nested,"<scene format='ray-tracing-engine-scene' version='1'><geometry-assets><sphere id='00000000-0000-0000-0000-000000000001' label='s' center-x='0' center-y='0' center-z='0' radius='1'><unsupported/></sphere></geometry-assets><material-assets/><nodes/></scene>");boolean rejected=false;try{SceneFiles.load(nested);}catch(SceneFormatException expected){rejected=true;}assertTrue(rejected);

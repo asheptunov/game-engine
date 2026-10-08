@@ -15,12 +15,12 @@ final class PreparedPrimitive {
     final Sphere worldSphere;
     final Transform transform;
     final MeshSurface mesh;
-    final SceneObject geometry;
-    PreparedPrimitive(SceneInstance object, int index) {
+    final RenderPrimitive geometry;
+    PreparedPrimitive(SceneInstance object, PreparedGeometry prepared, int index) {
         objectId=object.name(); materialId=object.material().name(); primitiveId=index; material=object.material();
         transform=object.transform();
-        geometry=object.geometry().get(index);
-        mesh=object.geometry() instanceof MeshGeometry && geometry instanceof Tri t
+        geometry=prepared.primitives().get(index);
+        mesh=prepared.indexedTriangles() && geometry instanceof Tri t
                 ?new MeshSurface(transform.point(t.a()),transform.point(t.b()),transform.point(t.c())):null;
         sphere=geometry instanceof Sphere s ? s : null;
         worldSphere=sphere!=null && transform.scale.x()==transform.scale.y() && transform.scale.y()==transform.scale.z()

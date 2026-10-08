@@ -50,8 +50,8 @@ public class TemporalReconstructionTest {
         SurfaceGuide expected=null;
         for(int tile:new int[]{8,32,256}) for(int workers:new int[]{1,4}) {
             var s=plane();s.temporal(true);s.pathDepth(0);s.tileSize(tile);s.workers(workers);
-            s.instances().addFirst(new SceneInstance("strip",List.of(new Rect(new Vec3(.035f,-1,4),
-                    new Vec3(.25f,2,0),new Vec3(.02f,0,0))),Transform.IDENTITY,new Material("strip",new Vec3(1,0,0))));
+            s.instances().addFirst(new SceneInstance("strip",PolygonMesh.parallelogram(new Vec3(.035f,-1,4),
+                    new Vec3(.25f,2,0),new Vec3(.02f,0,0)),Transform.IDENTITY,new Material("strip",new Vec3(1,0,0))));
             try(var tracer=new DirectRgbTracer(s)) {
                 tracer.trace();var g=tracer.surfaceGuide();int rejected=0,accepted=0;
                 for(int id:g.surface) {if(id==0) rejected++;else accepted++;}
@@ -68,7 +68,7 @@ public class TemporalReconstructionTest {
     }
     static ViewportState plane() {
         var s=new ViewportState(new Rect(new Vec3(-.5f,-.5f,0),new Vec3(1,0,0),new Vec3(0,1,0)),64,64);
-        s.instances().add(new SceneInstance("wall",List.of(new Rect(new Vec3(-10,-10,5),new Vec3(0,20,0),new Vec3(20,0,0))),
+        s.instances().add(new SceneInstance("wall",PolygonMesh.parallelogram(new Vec3(-10,-10,5),new Vec3(0,20,0),new Vec3(20,0,0)),
                 Transform.IDENTITY,new Material("wall",new Vec3(.5f,.5f,.5f))));
         s.lights().add(new PointLight(new Vec3(0,3,0),new Vec3(1,1,1),50));s.workers(1);s.pathDepth(2);
         return s;
@@ -184,7 +184,7 @@ public class TemporalReconstructionTest {
             }
         }
         var s=plane();s.temporal(true);s.pathDepth(0);
-        s.instances().addFirst(new SceneInstance("thin",List.of(new Rect(new Vec3(.035f,-1,4),new Vec3(0,2,0),new Vec3(.02f,0,0))),
+        s.instances().addFirst(new SceneInstance("thin",PolygonMesh.parallelogram(new Vec3(.035f,-1,4),new Vec3(0,2,0),new Vec3(.02f,0,0)),
                 Transform.IDENTITY,new Material("red",new Vec3(1,0,0))));
         try(var tracer=new DirectRgbTracer(s)) {
             tracer.trace();var guide=tracer.surfaceGuide();

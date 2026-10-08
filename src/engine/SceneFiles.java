@@ -18,11 +18,11 @@ import java.util.*;
 import static java.nio.file.StandardCopyOption.*;
 import static java.nio.file.StandardOpenOption.*;
 
-/** Strict, embedded-only scene XML persistence. V2 adds editable polygon topology. */
+/** Strict, embedded-only scene XML persistence. V3 stores only analytic spheres and polygon meshes. */
 public final class SceneFiles {
     public static final long MAX_FILE_BYTES=16L*1024*1024;
     public static final int MAX_ELEMENTS=250_000,MAX_NODES=50_000,MAX_GEOMETRY_ASSETS=16_000,
-            MAX_MATERIAL_ASSETS=16_000,MAX_VERTICES=250_000,MAX_TRIANGLES=500_000;
+            MAX_MATERIAL_ASSETS=16_000,MAX_VERTICES=250_000,MAX_TRIANGLES=500_000,MAX_FACE_CORNERS=1_500_000;
     public static final int MAX_XML_DEPTH=32;
     private static final String FORMAT="ray-tracing-engine-scene";
     private SceneFiles(){}
@@ -53,7 +53,7 @@ public final class SceneFiles {
             if(root==null||!root.getTagName().equals("scene"))throw format("Root element must be <scene>");
             attributes(root,"format","version");
             if(!FORMAT.equals(required(root,"format")))throw format("Unknown scene format");
-            String version=required(root,"version");if(!version.equals("1")&&!version.equals("2"))throw format("Unsupported scene version: "+version);
+            String version=required(root,"version");if(!version.equals("1")&&!version.equals("2")&&!version.equals("3"))throw format("Unsupported scene version: "+version);
             if(countElements(root)>MAX_ELEMENTS)throw format("Scene exceeds element limit "+MAX_ELEMENTS);
             var sections=children(root,"geometry-assets","material-assets","nodes");
             var geometrySection=one(sections,"geometry-assets");var materialSection=one(sections,"material-assets");var nodeSection=one(sections,"nodes");
@@ -86,17 +86,16 @@ public final class SceneFiles {
         if(snapshot.nodes().size()>MAX_NODES)throw new IOException("Scene exceeds node limit "+MAX_NODES);
         if(snapshot.geometryAssets().size()>MAX_GEOMETRY_ASSETS)throw new IOException("Scene exceeds geometry asset limit "+MAX_GEOMETRY_ASSETS);
         if(snapshot.materialAssets().size()>MAX_MATERIAL_ASSETS)throw new IOException("Scene exceeds material asset limit "+MAX_MATERIAL_ASSETS);
-        long vertices=0,triangles=0;
+        long vertices=0,triangles=0,corners=0;
         for(var a:snapshot.geometryAssets()) {
-            if(a.geometry() instanceof EditableMeshGeometry mesh){vertices=checked(vertices,mesh.editableVertices().size(),"vertex");triangles=checked(triangles,mesh.size(),"triangle");}
-            else if(a.geometry() instanceof TriangleMesh mesh){vertices=checked(vertices,mesh.vertices().size(),"vertex");triangles=checked(triangles,mesh.size(),"triangle");}
+            if(a.geometry() instanceof PolygonMesh mesh){vertices=checked(vertices,mesh.editableVertices().size(),"vertex");triangles=checked(triangles,mesh.renderPrimitiveCount(),"triangle");for(var face:mesh.faces())corners=checked(corners,face.vertexIds().size(),"face corner");}
         }
         if(vertices>MAX_VERTICES)throw new IOException("Scene exceeds vertex limit "+MAX_VERTICES);
         if(triangles>MAX_TRIANGLES)throw new IOException("Scene exceeds triangle limit "+MAX_TRIANGLES);
+        if(corners>MAX_FACE_CORNERS)throw new IOException("Scene exceeds face corner limit "+MAX_FACE_CORNERS);
         long elements=4L+snapshot.geometryAssets().size()+snapshot.materialAssets().size();
         for(var asset:snapshot.geometryAssets()) {
-            if(asset.geometry() instanceof EditableMeshGeometry mesh){long corners=0;for(var face:mesh.faces())corners=checked(corners,face.vertexIds().size(),"face corner");elements=checked(elements,2L+mesh.editableVertices().size()+mesh.faces().size()+corners,"XML element");}
-            else if(asset.geometry() instanceof TriangleMesh mesh)elements=checked(elements,2L+mesh.vertices().size()+mesh.size(),"XML element");
+            if(asset.geometry() instanceof PolygonMesh mesh){long assetCorners=0;for(var face:mesh.faces())assetCorners=checked(assetCorners,face.vertexIds().size(),"face corner");elements=checked(elements,2L+mesh.editableVertices().size()+mesh.faces().size()+assetCorners,"XML element");}
         }
         for(var node:snapshot.nodes())elements+=2L+(node.geometry()!=null?1:0)+(node.light()!=null?1:0)+(node.camera()!=null?1:0);
         if(elements>MAX_ELEMENTS)throw new IOException("Scene exceeds element limit "+MAX_ELEMENTS);
@@ -105,8 +104,7 @@ public final class SceneFiles {
     private static void write(OutputStream output,SceneSnapshot snapshot)throws IOException {
         try {
             var w=XMLOutputFactory.newFactory().createXMLStreamWriter(output,"UTF-8");w.writeStartDocument("UTF-8","1.0");w.writeCharacters("\n");
-            boolean editable=snapshot.geometryAssets().stream().anyMatch(a->a.geometry() instanceof EditableMeshGeometry);
-            start(w,"scene","format",FORMAT,"version",editable?"2":"1");w.writeCharacters("\n  ");start(w,"geometry-assets");
+            start(w,"scene","format",FORMAT,"version","3");w.writeCharacters("\n  ");start(w,"geometry-assets");
             for(var asset:snapshot.geometryAssets()){w.writeCharacters("\n    ");writeGeometry(w,asset);}
             w.writeCharacters("\n  ");w.writeEndElement();w.writeCharacters("\n  ");start(w,"material-assets");
             for(var asset:snapshot.materialAssets()){w.writeCharacters("\n    ");writeMaterial(w,asset);}
@@ -118,12 +116,9 @@ public final class SceneFiles {
     private static void writeGeometry(XMLStreamWriter w,GeometryAsset a)throws XMLStreamException {
         var base=new String[]{"id",a.id().toString(),"label",a.label()};
         switch(a.geometry()) {
-            case SphereGeometry s->{start(w,"sphere",base);vecAttributes(w,"center",s.center());w.writeAttribute("radius",f(s.radius()));w.writeEndElement();}
-            case RectGeometry r->{start(w,"rect",base);vecAttributes(w,"origin",r.origin());vecAttributes(w,"edge1",r.edge1());vecAttributes(w,"edge2",r.edge2());w.writeEndElement();}
-            case BoxGeometry ignored->{start(w,"box",base);w.writeEndElement();}
-            case TriangleMesh mesh->{start(w,"mesh",append(base,"boundary",mesh.closedBoundary()?"closed-solid":"surface"));w.writeCharacters("\n      ");start(w,"vertices");for(var v:mesh.vertices()){w.writeCharacters("\n        ");start(w,"v","x",f(v.x()),"y",f(v.y()),"z",f(v.z()));w.writeEndElement();}w.writeCharacters("\n      ");w.writeEndElement();w.writeCharacters("\n      ");start(w,"triangles");var ids=mesh.indices();for(int i=0;i<mesh.size();i++){w.writeCharacters("\n        ");start(w,"t","a",Integer.toString(ids[i*3]),"b",Integer.toString(ids[i*3+1]),"c",Integer.toString(ids[i*3+2]),"face",Long.toString(mesh.sourceFaceId(i)));w.writeEndElement();}w.writeCharacters("\n      ");w.writeEndElement();w.writeCharacters("\n    ");w.writeEndElement();}
-            case EditableMeshGeometry mesh->{
-                start(w,"editable-mesh",append(base,"boundary",mesh.closedBoundary()?"closed-solid":"surface","next-vertex-id",Long.toString(mesh.nextVertexId()),"next-face-id",Long.toString(mesh.nextFaceId())));
+            case AnalyticSphere s->{start(w,"sphere",base);vecAttributes(w,"center",s.center());w.writeAttribute("radius",f(s.radius()));w.writeEndElement();}
+            case PolygonMesh mesh->{
+                start(w,"polygon-mesh",append(base,"boundary",mesh.closedBoundary()?"closed-solid":"surface","next-vertex-id",Long.toString(mesh.nextVertexId()),"next-face-id",Long.toString(mesh.nextFaceId())));
                 w.writeCharacters("\n      ");start(w,"vertices");for(var v:mesh.editableVertices()){w.writeCharacters("\n        ");start(w,"v","id",Long.toString(v.id()),"x",f(v.position().x()),"y",f(v.position().y()),"z",f(v.position().z()));w.writeEndElement();}w.writeCharacters("\n      ");w.writeEndElement();
                 w.writeCharacters("\n      ");start(w,"faces");for(var face:mesh.faces()){w.writeCharacters("\n        ");start(w,"face","id",Long.toString(face.id()));for(long vertexId:face.vertexIds()){w.writeCharacters("\n          ");start(w,"vertex","id",Long.toString(vertexId));w.writeEndElement();}w.writeCharacters("\n        ");w.writeEndElement();}w.writeCharacters("\n      ");w.writeEndElement();w.writeCharacters("\n    ");w.writeEndElement();
             }
@@ -139,34 +134,36 @@ public final class SceneFiles {
     private static String f(float value){return Float.toString(value);}
 
     private static List<GeometryAsset> readGeometries(Element section,String version)throws SceneFormatException {
-        attributes(section);var elements=children(section,"sphere","rect","box","mesh","editable-mesh","external");
+        attributes(section);var elements=children(section,"sphere","rect","box","mesh","editable-mesh","polygon-mesh","external");
         if(elements.size()>MAX_GEOMETRY_ASSETS)throw format("Scene exceeds geometry asset limit "+MAX_GEOMETRY_ASSETS);
-        var result=new ArrayList<GeometryAsset>();long vertices=0,triangles=0;
+        var result=new ArrayList<GeometryAsset>();long vertices=0,triangles=0,corners=0;
         for(var e:elements){
             if(e.getTagName().equals("external"))throw format("External geometry references are unsupported in scene files");
+            if(version.equals("3")&&Set.of("rect","box","mesh","editable-mesh").contains(e.getTagName()))throw format("Legacy <"+e.getTagName()+"> geometry is unsupported in scene format v3");
             var id=geometryId(e);var label=label(e);
             GeometryData data=switch(e.getTagName()){
-                case "sphere"->{attributes(e,"id","label","center-x","center-y","center-z","radius");empty(e);yield new SphereGeometry(vec(e,"center"),number(e,"radius"));}
-                case "rect"->{attributes(e,"id","label","origin-x","origin-y","origin-z","edge1-x","edge1-y","edge1-z","edge2-x","edge2-y","edge2-z");empty(e);yield new RectGeometry(vec(e,"origin"),vec(e,"edge1"),vec(e,"edge2"));}
+                case "sphere"->{attributes(e,"id","label","center-x","center-y","center-z","radius");empty(e);yield new AnalyticSphere(vec(e,"center"),number(e,"radius"));}
+                case "rect"->{attributes(e,"id","label","origin-x","origin-y","origin-z","edge1-x","edge1-y","edge1-z","edge2-x","edge2-y","edge2-z");empty(e);yield PolygonMesh.parallelogram(vec(e,"origin"),vec(e,"edge1"),vec(e,"edge2"));}
                 case "box"->{attributes(e,"id","label");empty(e);yield BoxGeometry.UNIT;}
                 case "mesh"->{
                     attributes(e,"id","label","boundary");var groups=children(e,"vertices","triangles");var vs=one(groups,"vertices");var ts=one(groups,"triangles");attributes(vs);attributes(ts);
                     var ve=children(vs,"v");var te=children(ts,"t");vertices=checkedFormat(vertices,ve.size(),"vertex");triangles=checkedFormat(triangles,te.size(),"triangle");
-                    if(vertices>MAX_VERTICES)throw format("Scene exceeds vertex limit "+MAX_VERTICES);if(triangles>MAX_TRIANGLES)throw format("Scene exceeds triangle limit "+MAX_TRIANGLES);
+                    corners=checkedFormat(corners,Math.multiplyExact((long)te.size(),3),"face corner");if(vertices>MAX_VERTICES)throw format("Scene exceeds vertex limit "+MAX_VERTICES);if(triangles>MAX_TRIANGLES)throw format("Scene exceeds triangle limit "+MAX_TRIANGLES);if(corners>MAX_FACE_CORNERS)throw format("Scene exceeds face corner limit "+MAX_FACE_CORNERS);
                     var points=new ArrayList<Vec3>();for(var v:ve){attributes(v,"x","y","z");empty(v);points.add(new Vec3(number(v,"x"),number(v,"y"),number(v,"z")));}
                     var ids=new int[te.size()*3];var faces=new long[te.size()];for(int i=0;i<te.size();i++){var t=te.get(i);attributes(t,"a","b","c","face");empty(t);ids[i*3]=integer(t,"a");ids[i*3+1]=integer(t,"b");ids[i*3+2]=integer(t,"c");faces[i]=longNumber(t,"face");}
-                    String boundary=required(e,"boundary");yield switch(boundary){case "surface"->TriangleMesh.surface(points,ids,faces);case "closed-solid"->TriangleMesh.closedSolid(points,ids,faces);default->throw format("Unknown mesh boundary: "+boundary);};
+                    String boundary=required(e,"boundary");yield switch(boundary){case "surface"->PolygonMesh.triangleSurface(points,ids,faces);case "closed-solid"->PolygonMesh.triangleClosedSolid(points,ids,faces);default->throw format("Unknown mesh boundary: "+boundary);};
                 }
-                case "editable-mesh"->{
-                    if(!version.equals("2"))throw format("Editable topology requires scene format v2");
+                case "editable-mesh","polygon-mesh"->{
+                    if(e.getTagName().equals("editable-mesh")&&!version.equals("2"))throw format("Editable topology requires scene format v2");
+                    if(e.getTagName().equals("polygon-mesh")&&!version.equals("3"))throw format("Polygon topology requires scene format v3");
                     attributes(e,"id","label","boundary","next-vertex-id","next-face-id");var groups=children(e,"vertices","faces");var vs=one(groups,"vertices");var fs=one(groups,"faces");attributes(vs);attributes(fs);
-                    var ve=children(vs,"v");var fe=children(fs,"face");long derived=0,corners=0;
-                    for(var face:fe){attributes(face,"id");var refs=children(face,"vertex");if(refs.size()<3)throw format("Editable face needs at least three vertices");if(refs.size()>EditableMeshGeometry.MAX_FACE_VERTICES)throw format("Editable face exceeds vertex limit "+EditableMeshGeometry.MAX_FACE_VERTICES);corners=checkedFormat(corners,refs.size(),"face corner");derived=checkedFormat(derived,refs.size()-2L,"triangle");}
+                    var ve=children(vs,"v");var fe=children(fs,"face");long derived=0;
+                    for(var face:fe){attributes(face,"id");var refs=children(face,"vertex");if(refs.size()<3)throw format("Editable face needs at least three vertices");if(refs.size()>PolygonMesh.MAX_FACE_VERTICES)throw format("Editable face exceeds vertex limit "+PolygonMesh.MAX_FACE_VERTICES);corners=checkedFormat(corners,refs.size(),"face corner");derived=checkedFormat(derived,refs.size()-2L,"triangle");}
                     vertices=checkedFormat(vertices,ve.size(),"vertex");triangles=checkedFormat(triangles,derived,"triangle");
-                    if(vertices>MAX_VERTICES)throw format("Scene exceeds vertex limit "+MAX_VERTICES);if(triangles>MAX_TRIANGLES)throw format("Scene exceeds triangle limit "+MAX_TRIANGLES);
-                    var points=new ArrayList<EditableMeshGeometry.Vertex>(ve.size());for(var v:ve){attributes(v,"id","x","y","z");empty(v);points.add(new EditableMeshGeometry.Vertex(longNumber(v,"id"),new Vec3(number(v,"x"),number(v,"y"),number(v,"z"))));}
-                    var faces=new ArrayList<EditableMeshGeometry.Face>(fe.size());for(var face:fe){var refs=children(face,"vertex");var faceVertices=new ArrayList<Long>(refs.size());for(var ref:refs){attributes(ref,"id");empty(ref);faceVertices.add(longNumber(ref,"id"));}faces.add(new EditableMeshGeometry.Face(longNumber(face,"id"),faceVertices));}
-                    long nextVertex=longNumber(e,"next-vertex-id"),nextFace=longNumber(e,"next-face-id");String boundary=required(e,"boundary");yield switch(boundary){case "surface"->EditableMeshGeometry.surface(points,faces,nextVertex,nextFace);case "closed-solid"->EditableMeshGeometry.closedSolid(points,faces,nextVertex,nextFace);default->throw format("Unknown editable mesh boundary: "+boundary);};
+                    if(vertices>MAX_VERTICES)throw format("Scene exceeds vertex limit "+MAX_VERTICES);if(triangles>MAX_TRIANGLES)throw format("Scene exceeds triangle limit "+MAX_TRIANGLES);if(corners>MAX_FACE_CORNERS)throw format("Scene exceeds face corner limit "+MAX_FACE_CORNERS);
+                    var points=new ArrayList<PolygonMesh.Vertex>(ve.size());for(var v:ve){attributes(v,"id","x","y","z");empty(v);points.add(new PolygonMesh.Vertex(longNumber(v,"id"),new Vec3(number(v,"x"),number(v,"y"),number(v,"z"))));}
+                    var faces=new ArrayList<PolygonMesh.Face>(fe.size());for(var face:fe){var refs=children(face,"vertex");var faceVertices=new ArrayList<Long>(refs.size());for(var ref:refs){attributes(ref,"id");empty(ref);faceVertices.add(longNumber(ref,"id"));}faces.add(new PolygonMesh.Face(longNumber(face,"id"),faceVertices));}
+                    long nextVertex=longNumber(e,"next-vertex-id"),nextFace=longNumber(e,"next-face-id");String boundary=required(e,"boundary");yield switch(boundary){case "surface"->PolygonMesh.surface(points,faces,nextVertex,nextFace);case "closed-solid"->PolygonMesh.closedSolid(points,faces,nextVertex,nextFace);default->throw format("Unknown editable mesh boundary: "+boundary);};
                 }
                 default->throw format("Unknown geometry element");
             };

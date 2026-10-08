@@ -604,6 +604,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   harness failures. Window-free evidence is `scene-editor-mesh-extruded-preview.png`. The native
   workflow remains for human GUI acceptance using the [editor QA card](benchmarks/editor/README.md).
 
+## Engine E7 G1 — canonical geometry and renderer preparation `[implemented]`
+
+- `GeometryAsset` and public `SceneInstance` now use only `AnalyticSphere` or immutable
+  `PolygonMesh`; boxes, planes and triangle imports are polygon topology. The old public
+  list-backed mesh/primitive model is removed. Renderer/query primitives, indexed fans,
+  face mapping and acceleration inputs are derived lazily outside document publication.
+- Cheap validated capabilities preserve skewed parallelogram emission, exact canonical
+  local-box volume scattering, analytic sphere/ellipsoid transport and closed-mesh glass.
+  V3 saves canonical sphere/polygon assets; strict V1/V2 reads migrate representable repeated
+  face groups and reject disconnected, holed, folded, pinched or over-budget input.
+- Windows PowerShell 5.1 `input-check.ps1 -OutputDirectory out/e7-g1-final` covers the engine
+  boundary, editor and input regressions plus affected material/mesh/volume suites. Exact raw
+  RGB hashes for analytic sphere, plane, canonical box and mesh detail 4/12/64 match base
+  `404090a`. See [EngineRequirements.md](EngineRequirements.md) and [EngineApi.md](EngineApi.md).
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

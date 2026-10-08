@@ -84,8 +84,7 @@ public class EditorControllerTest {
             assertEquals(EditorController.SelectionMode.FACE, onEdt(controller::selectionMode));
             long intent = onEdt(() -> controller.beginPick(initial.revision()));
             assertTrue(onEdt(() -> controller.acceptPick(picked, initial.revision(), intent)));
-            assertEquals(picked.nodeId(), onEdt(controller::selection)); assertNull(onEdt(controller::faceSelection));
-            assertTrue(onEdt(() -> controller.state().status()).contains("Convert to editable mesh"));
+            assertEquals(picked.nodeId(), onEdt(controller::selection)); assertNotNull(onEdt(controller::faceSelection));
 
             long staleIntent = onEdt(() -> controller.beginPick(initial.revision()));
             assertTrue(onEdt(() -> controller.setSelectionMode(EditorController.SelectionMode.OBJECT)));
@@ -95,7 +94,7 @@ public class EditorControllerTest {
             assertTrue(onEdt(()->commands.execute("create box")).contains("Create Box"));var selected=onEdt(controller::selection);
             assertTrue(onEdt(() -> commands.execute("mesh convert")).contains("editable mesh"));
             var converted = onEdt(controller::snapshot); var convertedNode = converted.requireNode(selected);
-            var editable = (EditableMeshGeometry) converted.requireGeometry(convertedNode.geometry().geometryId()).geometry();
+            var editable = (PolygonMesh) converted.requireGeometry(convertedNode.geometry().geometryId()).geometry();
             long faceId = editable.faces().getFirst().id();
             assertTrue(onEdt(() -> commands.execute("face select " + faceId)).contains("Selected face"));
             var selectedFaceBeforeNoop=onEdt(controller::faceSelection);long sameModeIntent=onEdt(()->controller.beginPick(controller.snapshot().revision()));
@@ -111,21 +110,21 @@ public class EditorControllerTest {
             assertNotEquals(convertedNode.geometry().geometryId(), uniqueGeometry);
             assertEquals(uniqueGeometry, onEdt(controller::faceSelection).geometryId());
 
-            int facesBefore = ((EditableMeshGeometry) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size();
+            int facesBefore = ((PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size();
             long beforeBadCommand = onEdt(() -> controller.snapshot().revision());
             assertTrue(onEdt(() -> commands.execute("face extrude .4 extra")).startsWith("Error:"));
             assertEquals(beforeBadCommand, onEdt(() -> controller.snapshot().revision()));
             assertTrue(onEdt(() -> commands.execute("face extrude .4")).contains("Extrude face"));
-            var extruded = (EditableMeshGeometry) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry());
+            var extruded = (PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry());
             assertTrue(extruded.faces().size() > facesBefore); assertEquals(faceId, onEdt(controller::faceSelection).faceId());
 
             var savedSnapshot = onEdt(controller::snapshot); var save = onEdt(() -> controller.save(Path.of("mesh.scene.xml")));
             jobs.runNext(); flushEdt(); assertTrue(save.get(2, TimeUnit.SECONDS)); assertTrue(storage.saved.sameContent(savedSnapshot));
 
             assertTrue(onEdt(controller::undo));
-            assertEquals(facesBefore, ((EditableMeshGeometry) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size());
+            assertEquals(facesBefore, ((PolygonMesh) onEdt(() -> controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size());
             assertEquals(faceId, onEdt(controller::faceSelection).faceId());
-            assertTrue(onEdt(controller::redo));assertTrue(((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size()>facesBefore);
+            assertTrue(onEdt(controller::redo));assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).faces().size()>facesBefore);
             assertEquals(faceId,onEdt(controller::faceSelection).faceId());assertTrue(onEdt(controller::undo));
             assertTrue(onEdt(controller::undo));
             assertEquals(convertedNode.geometry().geometryId(), onEdt(controller::faceSelection).geometryId());
@@ -134,11 +133,11 @@ public class EditorControllerTest {
             storage.loaded = savedSnapshot; var load = onEdt(() -> controller.load(Path.of("mesh.scene.xml")));
             jobs.runNext(); flushEdt(); assertTrue(load.get(2, TimeUnit.SECONDS)); assertNull(onEdt(controller::faceSelection));
             assertEquals(EditorController.SelectionMode.FACE, onEdt(controller::selectionMode));
-            assertTrue(onEdt(controller::snapshot).geometryAssets().stream().anyMatch(asset -> asset.geometry() instanceof EditableMeshGeometry));
-            var loadedNode=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.geometry()!=null&&controller.snapshot().requireGeometry(node.geometry().geometryId()).geometry() instanceof EditableMeshGeometry).findFirst().orElseThrow());
-            onEdt(()->controller.select(loadedNode.id()));var loadedMesh=(EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry());
+            assertTrue(onEdt(controller::snapshot).geometryAssets().stream().anyMatch(asset -> asset.geometry() instanceof PolygonMesh));
+            var loadedNode=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.geometry()!=null&&controller.snapshot().requireGeometry(node.geometry().geometryId()).geometry() instanceof PolygonMesh).findFirst().orElseThrow());
+            onEdt(()->controller.select(loadedNode.id()));var loadedMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry());
             long loadedFace=loadedMesh.faces().getFirst().id();int loadedFaces=loadedMesh.faces().size();assertTrue(onEdt(()->controller.selectFace(loadedFace)));assertTrue(onEdt(()->controller.extrudeSelectedFace(.1f)));
-            assertTrue(((EditableMeshGeometry)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry())).faces().size()>loadedFaces);
+            assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry())).faces().size()>loadedFaces);
             var help = onEdt(() -> commands.execute("help"));
             assertTrue(help.contains("mode object|face")); assertTrue(help.contains("mesh convert")); assertTrue(help.contains("face extrude"));
         } finally { onEdt(() -> { controller.close(); return null; }); }
@@ -226,7 +225,7 @@ public class EditorControllerTest {
 
     private static SceneSnapshot meshScene(GeometryId geometry, MaterialId material, NodeId node, long face) {
         var document = new SceneDocument(); document.transact(e -> {
-            e.createGeometry(geometry, "mesh", TriangleMesh.surface(List.of(new Vec3(0, 0, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0)), new int[]{0, 1, 2}, new long[]{face}));
+            e.createGeometry(geometry, "mesh", PolygonMesh.triangleSurface(List.of(new Vec3(0, 0, 0), new Vec3(1, 0, 0), new Vec3(0, 1, 0)), new int[]{0, 1, 2}, new long[]{face}));
             e.createMaterial(material, "mat", Material.srgb("mat", 0xffffff)); e.createNode(node, "node", null, Transform.IDENTITY); e.assignGeometry(node, geometry, material);
         }); return document.snapshot();
     }

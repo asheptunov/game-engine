@@ -16,7 +16,7 @@ public class SceneDocumentTest {
     @Test void transactionsSharingSubtreesAndUniqueAssetsAreAtomic() {
         var document=new SceneDocument();var ids=new Object[5];
         var first=document.transact(edit->{
-            ids[0]=edit.createGeometry("sphere",new SphereGeometry(Vec3.ZERO,1));
+            ids[0]=edit.createGeometry("sphere",new AnalyticSphere(Vec3.ZERO,1));
             ids[1]=edit.createMaterial("gray",GRAY);
             ids[2]=edit.createNode("root",null,at(0,0,3));
             ids[3]=edit.createNode("part",(NodeId)ids[2],Transform.IDENTITY);

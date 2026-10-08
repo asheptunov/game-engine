@@ -1,41 +1,21 @@
 package engine;
 
-import math.Vec3;
-import engine.objects.*;
-import java.util.List;
-
 /** Immutable scene edit unit; all its primitives share object and material identity. */
-public record SceneInstance(String name, List<SceneObject> geometry, Transform transform, Material material) {
+public record SceneInstance(String name, GeometryData geometry, Transform transform, Material material) {
     public SceneInstance {
-        if (name == null || name.isBlank() || transform == null || material == null) throw new IllegalArgumentException("Invalid instance");
-        geometry = geometry instanceof MeshGeometry ? geometry : List.copyOf(geometry);
-        if(material.scattering()>0 && !(geometry.size()==1 && geometry.getFirst() instanceof Sphere) && !geometry.equals(box()))
+        if (name == null || name.isBlank() || geometry==null || transform == null || material == null) throw new IllegalArgumentException("Invalid instance");
+        var capabilities=geometry.capabilities();
+        if(material.scattering()>0 && !capabilities.analyticSphere()&&!capabilities.canonicalBoxVolume())
             throw new IllegalArgumentException("Scattering requires a closed sphere or box");
-        if(material.emissive() && !(geometry.size()==1 && geometry.getFirst() instanceof Rect))
-            throw new IllegalArgumentException("Emission requires a rectangular surface");
-        if (material.kind() == Material.Kind.DIELECTRIC &&
-                !(geometry.size() == 1 && geometry.getFirst() instanceof Sphere)
-                && !(geometry instanceof MeshGeometry mesh && mesh.closedBoundary()) && !geometry.equals(box()))
+        if(material.emissive() && !capabilities.parallelogramEmitter())
+            throw new IllegalArgumentException("Emission requires a single parallelogram surface");
+        if (material.kind() == Material.Kind.DIELECTRIC && !capabilities.closedBoundary())
             throw new IllegalArgumentException("Glass requires a closed sphere, box or indexed mesh");
     }
-    public SceneInstance withTransform(Transform t) { return new SceneInstance(name, geometry, t, material); }
-    public SceneInstance withMaterial(Material m) { return new SceneInstance(name, geometry, transform, m); }
-    @Override public boolean equals(Object other) {
-        if(!(other instanceof SceneInstance instance))return false;
-        return name.equals(instance.name)&&transform.equals(instance.transform)&&material.equals(instance.material)
-                &&(geometry instanceof MeshGeometry)==(instance.geometry instanceof MeshGeometry)&&geometry.equals(instance.geometry);
-    }
-    @Override public int hashCode(){return java.util.Objects.hash(name,geometry,transform,material,geometry instanceof MeshGeometry);}
-    /** Twelve outward-facing triangles, eight shared coordinates; local box spans -1..1. */
-    public static List<SceneObject> box() {
-        var v = new Vec3[]{new Vec3(-1,-1,-1),new Vec3(1,-1,-1),new Vec3(1,1,-1),new Vec3(-1,1,-1),
-                new Vec3(-1,-1,1),new Vec3(1,-1,1),new Vec3(1,1,1),new Vec3(-1,1,1)};
-        int[][] faces={{0,3,2,1},{4,5,6,7},{0,4,7,3},{1,2,6,5},{0,1,5,4},{3,7,6,2}};
-        var tris=new java.util.ArrayList<SceneObject>();
-        for(var face:faces) {
-            tris.add(new Tri(v[face[0]],v[face[1]],v[face[2]]));
-            tris.add(new Tri(v[face[0]],v[face[2]],v[face[3]]));
-        }
-        return List.copyOf(tris);
-    }
+    public SceneInstance withTransform(Transform t) { return new SceneInstance(name,geometry,t,material); }
+    public SceneInstance withMaterial(Material m) { return new SceneInstance(name,geometry,transform,m); }
+    @Override public boolean equals(Object value){return value instanceof SceneInstance other&&name.equals(other.name)&&transform.equals(other.transform)&&material.equals(other.material)&&GeometryValues.transportEqual(geometry,other.geometry);}
+    @Override public int hashCode(){return java.util.Objects.hash(name,transform,material,GeometryValues.transportHash(geometry));}
+    /** Canonical local box spans -1..1 and preserves the established face/fan order. */
+    public static PolygonMesh box() { return BoxGeometry.UNIT; }
 }

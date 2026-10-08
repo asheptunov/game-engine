@@ -5,7 +5,7 @@ import math.Vec3;
 import profiling.RuntimeMetrics;
 import profiling.TraceProfile;
 import engine.lights.PointLight;
-import engine.objects.SceneObject;
+import engine.objects.RenderPrimitive;
 import java.util.List;
 
 /** Iterative RGB paths, GGX/delta transport and area-light MIS; no per-ray objects. */
@@ -13,7 +13,7 @@ public final class DirectRgbTracer implements AutoCloseable {
     private static final float BIAS = 1e-3f;
     private ViewportState state;
     private List<SceneInstance> cachedInstances = List.of();
-    private List<SceneObject> cachedLegacyObjects = List.of();
+    private List<RenderPrimitive> cachedLegacyObjects = List.of();
     private PreparedObject[] objects = new PreparedObject[0];
     private PreparedEmitter[] emitters = new PreparedEmitter[0];
     private float[][][] buffer;
@@ -34,7 +34,7 @@ public final class DirectRgbTracer implements AutoCloseable {
     private int visibilityCrossingLimit;
     public long volumeSegments, volumeEvents, volumeVisibilitySegments;
     /** Snapshot mutable lists; display and sample-batch settings do not change the estimator. */
-    private record AccumulationKey(List<SceneInstance> instances, List<SceneObject> legacy,
+    private record AccumulationKey(List<SceneInstance> instances, List<RenderPrimitive> legacy,
                                    List<engine.lights.Light> lights, Camera.Identity camera, int width, int height,
                                    int depth, long seed, long restart) {}
 
@@ -109,7 +109,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             if(instance.material().emissive()) emitting.add(new PreparedEmitter(object,instance));
         }
         for (int i = 0; i < legacy.size(); i++) {
-            var instance = new SceneInstance("primitive-" + i, List.of(legacy.get(i)), Transform.IDENTITY,
+            var instance = new SceneInstance("primitive-" + i, PreparedGeometry.canonical(legacy.get(i)), Transform.IDENTITY,
                     new Material("white", new Vec3(1, 1, 1)));
             prepared.add(new PreparedObject(instance));
         }

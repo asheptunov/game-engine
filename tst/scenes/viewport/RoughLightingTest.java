@@ -15,7 +15,7 @@ public class RoughLightingTest {
     private static void close(double expected,double actual,double tolerance) {
         if(!Double.isFinite(actual) || Math.abs(expected-actual)>tolerance)throw new AssertionError(expected+" != "+actual+" (tol "+tolerance+")");
     }
-    private static void add(ViewportState st,String name,SceneObject shape,Material m) {st.instances().add(new SceneInstance(name,List.of(shape),Transform.IDENTITY,m));}
+    private static void add(ViewportState st,String name,RenderPrimitive shape,Material m) {st.instances().add(new SceneInstance(name,PreparedGeometry.canonical(shape),Transform.IDENTITY,m));}
     private static double average(DirectRgbTracer tracer,Ray ray,int samples) {double sum=0;for(int i=0;i<samples;i++)sum+=tracer.radiance(ray,i)[0];return sum/samples;}
     @Test void smoothLimitAndEqualIorRetainDeltaBehavior() {
         var out=new Material.Sample();var expected=new Material.Sample();
@@ -125,7 +125,7 @@ public class RoughLightingTest {
         var st=state(1);
         add(st,"floor",new Rect(new Vec3(-10,0,-10),new Vec3(0,0,20),new Vec3(20,0,0)),new Material("floor",WHITE));
         st.instances().add(new SceneInstance("blocker",SceneInstance.box(),new Transform(new Vec3(0,2,0),Vec3.ZERO,new Vec3(.3f,.2f,.3f)),new Material("blocker",WHITE)));
-        var light=new SceneInstance("area-light",List.of(new Rect(new Vec3(-.5f,0,-.5f),new Vec3(1,0,0),new Vec3(0,0,1))),new Transform(new Vec3(0,4,0),Vec3.ZERO,new Vec3(.2f,1,.2f)),new Material("light",Vec3.ZERO).withEmission(WHITE));
+        var light=new SceneInstance("area-light",PolygonMesh.parallelogram(new Vec3(-.5f,0,-.5f),new Vec3(1,0,0),new Vec3(0,0,1)),new Transform(new Vec3(0,4,0),Vec3.ZERO,new Vec3(.2f,1,.2f)),new Material("light",Vec3.ZERO).withEmission(WHITE));
         st.instances().add(light);var tracer=new DirectRgbTracer(st);var ray=new Ray(new Vec3(0,.5f,0),new Vec3(0,-1,0));
         close(0,average(tracer,ray,2000),0);
         st.instances().set(2,light.withTransform(new Transform(new Vec3(0,4,0),Vec3.ZERO,new Vec3(3,1,3))));

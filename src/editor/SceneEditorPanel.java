@@ -308,7 +308,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             material.removeAllItems(); for (var asset : state.snapshot().materialAssets()) material.addItem(asset);
             if (node.geometry() != null) {
                 var geometry=state.snapshot().requireGeometry(node.geometry().geometryId());long geometryUses=state.snapshot().nodes().stream().filter(n->n.geometry()!=null&&n.geometry().geometryId().equals(geometry.id())).count();
-                boolean editable=geometry.geometry() instanceof EditableMeshGeometry;meshNote.setText(geometryLabel(geometry.geometry()));meshSharing.setText("Shared by "+geometryUses+" node"+(geometryUses==1?"":"s"));
+                boolean editable=geometry.geometry() instanceof PolygonMesh;meshNote.setText(geometryLabel(geometry.geometry()));meshSharing.setText("Shared by "+geometryUses+" node"+(geometryUses==1?"":"s"));
                 var selectedFace=state.faceSelection();meshFace.setText(selectedFace!=null&&selectedFace.nodeId().equals(node.id())?"Selected face ID: "+selectedFace.faceId():"No face selected");convertGeometry.setEnabled(!editable);uniqueGeometry.setEnabled(geometryUses>1);extrudeFace.setEnabled(editable&&selectedFace!=null&&selectedFace.nodeId().equals(node.id()));
                 var asset = state.snapshot().requireMaterial(node.geometry().materialId()); material.setSelectedItem(asset); var m = asset.material();
                 put(color, m.color(), 0); kind.setSelectedItem(m.kind()); roughness.setText(Float.toString(m.roughness())); ior.setText(Float.toString(m.ior()));
@@ -393,11 +393,8 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private static Vec3 vec(JTextField[] fields, int offset) { return new Vec3(number(fields[offset]), number(fields[offset + 1]), number(fields[offset + 2])); }
         private static float number(JTextField field) { return Float.parseFloat(field.getText().trim()); }
         private static String geometryLabel(GeometryData geometry){
-            if(geometry instanceof EditableMeshGeometry)return "Editable polygon mesh";
-            if(geometry instanceof BoxGeometry)return "Box";
-            if(geometry instanceof SphereGeometry)return "Sphere";
-            if(geometry instanceof RectGeometry)return "Plane";
-            if(geometry instanceof TriangleMesh)return "Triangle mesh";
+            if(geometry instanceof PolygonMesh)return "Polygon mesh";
+            if(geometry instanceof AnalyticSphere)return "Sphere";
             return "Geometry";
         }
     }

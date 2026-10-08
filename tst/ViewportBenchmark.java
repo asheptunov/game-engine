@@ -51,9 +51,9 @@ public class ViewportBenchmark {
             if (arg.startsWith("seed=")) viewport.state().seed(Long.parseLong(arg.substring(5)));
             if (arg.equals("brute")) viewport.state().acceleration(false);
             if (arg.startsWith("detail=")) {
-                var mesh=engine.IndexedMesh.sphere(Integer.parseInt(arg.substring(7)));
+                var mesh=engine.PolygonMesh.approximateSphere(new engine.AnalyticSphere(math.Vec3.ZERO,1),Integer.parseInt(arg.substring(7)));
                 var instances=viewport.state().instances();
-                for(int i=0;i<instances.size();i++){var o=instances.get(i);if(o.geometry() instanceof engine.IndexedMesh)instances.set(i,new engine.SceneInstance(o.name(),mesh,o.transform(),o.material()));}
+                for(int i=0;i<instances.size();i++){var o=instances.get(i);if(o.geometry() instanceof engine.PolygonMesh)instances.set(i,new engine.SceneInstance(o.name(),mesh,o.transform(),o.material()));}
             }
         }
         int instances=option(args,"instances",0);
@@ -69,7 +69,7 @@ public class ViewportBenchmark {
         if(instances>0) {
             var state=viewport.state();
             if(instances<state.instances().size() || instances>128)throw new IllegalArgumentException("instances must be initial count..128");
-            var model=state.instances().stream().filter(o->o.geometry() instanceof engine.IndexedMesh).findFirst().orElseThrow();
+            var model=state.instances().stream().filter(o->o.geometry() instanceof engine.PolygonMesh).findFirst().orElseThrow();
             while(state.instances().size()<instances) {
                 int index=state.instances().size(); var t=model.transform();
                 state.instances().add(new engine.SceneInstance("benchmark-copy-"+index,model.geometry(),
@@ -110,7 +110,7 @@ public class ViewportBenchmark {
                 +"; "+viewport.state().camera().summary()+"; camera="+originalEye+"; sensorGeometry="+originalSensor
                 +"\npreset="+viewport.state().preset()+"; depth="+viewport.state().pathDepth()+"; seed="+viewport.state().seed()
                 +"; requestedSpp="+viewport.state().samplesPerFrame()+"; acceleration="+viewport.state().acceleration()
-                +"; instances="+viewport.state().instances().size()+"; primitives="+viewport.state().instances().stream().mapToInt(o->o.geometry().size()).sum()
+                +"; instances="+viewport.state().instances().size()+"; primitives="+viewport.state().instances().stream().mapToInt(o->o.geometry() instanceof engine.PolygonMesh mesh?mesh.renderPrimitiveCount():1).sum()
                 +"; exposure="+viewport.state().exposure()
                 +"; raw uniform samples; reconstruction=off; motion="+motion
                 +"\nHeadless: excludes AWT presentation, scheduler idle, and real input delivery. Motion changes the camera before each timed render; event-to-image latency and generation/cancellation metrics apply in P2.";
@@ -156,7 +156,7 @@ public class ViewportBenchmark {
         var frame = profiler.latestFrame();
         System.out.println("Scene: " + viewport.state().preset() + (close ? " close" : "")
                 + "; acceleration="+(viewport.state().acceleration()?"bvh":"brute")
-                + "; primitives="+viewport.state().instances().stream().mapToInt(o->o.geometry().size()).sum()
+                + "; primitives="+viewport.state().instances().stream().mapToInt(o->o.geometry() instanceof engine.PolygonMesh mesh?mesh.renderPrimitiveCount():1).sum()
                 + "; depth=" + viewport.state().pathDepth() + "; spp/batch max=" + viewport.state().samplesPerFrame()
                 + "; accumulated=" + viewport.state().accumulatedSamples() + "; seed=" + viewport.state().seed()
                 + (viewport.state().pathDepth() == 0 ? "; pixel centers" : "; jittered progressive") + "; rays: " + frame.rays());

@@ -63,13 +63,13 @@ public class CameraOpticsTest {
     @Test void orthographicApertureExposureDeterminismAndNestedMedia() {
         var s=TemporalReconstructionTest.plane();s.camera(s.camera().withMode("orthographic").withHeight(2));
         s.instances().clear();s.lights().clear();s.pathDepth(0);s.sampleTarget(3);
-        s.instances().add(new SceneInstance("light",List.of(new Rect(new Vec3(-20,-20,5),new Vec3(0,40,0),new Vec3(40,0,0))),
+        s.instances().add(new SceneInstance("light",PolygonMesh.parallelogram(new Vec3(-20,-20,5),new Vec3(0,40,0),new Vec3(40,0,0)),
                 Transform.IDENTITY,new Material("light",Vec3.ZERO).withEmission(new Vec3(2,2,2))));
         var reference=completed(s);s.camera(s.camera().withAperture(.8f));assertEquals(reference,completed(s));
         s.pathDepth(8);s.sampleTarget(1);
-        s.instances().add(new SceneInstance("outer",List.of(new Sphere(new Vec3(0,0,-1),.8f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("outer",new AnalyticSphere(new Vec3(0,0,-1),.8f),Transform.IDENTITY,
                 new Material("outer",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1,new Vec3(1,1,1))));
-        s.instances().add(new SceneInstance("inner",List.of(new Sphere(new Vec3(0,0,-1),.3f)),Transform.IDENTITY,
+        s.instances().add(new SceneInstance("inner",new AnalyticSphere(new Vec3(0,0,-1),.3f),Transform.IDENTITY,
                 new Material("inner",new Vec3(1,1,1),Material.Kind.DIELECTRIC,1,new Vec3(2,.5f,1))));
         try(var tracer=new DirectRgbTracer(s)) {
             var image=TemporalReconstructionTest.copy(tracer.trace());var sampler=new DirectRgbTracer.Sampler();var aperture=new DirectRgbTracer.Sampler();
