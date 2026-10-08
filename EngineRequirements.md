@@ -230,7 +230,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
 
 #### Asset model and renderer boundary
 
-- [x] Retain `GeometryAsset` identity, label, sharing and revision independently of its
+- [x] Retain `GeometryAsset` identity, label and revision independently of its
       geometry contents. Use two primary asset representations: analytic geometry and
       polygon meshes. Concrete names may differ; responsibilities must remain explicit.
 - [x] Analytic geometry stores mathematical parameters, initially sphere center/radius.
@@ -282,16 +282,17 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
 - [x] Element highlighting and picking use the exact displayed camera, scene/asset revision
       and prepared selection context. Define deterministic screen-pick tolerances and
       tie breaks for vertices/edges; document x-ray versus depth-visible behavior. Both
-      views reflect shared edits and reconcile stable selections across undo/redo/load.
-- [x] Keep geometry sharing independent of editing mode. Shared edits affect all references;
-      Make geometry unique explicitly creates a new asset identity for one node. Show
-      reference count and operation scope. Neither entering mesh mode nor approximation
-      implicitly makes an asset unique.
+      views reflect the selected object's edits and reconcile stable selections across undo/redo/load.
+- [ ] Each editor object owns independent geometry and materials, including newly created
+      objects and subtree duplicates. Remove linking, sharing counts and Make unique
+      workflows. Normalize legacy shared files before editor publication, retaining
+      stable node/element identities and a clean load baseline. Generic engine consumers
+      may explicitly reuse assets. See [IndependentObjectsPlan.md](IndependentObjectsPlan.md).
 - [x] Replace the generic Convert to editable mesh prerequisite with an optional
       Approximate as mesh operation on analytic geometry. Offer explicit bounded
       tessellation settings and explain the loss of the analytic representation.
-      Publish the approximation as one atomic, undoable shared-asset replacement;
-      preserve asset identity/references and let users make unique separately. Undo restores
+      Publish the approximation as one atomic, undoable replacement for the selected object;
+      preserve its asset identity. Undo restores
       the analytic geometry and parameters. Object transforms/materials remain unchanged
       unless existing compatibility validation rejects the operation atomically.
 
@@ -314,7 +315,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
       construction/triangulation/query mapping, supported material capabilities and seeded
       render compatibility. Document intentional migration differences and adapter removal.
 - [x] Add automated controller and two-view checks for mode switches without mutations,
-      direct element picking/editing, shared versus unique operations, approximation with
+      direct element picking/editing, independent object operations, approximation with
       chosen detail and undo, failed edits, save/reopen and stale asynchronous selections.
       Run the engine boundary, scene/editor and shared-input regression gates; record
       actual commands/results and native human QA separately.
@@ -322,7 +323,10 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
 Gate: create a box or plane and immediately select/edit its mesh elements without a
 conversion step. Create an analytic sphere, edit its parameters/transform while retaining
 exact curvature, then explicitly approximate it at a chosen detail and edit that mesh.
-Undo/redo, both views, asset sharing and old/new scene-file round trips remain coherent.
+Undo/redo, both views, independent object edits and old/new scene-file round trips remain coherent.
+
+The G2/G3/H1/H2 evidence below records the original delivery. Its shared-editing and
+Make unique behavior is superseded by the independent-objects follow-up (I1).
 
 G2 editor evidence (2026-10-07): Object, Vertex, Edge and Face modes operate directly on
 polygon geometry without changing scene content. X-ray vertex and edge picking is bounded to

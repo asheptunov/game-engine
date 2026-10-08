@@ -115,3 +115,12 @@ stale face picks and coherent motion are tested. Root evidence:
 `out/milestones/e7/e7-h1-root-final` and `out/milestones/e7/e7-h2-root-final`.
 Human QA remains separate; [GeometryEditorQA.md](GeometryEditorQA.md) now supersedes
 the original planar-face restrictions. Editor checkout stays unmerged into main.
+
+## Independent objects follow-up
+
+Plan: [IndependentObjectsPlan.md](IndependentObjectsPlan.md). User confirmed both
+geometry and materials should be independent; editor linking workflows are removed.
+
+| id | title | deps | gui-qa | status | lane | commit | notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| I1 | Independent geometry and materials | H2 | yes | running | existing scene-editor checkout | pending | Legacy aliases normalize off EDT; duplicates clone per-node asset identities |

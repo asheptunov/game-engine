@@ -17,15 +17,19 @@ adds face movement, warped-face deformation and visible mode cues.
   with local delta controls and drag handles, undo/redo, then cancel a drag with Escape.
   Move along X/Y/Z: ordinary warped-face edits should succeed. Attempt a collapsed or
   folded edit: geometry/history should remain at the last valid state.
-- Select a face and extrude with positive distance; shared copies should update together.
-  Make one copy's geometry unique and repeat; only that copy should change.
+- Duplicate the Teal box. Select a face and extrude with positive distance; only the
+  selected object should change. Change its material color; the original stays unchanged.
+  Undo/redo both edits and the duplication. Repeat a geometry edit on the Pedestal and
+  confirm the Teal box is unaffected.
 - Create an analytic sphere. Change center/radius and node scale; its curvature remains
   exact and mesh element controls explain their unavailability. Approximate as mesh at
   two chosen detail values. Undo restores sphere parameters and the exact representation.
 - Orbit/pan continuously with an element selected. Highlights stay attached to the
   displayed geometry and previews continue updating. Switch modes while picks are pending.
-- Save/reopen a new warped scene and open old v1/v2/v3 fixtures. Confirm sharing, transforms,
-  materials, face IDs and editable polygon topology remain coherent.
+- Save/reopen a new warped scene and open old v1/v2/v3 fixtures. Confirm transforms,
+  materials, face IDs and editable polygon topology remain coherent. Older shared files
+  should open clean with independent object geometry/materials; editing one object must
+  leave the others unchanged. Inspectors should show no Make unique or sharing controls.
 - Confirm emitting parallelogram planes and supported volume boxes retain their lighting;
   incompatible geometry edits report a failure without changing the assigned material.
 
