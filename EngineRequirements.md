@@ -1,8 +1,9 @@
 # Engine and authoring tools specification
 
 Status: E1–E3 complete; E4 engine work complete with editor-consumer proof in E5;
-E5–E6 implemented on `codex/scene-editor` with GUI acceptance pending; E7 specified,
-not implemented. Updated 2026-10-07.
+E5–E6 implemented on `codex/scene-editor` with GUI acceptance pending; E7 geometry
+boundary and direct editing implemented, analytic inspector delivery in progress.
+Updated 2026-10-07.
 
 ## Intent
 
@@ -124,7 +125,7 @@ and recorded limitations. E identifiers are separate from rendering/performance 
 | E4 | General mesh assets and reusable scene queries | E3 | Engine complete; editor consumer proof in E5 |
 | E5 | Initial scene-authoring application | E4 | Implemented on editor branch; GUI acceptance pending |
 | E6 | Editable topology and first mesh-modelling operation | E5 | Implemented on editor branch; GUI acceptance pending |
-| E7 | Geometry representation simplification and direct mesh editing | E6 | Specified; not implemented |
+| E7 | Geometry representation simplification and direct mesh editing | E6 | G1–G2 implemented; G3 in progress |
 
 ### E1 — Extract the engine boundary
 

@@ -51,9 +51,17 @@ analytic approximation remain missing.
    For screen picking use 8 logical pixels vertex radius and 6 pixels edge distance,
    x-ray selection consistent with existing overlays. Tie-break by distance, then node
    ID, then stable vertex/edge IDs. Document x-ray behavior. Face picks retain ray query.
+   Prepare bounded world candidates once per camera-independent context; project/scan
+   cross-node candidates asynchronously on click using the exact painted camera/rectangle,
+   rather than projecting every scene element each frame. Overlay projection contains
+   selected geometry/highlights/handles. Record deterministic budget truncation behavior.
 6. Vertex/edge translation operates in asset local coordinates (edge moves both ends).
    Numeric XYZ delta controls and drag handles share validated edits. Drags commit one
    history entry, cancel fully, and never accumulate deltas against the wrong baseline.
+   An invalid intermediate candidate retains the last valid preview; a valid recovery
+   can continue. Releasing on an invalid final candidate cancels the whole gesture with
+   an explanation rather than silently committing an earlier preview. Begin invalidates
+   pending pick intents in both views and captures asset/node/element identity.
    Invalid nonplanar/concave edits fail atomically; do not invent polygon repair.
 7. Analytic sphere inspector exposes center/radius. Approximate as mesh exposes integer
    detail 4..64, explains shared replacement/loss of analytic parameters, preserves asset

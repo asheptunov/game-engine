@@ -83,7 +83,7 @@ Plan: [GeometryRepresentationPlan.md](GeometryRepresentationPlan.md).
 | id | title | deps | gui-qa | status | lane | commit | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | G1 | Canonical geometry and renderer boundary | F2 | no | merged | existing scene-editor checkout | 238d54c | Pushed editor branch; independent PS5.1 full gate/source review clear; 62 implementer/root logs audited, zero failures |
-| G2 | Direct vertex/edge editing | G1 | yes | running | existing scene-editor checkout | | Controller, picking, highlighting, grouped edits |
-| G3 | Analytic parameters and explicit approximation | G2 | yes | blocked | existing scene-editor checkout | | Inspector, bounded detail, final regression and QA |
+| G2 | Direct vertex/edge editing | G1 | yes | needs-qa | existing scene-editor checkout | a184574 | Pushed editor branch; independent full PS5.1 gate/source review clear; dual-view elements PNG inspected |
+| G3 | Analytic parameters and explicit approximation | G2 | yes | running | existing scene-editor checkout | | Inspector, bounded detail, final regression and QA |
 
 Admission: 54 GiB free on C:, above 8 GiB reserve + 6 GiB single writing lane.
