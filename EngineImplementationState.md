@@ -84,6 +84,15 @@ Plan: [GeometryRepresentationPlan.md](GeometryRepresentationPlan.md).
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | G1 | Canonical geometry and renderer boundary | F2 | no | merged | existing scene-editor checkout | 238d54c | Pushed editor branch; independent PS5.1 full gate/source review clear; 62 implementer/root logs audited, zero failures |
 | G2 | Direct vertex/edge editing | G1 | yes | needs-qa | existing scene-editor checkout | a184574 | Pushed editor branch; independent full PS5.1 gate/source review clear; dual-view elements PNG inspected |
-| G3 | Analytic parameters and explicit approximation | G2 | yes | running | existing scene-editor checkout | | Inspector, bounded detail, final regression and QA |
+| G3 | Analytic parameters and explicit approximation | G2 | yes | needs-qa | existing scene-editor checkout | 940fe72 | Pushed editor branch; independent PS5.1 full gate/source review clear; analytic/approximation previews inspected |
 
 Admission: 54 GiB free on C:, above 8 GiB reserve + 6 GiB single writing lane.
+
+E7 is implemented and pushed on `codex/scene-editor` through `940fe72`.
+Final implementer/root full Windows PowerShell 5.1 input/editor/transport gates passed;
+64 final logs audited with zero harness failures. Independent source review is clear.
+Headless elements, analytic sphere and chosen-detail approximation previews inspected.
+Root evidence: `out/milestones/e7/e7-root-final` (plus independent G1/G2 gates).
+Human QA: [GeometryEditorQA.md](GeometryEditorQA.md); editor checkout remains unmerged
+into main for native acceptance. Shared edits, strict planar/convex polygons, x-ray
+element picking and canonical-box volume restrictions are documented there.

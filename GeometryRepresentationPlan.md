@@ -1,5 +1,9 @@
 # E7 implementation handoff
 
+Status: implemented on `codex/scene-editor` through `940fe72`; automated gates and
+independent review passed. Native GUI acceptance is pending. Delivery results are in
+[EngineImplementationState.md](EngineImplementationState.md).
+
 Repository: `C:/Users/andri/Documents/RayTracingEngine` (orchestrator documents).
 Implementation: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`,
 branch `codex/scene-editor`, base `404090a`. Preserve existing E7 documentation edits
@@ -66,6 +70,9 @@ analytic approximation remain missing.
 7. Analytic sphere inspector exposes center/radius. Approximate as mesh exposes integer
    detail 4..64, explains shared replacement/loss of analytic parameters, preserves asset
    identity and references. Make unique remains independent. Undo restores exact sphere.
+   Retire generic editor/controller/SceneEdit conversion and PolygonMesh.from(GeometryData):
+   callers use polygon factories directly or approximateSphere with explicit detail.
+   There is no implicit fixed-detail analytic approximation compatibility path.
 8. Both views use coherent captured geometry/revisions for highlights/picks. Camera-only
    tokens remain reusable; accepting lagging coherent frames must not require latest
    camera equality (that starves continuous motion). No prep under paint/state lock.

@@ -2,7 +2,9 @@
 
 Implementation checkout: `C:/Users/andri/.codex/worktrees/scene-editor/RayTracingEngine`.
 Launch `./editor` in Git Bash or `./editor.ps1` in PowerShell. This card records human
-acceptance separately from automated headless checks; implementation is in progress.
+acceptance separately from automated headless checks. E7 is implemented through
+`940fe72`; independent full engine/editor/transport/input gates and source review passed.
+Native interaction acceptance remains pending.
 
 - Create a box and a plane. Switch Object/Vertex/Edge/Face modes immediately; no
   conversion is required and mode changes do not mark the scene dirty or add undo.
@@ -22,7 +24,9 @@ acceptance separately from automated headless checks; implementation is in progr
   incompatible geometry edits report a failure without changing the assigned material.
 
 Vertex/edge picking is x-ray: hidden elements are selectable within the documented screen
-tolerances. Deterministic ties use distance then node and stable element identity.
+tolerances (8 logical pixels for vertices, 6 for edges). Deterministic ties use distance
+then node and stable element identity. Candidate budgets are independent from wireframe
+budgets and retain the first 100,000 stable candidates.
 
 E7 keeps convex planar faces. Moving one corner of a quad box can make its faces
 nonplanar and is rejected; use a plane or triangular mesh for valid element translations.
