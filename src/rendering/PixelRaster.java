@@ -117,8 +117,8 @@ public class PixelRaster implements Raster {
     }
 
     @Override
-    public <T> Readable<T> read() {
-        return new Readable<T>() {
+    public <T> Raster.Readable<T> read() {
+        return new Raster.Readable<T>() {
             private int i = 0;
             private int x = 0;
             private int y = 0;

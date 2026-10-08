@@ -31,11 +31,17 @@ final class CameraProjection {
     double px, py, pz;
 
     CameraProjection(ViewportState.RenderKey key) {
-        if (key.camera().mode() == Camera.Mode.LENS)
+        this(temporalCamera(key), key.width(), key.height());
+    }
+
+    private static Camera.Identity temporalCamera(ViewportState.RenderKey key) {
+        if (key.camera().mode() == Camera.Mode.LENS) {
             throw new IllegalArgumentException("Finite aperture has no temporal projection");
-        if (key.camera().aperture() > 0)
+        }
+        if (key.camera().aperture() > 0) {
             throw new IllegalArgumentException("Finite aperture has no temporal projection");
-        this(key.camera(), key.width(), key.height());
+        }
+        return key.camera();
     }
 
     /** Reference geometry remains usable for picking even with finite aperture. */

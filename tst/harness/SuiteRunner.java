@@ -93,6 +93,11 @@ public class SuiteRunner {
         LOG.debug("Found %d tests in suite: %s", tests.size(), suite);
         var results = runTests(suite, instance, tests);
         displayResults(suite, results);
+        long failures =
+                results.values().stream().filter(result -> result instanceof Failure).count();
+        if (failures > 0) {
+            throw new AssertionError(formatSuite(suite) + ": " + failures + " test(s) failed");
+        }
     }
 
     private Collection<Method> findTests(Class<?> suite) {

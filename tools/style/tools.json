@@ -1,0 +1,20 @@
+[
+  {
+    "file": "formatter.jar",
+    "version": "1.24.0",
+    "url": "https://github.com/google/google-java-format/releases/download/v1.24.0/google-java-format-1.24.0-all-deps.jar",
+    "sha256": "812F805F58112460EDF01BF202A8E61D0FD1F35C0D4FABD54220640776EC57A1"
+  },
+  {
+    "file": "checkstyle.jar",
+    "version": "13.0.0",
+    "url": "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-13.0.0/checkstyle-13.0.0-all.jar",
+    "sha256": "972114CE8658C000B3795499D987C2C96019590F443A6DEA014963AF6992AAE9"
+  },
+  {
+    "file": "pmd.zip",
+    "version": "7.7.0",
+    "url": "https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.7.0/pmd-dist-7.7.0-bin.zip",
+    "sha256": "BE8BF68F6C1D66984BD9645A93E631B78A1C2F42F5F0F8719082FEAD67553940"
+  }
+]

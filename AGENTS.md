@@ -21,6 +21,25 @@ question and thread. Longer implementation plans belong in requirements document
 
 ## Build and verification
 
+Readability commands (PowerShell, from the repository root):
+
+- `./setup-style.ps1` downloads checksum-pinned tools once; subsequent checks run offline.
+- `./format.ps1` applies google-java-format 1.24.0 with four-space AOSP layout to `src/` and `tst/`.
+- `./style-check.ps1` checks formatting, focused Checkstyle/PMD rules, and the existing-debt baseline.
+- `./verify.ps1` is the completion gate: style plus the existing scene/engine check chain.
+  This runs selected suites; also run tests relevant to the change. It is not full-project coverage.
+- `./style-test.ps1` verifies the gate itself, including failure cases; run when changing tooling.
+
+Use descriptive names, meaningful method boundaries, and straightforward control flow.
+Explain units, coordinate spaces, ownership/locking, and numerical assumptions where needed.
+Preserve allocation-free tracing and lease/snapshot guarantees; justify unusual optimizations
+with measurements. Keep formatting-only changes separate from behavior changes when committing.
+Do not expand `tools/style/baseline.json` or disable rules merely to make a change pass.
+`./style-check.ps1 -PruneBaseline` only removes or tightens accepted findings and must be
+included when resolving them. Review any new exception explicitly with a narrow rationale.
+See `tools/style/README.md` for setup, limits and exception mechanics, and
+`CodeReadabilityPlan.md` for the intent. Human review still decides whether code is understandable.
+
 Java 23 with preview features; no Maven/Gradle. Sources are in `src/`, tests in `tst/`,
 and the entry point is `src/Main.java`. Run from the repository root so assets resolve.
 
@@ -40,8 +59,8 @@ PowerShell can run compiled classes directly:
 & "$env:USERPROFILE\.jdks\openjdk-23.0.1\bin\java.exe" --enable-preview -cp out/cli Main
 ```
 
-Tests use `@harness.Test` and a `main` calling `SuiteRunner.runThis()`. Inspect the test
-results: the harness logs failures but does not return a failing process exit code.
+Tests use `@harness.Test` and a `main` calling `SuiteRunner.runThis()`. The harness prints
+all results, then throws on any failure so command-line runs return a nonzero exit code.
 `Workbench` contains disabled migration tests.
 
 ## Runtime and architecture
