@@ -104,5 +104,5 @@ usable cube deformation, face translation and visible unselected mesh-mode cues.
 
 | id | title | deps | gui-qa | status | lane | commit | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| H1 | Polygon deformation and face translation | G3 | no | running | existing scene-editor checkout | | Stable faces with derived warped triangulation; v4 persistence |
-| H2 | Mode cues and face editing UI | H1 | yes | blocked | existing scene-editor checkout | | Both-view visible elements, numeric/handle face movement |
+| H1 | Polygon deformation and face translation | G3 | no | merged | existing scene-editor checkout | ad83244 | Pushed editor branch; root/implementer full PS5.1 gates clear, 64 logs audited; source review clear |
+| H2 | Mode cues and face editing UI | H1 | yes | running | existing scene-editor checkout | | Both-view visible elements, numeric/handle face movement |

@@ -1,6 +1,6 @@
 # E7 editing feedback implementation
 
-Status: H1 running, H2 queued. One writing lane admitted with ~52 GiB free on C:,
+Status: H1 verified/pushed as `ad83244`, H2 running. One writing lane admitted with ~52 GiB free on C:,
 above the 8 GiB reserve plus 6 GiB lane budget.
 
 User feedback: face translation is missing; cube vertex/edge moves are blocked by
