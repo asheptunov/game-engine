@@ -1,6 +1,6 @@
 # Engine and authoring tools specification
 
-Status: E1–E4 complete; E5–E6 implemented with human GUI QA pending; E7 G1 implemented, G2–G3 pending. Updated 2026-10-07.
+Status: E1–E4 complete; E5–E6 implemented with human GUI QA pending; E7 G1–G2 implemented, G3 pending. Updated 2026-10-07.
 
 ## Intent
 
@@ -331,7 +331,7 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
 
 #### Editing behavior
 
-- [ ] Every geometry node supports Object mode and node transforms. Polygon geometry
+- [x] Every geometry node supports Object mode and node transforms. Polygon geometry
       additionally supports Vertex, Edge and Face selection modes directly. Switching mode
       changes only application selection/tool state: no geometry conversion, new asset ID,
       dirty flag, render-content revision or undo entry. Invalidate pending selection
@@ -339,18 +339,18 @@ conversion prerequisite for boxes, planes and already-polygonal geometry.
 - [ ] Analytic objects expose parameter controls and object transforms. Mesh-only controls
       are unavailable with a clear explanation; analytic objects cannot yield fake mesh
       element selections. Keep selecting objects practical while a mesh mode is active.
-- [ ] Provide stable vertex/edge/face selection and bounded element editing: at minimum
+- [x] Provide stable vertex/edge/face selection and bounded element editing: at minimum
       vertex translation, edge translation of its endpoint vertices, and the existing
       positive face extrusion. Each operation publishes one validated immutable revision
       and one undo entry; a drag previews live and commits once or cancels fully.
       Failed edits preserve geometry/history, including invalid polygons and incompatible
       solid/media assignments. Topology repair, subdivision, bevels and multi-element
       workflows are not prerequisites for E7.
-- [ ] Element highlighting and picking use the exact displayed camera, scene/asset revision
+- [x] Element highlighting and picking use the exact displayed camera, scene/asset revision
       and prepared selection context. Define deterministic screen-pick tolerances and
       tie breaks for vertices/edges; document x-ray versus depth-visible behavior. Both
       views reflect shared edits and reconcile stable selections across undo/redo/load.
-- [ ] Keep geometry sharing independent of editing mode. Shared edits affect all references;
+- [x] Keep geometry sharing independent of editing mode. Shared edits affect all references;
       Make geometry unique explicitly creates a new asset identity for one node. Show
       reference count and operation scope. Neither entering mesh mode nor approximation
       implicitly makes an asset unique.
@@ -390,6 +390,19 @@ Gate: create a box or plane and immediately select/edit its mesh elements withou
 conversion step. Create an analytic sphere, edit its parameters/transform while retaining
 exact curvature, then explicitly approximate it at a chosen detail and edit that mesh.
 Undo/redo, both views, asset sharing and old/new scene-file round trips remain coherent.
+
+G2 editor evidence (2026-10-07): Object, Vertex, Edge and Face modes operate directly on
+polygon geometry without changing scene content. X-ray vertex and edge picking is bounded to
+100,000 stable-ID candidates, uses 8 px and 6 px tolerances respectively, and resolves ties by
+distance, node UUID, then stable element IDs. Candidate preparation is camera-independent;
+projection occurs asynchronously only for an explicit click against its exact painted camera.
+Selected elements and translation handles are published as one coherent two-view overlay.
+Numeric and live vertex/edge moves replace the shared asset in asset-local coordinates, validate
+the complete scene, and create one undo entry; an invalid final drag restores its baseline.
+Mode, history, load, Make unique and stale asynchronous completion tests reconcile or clear
+stable selections without dirtying the document on mode switches. The remaining analytic
+parameter and bounded approximation work belongs to G3. Native-window interaction remains
+pending separately from the headless gate.
 
 Deferred: a general capability/plugin framework, new analytic shape families, generalized
 polygon repair/self-intersection detection, transport algorithms and unrelated optimization.

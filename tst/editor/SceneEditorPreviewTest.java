@@ -15,6 +15,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.nio.file.*;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
@@ -117,7 +118,7 @@ public class SceneEditorPreviewTest {
             assertFalse(filter.accept(new java.io.File("example.xml"))); assertEquals(Path.of("Example.SCENE.XML"), SceneEditorPanel.scenePathForTest(Path.of("Example.SCENE.XML")));
 
             var selected = onEdt(() -> controller.snapshot().nodes().stream().filter(node -> node.label().equals("Teal box")).findFirst().orElseThrow().id()); onEdt(() -> controller.select(selected));
-            assertTrue(onEdt(() -> panel.hasInspectorTabForTest("Mesh"))); assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("No face"));
+            assertTrue(onEdt(() -> panel.hasInspectorTabForTest("Mesh"))); assertTrue(onEdt(() -> panel.meshFaceTextForTest()).contains("No mesh element"));
             onEdt(() -> { panel.selectInspectorTabForTest("Mesh"); panel.selectionModeForTest(EditorController.SelectionMode.FACE); return null; });
             assertEquals(EditorController.SelectionMode.FACE,onEdt(controller::selectionMode));
             assertTrue(onEdt(panel::meshConvertForTest)); assertTrue(onEdt(() -> controller.snapshot().requireGeometry(
@@ -142,6 +143,79 @@ public class SceneEditorPreviewTest {
             onEdt(()->{panel.selectInspectorTabForTest("Mesh");return null;});writePanel(panel,canvas,output.resolveSibling("scene-editor-mesh-extruded-preview.png"));
             assertTrue(onEdt(controller::undo));assertEquals(faceCountBefore,((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(controller.faceSelection().geometryId()).geometry())).faces().size());
             assertTrue(onEdt(controller::redo));awaitDisplayedRevision(panel,onEdt(()->controller.snapshot().revision()));
+
+            var floor=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.label().equals("Floor")).findFirst().orElseThrow().id());
+            onEdt(()->{controller.select(floor);panel.selectionModeForTest(EditorController.SelectionMode.VERTEX);return null;});
+            awaitElementMode(panel,0,OverlayGeometry.ElementMode.VERTEX);awaitElementMode(panel,1,OverlayGeometry.ElementMode.VERTEX);
+
+            var directSelectionBlock = onEdt(() -> panel.blockNextElementPickForTest(0));
+            assertTrue(onEdt(() -> panel.pickVisibleVertexForTest(0, floor)) >= 0);
+            awaitProjectionBlocked(panel, directSelectionBlock);
+            onEdt(() -> controller.select(selected));
+            directSelectionBlock.release().countDown();
+            Thread.sleep(100);
+            onEdt(() -> null);
+            assertEquals(selected, onEdt(controller::selection));
+
+            onEdt(() -> controller.select(floor));
+            awaitElementMode(panel,0,OverlayGeometry.ElementMode.VERTEX);
+            awaitElementMode(panel,1,OverlayGeometry.ElementMode.VERTEX);
+            awaitPaintedContext(panel, controller, 0);
+            awaitPaintedContext(panel, controller, 1);
+            var crossViewBlock = onEdt(() -> panel.blockNextElementPickForTest(0));
+            assertTrue(onEdt(() -> panel.pickVisibleVertexForTest(0, floor)) >= 0);
+            awaitProjectionBlocked(panel, crossViewBlock);
+            long laterVertex = onEdt(() -> panel.pickVisibleVertexForTest(1, selected));
+            assertTrue(laterVertex >= 0);
+            awaitVertexSelection(controller, laterVertex);
+            assertEquals(selected, onEdt(controller::selection));
+            crossViewBlock.release().countDown();
+            Thread.sleep(100);
+            onEdt(() -> null);
+            assertEquals(selected, onEdt(controller::selection));
+            assertEquals(laterVertex, onEdt(controller::vertexSelection).vertexId());
+
+            onEdt(() -> controller.select(floor));
+            awaitElementMode(panel,0,OverlayGeometry.ElementMode.VERTEX);
+            awaitPaintedContext(panel, controller, 0);
+            long pickedVertex=onEdt(()->panel.pickVertexVisibleInBothForTest(0,floor));assertTrue(pickedVertex>=0);awaitVertexSelection(controller,pickedVertex);
+            awaitVertexOverlay(panel,0,floor);awaitVertexOverlay(panel,1,floor);
+            assertTrue(onEdt(() -> panel.beginHandleDragForTest(0, OverlayGeometry.Axis.X, 8)));
+            assertTrue(onEdt(() -> panel.pickVisibleVertexForTest(1, selected)) >= 0);
+            Thread.sleep(100);
+            onEdt(() -> null);
+            assertEquals(floor, onEdt(controller::selection));
+            assertEquals(pickedVertex, onEdt(controller::vertexSelection).vertexId());
+            onEdt(() -> {
+                panel.cancelGizmoForTest(0);
+                return null;
+            });
+            awaitPaintedContext(panel, controller, 0);
+            awaitPaintedContext(panel, controller, 1);
+            var floorGeometry=onEdt(()->controller.snapshot().requireNode(floor).geometry().geometryId());
+            var beforeVertexMove=((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry())).requireVertex(pickedVertex).position();
+            assertTrue(onEdt(()->panel.dragHandleForTest(0,OverlayGeometry.Axis.X,14,true)));
+            var afterVertexMove=((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry())).requireVertex(pickedVertex).position();
+            if (afterVertexMove.equals(beforeVertexMove)) {
+                throw new AssertionError("Vertex handle made no valid move: " + onEdt(() -> controller.state().status()));
+            }
+            assertTrue(onEdt(controller::undo));assertEquals(beforeVertexMove,((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry())).requireVertex(pickedVertex).position());
+
+            onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.EDGE);return null;});awaitElementMode(panel,0,OverlayGeometry.ElementMode.EDGE);awaitElementMode(panel,1,OverlayGeometry.ElementMode.EDGE);
+            awaitPaintedContext(panel, controller, 0);awaitPaintedContext(panel, controller, 1);
+            var pickedEdge=onEdt(()->panel.pickEdgeVisibleInBothForTest(1,floor));assertNotNull(pickedEdge);awaitEdgeSelection(controller,pickedEdge[0],pickedEdge[1]);
+            awaitEdgeOverlay(panel,0,floor);awaitEdgeOverlay(panel,1,floor);assertTrue(onEdt(()->panel.overlayForTest(0).selectedFace().isEmpty()));
+            writePanel(panel,canvas,output.resolveSibling("scene-editor-elements-preview.png"));
+            var beforeEdgeMove=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry());
+            var beforeEdgePosition=beforeEdgeMove.requireVertex(pickedEdge[0]).position();
+            assertTrue(onEdt(()->panel.dragHandleForTest(1,OverlayGeometry.Axis.X,14,true)));
+            assertFalse(beforeEdgePosition.equals(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry())).requireVertex(pickedEdge[0]).position()));
+            assertTrue(onEdt(controller::undo));assertEquals(beforeEdgePosition,((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floorGeometry).geometry())).requireVertex(pickedEdge[0]).position());
+
+            var elementMotionSerials=new HashSet<Long>();elementMotionSerials.add(onEdt(()->panel.paintedSerialForTest(0)));long elementMotionDeadline=System.nanoTime()+6_000_000_000L;int elementMotionStep=0;
+            while(System.nanoTime()<elementMotionDeadline&&elementMotionSerials.size()<2){int step=elementMotionStep++;onEdt(()->{panel.navigateViewForTest(0,.01f+step*.0001f);paintPanel(panel,1400,850);assertTrue(panel.paintedBundleCoherentForTest(0));var elementOverlay=panel.overlayForTest(0);assertNotNull(elementOverlay);assertFalse(elementOverlay.selectedEdges().isEmpty());elementMotionSerials.add(panel.paintedSerialForTest(0));return null;});Thread.sleep(20);}
+            if(elementMotionSerials.size()<2)throw new RuntimeException("No coherent element preview advanced during movement: "+onEdt(()->panel.overlayProgressForTest(0)));
+
             onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.selectionModeForTest(EditorController.SelectionMode.FACE);return null;});
             assertTrue(pickFaceFromView(panel,controller,selected,1));awaitFaceOverlay(panel,0,selected);awaitFaceOverlay(panel,1,selected);
             onEdt(()->{panel.selectionModeForTest(EditorController.SelectionMode.OBJECT);panel.wireframeForTest(0,true);panel.wireframeForTest(1,true);return null;});
@@ -243,6 +317,56 @@ public class SceneEditorPreviewTest {
         }
         throw new AssertionError("Selected face overlay did not become ready for "+selected+" in view "+view);
     }
+    private static void awaitElementMode(SceneEditorPanel panel,int view,OverlayGeometry.ElementMode mode)throws Exception{
+        long deadline=System.nanoTime()+5_000_000_000L;
+        while(System.nanoTime()<deadline){onEdt(()->{paintPanel(panel,1400,850);return null;});if(onEdt(()->panel.paintedElementModeForTest(view))==mode)return;Thread.sleep(15);}
+        throw new AssertionError("Element mode overlay did not become ready: "+mode);
+    }
+    private static void awaitVertexSelection(EditorController controller,long vertexId)throws Exception{
+        long deadline=System.nanoTime()+3_000_000_000L;
+        while(System.nanoTime()<deadline){var selection=onEdt(controller::vertexSelection);if(selection!=null&&selection.vertexId()==vertexId)return;Thread.sleep(10);}
+        throw new AssertionError("Vertex pick did not complete for "+vertexId);
+    }
+    private static void awaitEdgeSelection(EditorController controller,long first,long second)throws Exception{
+        long low=Math.min(first,second),high=Math.max(first,second),deadline=System.nanoTime()+3_000_000_000L;
+        while(System.nanoTime()<deadline){var selection=onEdt(controller::edgeSelection);if(selection!=null&&selection.firstVertexId()==low&&selection.secondVertexId()==high)return;Thread.sleep(10);}
+        throw new AssertionError("Edge pick did not complete for "+low+"-"+high);
+    }
+    private static void awaitVertexOverlay(SceneEditorPanel panel,int view,NodeId selected)throws Exception{
+        long deadline=System.nanoTime()+5_000_000_000L;
+        while(System.nanoTime()<deadline){onEdt(()->{paintPanel(panel,1400,850);return null;});var overlay=onEdt(()->panel.overlayForTest(view));if(overlay!=null&&!overlay.selectedVertices().isEmpty()&&overlay.selectedVertices().stream().allMatch(point->point.nodeId().equals(selected)))return;Thread.sleep(15);}
+        throw new AssertionError("Selected vertex overlay did not become ready for "+selected+" in view "+view);
+    }
+    private static void awaitPaintedSelection(SceneEditorPanel panel, int view, NodeId selected) throws Exception {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            onEdt(() -> {
+                paintPanel(panel, 1400, 850);
+                return null;
+            });
+            if (Objects.equals(selected, onEdt(() -> panel.paintedSelectionForTest(view)))) return;
+            Thread.sleep(15);
+        }
+        throw new AssertionError("Painted selection did not become ready for " + selected + " in view " + view);
+    }
+    private static void awaitPaintedContext(SceneEditorPanel panel, EditorController controller, int view) throws Exception {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            onEdt(() -> {
+                paintPanel(panel, 1400, 850);
+                return null;
+            });
+            var state = onEdt(controller::state);
+            if (onEdt(() -> panel.paintedContextMatchesForTest(view, state))) return;
+            Thread.sleep(15);
+        }
+        throw new AssertionError("Painted selection context did not become current in view " + view);
+    }
+    private static void awaitEdgeOverlay(SceneEditorPanel panel,int view,NodeId selected)throws Exception{
+        long deadline=System.nanoTime()+5_000_000_000L;
+        while(System.nanoTime()<deadline){onEdt(()->{paintPanel(panel,1400,850);return null;});var overlay=onEdt(()->panel.overlayForTest(view));if(overlay!=null&&!overlay.selectedEdges().isEmpty()&&overlay.selectedEdges().stream().allMatch(line->line.nodeId().equals(selected)))return;Thread.sleep(15);}
+        throw new AssertionError("Selected edge overlay did not become ready for "+selected+" in view "+view);
+    }
 
     private static void awaitOverlayMode(SceneEditorPanel panel, int view, NodeId selected, OverlayGeometry.GizmoMode mode) throws Exception {
         long deadline = System.nanoTime() + 5_000_000_000L;
@@ -272,20 +396,30 @@ public class SceneEditorPreviewTest {
     }
 
     private static boolean pickFromView(SceneEditorPanel panel, EditorController controller, int view) throws Exception {
-        for (float v : new float[]{.5f, .4f, .6f, .3f, .7f}) for (float u : new float[]{.5f, .4f, .6f, .3f, .7f}) {
-            onEdt(() -> { controller.select(null); panel.pickInViewForTest(view, u, v); return null; });
-            long deadline = System.nanoTime() + 700_000_000L;
-            while (System.nanoTime() < deadline) { if (onEdt(controller::selection) != null) return true; Thread.sleep(10); }
+        onEdt(() -> controller.select(null));
+        awaitPaintedContext(panel, controller, view);
+        if (!onEdt(() -> panel.pickVisibleObjectForTest(view))) return false;
+        long deadline = System.nanoTime() + 2_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            if (onEdt(controller::selection) != null) return true;
+            Thread.sleep(10);
         }
         return false;
     }
     private static boolean pickFaceFromView(SceneEditorPanel panel,EditorController controller,NodeId target,int view)throws Exception{
-        for(float v:new float[]{.5f,.4f,.6f,.3f,.7f,.2f,.8f})for(float u:new float[]{.5f,.4f,.6f,.3f,.7f,.2f,.8f}){
-            onEdt(()->{controller.select(target);panel.pickInViewForTest(view,u,v);return null;});
-            long deadline=System.nanoTime()+800_000_000L;
-            while(System.nanoTime()<deadline){var face=onEdt(controller::faceSelection);if(face!=null&&face.nodeId().equals(target))return true;Thread.sleep(10);}
+        onEdt(() -> controller.select(target));
+        awaitElementMode(panel, view, OverlayGeometry.ElementMode.FACE);
+        awaitPaintedContext(panel, controller, view);
+        if (!onEdt(() -> panel.pickVisibleFaceForTest(view, target))) {
+            throw new AssertionError("No displayed ray reached target node " + target + " in view " + view);
         }
-        return false;
+        long deadline = System.nanoTime() + 2_000_000_000L;
+        while (System.nanoTime() < deadline) {
+            var face = onEdt(controller::faceSelection);
+            if (face != null && face.nodeId().equals(target)) return true;
+            Thread.sleep(10);
+        }
+        throw new AssertionError("Displayed face ray was not accepted: " + onEdt(() -> controller.state().status()));
     }
     private static int distinctPixels(BufferedImage image) { var values = new HashSet<Integer>(); for (int y = 0; y < image.getHeight(); y += 8) for (int x = 0; x < image.getWidth(); x += 8) values.add(image.getRGB(x, y)); return values.size(); }
     private static float[] cameraSignature(Camera camera) {

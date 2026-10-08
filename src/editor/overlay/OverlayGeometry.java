@@ -12,16 +12,21 @@ import java.util.*;
  * on a worker and project the result for the exact displayed camera.
  */
 public final class OverlayGeometry {
-    public static final int MAX_WIREFRAME_SEGMENTS=100_000;
+    public static final int MAX_WIREFRAME_SEGMENTS = 100_000;
     public static final int MAX_CACHED_ASSETS=256;
     public static final int MAX_CACHED_SEGMENTS=200_000;
+    public static final int MAX_ELEMENT_PICK_CANDIDATES = 100_000;
+    public static final double VERTEX_PICK_RADIUS_PIXELS = 8;
+    public static final double EDGE_PICK_DISTANCE_PIXELS = 6;
     public static final int SPHERE_SEGMENTS=48;
     public static final int RING_SEGMENTS=64;
 
     public enum Axis { X,Y,Z }
     public enum GizmoMode { NONE,TRANSLATE,ROTATE }
+    public enum ElementMode { OBJECT, VERTEX, EDGE, FACE }
+    public enum ElementKind { VERTEX, EDGE, FACE }
     public enum MarkerKind { LIGHT,CAMERA }
-    public enum Style { WIREFRAME_XRAY,FACE_SELECTION_XRAY,TRANSLATION_HANDLE_XRAY,ROTATION_HANDLE_XRAY }
+    public enum Style { WIREFRAME_XRAY,EDGE_SELECTION_XRAY,FACE_SELECTION_XRAY,TRANSLATION_HANDLE_XRAY,ROTATION_HANDLE_XRAY }
     public enum HitKind { HANDLE,MARKER }
 
     public record Line(NodeId nodeId,Style style,Axis axis,double u1,double v1,double u2,double v2) {
@@ -30,6 +35,9 @@ public final class OverlayGeometry {
     public record Marker(NodeId nodeId,MarkerKind kind,double u,double v) {
         public Marker { Objects.requireNonNull(nodeId);Objects.requireNonNull(kind); }
     }
+    public record Point(NodeId nodeId, double u, double v) {
+        public Point { Objects.requireNonNull(nodeId); }
+    }
     public record Handle(NodeId nodeId,GizmoMode mode,Axis axis,List<Line> lines) {
         public Handle { Objects.requireNonNull(nodeId);Objects.requireNonNull(mode);Objects.requireNonNull(axis);lines=List.copyOf(lines); }
     }
@@ -37,9 +45,26 @@ public final class OverlayGeometry {
     public record FaceSelection(NodeId nodeId,GeometryId geometryId,long faceId) {
         public FaceSelection { Objects.requireNonNull(nodeId);Objects.requireNonNull(geometryId); }
     }
-    public record Frame(long sceneRevision,List<Line> wireframe,List<Line> selectedFace,List<Marker> markers,List<Handle> handles,
-                        boolean wireframeTruncated) {
-        public Frame { wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);markers=List.copyOf(markers);handles=List.copyOf(handles); }
+    public record ElementSelection(NodeId nodeId, GeometryId geometryId, ElementKind kind,
+                                   long firstId, long secondId) {
+        public ElementSelection {
+            Objects.requireNonNull(nodeId);
+            Objects.requireNonNull(geometryId);
+            Objects.requireNonNull(kind);
+            if (firstId < 0 || kind == ElementKind.EDGE && firstId >= secondId) {
+                throw new IllegalArgumentException("Element IDs are invalid");
+            }
+        }
+    }
+    public record VertexHit(NodeId nodeId,GeometryId geometryId,long vertexId,double distancePixels) {}
+    public record EdgeHit(NodeId nodeId,GeometryId geometryId,long firstVertexId,long secondVertexId,double distancePixels) {}
+    public record Frame(long sceneRevision,List<Line> wireframe,List<Line> selectedFace,List<Point> selectedVertices,
+                        List<Line> selectedEdges,List<Marker> markers,List<Handle> handles,
+                        boolean wireframeTruncated,boolean elementCandidatesTruncated) {
+        public Frame {
+            wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);selectedVertices=List.copyOf(selectedVertices);
+            selectedEdges=List.copyOf(selectedEdges);markers=List.copyOf(markers);handles=List.copyOf(handles);
+        }
         /** Handles take precedence over markers; both use exactly the displayed projected geometry. */
         public Optional<Hit> pick(double u,double v,int pixelWidth,int pixelHeight,double tolerancePixels) {
             if(!Double.isFinite(u)||!Double.isFinite(v)||pixelWidth<=0||pixelHeight<=0
@@ -68,14 +93,32 @@ public final class OverlayGeometry {
     public record WorldMarker(NodeId nodeId,MarkerKind kind,Vec3 position) {
         public WorldMarker { Objects.requireNonNull(nodeId);Objects.requireNonNull(kind);Objects.requireNonNull(position); }
     }
-    public record Prepared(long sceneRevision,NodeId selection,FaceSelection faceSelection,Vec3 pivot,Vec3 xAxis,Vec3 yAxis,Vec3 zAxis,
-                           List<WorldLine> wireframe,List<WorldLine> selectedFace,List<WorldMarker> markers,boolean wireframeTruncated) {
-        public Prepared { wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);markers=List.copyOf(markers); }
+    public record WorldVertex(NodeId nodeId,GeometryId geometryId,long vertexId,Vec3 position) {}
+    public record WorldEdge(NodeId nodeId,GeometryId geometryId,long firstVertexId,long secondVertexId,Vec3 start,Vec3 end) {}
+    public record Prepared(long sceneRevision,NodeId selection,ElementMode elementMode,ElementSelection elementSelection,
+                           Vec3 pivot,Vec3 xAxis,Vec3 yAxis,Vec3 zAxis,List<WorldLine> wireframe,List<WorldLine> selectedFace,
+                           List<Vec3> selectedVertices,List<WorldLine> selectedEdges,List<WorldMarker> markers,
+                           List<WorldVertex> elementVertices,List<WorldEdge> elementEdges,
+                           boolean wireframeTruncated,boolean elementCandidatesTruncated) {
+        public Prepared {
+            wireframe=List.copyOf(wireframe);selectedFace=List.copyOf(selectedFace);selectedVertices=List.copyOf(selectedVertices);
+            selectedEdges=List.copyOf(selectedEdges);markers=List.copyOf(markers);elementVertices=List.copyOf(elementVertices);elementEdges=List.copyOf(elementEdges);
+        }
         public Vec3 axis(Axis axis){return switch(axis){case X->xAxis;case Y->yAxis;case Z->zAxis;};}
     }
 
     private record LocalLine(Vec3 start,Vec3 end){}
-    private record Cached(List<LocalLine> lines,boolean truncated){Cached{lines=List.copyOf(lines);}}
+    private record LocalVertex(long id,Vec3 position){}
+    private record LocalEdge(long firstId,long secondId,Vec3 start,Vec3 end){}
+    private record Cached(List<LocalLine> lines, List<LocalVertex> vertices, List<LocalEdge> edges,
+                          boolean wireframeTruncated, boolean vertexCandidatesTruncated,
+                          boolean edgeCandidatesTruncated) {
+        Cached {
+            lines = List.copyOf(lines);
+            vertices = List.copyOf(vertices);
+            edges = List.copyOf(edges);
+        }
+    }
     private static final class AssetKey {
         final GeometryId id;final long revision;final GeometryData geometry;final int hash;
         AssetKey(GeometryAsset asset){id=asset.id();revision=asset.revision();geometry=asset.geometry();hash=31*(31*id.hashCode()+Long.hashCode(revision))+System.identityHashCode(geometry);}
@@ -83,49 +126,134 @@ public final class OverlayGeometry {
         @Override public boolean equals(Object value){return value instanceof AssetKey key&&revision==key.revision&&id.equals(key.id)&&geometry==key.geometry;}
     }
     private final Map<AssetKey,Cached> cache=new LinkedHashMap<>(16,.75f,true);
+    private final int maxWireframeSegments;
+    private final int maxElementPickCandidates;
     private int cachedSegments;
+
+    public OverlayGeometry() {
+        this(MAX_WIREFRAME_SEGMENTS, MAX_ELEMENT_PICK_CANDIDATES);
+    }
+
+    OverlayGeometry(int maxWireframeSegments, int maxElementPickCandidates) {
+        if (maxWireframeSegments < 1 || maxElementPickCandidates < 1) {
+            throw new IllegalArgumentException("Overlay limits must be positive");
+        }
+        this.maxWireframeSegments = maxWireframeSegments;
+        this.maxElementPickCandidates = maxElementPickCandidates;
+    }
 
     /** Build world-space overlay data. Selected geometry shows itself; a component-free group shows its subtree. */
     public Prepared prepare(SceneSnapshot snapshot,NodeId selection) {
-        return prepare(snapshot,selection,null);
+        return prepare(snapshot,selection,ElementMode.OBJECT,null);
     }
     /** Face selection is camera-independent and becomes part of the immutable prepared context. */
     public Prepared prepare(SceneSnapshot snapshot,NodeId selection,FaceSelection faceSelection) {
-        Objects.requireNonNull(snapshot,"snapshot");
-        var wireframe=new ArrayList<WorldLine>();var selectedFace=new ArrayList<WorldLine>();var markers=new ArrayList<WorldMarker>();boolean truncated=false;
-        for(var node:snapshot.nodes()) {
-            var transform=snapshot.worldTransform(node.id());
-            if(node.light()!=null)markers.add(new WorldMarker(node.id(),MarkerKind.LIGHT,transform.point(Vec3.ZERO)));
-            if(node.camera()!=null)markers.add(new WorldMarker(node.id(),MarkerKind.CAMERA,snapshot.camera(node.id()).eye()));
+        var element = faceSelection == null ? null : new ElementSelection(
+                faceSelection.nodeId(), faceSelection.geometryId(), ElementKind.FACE,
+                faceSelection.faceId(), -1);
+        return prepare(snapshot, selection, ElementMode.FACE, element);
+    }
+    /** Element candidates are bounded, deterministic, camera-independent x-ray pick data. */
+    public Prepared prepare(SceneSnapshot snapshot,NodeId selection,ElementMode elementMode,ElementSelection elementSelection) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        Objects.requireNonNull(elementMode, "elementMode");
+        var wireframe = new ArrayList<WorldLine>();
+        var selectedFace = new ArrayList<WorldLine>();
+        var selectedVertices = new ArrayList<Vec3>();
+        var selectedEdges = new ArrayList<WorldLine>();
+        var markers = new ArrayList<WorldMarker>();
+        var candidateVertices = new ArrayList<WorldVertex>();
+        var candidateEdges = new ArrayList<WorldEdge>();
+        boolean truncated = false;
+        boolean elementTruncated = false;
+        for (var node : snapshot.nodes()) {
+            var transform = snapshot.worldTransform(node.id());
+            if (node.light() != null) {
+                markers.add(new WorldMarker(node.id(), MarkerKind.LIGHT, transform.point(Vec3.ZERO)));
+            }
+            if (node.camera() != null) {
+                markers.add(new WorldMarker(node.id(), MarkerKind.CAMERA, snapshot.camera(node.id()).eye()));
+            }
+        }
+        if (elementMode == ElementMode.VERTEX || elementMode == ElementMode.EDGE) {
+            var nodes = snapshot.nodes().stream().filter(node -> node.geometry() != null)
+                    .filter(node -> snapshot.requireGeometry(node.geometry().geometryId()).geometry() instanceof PolygonMesh)
+                    .sorted(Comparator.comparing(node -> node.id().value())).toList();
+            for (int nodeIndex = 0; nodeIndex < nodes.size(); nodeIndex++) {
+                var node = nodes.get(nodeIndex);
+                var asset = snapshot.requireGeometry(node.geometry().geometryId());
+                var local = cached(asset);
+                var transform = snapshot.worldTransform(node.id());
+                if (elementMode == ElementMode.VERTEX) {
+                    for (var vertex : local.vertices) {
+                        if (candidateVertices.size() == maxElementPickCandidates) {
+                            elementTruncated = true;
+                            break;
+                        }
+                        candidateVertices.add(new WorldVertex(
+                                node.id(), asset.id(), vertex.id(), transform.point(vertex.position())));
+                    }
+                    elementTruncated |= local.vertexCandidatesTruncated;
+                } else {
+                    for (var edge : local.edges) {
+                        if (candidateEdges.size() == maxElementPickCandidates) {
+                            elementTruncated = true;
+                            break;
+                        }
+                        candidateEdges.add(new WorldEdge(
+                                node.id(), asset.id(), edge.firstId(), edge.secondId(),
+                                transform.point(edge.start()), transform.point(edge.end())));
+                    }
+                    elementTruncated |= local.edgeCandidatesTruncated;
+                }
+                int size = elementMode == ElementMode.VERTEX
+                        ? candidateVertices.size() : candidateEdges.size();
+                if (size == maxElementPickCandidates) {
+                    if (nodeIndex + 1 < nodes.size()) elementTruncated = true;
+                    break;
+                }
+            }
         }
         Vec3 pivot=null,x=null,y=null,z=null;
         if(selection!=null) {
             var selected=snapshot.requireNode(selection);var world=snapshot.worldTransform(selection);
-            pivot=world.point(Vec3.ZERO);x=unit(world.vector(new Vec3(1,0,0)));y=unit(world.vector(new Vec3(0,1,0)));z=unit(world.vector(new Vec3(0,0,1)));
+            x=unit(world.vector(new Vec3(1,0,0)));y=unit(world.vector(new Vec3(0,1,0)));z=unit(world.vector(new Vec3(0,0,1)));
+            if(elementMode==ElementMode.OBJECT)pivot=world.point(Vec3.ZERO);
             Set<NodeId> included=selected.geometry()!=null?Set.of(selection):descendants(snapshot,selection);
             outer: for(var node:snapshot.nodes())if(included.contains(node.id())&&node.geometry()!=null) {
                 var asset=snapshot.requireGeometry(node.geometry().geometryId());
                 var local=cached(asset);
-                truncated|=local.truncated;
+                truncated|=local.wireframeTruncated;
                 var transform=snapshot.worldTransform(node.id());
                 for(var line:local.lines) {
-                    if(wireframe.size()==MAX_WIREFRAME_SEGMENTS){truncated=true;break outer;}
+                    if(wireframe.size()==maxWireframeSegments){truncated=true;break outer;}
                     wireframe.add(new WorldLine(node.id(),transform.point(line.start),transform.point(line.end)));
                 }
             }
-            if(faceSelection!=null&&faceSelection.nodeId().equals(selection)&&selected.geometry()!=null
-                    &&selected.geometry().geometryId().equals(faceSelection.geometryId())) {
-                var asset=snapshot.requireGeometry(faceSelection.geometryId());
+            if(elementSelection!=null&&elementSelection.nodeId().equals(selection)&&selected.geometry()!=null
+                    &&selected.geometry().geometryId().equals(elementSelection.geometryId())) {
+                var asset=snapshot.requireGeometry(elementSelection.geometryId());
                 if(asset.geometry() instanceof PolygonMesh mesh) {
-                    var face=mesh.requireFace(faceSelection.faceId());var transform=snapshot.worldTransform(selection);
-                    for(int i=0;i<face.vertexIds().size();i++) {
-                        var a=mesh.requireVertex(face.vertexIds().get(i)).position();var b=mesh.requireVertex(face.vertexIds().get((i+1)%face.vertexIds().size())).position();
-                        selectedFace.add(new WorldLine(selection,transform.point(a),transform.point(b)));
+                    var transform=snapshot.worldTransform(selection);
+                    if(elementSelection.kind()==ElementKind.VERTEX){
+                        var position=transform.point(mesh.requireVertex(elementSelection.firstId()).position());
+                        selectedVertices.add(position);pivot=position;
+                    }else if(elementSelection.kind()==ElementKind.EDGE){
+                        var a=transform.point(mesh.requireVertex(elementSelection.firstId()).position());
+                        var b=transform.point(mesh.requireVertex(elementSelection.secondId()).position());
+                        selectedEdges.add(new WorldLine(selection,a,b));pivot=a.add(b).scale(.5f);
+                    }else{
+                        var face=mesh.requireFace(elementSelection.firstId());
+                        for(int i=0;i<face.vertexIds().size();i++) {
+                            var a=mesh.requireVertex(face.vertexIds().get(i)).position();var b=mesh.requireVertex(face.vertexIds().get((i+1)%face.vertexIds().size())).position();
+                            selectedFace.add(new WorldLine(selection,transform.point(a),transform.point(b)));
+                        }
                     }
                 }
             }
         }
-        return new Prepared(snapshot.revision(),selection,faceSelection,pivot,x,y,z,wireframe,selectedFace,markers,truncated);
+        return new Prepared(snapshot.revision(),selection,elementMode,elementSelection,pivot,x,y,z,wireframe,selectedFace,
+                selectedVertices,selectedEdges,markers,candidateVertices,candidateEdges,truncated,elementTruncated);
     }
 
     /** Project prepared data for the exact painted camera and viewport dimensions. */
@@ -139,6 +267,12 @@ public final class OverlayGeometry {
         var faceLines=new ArrayList<Line>();
         for(var world:prepared.selectedFace)projector.clipAndProject(world.start,world.end).ifPresent(p->faceLines.add(
                 line(world.nodeId,Style.FACE_SELECTION_XRAY,null,p)));
+        var selectedVertexPoints=new ArrayList<Point>();
+        for(var world:prepared.selectedVertices)projector.project(world).filter(CameraProjector.ProjectedPoint::insideViewport)
+                .ifPresent(point->selectedVertexPoints.add(new Point(prepared.selection,point.u(),point.v())));
+        var selectedEdgeLines=new ArrayList<Line>();
+        for(var world:prepared.selectedEdges)projector.clipAndProject(world.start,world.end).ifPresent(projected->selectedEdgeLines.add(
+                line(world.nodeId,Style.EDGE_SELECTION_XRAY,null,projected)));
         var markers=new ArrayList<Marker>();
         for(var world:prepared.markers)projector.project(world.position).filter(CameraProjector.ProjectedPoint::insideViewport)
                 .ifPresent(p->markers.add(new Marker(world.nodeId,world.kind,p.u(),p.v())));
@@ -155,7 +289,37 @@ public final class OverlayGeometry {
                 }
             }
         }
-        return new Frame(prepared.sceneRevision,lines,faceLines,markers,handles,prepared.wireframeTruncated);
+        return new Frame(prepared.sceneRevision,lines,faceLines,selectedVertexPoints,selectedEdgeLines,markers,handles,
+                prepared.wireframeTruncated,prepared.elementCandidatesTruncated);
+    }
+
+    /** Project bounded vertex candidates only for an explicit click against its captured camera. */
+    public Optional<VertexHit> pickVertex(Prepared prepared,Camera camera,double u,double v,int pixelWidth,int pixelHeight){
+        checkPick(u,v,pixelWidth,pixelHeight);var projector=CameraProjector.of(camera);VertexHit best=null;
+        for(var candidate:prepared.elementVertices){
+            var projected=projector.project(candidate.position());
+            if(projected.isEmpty()||!projected.get().insideViewport())continue;
+            double distance=Math.hypot((u-projected.get().u())*pixelWidth,(v-projected.get().v())*pixelHeight);
+            if(distance<=VERTEX_PICK_RADIUS_PIXELS&&better(distance,candidate.nodeId(),candidate.vertexId(),-1,best==null?null:best.nodeId(),
+                    best==null?-1:best.vertexId(),-1,best==null?Double.POSITIVE_INFINITY:best.distancePixels()))
+                best=new VertexHit(candidate.nodeId(),candidate.geometryId(),candidate.vertexId(),distance);
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** Project bounded edge candidates only for an explicit click against its captured camera. */
+    public Optional<EdgeHit> pickEdge(Prepared prepared,Camera camera,double u,double v,int pixelWidth,int pixelHeight){
+        checkPick(u,v,pixelWidth,pixelHeight);var projector=CameraProjector.of(camera);EdgeHit best=null;
+        for(var candidate:prepared.elementEdges){
+            var projected=projector.clipAndProject(candidate.start(),candidate.end());if(projected.isEmpty())continue;
+            var segment=projected.get();double distance=distance(u*pixelWidth,v*pixelHeight,segment.start().u()*pixelWidth,
+                    segment.start().v()*pixelHeight,segment.end().u()*pixelWidth,segment.end().v()*pixelHeight);
+            if(distance<=EDGE_PICK_DISTANCE_PIXELS&&better(distance,candidate.nodeId(),candidate.firstVertexId(),candidate.secondVertexId(),
+                    best==null?null:best.nodeId(),best==null?-1:best.firstVertexId(),best==null?-1:best.secondVertexId(),
+                    best==null?Double.POSITIVE_INFINITY:best.distancePixels()))
+                best=new EdgeHit(candidate.nodeId(),candidate.geometryId(),candidate.firstVertexId(),candidate.secondVertexId(),distance);
+        }
+        return Optional.ofNullable(best);
     }
 
     public synchronized int cachedAssetCount(){return cache.size();}
@@ -203,21 +367,62 @@ public final class OverlayGeometry {
         while(!queue.isEmpty())for(var child:children.getOrDefault(queue.remove(),List.of()))if(result.add(child))queue.add(child);
         return result;
     }
-    private static Cached wireframe(GeometryData geometry) {
-        var output=new ArrayList<LocalLine>();boolean truncated=false;
-        if(geometry instanceof AnalyticSphere sphere) {
-            for(int plane=0;plane<3;plane++)for(int i=0;i<SPHERE_SEGMENTS;i++) {
-                double a=i*2*Math.PI/SPHERE_SEGMENTS,b=(i+1)*2*Math.PI/SPHERE_SEGMENTS;
-                output.add(new LocalLine(circle(sphere,plane,a),circle(sphere,plane,b)));
+    private Cached wireframe(GeometryData geometry) {
+        var output = new ArrayList<LocalLine>();
+        var vertices = new ArrayList<LocalVertex>();
+        var edges = new ArrayList<LocalEdge>();
+        boolean wireframeTruncated = false;
+        boolean vertexCandidatesTruncated = false;
+        boolean edgeCandidatesTruncated = false;
+        if (geometry instanceof AnalyticSphere sphere) {
+            for (int plane = 0; plane < 3; plane++) for (int i = 0; i < SPHERE_SEGMENTS; i++) {
+                double firstAngle = i * 2 * Math.PI / SPHERE_SEGMENTS;
+                double secondAngle = (i + 1) * 2 * Math.PI / SPHERE_SEGMENTS;
+                output.add(new LocalLine(
+                        circle(sphere, plane, firstAngle), circle(sphere, plane, secondAngle)));
             }
-        } else if(geometry instanceof PolygonMesh mesh) {
-            var vertices=new HashMap<Long,Vec3>();for(var vertex:mesh.editableVertices())vertices.put(vertex.id(),vertex.position());
-            for(var edge:mesh.edges()) {
-                if(output.size()==MAX_WIREFRAME_SEGMENTS){truncated=true;break;}
-                output.add(new LocalLine(vertices.get(edge.firstVertexId()),vertices.get(edge.secondVertexId())));
+        } else if (geometry instanceof PolygonMesh mesh) {
+            var byId = new HashMap<Long, Vec3>();
+            var stableEdgeOrder = Comparator.comparingLong(PolygonMesh.Edge::firstVertexId)
+                    .thenComparingLong(PolygonMesh.Edge::secondVertexId);
+            var smallestStableEdges = new PriorityQueue<PolygonMesh.Edge>(
+                    maxElementPickCandidates, stableEdgeOrder.reversed());
+            var sortedVertices = mesh.editableVertices().stream()
+                    .sorted(Comparator.comparingLong(PolygonMesh.Vertex::id)).toList();
+            for (var vertex : sortedVertices) {
+                byId.put(vertex.id(), vertex.position());
+                if (vertices.size() < maxElementPickCandidates) {
+                    vertices.add(new LocalVertex(vertex.id(), vertex.position()));
+                } else {
+                    vertexCandidatesTruncated = true;
+                }
             }
-        } else throw new IllegalArgumentException("Unsupported overlay geometry: "+geometry.getClass().getName());
-        return new Cached(output,truncated);
+            for (var edge : mesh.edges()) {
+                var start = byId.get(edge.firstVertexId());
+                var end = byId.get(edge.secondVertexId());
+                if (output.size() < maxWireframeSegments) output.add(new LocalLine(start, end));
+                else wireframeTruncated = true;
+                if (smallestStableEdges.size() < maxElementPickCandidates) {
+                    smallestStableEdges.add(edge);
+                } else {
+                    edgeCandidatesTruncated = true;
+                    if (stableEdgeOrder.compare(edge, smallestStableEdges.element()) < 0) {
+                        smallestStableEdges.remove();
+                        smallestStableEdges.add(edge);
+                    }
+                }
+            }
+            var sortedEdges = new ArrayList<>(smallestStableEdges);
+            sortedEdges.sort(stableEdgeOrder);
+            for (var edge : sortedEdges) {
+                edges.add(new LocalEdge(edge.firstVertexId(), edge.secondVertexId(),
+                        byId.get(edge.firstVertexId()), byId.get(edge.secondVertexId())));
+            }
+        } else {
+            throw new IllegalArgumentException("Unsupported overlay geometry: " + geometry.getClass().getName());
+        }
+        return new Cached(output, vertices, edges, wireframeTruncated,
+                vertexCandidatesTruncated, edgeCandidatesTruncated);
     }
     private static Vec3 circle(AnalyticSphere sphere,int plane,double angle) {
         float a=sphere.radius()*(float)Math.cos(angle),b=sphere.radius()*(float)Math.sin(angle);var c=sphere.center();
@@ -233,5 +438,14 @@ public final class OverlayGeometry {
         if(length==0)return Math.hypot(px-ax,py-ay);
         double t=Math.clamp(((px-ax)*dx+(py-ay)*dy)/length,0,1);
         return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+    }
+    private static void checkPick(double u,double v,int width,int height){
+        if(!Double.isFinite(u)||!Double.isFinite(v)||u<0||u>1||v<0||v>1||width<=0||height<=0)
+            throw new IllegalArgumentException("Element pick arguments are invalid");
+    }
+    private static boolean better(double distance,NodeId node,long first,long second,NodeId bestNode,long bestFirst,long bestSecond,double bestDistance){
+        int byDistance=Double.compare(distance,bestDistance);if(byDistance!=0)return byDistance<0;
+        if(bestNode==null)return true;int byNode=node.value().compareTo(bestNode.value());if(byNode!=0)return byNode<0;
+        int byFirst=Long.compare(first,bestFirst);return byFirst<0||byFirst==0&&Long.compare(second,bestSecond)<0;
     }
 }

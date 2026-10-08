@@ -7,7 +7,7 @@ import harness.SuiteRunner;
 import harness.Test;
 import math.Vec3;
 
-import java.util.List;
+import java.util.*;
 
 import static harness.Assertions.*;
 
@@ -59,6 +59,39 @@ public class OverlayGeometryTest {
         var frame=overlays.project(prepared,viewCamera(),OverlayGeometry.GizmoMode.NONE,800,600,80);
         assertEquals(prepared.selectedFace().size(),frame.selectedFace().size()); assertTrue(frame.handles().isEmpty());
         assertTrue(frame.selectedFace().stream().allMatch(line->line.style()==OverlayGeometry.Style.FACE_SELECTION_XRAY));
+    }
+
+    @Test void xrayVertexAndEdgePickingUsesFixedPixelsStableTiesAndSelectedHighlights() {
+        var document=new SceneDocument();var lower=new NodeId(new UUID(0,1));var higher=new NodeId(new UUID(0,2));
+        var geometryId=new GeometryId(new UUID(0,3));
+        document.transact(edit->{
+            var material=edit.createMaterial("mat",Material.srgb("mat",0xffffff));
+            var triangle=PolygonMesh.surface(
+                    List.of(new PolygonMesh.Vertex(10,new Vec3(-.5f,-.5f,0)),new PolygonMesh.Vertex(20,new Vec3(.5f,-.5f,0)),new PolygonMesh.Vertex(30,new Vec3(0,.5f,0))),
+                    List.of(new PolygonMesh.Face(40,List.of(10L,20L,30L))),31,41);
+            edit.createGeometry(geometryId,"triangle",triangle);
+            edit.createNode(higher,"higher",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(higher,geometryId,material);
+            edit.createNode(lower,"lower",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(lower,geometryId,material);
+        });
+        var snapshot=document.snapshot();var overlays=new OverlayGeometry();var camera=viewCamera();var projector=CameraProjector.of(camera);
+        var vertexPoint=projector.project(new Vec3(-.5f,-.5f,5)).orElseThrow();
+        var vertexPrepared=overlays.prepare(snapshot,null,OverlayGeometry.ElementMode.VERTEX,null);
+        var vertex=overlays.pickVertex(vertexPrepared,camera,vertexPoint.u(),vertexPoint.v(),800,600).orElseThrow();
+        assertEquals(lower,vertex.nodeId());assertEquals(10L,vertex.vertexId());assertTrue(vertex.distancePixels()<=OverlayGeometry.VERTEX_PICK_RADIUS_PIXELS);
+
+        var selectedVertex=new OverlayGeometry.ElementSelection(lower,geometryId,OverlayGeometry.ElementKind.VERTEX,10,-1);
+        var highlightedVertex=overlays.prepare(snapshot,lower,OverlayGeometry.ElementMode.VERTEX,selectedVertex);
+        var vertexFrame=overlays.project(highlightedVertex,camera,OverlayGeometry.GizmoMode.TRANSLATE,800,600,80);
+        assertEquals(1,vertexFrame.selectedVertices().size());assertEquals(3,vertexFrame.handles().size());assertTrue(vertexFrame.selectedEdges().isEmpty());
+
+        var midpoint=projector.project(new Vec3(0,-.5f,5)).orElseThrow();
+        var edgePrepared=overlays.prepare(snapshot,null,OverlayGeometry.ElementMode.EDGE,null);
+        var edge=overlays.pickEdge(edgePrepared,camera,midpoint.u(),midpoint.v(),800,600).orElseThrow();
+        assertEquals(lower,edge.nodeId());assertEquals(10L,edge.firstVertexId());assertEquals(20L,edge.secondVertexId());
+        var selectedEdge=new OverlayGeometry.ElementSelection(lower,geometryId,OverlayGeometry.ElementKind.EDGE,10,20);
+        var highlightedEdge=overlays.prepare(snapshot,lower,OverlayGeometry.ElementMode.EDGE,selectedEdge);
+        var edgeFrame=overlays.project(highlightedEdge,camera,OverlayGeometry.GizmoMode.TRANSLATE,800,600,80);
+        assertEquals(1,edgeFrame.selectedEdges().size());assertEquals(3,edgeFrame.handles().size());assertTrue(edgeFrame.selectedVertices().isEmpty());
     }
 
     @Test void immutableAssetCacheIsBoundedAcrossManySelections() {

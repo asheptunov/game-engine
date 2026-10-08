@@ -140,6 +140,41 @@ public final class PolygonMesh implements GeometryData {
     public List<Long> adjacentFaceIds(long faceId){requireFace(faceId);return adjacentFaces.get(faceId);}
     public Vec3 faceNormal(long faceId){requireFace(faceId);return normalByFace.get(faceId);}
 
+    /** Return a validated mesh with one stable vertex translated in asset-local units. */
+    public PolygonMesh translateVertex(long vertexId, Vec3 localDelta) {
+        requireVertex(vertexId);
+        return translateVertices(Set.of(vertexId), localDelta);
+    }
+
+    /** Return a validated mesh with both endpoints of one canonical edge translated equally. */
+    public PolygonMesh translateEdge(long firstVertexId, long secondVertexId, Vec3 localDelta) {
+        long first = Math.min(firstVertexId, secondVertexId);
+        long second = Math.max(firstVertexId, secondVertexId);
+        if (first == second || edges.stream().noneMatch(edge -> edge.firstVertexId() == first
+                && edge.secondVertexId() == second)) {
+            throw new IllegalArgumentException("Unknown editable edge: " + first + "-" + second);
+        }
+        return translateVertices(Set.of(first, second), localDelta);
+    }
+
+    private PolygonMesh translateVertices(Set<Long> vertexIds, Vec3 localDelta) {
+        Objects.requireNonNull(localDelta, "localDelta");
+        if (!finite(localDelta)) {
+            throw new IllegalArgumentException("Vertex translation must be finite");
+        }
+        if (localDelta.equals(Vec3.ZERO)) {
+            return this;
+        }
+        var translated = new ArrayList<Vertex>(editableVertices.size());
+        for (var vertex : editableVertices) {
+            var position = vertexIds.contains(vertex.id())
+                    ? vertex.position().add(localDelta)
+                    : vertex.position();
+            translated.add(new Vertex(vertex.id(), position));
+        }
+        return new PolygonMesh(translated, faces, nextVertexId, nextFaceId, closed);
+    }
+
     /** Extrudes along the face's listed-winding normal (outward for a validated closed solid); the cap retains its ID. */
     public PolygonMesh extrude(long faceId,float distance) {
         if(!Float.isFinite(distance)||distance<=0)throw new IllegalArgumentException("Extrusion distance must be finite and positive");

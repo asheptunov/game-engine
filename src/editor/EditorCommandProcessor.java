@@ -30,6 +30,8 @@ public final class EditorCommandProcessor {
                 case "camera" -> camera(words);
                 case "mode" -> mode(words);
                 case "mesh" -> mesh(words);
+                case "vertex" -> vertex(words);
+                case "edge" -> edge(words);
                 case "face" -> face(words);
                 case "undo" -> { exact(words, 1, "undo"); yield done(controller.undo()); }
                 case "redo" -> { exact(words, 1, "redo"); yield done(controller.redo()); }
@@ -119,7 +121,44 @@ public final class EditorCommandProcessor {
         };
     }
     private String mode(List<String> words){
-        exact(words,2,"mode object|face");return done(controller.setSelectionMode(switch(words.get(1).toLowerCase(Locale.ROOT)){case "object"->EditorController.SelectionMode.OBJECT;case "face"->EditorController.SelectionMode.FACE;default->throw new IllegalArgumentException("Use mode object or mode face");}));
+        exact(words, 2, "mode object|vertex|edge|face");
+        var mode = switch (words.get(1).toLowerCase(Locale.ROOT)) {
+            case "object" -> EditorController.SelectionMode.OBJECT;
+            case "vertex" -> EditorController.SelectionMode.VERTEX;
+            case "edge" -> EditorController.SelectionMode.EDGE;
+            case "face" -> EditorController.SelectionMode.FACE;
+            default -> throw new IllegalArgumentException("Use mode object, vertex, edge, or face");
+        };
+        return done(controller.setSelectionMode(mode));
+    }
+    private String vertex(List<String> words) {
+        require(words, 2, "vertex select <id> | vertex move <local-dx> <local-dy> <local-dz>");
+        return switch (words.get(1).toLowerCase(Locale.ROOT)) {
+            case "select" -> {
+                exact(words, 3, "vertex select <id>");
+                yield done(controller.selectVertex(Long.parseLong(words.get(2))));
+            }
+            case "move" -> {
+                exact(words, 5, "vertex move <local-dx> <local-dy> <local-dz>");
+                yield done(controller.translateSelectedElement(vector(words, 2)));
+            }
+            default -> throw new IllegalArgumentException("Use vertex select or vertex move");
+        };
+    }
+    private String edge(List<String> words) {
+        require(words, 2, "edge select <first-id> <second-id> | edge move <local-dx> <local-dy> <local-dz>");
+        return switch (words.get(1).toLowerCase(Locale.ROOT)) {
+            case "select" -> {
+                exact(words, 4, "edge select <first-id> <second-id>");
+                yield done(controller.selectEdge(
+                        Long.parseLong(words.get(2)), Long.parseLong(words.get(3))));
+            }
+            case "move" -> {
+                exact(words, 5, "edge move <local-dx> <local-dy> <local-dz>");
+                yield done(controller.translateSelectedElement(vector(words, 2)));
+            }
+            default -> throw new IllegalArgumentException("Use edge select or edge move");
+        };
     }
     private String mesh(List<String> words){
         require(words,2,"mesh convert|unique");return switch(words.get(1).toLowerCase(Locale.ROOT)){
@@ -146,10 +185,30 @@ public final class EditorCommandProcessor {
         if (controller.dirty()) return "Error: save or discard unsaved changes before loading";
         var path = Path.of(String.join(" ", words.subList(1, words.size()))); controller.load(path); return "Load started: " + path;
     }
-    private String describe() { var state = controller.state(); return "revision=" + state.snapshot().revision() + " nodes=" + state.snapshot().nodes().size() + " selected=" + state.selection() + " mode="+state.selectionMode().name().toLowerCase(Locale.ROOT)+" face="+(state.faceSelection()==null?"none":state.faceSelection().faceId())+" dirty=" + state.dirty(); }
+    private String describe() {
+        var state = controller.state();
+        return "revision=" + state.snapshot().revision()
+                + " nodes=" + state.snapshot().nodes().size()
+                + " selected=" + state.selection()
+                + " mode=" + state.selectionMode().name().toLowerCase(Locale.ROOT)
+                + " element=" + element(state)
+                + " dirty=" + state.dirty();
+    }
+    private static String element(EditorController.State state) {
+        if (state.vertexSelection() != null) return "vertex:" + state.vertexSelection().vertexId();
+        if (state.edgeSelection() != null) {
+            return "edge:" + state.edgeSelection().firstVertexId() + "-" + state.edgeSelection().secondVertexId();
+        }
+        if (state.faceSelection() != null) return "face:" + state.faceSelection().faceId();
+        return "none";
+    }
+    private static Vec3 vector(List<String> words, int offset) {
+        return new Vec3(Float.parseFloat(words.get(offset)), Float.parseFloat(words.get(offset + 1)),
+                Float.parseFloat(words.get(offset + 2)));
+    }
     private NodeId selected() { var id = controller.selection(); if (id == null) throw new IllegalArgumentException("Select a node first"); return id; }
     private String done(boolean ok) { return ok ? controller.state().status() : "Error: " + controller.state().status(); }
     private static void require(List<String> words, int size, String usage) { if (words.size() < size) throw new IllegalArgumentException("Usage: " + usage); }
     private static void exact(List<String> words, int size, String usage) { if (words.size() != size) throw new IllegalArgumentException("Usage: " + usage); }
-    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|face, mesh convert|unique, face select <id>, face extrude <distance>, undo, redo, save, load, status"; }
+    private static String help() { return "Commands: create, select, rename, transform, duplicate, delete, reparent, material, light, camera, mode object|vertex|edge|face, mesh convert|unique, vertex select <id>, vertex move <local dx dy dz>, edge select <a> <b>, edge move <local dx dy dz>, face select <id>, face extrude <distance>, undo, redo, save, load, status"; }
 }

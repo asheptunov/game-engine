@@ -619,6 +619,23 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   RGB hashes for analytic sphere, plane, canonical box and mesh detail 4/12/64 match base
   `404090a`. See [EngineRequirements.md](EngineRequirements.md) and [EngineApi.md](EngineApi.md).
 
+## Engine E7 G2 — direct polygon element editing `[implemented; human GUI QA pending]`
+
+- The native scene editor now exposes Object, Vertex, Edge and Face modes directly for every
+  polygon asset. Stable vertex/edge/face selections, deterministic bounded x-ray picking,
+  two-view highlights, numeric local deltas and grouped live vertex/edge handles share the
+  same transaction and undo path. Entering a mesh mode never converts or clones geometry.
+- Shared edits retain the geometry ID and affect all references; Make geometry unique remaps
+  only the selected node. History, load and asset replacement reconcile stable IDs, while stale
+  cross-view completions and picks during active gestures are rejected against the exact painted
+  semantic context. Invalid drag candidates preserve the last valid preview and an invalid
+  release restores the baseline.
+- The PowerShell 5.1 editor/input gate and a window-free two-view journey cover direct box/plane
+  editing, shared/unique behavior, undo, invalid edits, stale picks and coherent camera motion.
+  Evidence is `scene-editor-elements-preview.png`; native-window interaction remains pending
+  using the [editor QA card](benchmarks/editor/README.md). G3 retains analytic parameter editing
+  and explicit bounded sphere approximation.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

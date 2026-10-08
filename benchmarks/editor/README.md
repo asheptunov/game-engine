@@ -4,7 +4,9 @@ Automated checks are deliberately window-free. They build the real Swing panel, 
 independent engine views, exercise picks and controller operations, and paint the complete
 layout to `out/editor-check/scene-editor-preview.png` with `java.awt.headless=true`.
 The mesh journey also writes `out/editor-check/scene-editor-mesh-extruded-preview.png`, with
-the selected stable face highlighted in both exact rendered views.
+the selected stable face highlighted in both exact rendered views, and
+`scene-editor-elements-preview.png`, with a selected stable edge and translate handles in both
+views.
 
 ```powershell
 ./editor-check.ps1
@@ -72,17 +74,26 @@ startup failures in `out/editor/editor-error.log`.
     always target the overlay actually visible.
 13. Minimize or move focus away, then return and close. **EXPECT:** rendering suspends while inactive,
     resumes when active, and close exits cleanly without a terminal window or popup error.
-14. Select `Teal box`, switch **Select: Face**, and click the box. **EXPECT:** the status and Mesh
-    inspector say to convert it, while the node remains selected and no conversion happens silently.
-    Press **Convert to editable mesh**, click a polygon in either view, turn Wireframe off, and
-    **EXPECT:** the same orange polygon boundary remains visible in both views while Move/Rotate
-    handles stay disabled. If geometry is shared, use **Make geometry unique** to choose per-node
-    editing; otherwise extrusion edits every user of the shared asset. Enter a positive local-unit
-    distance and press **Extrude face**. **EXPECT:** one atomic edit moves the stable cap and adds
-    sides. Undo/Redo, Save, and reopen; **EXPECT:** topology, source face identity and the rendered
-    result survive, while Face selection is safely reconciled or cleared when its asset disappears.
-    Repeat with `mode face`, `mesh convert`, `mesh unique`, `face select <id>`, and
-    `face extrude <distance>` in the command panel.
+14. Select `Teal box` or `Floor` and switch among **Vertex**, **Edge**, and **Face**. **EXPECT:**
+    polygon elements are immediately selectable without conversion, a new asset, a dirty mark, or
+    an undo entry. Vertex/edge selection is x-ray; close candidates resolve consistently. The
+    selected element is highlighted in both views, Vertex/Edge show Move handles, and Face disables
+    object handles. An analytic sphere can still be selected as an object in these modes and reports
+    that it has no mesh elements rather than inventing them.
+15. With a vertex selected, enter a small **Local delta** such as `0.1 0 0`, apply it, and Undo.
+    Repeat on an edge, then drag an axis and press Escape during a second drag. **EXPECT:** numeric
+    edits and completed drags are each one undo step, the edge moves both stable endpoints, Escape
+    restores the drag-start mesh, and invalid quad/solid/material edits show validation text while
+    preserving the prior world. Duplicate a polygon node and confirm a shared edit reaches both;
+    use **Make geometry unique** and confirm the next edit affects only one. Orbit continuously
+    during these checks; highlights remain paired with their displayed image and keep advancing.
+16. In Face mode click a polygon in either view, turn Wireframe off, and **EXPECT:** the orange
+    boundary remains visible in both views. Enter a positive local-unit distance and press
+    **Extrude face**. **EXPECT:** one atomic edit moves the stable cap and adds sides. Undo/Redo,
+    Save, and reopen; **EXPECT:** topology, stable element identity and rendering survive while
+    selection is safely reconciled or cleared if an asset/element disappears. Repeat with
+    `mode vertex`, `vertex select <id>`, `vertex move <dx> <dy> <dz>`, `mode edge`,
+    `edge select <a> <b>`, `edge move <dx> <dy> <dz>`, `mode face`, and `face extrude <distance>`.
 
 Shipped defaults are `assets/bindings/scene-editor.properties` and
 `assets/bindings/scene-editor-mouse.properties`. **Bindings…** saves the single ignored user profile

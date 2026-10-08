@@ -22,9 +22,11 @@ import java.util.concurrent.atomic.AtomicReference;
 /** One independent asynchronously rendered editor view. */
 public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private record Request(SceneSnapshot snapshot, Camera camera, int width, int height, NodeId selection,
-                           EditorController.SelectionMode selectionMode,EditorController.FaceSelection faceSelection) {}
+                           EditorController.SelectionMode selectionMode,EditorController.VertexSelection vertexSelection,
+                           EditorController.EdgeSelection edgeSelection,EditorController.FaceSelection faceSelection) {}
     private record PickToken(SceneSnapshot snapshot, SpatialQuery query, OverlayGeometry.Prepared overlay, NodeId selection,
-                             EditorController.SelectionMode selectionMode,EditorController.FaceSelection faceSelection) {}
+                             EditorController.SelectionMode selectionMode,EditorController.VertexSelection vertexSelection,
+                             EditorController.EdgeSelection edgeSelection,EditorController.FaceSelection faceSelection) {}
     private record DisplayFrame(BufferedImage image, long generation, long samples, Camera camera, PickToken token) {}
     private record DisplayBundle(DisplayFrame frame, int width, int height, OverlayGeometry.GizmoMode mode, OverlayGeometry.Frame overlay, long serial) {}
     private record PaintedFrame(DisplayFrame frame, Rectangle content, OverlayGeometry.Frame overlay, long serial) {}
@@ -39,7 +41,9 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private final AtomicReference<Request> pending = new AtomicReference<>();
     private final AtomicReference<OverlayRequest> pendingOverlay = new AtomicReference<>();
     private final AtomicReference<ProjectionBlock> projectionBlockForTest = new AtomicReference<>();
+    private final AtomicReference<ProjectionBlock> elementPickBlockForTest = new AtomicReference<>();
     private volatile ProjectionBlock activeProjectionBlock;
+    private volatile ProjectionBlock activeElementPickBlock;
     private final JComboBox<CameraChoice> cameraChoice = new JComboBox<>();
     private final JButton setSelectedCamera = new JButton("Capture view");
     private final JCheckBox wireframe = new JCheckBox("Wireframe", true);
@@ -57,6 +61,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private long publishedOverlaySerial;
     private volatile NodeId selected;
     private volatile EditorController.SelectionMode selectionMode=EditorController.SelectionMode.OBJECT;
+    private volatile EditorController.VertexSelection vertexSelection;
+    private volatile EditorController.EdgeSelection edgeSelection;
     private volatile EditorController.FaceSelection faceSelection;
     private volatile String selectedLabel = "Nothing selected";
     private RenderSession session;
@@ -82,6 +88,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private NodeId gizmoNode;
     private OverlayGeometry.Axis gizmoAxis;
     private Rectangle gizmoArea;
+    private boolean elementGizmo;
     private MouseInput navigationGesture;
 
     public RenderViewPanel(EditorController controller, EditorInputBindings inputBindings, String title, float yaw, float pitch, float distance) {
@@ -123,10 +130,16 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         if (!SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("View updates belong to EDT");
         latestSnapshot = state.snapshot();
         selected = state.selection();
-        selectionMode=state.selectionMode();faceSelection=state.faceSelection();
+        selectionMode=state.selectionMode();vertexSelection=state.vertexSelection();edgeSelection=state.edgeSelection();faceSelection=state.faceSelection();
         selectedLabel = selected == null ? "Nothing selected" : state.snapshot().findNode(selected).map(SceneNode::label).orElse("Selection changed");
+        if(vertexSelection!=null)selectedLabel+=" · vertex "+vertexSelection.vertexId();
+        if(edgeSelection!=null)selectedLabel+=" · edge "+edgeSelection.firstVertexId()+"-"+edgeSelection.secondVertexId();
         if(faceSelection!=null)selectedLabel+=" · face "+faceSelection.faceId();
-        boolean objectMode=selectionMode==EditorController.SelectionMode.OBJECT;translate.setEnabled(objectMode);rotate.setEnabled(objectMode);updateNavigationHelp();
+        boolean objectMode=selectionMode==EditorController.SelectionMode.OBJECT;
+        boolean translatableElement=(selectionMode==EditorController.SelectionMode.VERTEX&&vertexSelection!=null)
+                ||(selectionMode==EditorController.SelectionMode.EDGE&&edgeSelection!=null);
+        translate.setEnabled(objectMode||translatableElement);rotate.setEnabled(objectMode);
+        if(!objectMode&&translatableElement)translate.setSelected(true);updateNavigationHelp();
         setSelectedCamera.setEnabled(selected != null && state.snapshot().findNode(selected).map(node -> node.camera() != null).orElse(false));
         rebuildCameraChoices(state.snapshot()); submitCurrent(); repaint();
     }
@@ -160,7 +173,8 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
             else camera = latestSnapshot.camera(sceneCamera);
         }
         catch (RuntimeException error) { renderStatus.setText(error.getMessage()); return; }
-        int[] dimensions = dimensions(camera); pending.set(new Request(latestSnapshot, camera, dimensions[0], dimensions[1], selected,selectionMode,faceSelection));
+        int[] dimensions = dimensions(camera); pending.set(new Request(latestSnapshot, camera, dimensions[0], dimensions[1], selected,
+                selectionMode,vertexSelection,edgeSelection,faceSelection));
     }
 
     private Camera cameraAtOrbit(Camera optics) {
@@ -191,7 +205,12 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private void setGizmoMode(OverlayGeometry.GizmoMode mode) {
         gizmoMode = mode; repaint();
     }
-    private OverlayGeometry.GizmoMode effectiveGizmoMode(){return selectionMode==EditorController.SelectionMode.OBJECT?gizmoMode:OverlayGeometry.GizmoMode.NONE;}
+    private OverlayGeometry.GizmoMode effectiveGizmoMode(){
+        if(selectionMode==EditorController.SelectionMode.OBJECT)return gizmoMode;
+        if(selectionMode==EditorController.SelectionMode.VERTEX&&vertexSelection!=null)return OverlayGeometry.GizmoMode.TRANSLATE;
+        if(selectionMode==EditorController.SelectionMode.EDGE&&edgeSelection!=null)return OverlayGeometry.GizmoMode.TRANSLATE;
+        return OverlayGeometry.GizmoMode.NONE;
+    }
 
     private static int[] dimensions(Camera camera) {
         float aspect = camera.sensor().edge1().length() / camera.sensor().edge2().length();
@@ -260,10 +279,34 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         else session.update(request.snapshot().toWorldSnapshot(), view, settings);
         var prior=currentPickToken;
         if(prior==null||prior.snapshot()!=request.snapshot()||!Objects.equals(prior.selection(),request.selection())
-                ||prior.selectionMode()!=request.selectionMode()||!Objects.equals(prior.faceSelection(),request.faceSelection())) {
-            OverlayGeometry.FaceSelection face=request.faceSelection()==null?null:new OverlayGeometry.FaceSelection(request.faceSelection().nodeId(),request.faceSelection().geometryId(),request.faceSelection().faceId());
-            currentPickToken = new PickToken(request.snapshot(), preparedQuery, overlayGeometry.prepare(request.snapshot(), request.selection(),face),request.selection(),request.selectionMode(),request.faceSelection());
+                ||prior.selectionMode()!=request.selectionMode()||!Objects.equals(prior.vertexSelection(),request.vertexSelection())
+                ||!Objects.equals(prior.edgeSelection(),request.edgeSelection())||!Objects.equals(prior.faceSelection(),request.faceSelection())) {
+            var elementSelection=elementSelection(request.vertexSelection(),request.edgeSelection(),request.faceSelection());
+            var prepared=overlayGeometry.prepare(request.snapshot(),request.selection(),elementMode(request.selectionMode()),elementSelection);
+            currentPickToken = new PickToken(request.snapshot(),preparedQuery,prepared,request.selection(),request.selectionMode(),
+                    request.vertexSelection(),request.edgeSelection(),request.faceSelection());
         }
+    }
+
+    private static OverlayGeometry.ElementMode elementMode(EditorController.SelectionMode mode){
+        return switch(mode){
+            case OBJECT->OverlayGeometry.ElementMode.OBJECT;
+            case VERTEX->OverlayGeometry.ElementMode.VERTEX;
+            case EDGE->OverlayGeometry.ElementMode.EDGE;
+            case FACE->OverlayGeometry.ElementMode.FACE;
+        };
+    }
+
+    private static OverlayGeometry.ElementSelection elementSelection(EditorController.VertexSelection vertex,
+                                                                      EditorController.EdgeSelection edge,
+                                                                      EditorController.FaceSelection face){
+        if(vertex!=null)return new OverlayGeometry.ElementSelection(vertex.nodeId(),vertex.geometryId(),
+                OverlayGeometry.ElementKind.VERTEX,vertex.vertexId(),-1);
+        if(edge!=null)return new OverlayGeometry.ElementSelection(edge.nodeId(),edge.geometryId(),
+                OverlayGeometry.ElementKind.EDGE,edge.firstVertexId(),edge.secondVertexId());
+        if(face!=null)return new OverlayGeometry.ElementSelection(face.nodeId(),face.geometryId(),
+                OverlayGeometry.ElementKind.FACE,face.faceId(),-1);
+        return null;
     }
 
     private void projectOverlay(OverlayRequest request) {
@@ -325,7 +368,15 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         addMouseListener(mouse); addMouseMotionListener(mouse); addMouseWheelListener(mouse);
     }
 
-    private void updateNavigationHelp(){setToolTipText((selectionMode==EditorController.SelectionMode.FACE?"Left-click selects editable faces":"Left-click selects or drags handles")+" · "+inputBindings.navigationHelp());}
+    private void updateNavigationHelp(){
+        String left=switch(selectionMode){
+            case OBJECT->"Left-click selects objects or drags transform handles";
+            case VERTEX->"Left-click x-ray selects vertices (8 px) or drags move handles";
+            case EDGE->"Left-click x-ray selects edges (6 px) or drags move handles";
+            case FACE->"Left-click selects polygon faces";
+        };
+        setToolTipText(left+" · "+inputBindings.navigationHelp());
+    }
 
     void orbit(MouseInput input) {
         int dx = input.x() - dragStart.x, dy = input.y() - dragStart.y; dragStart = new Point(input.x(), input.y());
@@ -367,28 +418,40 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
 
     private boolean beginGizmo(Point point) {
-        if(selectionMode!=EditorController.SelectionMode.OBJECT)return false;
         var painted = paintedFrame; if (painted == null || painted.overlay() == null || !painted.content().contains(point)) return false;
         var uv = normalized(point, painted.content());
         var hit = painted.overlay().pick(uv[0], uv[1], painted.content().width, painted.content().height, 9).orElse(null);
         if (hit == null || hit.kind() != OverlayGeometry.HitKind.HANDLE) return false;
+        var token=painted.frame().token();
+        if(token.selectionMode()==EditorController.SelectionMode.FACE)return false;
         var prepared = painted.frame().token().overlay(); var axis = prepared.axis(hit.axis());
         Optional<GizmoDrag> drag = hit.mode() == OverlayGeometry.GizmoMode.TRANSLATE
                 ? GizmoDrag.beginTranslation(painted.frame().camera(), prepared.pivot(), axis, uv[0], uv[1], painted.content().width, painted.content().height)
                 : GizmoDrag.beginRotation(painted.frame().camera(), prepared.pivot(), axis, uv[0], uv[1]);
         if (drag.isEmpty()) { renderStatus.setText("Handle is aligned with this view; choose another axis or view"); return false; }
         String label = (hit.mode() == OverlayGeometry.GizmoMode.TRANSLATE ? "Move " : "Rotate ") + hit.axis();
-        if (!controller.beginTransformGesture(hit.nodeId(), label, painted.overlay().sceneRevision())) return false;
+        elementGizmo=token.selectionMode()==EditorController.SelectionMode.VERTEX||token.selectionMode()==EditorController.SelectionMode.EDGE;
+        boolean began=elementGizmo
+                ?controller.beginElementGesture(painted.overlay().sceneRevision(),token.selectionMode(),token.selection(),token.vertexSelection(),token.edgeSelection())
+                :controller.beginTransformGesture(hit.nodeId(),label,painted.overlay().sceneRevision());
+        if(!began){elementGizmo=false;return false;}
         gizmoDrag = drag.get(); gizmoStart = painted.frame().token().snapshot(); gizmoNode = hit.nodeId(); gizmoAxis = hit.axis();
         gizmoArea = new Rectangle(painted.content()); return true;
     }
 
     private void updateGizmo(Point point) {
-        if (gizmoDrag == null || gizmoStart == null || gizmoArea == null || !gizmoArea.contains(point)) return;
+        if (gizmoDrag == null || gizmoStart == null || gizmoArea == null) return;
         var uv = normalized(point, gizmoArea); var delta = gizmoDrag.update(uv[0], uv[1]);
         if (delta.isEmpty()) return;
+        if(elementGizmo){
+            if(delta.get() instanceof GizmoDrag.Translation translation){
+                var localDelta=gizmoStart.worldTransform(gizmoNode).inverseVector(translation.worldDelta());
+                controller.updateElementGesture(localDelta);
+            }
+            return;
+        }
         Transform candidate;
-        if (delta.get() instanceof GizmoDrag.Translation translation) candidate = GizmoMath.translated(gizmoStart, gizmoNode, translation.worldDelta());
+        if(delta.get() instanceof GizmoDrag.Translation translation)candidate=GizmoMath.translated(gizmoStart,gizmoNode,translation.worldDelta());
         else {
             var rotation = (GizmoDrag.Rotation) delta.get();
             candidate = GizmoMath.rotated(gizmoStart, gizmoNode, gizmoAxis, rotation.degrees());
@@ -398,7 +461,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
 
     private void commitGizmo() { if (controller.commitTransformGesture()) clearGizmo(); }
     void cancelGizmo() { if (gizmoDrag == null || controller.cancelTransformGesture()) clearGizmo(); }
-    private void clearGizmo() { gizmoDrag = null; gizmoStart = null; gizmoNode = null; gizmoAxis = null; gizmoArea = null; pressPoint = dragStart = null; navigationGesture = null; repaint(); }
+    private void clearGizmo() { gizmoDrag = null; gizmoStart = null; gizmoNode = null; gizmoAxis = null; gizmoArea = null;elementGizmo=false; pressPoint = dragStart = null; navigationGesture = null; repaint(); }
     private static double[] normalized(Point point, Rectangle area) {
         return new double[]{Math.clamp((point.x - area.x) / (double) area.width, 0, 1), Math.clamp(1 - (point.y - area.y) / (double) area.height, 0, 1)};
     }
@@ -409,17 +472,71 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var frame = painted.frame(); var area = new Rectangle(painted.content());
         if (frame == null || !area.contains(point)) { postStatus("Click inside the rendered image"); return; }
         var uv = normalized(point, area); float u = (float) uv[0], v = (float) uv[1];
-        if (controller.selectionMode()==EditorController.SelectionMode.OBJECT && painted.overlay() != null) {
+        var token = frame.token();
+        var mode = token.selectionMode();
+        if (mode==EditorController.SelectionMode.OBJECT && painted.overlay() != null) {
             var hit = painted.overlay().pick(u, v, area.width, area.height, 9).orElse(null);
-            if (hit != null && hit.kind() == OverlayGeometry.HitKind.MARKER) { controller.acceptOverlayPick(hit.nodeId(), painted.overlay().sceneRevision()); return; }
+            if (hit != null && hit.kind() == OverlayGeometry.HitKind.MARKER) {
+                long markerIntent = controller.beginPick(
+                        token.snapshot().revision(), mode, token.selection(), token.vertexSelection(),
+                        token.edgeSelection(), token.faceSelection());
+                if (markerIntent >= 0) {
+                    controller.acceptOverlayPick(
+                            hit.nodeId(), painted.overlay().sceneRevision(), markerIntent);
+                }
+                return;
+            }
         }
-        long intent = controller.beginPick(frame.token().snapshot().revision());
+        long intent = controller.beginPick(
+                token.snapshot().revision(), mode, token.selection(), token.vertexSelection(),
+                token.edgeSelection(), token.faceSelection());
         if (intent < 0) return;
         executor.execute(() -> {
             if (closed) return;
-            var hit = frame.token().query().pick(frame.camera(), Math.clamp(u, 0, 1), Math.clamp(v, 0, 1)).orElse(null);
-            SwingUtilities.invokeLater(() -> { if (!closed) controller.acceptPick(hit, frame.token().snapshot().revision(), intent); });
+            awaitElementPickBlockForTest();
+            if (closed) return;
+            if (mode == EditorController.SelectionMode.VERTEX) {
+                var vertex = overlayGeometry.pickVertex(
+                        token.overlay(), frame.camera(), u, v, area.width, area.height).orElse(null);
+                if (vertex != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (!closed) controller.acceptVertexPick(
+                                vertex.nodeId(), vertex.geometryId(), vertex.vertexId(),
+                                token.snapshot().revision(), intent);
+                    });
+                    return;
+                }
+            } else if (mode == EditorController.SelectionMode.EDGE) {
+                var edge = overlayGeometry.pickEdge(
+                        token.overlay(), frame.camera(), u, v, area.width, area.height).orElse(null);
+                if (edge != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (!closed) controller.acceptEdgePick(
+                                edge.nodeId(), edge.geometryId(), edge.firstVertexId(), edge.secondVertexId(),
+                                token.snapshot().revision(), intent);
+                    });
+                    return;
+                }
+            }
+            var hit = token.query().pick(frame.camera(), Math.clamp(u, 0, 1), Math.clamp(v, 0, 1)).orElse(null);
+            SwingUtilities.invokeLater(() -> {
+                if (!closed) controller.acceptPick(hit, token.snapshot().revision(), intent);
+            });
         });
+    }
+
+    private void awaitElementPickBlockForTest() {
+        var block = elementPickBlockForTest.getAndSet(null);
+        if (block == null) return;
+        try {
+            activeElementPickBlock = block;
+            block.entered().countDown();
+            block.release().await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+        } finally {
+            activeElementPickBlock = null;
+        }
     }
 
     @Override protected void paintComponent(Graphics graphics) {
@@ -482,6 +599,11 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         }
         graphics.setStroke(new BasicStroke(3.2f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
         graphics.setColor(new Color(255,116,72,245));for(var line:overlay.selectedFace())drawLine(graphics,area,line);
+        for(var line:overlay.selectedEdges())drawLine(graphics,area,line);
+        for(var point:overlay.selectedVertices()){
+            int x=screenX(area,point.u()),y=screenY(area,point.v());graphics.fillOval(x-6,y-6,12,12);
+            graphics.setColor(new Color(255,232,214));graphics.drawOval(x-7,y-7,14,14);graphics.setColor(new Color(255,116,72,245));
+        }
         graphics.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         for (var handle : overlay.handles()) {
             graphics.setColor(axisColor(handle.axis())); for (var line : handle.lines()) drawLine(graphics, area, line);
@@ -500,6 +622,9 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         }
         if (overlay.wireframeTruncated() && wireframe.isSelected()) {
             graphics.setColor(new Color(255, 190, 84)); graphics.drawString("Wireframe truncated", area.x + 8, area.y + area.height - 8);
+        }
+        if(overlay.elementCandidatesTruncated()){
+            graphics.setColor(new Color(255,190,84));graphics.drawString("Element picking bounded to first 100,000 stable IDs",area.x+8,area.y+area.height-24);
         }
         graphics.dispose();
     }
@@ -548,8 +673,117 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     void setSelectedCameraFromViewForTest() { setSelectedCameraFromView(); }
     Camera currentCameraForTest() { return sceneCamera == null ? editorCamera : latestSnapshot.camera(sceneCamera); }
     OverlayGeometry.Frame overlayForTest() { return paintedFrame == null ? null : paintedFrame.overlay(); }
+    OverlayGeometry.ElementMode paintedElementModeForTest(){return paintedFrame==null?null:paintedFrame.frame().token().overlay().elementMode();}
+    NodeId paintedSelectionForTest() {
+        return paintedFrame == null ? null : paintedFrame.frame().token().selection();
+    }
+    boolean paintedContextMatchesForTest(EditorController.State state) {
+        var painted = paintedFrame;
+        if (painted == null) return false;
+        var token = painted.frame().token();
+        return token.snapshot().revision() == state.snapshot().revision()
+                && token.selectionMode() == state.selectionMode()
+                && Objects.equals(token.selection(), state.selection())
+                && Objects.equals(token.vertexSelection(), state.vertexSelection())
+                && Objects.equals(token.edgeSelection(), state.edgeSelection())
+                && Objects.equals(token.faceSelection(), state.faceSelection());
+    }
+    long pickVisibleVertexForTest(NodeId nodeId){
+        var painted=paintedFrame;if(painted==null)return -1;var projector=CameraProjector.of(painted.frame().camera());
+        for(var candidate:painted.frame().token().overlay().elementVertices())if(candidate.nodeId().equals(nodeId)){
+            var point=projector.project(candidate.position());if(point.isPresent()&&point.get().insideViewport()){
+                pick(new Point(screenX(painted.content(),point.get().u()),screenY(painted.content(),point.get().v())));return candidate.vertexId();
+            }
+        }
+        return -1;
+    }
+    long pickVertexVisibleInBothForTest(NodeId nodeId, RenderViewPanel other) {
+        var painted = paintedFrame;
+        var otherPainted = other.paintedFrame;
+        if (painted == null || otherPainted == null) return -1;
+        var projector = CameraProjector.of(painted.frame().camera());
+        var otherProjector = CameraProjector.of(otherPainted.frame().camera());
+        for (var candidate : painted.frame().token().overlay().elementVertices()) {
+            if (!candidate.nodeId().equals(nodeId)) continue;
+            var point = projector.project(candidate.position());
+            var otherPoint = otherProjector.project(candidate.position());
+            if (point.isPresent() && point.get().insideViewport()
+                    && otherPoint.isPresent() && otherPoint.get().insideViewport()) {
+                pick(new Point(screenX(painted.content(), point.get().u()), screenY(painted.content(), point.get().v())));
+                return candidate.vertexId();
+            }
+        }
+        return -1;
+    }
+    long[] pickVisibleEdgeForTest(NodeId nodeId){
+        var painted=paintedFrame;if(painted==null)return null;var projector=CameraProjector.of(painted.frame().camera());
+        for(var candidate:painted.frame().token().overlay().elementEdges())if(candidate.nodeId().equals(nodeId)){
+            var line=projector.clipAndProject(candidate.start(),candidate.end());if(line.isPresent()){
+                double u=(line.get().start().u()+line.get().end().u())*.5,v=(line.get().start().v()+line.get().end().v())*.5;
+                pick(new Point(screenX(painted.content(),u),screenY(painted.content(),v)));
+                return new long[]{candidate.firstVertexId(),candidate.secondVertexId()};
+            }
+        }
+        return null;
+    }
+    long[] pickEdgeVisibleInBothForTest(NodeId nodeId, RenderViewPanel other) {
+        var painted = paintedFrame;
+        var otherPainted = other.paintedFrame;
+        if (painted == null || otherPainted == null) return null;
+        var projector = CameraProjector.of(painted.frame().camera());
+        var otherProjector = CameraProjector.of(otherPainted.frame().camera());
+        for (var candidate : painted.frame().token().overlay().elementEdges()) {
+            if (!candidate.nodeId().equals(nodeId)) continue;
+            var line = projector.clipAndProject(candidate.start(), candidate.end());
+            var otherLine = otherProjector.clipAndProject(candidate.start(), candidate.end());
+            if (line.isEmpty() || otherLine.isEmpty()) continue;
+            double u = (line.get().start().u() + line.get().end().u()) * .5;
+            double v = (line.get().start().v() + line.get().end().v()) * .5;
+            pick(new Point(screenX(painted.content(), u), screenY(painted.content(), v)));
+            return new long[]{candidate.firstVertexId(), candidate.secondVertexId()};
+        }
+        return null;
+    }
+    boolean pickVisibleFaceForTest(NodeId nodeId) {
+        var painted = paintedFrame;
+        if (painted == null) return false;
+        var token = painted.frame().token();
+        for (int y = 1; y < 40; y++) {
+            float v = y / 40f;
+            for (int x = 1; x < 40; x++) {
+                float u = x / 40f;
+                var hit = token.query().pick(painted.frame().camera(), u, v).orElse(null);
+                if (hit != null && hit.nodeId().equals(nodeId)) {
+                    pick(new Point(screenX(painted.content(), u), screenY(painted.content(), v)));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    boolean pickVisibleObjectForTest() {
+        var painted = paintedFrame;
+        if (painted == null) return false;
+        var token = painted.frame().token();
+        for (int y = 1; y < 24; y++) {
+            float v = y / 24f;
+            for (int x = 1; x < 24; x++) {
+                float u = x / 24f;
+                if (token.query().pick(painted.frame().camera(), u, v).isPresent()) {
+                    pick(new Point(screenX(painted.content(), u), screenY(painted.content(), v)));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     void wireframeForTest(boolean enabled){wireframe.setSelected(enabled);repaint();}
     ProjectionBlock blockNextProjectionForTest() { var block=new ProjectionBlock(new CountDownLatch(1),new CountDownLatch(1));projectionBlockForTest.set(block);return block; }
+    ProjectionBlock blockNextElementPickForTest() {
+        var block = new ProjectionBlock(new CountDownLatch(1), new CountDownLatch(1));
+        elementPickBlockForTest.set(block);
+        return block;
+    }
     long paintedGenerationForTest(){return paintedFrame==null?-1:paintedFrame.frame().generation();}
     long paintedSerialForTest(){return paintedFrame==null?-1:paintedFrame.serial();}
     boolean paintedBundleCoherentForTest(){var painted=paintedFrame;return painted!=null&&painted.overlay()!=null&&painted.overlay().sceneRevision()==painted.frame().token().snapshot().revision();}
@@ -565,7 +799,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
     boolean beginHandleDragForTest(OverlayGeometry.Axis axis, int pixels) {
         var painted = paintedFrame; if (painted == null || painted.overlay() == null) return false;
-        var handle = painted.overlay().handles().stream().filter(value -> value.axis() == axis && value.mode() == gizmoMode).findFirst().orElse(null);
+        var handle = painted.overlay().handles().stream().filter(value -> value.axis() == axis && value.mode() == effectiveGizmoMode()).findFirst().orElse(null);
         if (handle == null || handle.lines().isEmpty()) return false; var line = handle.lines().get(0);
         double x1 = screenX(painted.content(), line.u1()), y1 = screenY(painted.content(), line.v1());
         double x2 = screenX(painted.content(), line.u2()), y2 = screenY(painted.content(), line.v2());
@@ -575,6 +809,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         var end = new Point((int) Math.round(start.x + pixels * (x2 - x1) / length), (int) Math.round(start.y + pixels * (y2 - y1) / length));
         updateGizmo(end); return true;
     }
+    void cancelGizmoForTest() { cancelGizmo(); }
     public void setActive(boolean value) {
         if (closed) return;
         active = value;
@@ -583,7 +818,15 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
     @Override public void close() {
         if (closed) return; inputBindings.clearTransient(); cancelGizmo(); closed = true;
-        pending.set(null);pendingOverlay.set(null);desiredOverlay=null;var block=projectionBlockForTest.getAndSet(null);if(block!=null)block.release().countDown();block=activeProjectionBlock;if(block!=null)block.release().countDown();
+        pending.set(null);pendingOverlay.set(null);desiredOverlay=null;
+        releaseTestBlock(projectionBlockForTest.getAndSet(null));
+        releaseTestBlock(activeProjectionBlock);
+        releaseTestBlock(elementPickBlockForTest.getAndSet(null));
+        releaseTestBlock(activeElementPickBlock);
         executor.execute(() -> { if (session != null) session.close(); session = null; executor.shutdown(); });
+    }
+
+    private static void releaseTestBlock(ProjectionBlock block) {
+        if (block != null) block.release().countDown();
     }
 }

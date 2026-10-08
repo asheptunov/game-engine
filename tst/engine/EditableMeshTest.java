@@ -67,6 +67,28 @@ public class EditableMeshTest {
         rejects(()->box.extrude(1,0),"positive");rejects(()->box.extrude(99,1),"Unknown");
     }
 
+    @Test void vertexAndCanonicalEdgeTranslationsPreserveStableTopologyAndValidateWholeMesh() {
+        var triangle=PolygonMesh.surface(
+                List.of(v(4,0,0,0),v(8,2,0,0),v(12,0,2,0)),
+                List.of(f(20,4L,8L,12L)),13,21);
+
+        var movedVertex=triangle.translateVertex(8,new Vec3(.25f,.5f,1));
+        assertEquals(new Vec3(2.25f,.5f,1),movedVertex.requireVertex(8).position());
+        assertEquals(triangle.requireVertex(4),movedVertex.requireVertex(4));
+        assertEquals(triangle.faces(),movedVertex.faces());
+        assertEquals(triangle.nextVertexId(),movedVertex.nextVertexId());
+
+        var movedEdge=triangle.translateEdge(12,8,new Vec3(-.5f,0,.25f));
+        assertEquals(new Vec3(1.5f,0,.25f),movedEdge.requireVertex(8).position());
+        assertEquals(new Vec3(-.5f,2,.25f),movedEdge.requireVertex(12).position());
+        assertEquals(new Vec3(0,0,0),movedEdge.requireVertex(4).position());
+        rejects(()->triangle.translateEdge(4,99,Vec3.ZERO),"Unknown editable edge");
+
+        var quad=PolygonMesh.parallelogram(Vec3.ZERO,new Vec3(2,0,0),new Vec3(0,2,0));
+        rejects(()->quad.translateVertex(0,new Vec3(0,0,1)),"planar");
+        assertSame(quad,quad.translateVertex(0,Vec3.ZERO));
+    }
+
     @Test void sharedTransactionsQueriesHistoryAndMaterialValidationStayAtomic() {
         var document=new SceneDocument();var history=new UndoHistory(document,10);var geometry=new GeometryId[1];var first=new NodeId[1];var second=new NodeId[1];
         history.edit("build",edit->{geometry[0]=edit.createGeometry("box",PolygonMesh.from(BoxGeometry.UNIT));var material=edit.createMaterial("gray",GRAY);first[0]=edit.createNode("first",null,new Transform(new Vec3(0,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(first[0],geometry[0],material);second[0]=edit.createNode("second",null,new Transform(new Vec3(4,0,5),Vec3.ZERO,new Vec3(1,1,1)));edit.assignGeometry(second[0],geometry[0],material);});

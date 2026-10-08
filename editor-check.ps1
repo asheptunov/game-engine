@@ -15,7 +15,7 @@ $sources = @(
 )
 $compileArguments = @("--enable-preview", "--release", "23", "-d", $classes) + $sources
 Invoke-NativeLogged $javac $compileArguments (Join-Path $output "compile-all.log") "Editor/test compilation failed"
-$tests = @("editor.EditorControllerTest", "editor.SceneEditorPreviewTest", "editor.EditorBindingPreferencesTest", "editor.GizmoDragTest", "editor.OverlayGeometryTest",
+$tests = @("editor.EditorControllerTest", "editor.SceneEditorPreviewTest", "editor.EditorBindingPreferencesTest", "editor.GizmoDragTest", "editor.OverlayGeometryTest", "editor.overlay.OverlayGeometryBoundsTest",
     "engine.CameraProjectorTest", "engine.EditableMeshTest", "engine.GeometryRepresentationTest", "engine.SceneDocumentTest", "engine.ScenePersistenceTest", "engine.SpatialQueryTest", "engine.EngineSessionTest",
     "engine.MaterialPlaygroundTest", "engine.DielectricPathTest", "engine.RoughLightingTest", "engine.MeshAccelerationTest", "engine.VolumePathTest")
 foreach ($test in $tests) {
@@ -32,6 +32,8 @@ $preview = Join-Path $output "scene-editor-preview.png"
 if (-not (Test-Path $preview) -or (Get-Item $preview).Length -lt 20000) { throw "Window-free editor preview was not produced" }
 $meshPreview = Join-Path $output "scene-editor-mesh-extruded-preview.png"
 if (-not (Test-Path $meshPreview) -or (Get-Item $meshPreview).Length -lt 20000) { throw "Window-free mesh-editing preview was not produced" }
+$elementPreview = Join-Path $output "scene-editor-elements-preview.png"
+if (-not (Test-Path $elementPreview) -or (Get-Item $elementPreview).Length -lt 20000) { throw "Window-free element-editing preview was not produced" }
 $bindingsPreview = Join-Path $output "scene-editor-bindings-preview.png"
 if (-not (Test-Path $bindingsPreview) -or (Get-Item $bindingsPreview).Length -lt 10000) { throw "Window-free bindings preview was not produced" }
 Write-Output "Headless editor checks passed: $output"

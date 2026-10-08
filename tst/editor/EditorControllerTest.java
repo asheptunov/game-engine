@@ -139,8 +139,76 @@ public class EditorControllerTest {
             long loadedFace=loadedMesh.faces().getFirst().id();int loadedFaces=loadedMesh.faces().size();assertTrue(onEdt(()->controller.selectFace(loadedFace)));assertTrue(onEdt(()->controller.extrudeSelectedFace(.1f)));
             assertTrue(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(loadedNode.geometry().geometryId()).geometry())).faces().size()>loadedFaces);
             var help = onEdt(() -> commands.execute("help"));
-            assertTrue(help.contains("mode object|face")); assertTrue(help.contains("mesh convert")); assertTrue(help.contains("face extrude"));
+            assertTrue(help.contains("mode object|vertex|edge|face")); assertTrue(help.contains("vertex move")); assertTrue(help.contains("edge move"));assertTrue(help.contains("face extrude"));
         } finally { onEdt(() -> { controller.close(); return null; }); }
+    }
+
+    @Test public void directVertexEdgeEditingSharesValidatesGroupsAndReconcilesStableSelections() throws Exception {
+        var controller=onEdt(EditorController::new);
+        try{
+            var sphereNode=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.label().equals("Terracotta sphere")).findFirst().orElseThrow());
+            onEdt(()->controller.select(sphereNode.id()));
+            assertTrue(onEdt(()->controller.convertGeometryToEditable(sphereNode.id())));
+            var sharedGeometry=onEdt(()->controller.snapshot().requireNode(sphereNode.id()).geometry().geometryId());
+            assertTrue(onEdt(controller::duplicateSelection));var duplicate=onEdt(controller::selection);
+            assertEquals(sharedGeometry,onEdt(()->controller.snapshot().requireNode(duplicate).geometry().geometryId()));
+
+            long beforeModeRevision=onEdt(()->controller.snapshot().revision());boolean beforeModeDirty=onEdt(controller::dirty);
+            assertTrue(onEdt(()->controller.setSelectionMode(EditorController.SelectionMode.VERTEX)));
+            assertEquals(beforeModeRevision,onEdt(()->controller.snapshot().revision()));assertEquals(beforeModeDirty,onEdt(controller::dirty));
+            var sharedMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(sharedGeometry).geometry());long vertexId=sharedMesh.editableVertices().getFirst().id();
+            assertTrue(onEdt(()->controller.selectVertex(vertexId)));var beforePosition=sharedMesh.requireVertex(vertexId).position();
+            assertTrue(onEdt(()->controller.translateSelectedElement(new Vec3(0,.05f,0))));
+            var movedShared=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(sharedGeometry).geometry());
+            assertEquals(beforePosition.add(new Vec3(0,.05f,0)),movedShared.requireVertex(vertexId).position());
+            assertEquals(sharedGeometry,onEdt(()->controller.snapshot().requireNode(sphereNode.id()).geometry().geometryId()));
+
+            assertTrue(onEdt(()->controller.makeGeometryUnique(duplicate)));var uniqueGeometry=onEdt(()->controller.snapshot().requireNode(duplicate).geometry().geometryId());
+            assertNotEquals(sharedGeometry,uniqueGeometry);assertEquals(uniqueGeometry,onEdt(controller::vertexSelection).geometryId());
+            assertTrue(onEdt(()->controller.translateSelectedElement(new Vec3(.04f,0,0))));
+            assertNotEquals(((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).requireVertex(vertexId).position(),
+                    ((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(sharedGeometry).geometry())).requireVertex(vertexId).position());
+            assertTrue(onEdt(controller::undo));assertEquals(uniqueGeometry,onEdt(controller::vertexSelection).geometryId());assertTrue(onEdt(controller::redo));
+
+            var uniqueMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry());var edge=uniqueMesh.edges().getFirst();
+            assertTrue(onEdt(()->controller.setSelectionMode(EditorController.SelectionMode.EDGE)));
+            assertTrue(onEdt(()->controller.selectEdge(edge.secondVertexId(),edge.firstVertexId())));
+            assertEquals(edge.firstVertexId(),onEdt(controller::edgeSelection).firstVertexId());
+            assertTrue(onEdt(()->controller.translateSelectedElement(new Vec3(0,0,.03f))));
+            var beforeGesture=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry());
+            var beforeGesturePosition=beforeGesture.requireVertex(edge.firstVertexId()).position();long gestureRevision=onEdt(()->controller.snapshot().revision());
+            var gestureContext = onEdt(controller::state);
+            long pendingOtherViewPick = onEdt(() -> controller.beginPick(
+                    gestureContext.snapshot().revision(), gestureContext.selectionMode(), gestureContext.selection(),
+                    gestureContext.vertexSelection(), gestureContext.edgeSelection(), gestureContext.faceSelection()));
+            assertTrue(onEdt(()->controller.beginElementGesture(gestureRevision)));
+            assertEquals(-1L, onEdt(() -> controller.beginPick(controller.snapshot().revision())));
+            assertFalse(onEdt(() -> controller.acceptEdgePick(
+                    duplicate, uniqueGeometry, edge.firstVertexId(), edge.secondVertexId(),
+                    gestureContext.snapshot().revision(), pendingOtherViewPick)));
+            assertEquals(duplicate, onEdt(controller::selection));
+            assertTrue(onEdt(()->controller.updateElementGesture(new Vec3(.01f,0,0))));
+            assertTrue(onEdt(()->controller.updateElementGesture(new Vec3(.025f,0,0))));
+            assertTrue(onEdt(controller::commitTransformGesture));
+            assertEquals(beforeGesturePosition.add(new Vec3(.025f,0,0)),((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).requireVertex(edge.firstVertexId()).position());
+            assertTrue(onEdt(controller::undo));assertEquals(beforeGesturePosition,((PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(uniqueGeometry).geometry())).requireVertex(edge.firstVertexId()).position());
+            assertNotNull(onEdt(controller::edgeSelection));assertTrue(onEdt(controller::redo));
+
+            var floor=onEdt(()->controller.snapshot().nodes().stream().filter(node->node.label().equals("Floor")).findFirst().orElseThrow());
+            onEdt(()->controller.select(floor.id()));assertTrue(onEdt(()->controller.setSelectionMode(EditorController.SelectionMode.VERTEX)));
+            var floorMesh=(PolygonMesh)onEdt(()->controller.snapshot().requireGeometry(floor.geometry().geometryId()).geometry());long floorVertex=floorMesh.editableVertices().getFirst().id();
+            assertTrue(onEdt(()->controller.selectVertex(floorVertex)));var beforeInvalid=onEdt(controller::snapshot);
+            assertTrue(onEdt(()->controller.beginElementGesture(beforeInvalid.revision())));
+            assertFalse(onEdt(()->controller.updateElementGesture(new Vec3(0,1,0))));assertSame(beforeInvalid,onEdt(controller::snapshot));
+            assertTrue(onEdt(controller::commitTransformGesture));assertTrue(onEdt(()->controller.state().status()).startsWith("Cancelled invalid edit:"));
+            assertTrue(beforeInvalid.sameContent(onEdt(controller::snapshot)));
+
+            var context=onEdt(controller::state);long staleIntent=onEdt(()->controller.beginPick(context.snapshot().revision(),context.selectionMode(),
+                    context.selection(),context.vertexSelection(),context.edgeSelection(),context.faceSelection()));
+            onEdt(()->controller.select(sphereNode.id()));
+            assertFalse(onEdt(()->controller.acceptVertexPick(floor.id(),floor.geometry().geometryId(),floorVertex,
+                    context.snapshot().revision(),staleIntent)));
+        }finally{onEdt(()->{controller.close();return null;});}
     }
 
     @Test public void asyncSaveTracksDiskBaselineAndLoadBlocksMutation() throws Exception {

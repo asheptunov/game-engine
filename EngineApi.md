@@ -174,6 +174,13 @@ allocates cap vertices and side-quad face IDs from persisted monotonic counters.
 validated solid the normal is outward. Side order is `vi, vj, vj', vi'`; repeat extrusion
 remains manifold. Counter exhaustion rejects the edit.
 
+`translateVertex(vertexId, localDelta)` and
+`translateEdge(firstVertexId, secondVertexId, localDelta)` return new, fully validated
+`PolygonMesh` values. Edge IDs are the canonical ascending endpoint pair. Deltas are in the
+geometry asset's local coordinate space. `SceneEdit.translateVertex/translateEdge` replace
+that geometry ID, so every node sharing the asset observes the edit; Make geometry unique is
+the explicit way to isolate one node.
+
 ## Scene documents and transactions
 
 `SceneDocument` is a single-writer atomic publisher. Create and edit it on one application
@@ -240,6 +247,17 @@ barycentrics. Exact ties use node order then original primitive order even after
 Compare `RayHit.sceneRevision` with the current snapshot before applying a pick.
 `pick(camera,u,v)` and `screenRay` use the renderer's exact reference camera ray, with
 coordinates in 0..1 and `v=0` at the image bottom.
+
+The scene editor has Object, Vertex, Edge and Face selection modes. A mode switch changes only
+EDT-owned selection state: it does not publish a scene revision, dirty the document or create
+history. Vertex and edge selection is x-ray screen-space selection over a deterministic bounded
+candidate set. Vertices use an 8 logical-pixel radius; edges use a 6 logical-pixel segment
+distance. Equal distances break by node UUID and then stable vertex or canonical edge IDs.
+The view prepares world candidates with its immutable scene/asset selection token, projects
+them asynchronously only when clicked, and accepts the result only if the painted revision,
+mode, node and element selection still match. Camera-only motion reuses this camera-independent
+token, preserving coherent lagging previews. Selected-element highlights and translate handles
+are projected with the exact displayed camera and published with the image as one bundle.
 
 The independent example builds open and closed meshes, saves/reloads, picks a source face,
 and renders without application sources:

@@ -41,7 +41,8 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     private final RenderViewPanel viewA, viewB;
     private final EditorInputBindings inputBindings;
     private final JButton undo = new JButton("Undo"), redo = new JButton("Redo");
-    private final JToggleButton objectSelect=new JToggleButton("Object",true),faceSelect=new JToggleButton("Face");
+    private final JToggleButton objectSelect=new JToggleButton("Object",true),vertexSelect=new JToggleButton("Vertex"),
+            edgeSelect=new JToggleButton("Edge"),faceSelect=new JToggleButton("Face");
     private boolean updatingTree;
     private String bindingWarning;
     private boolean closed;
@@ -89,9 +90,17 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         bar.addSeparator();
         addButton(bar, "Duplicate", _ -> controller.duplicateSelection()); addButton(bar, "Delete", _ -> controller.deleteSelection());
         undo.addActionListener(_ -> controller.undo()); redo.addActionListener(_ -> controller.redo()); bar.add(undo); bar.add(redo);
-        bar.addSeparator();bar.add(new JLabel("Select:"));var selectionModes=new ButtonGroup();selectionModes.add(objectSelect);selectionModes.add(faceSelect);
-        objectSelect.setToolTipText("Object mode: select nodes and use transform handles");faceSelect.setToolTipText("Face mode: select editable polygon faces; object handles are disabled");
-        objectSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.OBJECT));faceSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.FACE));bar.add(objectSelect);bar.add(faceSelect);
+        bar.addSeparator();bar.add(new JLabel("Select:"));var selectionModes=new ButtonGroup();
+        for(var button:List.of(objectSelect,vertexSelect,edgeSelect,faceSelect))selectionModes.add(button);
+        objectSelect.setToolTipText("Object mode: select nodes and use transform handles");
+        vertexSelect.setToolTipText("Vertex mode: x-ray pick within 8 logical pixels; drag local-axis move handles");
+        edgeSelect.setToolTipText("Edge mode: x-ray pick within 6 logical pixels; drag local-axis move handles");
+        faceSelect.setToolTipText("Face mode: ray-pick polygon faces; object handles are disabled");
+        objectSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.OBJECT));
+        vertexSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.VERTEX));
+        edgeSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.EDGE));
+        faceSelect.addActionListener(_->controller.setSelectionMode(EditorController.SelectionMode.FACE));
+        bar.add(objectSelect);bar.add(vertexSelect);bar.add(edgeSelect);bar.add(faceSelect);
         bar.addSeparator();addButton(bar,"Bindings…",_->showBindings());
         bar.add(Box.createHorizontalGlue()); bar.add(dirty);
         return bar;
@@ -131,7 +140,10 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
 
     @Override public void changed(EditorController.State state) {
         rebuildTree(state); inspector.update(state); viewA.update(state); viewB.update(state);
-        objectSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.OBJECT);faceSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.FACE);
+        objectSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.OBJECT);
+        vertexSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.VERTEX);
+        edgeSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.EDGE);
+        faceSelect.setSelected(state.selectionMode()==EditorController.SelectionMode.FACE);
         undo.setEnabled(state.canUndo() && !state.busy()); redo.setEnabled(state.canRedo() && !state.busy());
         status.setText(bindingWarning==null?state.status():bindingWarning); var marker = (state.dirty() ? "● Unsaved" : "Saved") + (state.busy() ? " · working…" : ""); dirty.setText(marker); dirtyFooter.setText(marker);
     }
@@ -227,7 +239,35 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     void setSelectedCameraFromViewForTest(int view) { (view == 0 ? viewA : viewB).setSelectedCameraFromViewForTest(); }
     Camera viewCameraForTest(int view) { return (view == 0 ? viewA : viewB).currentCameraForTest(); }
     OverlayGeometry.Frame overlayForTest(int view) { return (view == 0 ? viewA : viewB).overlayForTest(); }
+    OverlayGeometry.ElementMode paintedElementModeForTest(int view){return (view==0?viewA:viewB).paintedElementModeForTest();}
+    NodeId paintedSelectionForTest(int view) {
+        return (view == 0 ? viewA : viewB).paintedSelectionForTest();
+    }
+    boolean paintedContextMatchesForTest(int view, EditorController.State state) {
+        return (view == 0 ? viewA : viewB).paintedContextMatchesForTest(state);
+    }
+    long pickVisibleVertexForTest(int view,NodeId nodeId){return (view==0?viewA:viewB).pickVisibleVertexForTest(nodeId);}
+    long pickVertexVisibleInBothForTest(int view, NodeId nodeId) {
+        return view == 0
+                ? viewA.pickVertexVisibleInBothForTest(nodeId, viewB)
+                : viewB.pickVertexVisibleInBothForTest(nodeId, viewA);
+    }
+    long[] pickVisibleEdgeForTest(int view,NodeId nodeId){return (view==0?viewA:viewB).pickVisibleEdgeForTest(nodeId);}
+    long[] pickEdgeVisibleInBothForTest(int view, NodeId nodeId) {
+        return view == 0
+                ? viewA.pickEdgeVisibleInBothForTest(nodeId, viewB)
+                : viewB.pickEdgeVisibleInBothForTest(nodeId, viewA);
+    }
+    boolean pickVisibleFaceForTest(int view, NodeId nodeId) {
+        return (view == 0 ? viewA : viewB).pickVisibleFaceForTest(nodeId);
+    }
+    boolean pickVisibleObjectForTest(int view) {
+        return (view == 0 ? viewA : viewB).pickVisibleObjectForTest();
+    }
     RenderViewPanel.ProjectionBlock blockNextProjectionForTest(int view){return (view==0?viewA:viewB).blockNextProjectionForTest();}
+    RenderViewPanel.ProjectionBlock blockNextElementPickForTest(int view) {
+        return (view == 0 ? viewA : viewB).blockNextElementPickForTest();
+    }
     long paintedGenerationForTest(int view){return (view==0?viewA:viewB).paintedGenerationForTest();}
     long paintedSerialForTest(int view){return (view==0?viewA:viewB).paintedSerialForTest();}
     boolean paintedBundleCoherentForTest(int view){return (view==0?viewA:viewB).paintedBundleCoherentForTest();}
@@ -236,6 +276,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     boolean pickMarkerForTest(int view, NodeId node) { return (view == 0 ? viewA : viewB).pickMarkerForTest(node); }
     boolean dragHandleForTest(int view, OverlayGeometry.Axis axis, int pixels, boolean commit) { return (view == 0 ? viewA : viewB).dragHandleForTest(axis, pixels, commit); }
     boolean beginHandleDragForTest(int view, OverlayGeometry.Axis axis, int pixels) { return (view == 0 ? viewA : viewB).beginHandleDragForTest(axis, pixels); }
+    void cancelGizmoForTest(int view) { (view == 0 ? viewA : viewB).cancelGizmoForTest(); }
     void executeCommandForTest(String text) { commandEntry.setText(text); commandEntry.postActionEvent(); }
     int commandOutputLengthForTest() { return commandLog.getDocument().getLength(); }
     JTextArea commandOutputForTest() { return commandLog; }
@@ -249,7 +290,7 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
     String bindingStatusForTest(){return status.getText();}
     String navigationHelpForTest(){return inputBindings.navigationHelp();}
     void bindingDialogActiveForTest(boolean active){inputBindings.dialogActive(active);}
-    void selectionModeForTest(EditorController.SelectionMode mode){if(mode==EditorController.SelectionMode.OBJECT)objectSelect.doClick();else faceSelect.doClick();}
+    void selectionModeForTest(EditorController.SelectionMode mode){switch(mode){case OBJECT->objectSelect.doClick();case VERTEX->vertexSelect.doClick();case EDGE->edgeSelect.doClick();case FACE->faceSelect.doClick();}}
     void wireframeForTest(int view,boolean enabled){(view==0?viewA:viewB).wireframeForTest(enabled);}
     String meshFaceTextForTest(){return inspector.meshFaceText();}
     boolean meshConvertEnabledForTest(){return inspector.meshConvertEnabled();}
@@ -274,9 +315,15 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
         private final JTextField[] color = fields(3, ".8");
         private final JTextField roughness = new JTextField("0"), ior = new JTextField("1.5");
         private final JLabel materialNote = new JLabel("No material");
-        private final JLabel meshNote=new JLabel("No geometry"),meshSharing=new JLabel(""),meshFace=new JLabel("No face selected");
-        private final JTextField extrusionDistance=new JTextField("0.5");
-        private final JButton convertGeometry=new JButton("Convert to editable mesh"),uniqueGeometry=new JButton("Make geometry unique"),extrudeFace=new JButton("Extrude face");
+        private final JLabel meshNote = new JLabel("No geometry");
+        private final JLabel meshSharing = new JLabel("");
+        private final JLabel meshFace = new JLabel("No face selected");
+        private final JTextField extrusionDistance = new JTextField("0.5");
+        private final JTextField[] elementDelta = fields(3, "0");
+        private final JButton convertGeometry = new JButton("Convert to editable mesh");
+        private final JButton uniqueGeometry = new JButton("Make geometry unique");
+        private final JButton translateElement = new JButton("Translate selected vertex / edge");
+        private final JButton extrudeFace = new JButton("Extrude face");
         private final JTextField[] light = fields(4, "1");
         private final JComboBox<Camera.Projection> projection = new JComboBox<>(Camera.Projection.values());
         private final JTextField framing = new JTextField("50"), focus = new JTextField("5"), aperture = new JTextField("0");
@@ -294,7 +341,10 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
                     if (value instanceof MaterialAsset asset) setText(asset.label()); return component;
                 }
             });
-            transformPanel = transformTab();meshPanel=meshTab(); materialPanel = materialTab(); componentsPanel = componentTab();
+            transformPanel = transformTab();
+            meshPanel = meshTab();
+            materialPanel = materialTab();
+            componentsPanel = componentTab();
             addTab("Transform", transformPanel);
         }
 
@@ -307,9 +357,34 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             parent.setSelectedIndex(parentIndex);
             material.removeAllItems(); for (var asset : state.snapshot().materialAssets()) material.addItem(asset);
             if (node.geometry() != null) {
-                var geometry=state.snapshot().requireGeometry(node.geometry().geometryId());long geometryUses=state.snapshot().nodes().stream().filter(n->n.geometry()!=null&&n.geometry().geometryId().equals(geometry.id())).count();
-                boolean editable=geometry.geometry() instanceof PolygonMesh;meshNote.setText(geometryLabel(geometry.geometry()));meshSharing.setText("Shared by "+geometryUses+" node"+(geometryUses==1?"":"s"));
-                var selectedFace=state.faceSelection();meshFace.setText(selectedFace!=null&&selectedFace.nodeId().equals(node.id())?"Selected face ID: "+selectedFace.faceId():"No face selected");convertGeometry.setEnabled(!editable);uniqueGeometry.setEnabled(geometryUses>1);extrudeFace.setEnabled(editable&&selectedFace!=null&&selectedFace.nodeId().equals(node.id()));
+                var geometry = state.snapshot().requireGeometry(node.geometry().geometryId());
+                long geometryUses = state.snapshot().nodes().stream()
+                        .filter(candidate -> candidate.geometry() != null
+                                && candidate.geometry().geometryId().equals(geometry.id()))
+                        .count();
+                boolean editable = geometry.geometry() instanceof PolygonMesh;
+                meshNote.setText(geometryLabel(geometry.geometry()));
+                meshSharing.setText("Shared by " + geometryUses + " node" + (geometryUses == 1 ? "" : "s"));
+                var selectedVertex = state.vertexSelection();
+                var selectedEdge = state.edgeSelection();
+                var selectedFace = state.faceSelection();
+                if (selectedVertex != null && selectedVertex.nodeId().equals(node.id())) {
+                    meshFace.setText("Selected vertex ID: " + selectedVertex.vertexId());
+                } else if (selectedEdge != null && selectedEdge.nodeId().equals(node.id())) {
+                    meshFace.setText("Selected edge IDs: " + selectedEdge.firstVertexId()
+                            + " - " + selectedEdge.secondVertexId());
+                } else if (selectedFace != null && selectedFace.nodeId().equals(node.id())) {
+                    meshFace.setText("Selected face ID: " + selectedFace.faceId());
+                }
+                else meshFace.setText("No mesh element selected");
+                convertGeometry.setEnabled(!editable);
+                uniqueGeometry.setEnabled(geometryUses > 1);
+                boolean selectedTranslatableElement = (selectedVertex != null
+                        && selectedVertex.nodeId().equals(node.id()))
+                        || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()));
+                translateElement.setEnabled(editable && selectedTranslatableElement);
+                extrudeFace.setEnabled(editable && selectedFace != null
+                        && selectedFace.nodeId().equals(node.id()));
                 var asset = state.snapshot().requireMaterial(node.geometry().materialId()); material.setSelectedItem(asset); var m = asset.material();
                 put(color, m.color(), 0); kind.setSelectedItem(m.kind()); roughness.setText(Float.toString(m.roughness())); ior.setText(Float.toString(m.ior()));
                 long uses = state.snapshot().nodes().stream().filter(n -> n.geometry() != null && n.geometry().materialId().equals(asset.id())).count();
@@ -338,10 +413,44 @@ public final class SceneEditorPanel extends JPanel implements EditorController.L
             panel.add(materialNote); panel.add(row("Kind", kind)); panel.add(row("Linear red", color[0])); panel.add(row("Green", color[1])); panel.add(row("Blue", color[2])); panel.add(row("Roughness", roughness)); panel.add(row("IOR", ior));
             var shared = new JButton("Apply to shared material"); shared.addActionListener(_ -> applyMaterial()); var unique = new JButton("Make unique"); unique.addActionListener(_ -> { var n = selected(); if (n != null) controller.makeMaterialUnique(n.id()); }); panel.add(shared); panel.add(unique); return scroll(panel);
         }
-        private JComponent meshTab(){
-            var panel=stack();panel.add(line(meshNote));panel.add(line(meshSharing));convertGeometry.setToolTipText("Explicitly convert box, sphere, plane, or triangle geometry; selection never converts it automatically");convertGeometry.addActionListener(_->convertGeometry());panel.add(convertGeometry);
-            uniqueGeometry.setToolTipText("Copy this shared geometry asset for only the selected node");uniqueGeometry.addActionListener(_->makeGeometryUnique());panel.add(uniqueGeometry);panel.add(new JSeparator());panel.add(line(meshFace));panel.add(row("Distance (local units)",extrusionDistance));
-            extrudeFace.setToolTipText("Extrude the selected polygon along its listed-winding normal in one undoable edit");extrudeFace.addActionListener(_->{try{extrude(Float.parseFloat(extrusionDistance.getText().trim()));}catch(RuntimeException error){showError(error);}});panel.add(extrudeFace);return scroll(panel);
+        private JComponent meshTab() {
+            var panel = stack();
+            panel.add(line(meshNote));
+            panel.add(line(meshSharing));
+            convertGeometry.setToolTipText(
+                    "Explicitly replace analytic or legacy geometry with polygon topology; selection never converts it automatically");
+            convertGeometry.addActionListener(_ -> convertGeometry());
+            panel.add(convertGeometry);
+            uniqueGeometry.setToolTipText("Copy this shared geometry asset for only the selected node");
+            uniqueGeometry.addActionListener(_ -> makeGeometryUnique());
+            panel.add(uniqueGeometry);
+            panel.add(new JSeparator());
+            panel.add(line(meshFace));
+            panel.add(row("Local delta X", elementDelta[0]));
+            panel.add(row("Local delta Y", elementDelta[1]));
+            panel.add(row("Local delta Z", elementDelta[2]));
+            translateElement.setToolTipText("Translate the selected stable vertex, or both selected edge endpoints, in asset-local units as one validated edit");
+            translateElement.addActionListener(_ -> {
+                try {
+                    controller.translateSelectedElement(vec(elementDelta, 0));
+                } catch (RuntimeException error) {
+                    showError(error);
+                }
+            });
+            panel.add(translateElement);
+            panel.add(new JSeparator());
+            panel.add(row("Distance (local units)", extrusionDistance));
+            extrudeFace.setToolTipText(
+                    "Extrude the selected polygon along its listed-winding normal in one undoable edit");
+            extrudeFace.addActionListener(_ -> {
+                try {
+                    extrude(Float.parseFloat(extrusionDistance.getText().trim()));
+                } catch (RuntimeException error) {
+                    showError(error);
+                }
+            });
+            panel.add(extrudeFace);
+            return scroll(panel);
         }
         private JComponent componentTab() {
             return scroll(componentPanel);

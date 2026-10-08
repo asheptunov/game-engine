@@ -1,5 +1,7 @@
 package engine;
 
+import math.Vec3;
+
 import java.util.*;
 import java.util.function.UnaryOperator;
 
@@ -40,6 +42,26 @@ public final class SceneEdit {
     public void convertGeometryToEditable(GeometryId id){int i=requireGeometry(id);var a=geometries.get(i);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),PolygonMesh.from(a.geometry())));}
     /** Extrude one stable face on an already-editable shared asset. */
     public void extrudeFace(GeometryId id,long faceId,float distance){int i=requireGeometry(id);var a=geometries.get(i);if(!(a.geometry() instanceof PolygonMesh mesh))throw new IllegalArgumentException("Geometry is not an editable mesh: "+id);geometries.set(i,new GeometryAsset(id,a.label(),a.revision(),mesh.extrude(faceId,distance)));}
+    /** Translate one stable polygon vertex in asset-local units. */
+    public void translateVertex(GeometryId id, long vertexId, Vec3 localDelta) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof PolygonMesh mesh)) {
+            throw new IllegalArgumentException("Geometry is not a polygon mesh: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), mesh.translateVertex(vertexId, localDelta)));
+    }
+    /** Translate both endpoints of one canonical polygon edge in asset-local units. */
+    public void translateEdge(GeometryId id, long firstVertexId, long secondVertexId, Vec3 localDelta) {
+        int index = requireGeometry(id);
+        var asset = geometries.get(index);
+        if (!(asset.geometry() instanceof PolygonMesh mesh)) {
+            throw new IllegalArgumentException("Geometry is not a polygon mesh: " + id);
+        }
+        geometries.set(index, new GeometryAsset(
+                id, asset.label(), asset.revision(), mesh.translateEdge(firstVertexId, secondVertexId, localDelta)));
+    }
     public void renameMaterial(MaterialId id,String label){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,label,a.revision(),a.material()));}
     public void replaceMaterial(MaterialId id,Material material){int i=requireMaterial(id);var a=materials.get(i);materials.set(i,new MaterialAsset(id,a.label(),a.revision(),material));}
     public GeometryId makeGeometryUnique(NodeId nodeId){
