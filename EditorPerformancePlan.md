@@ -1,6 +1,6 @@
 # Scene and mesh editor performance plan
 
-Status: EP01–EP05 implemented and verified automatically. Human drag testing passed for EP01/EP02; EP03–EP05 GUI testing is pending and does not block further implementation. EP06–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
+Status: the first optimization pass is complete. EP01–EP05 and EP07 are implemented and verified automatically. Human drag testing passed for EP01/EP02; later GUI testing is pending. EP06 and EP08–EP10 are deferred using the measurements and criteria below. Baseline: `ae8c129`, investigated October 8, 2026.
 
 The Swing scene editor becomes visibly unresponsive during rapid vertex dragging, even on the eight-vertex Teal box in the starter scene. The first priority is reliable display of completed edits during sustained input. Larger-mesh costs also need attention, but reducing those costs alone will not resolve the reproduced Teal box stall.
 
@@ -44,7 +44,7 @@ Java Flight Recorder execution samples also identified whole-mesh construction o
 
 ## Work tracker
 
-Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP05 in four delivery phases: phase 1 covers EP01/EP02, phase 2 covers EP03, phase 3 covers EP04, and phase 4 covers EP05. Remaining items are unassigned.
+Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP05 and EP07 in five delivery phases: phase 1 covers EP01/EP02, phase 2 covers EP03, phase 3 covers EP04, phase 4 covers EP05, and phase 5 covers EP07. Deferred follow-ups remain unassigned.
 
 | ID | Priority | Status | Work item | Completion evidence |
 | --- | --- | --- | --- | --- |
@@ -53,13 +53,13 @@ Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verifi
 | EP03 | Next | Verified | Avoid rebuilding unrelated Swing controls during edits | [Control-preservation test](tst/editor/EditorControlRefreshTest.java) and second-phase measurements below; human GUI test pending |
 | EP04 | Next | Verified | Cache dense mesh-cue and wireframe painting | [Raster tests](tst/editor/OverlayRasterCacheTest.java) and third-phase measurements below; human GUI test pending |
 | EP05 | Next | Verified | Update moved mesh vertices incrementally | [Full-validation comparisons](tst/engine/IncrementalMeshTest.java) and fourth-phase measurements below; human GUI test pending |
-| EP06 | Next | Proposed | Reuse scene snapshot construction work | Avoid duplicate scene-wide work without weakening atomic publication |
-| EP07 | Next | Proposed | Share and incrementally update picking preparation | Unchanged objects reuse prepared data; both views remain correct |
-| EP08 | Conditional | Proposed | Coalesce excess drag updates | Latest pointer position and final release are preserved; measured benefit beyond EP02 |
-| EP09 | Conditional | Proposed | Improve render scheduling during geometry edits | Adopt only if cancellation or render cost remains a measured bottleneck |
-| EP10 | Conditional | Proposed | Add cheaper visual feedback while dragging | Adopt only if earlier work misses responsiveness targets; explicit quality policy |
+| EP06 | Later | Deferred | Reuse scene snapshot construction work | Two constructors cost about 0.015 ms warmed up in the fifth-phase benchmark; revisit if scene-wide publication becomes material |
+| EP07 | Next | Verified | Share picking preparation and reuse unchanged objects | [Concurrent/reuse/reference tests](tst/engine/SharedSpatialQueryTest.java) and fifth-phase measurements below; human GUI test pending |
+| EP08 | Conditional | Deferred | Coalesce excess drag updates | Existing Teal-box progress and settling targets pass without input coalescing; revisit if excess input work dominates |
+| EP09 | Conditional | Deferred | Improve render scheduling during geometry edits | Completed previews progress during sustained input; revisit if cancellation causes starvation or tracing dominates |
+| EP10 | Conditional | Deferred | Add cheaper visual feedback while dragging | Teal-box targets pass with existing quality; revisit if a defined heavier workload needs a quality policy |
 
-EP01 now enables evaluation of every item. EP01–EP05 are verified; rank EP06–EP10 by gains in fresh displayed frames. Coordinate remaining EP06/EP07 work around immutable geometry ownership and cache invalidation, preserving the completed EP05 safeguards. Conditional items are alternatives to evaluate, not commitments to reduce quality or relax correctness.
+EP01 now enables evaluation of every item. EP01–EP05 and EP07 are verified. Rank future follow-ups by gains in fresh displayed frames while preserving immutable geometry ownership and cache invalidation. EP06 and EP08–EP10 have explicit reopening criteria above. Conditional items are alternatives to evaluate, not commitments to reduce quality or relax correctness.
 
 ## First phase completed: EP01 and EP02
 
@@ -92,6 +92,8 @@ The second phase below reduces control-refresh costs. Dense-overlay caching unde
 
 ## Second phase completed: EP03
 
+Commit `aa21dd3` implemented EP03 and was pushed to `origin/main`.
+
 `SceneEditorPanel` rebuilds its hierarchy only when displayed node IDs, labels, parents, order or icons change. Selection changes update the existing tree selection. Inspector tabs and parent choices remain in place when their content is unchanged. Inspector fields refresh when their underlying label, transform, geometry, material, light or camera content changes, preserving drafts in unrelated fields. `RenderViewPanel` retains camera choices when their IDs and labels are unchanged. Rendering still receives every accepted scene publication.
 
 `EditorControlRefreshTest` checks twenty geometry updates for unchanged tree identity, inspector tab identity, field drafts, caret position and absence of tab/dropdown reconstruction events. It then verifies that rename, transform, material and selection changes refresh their controls. The test [fails with the phase-one UI](benchmarks/editor-drag/phase2-regression-before.log) and [passes with EP03](benchmarks/editor-drag/phase2-regression-after.log). `./verify.ps1` and all six relevant editor suites passed: the new control test, handoff test, editor preview test, controller test, gizmo test and overlay geometry test. Seven resolved style-baseline allowances were removed; none were added.
@@ -108,6 +110,8 @@ EDT edit work decreased about 65–66%, with about 34% less allocation. Both vie
 Human GUI test pending: type an unfinished transform or material value, switch inspector tabs, and drag a vertex or edge repeatedly. Confirm the unrelated draft and selected tab stay in place. Rename/reparent objects, select another object or clear selection, and add/remove a scene camera to confirm structural controls still refresh. The user authorized committing, pushing and continuing without waiting for a GUI response.
 
 ## Third phase completed: EP04
+
+Commit `959ea94` implemented EP04 and was pushed to `origin/main`.
 
 Dense overlays now use one reusable transparent raster per render view in [OverlayRasterCache.java](src/editor/OverlayRasterCache.java). `RenderViewPanel` uses the cache for at least 256 cues, including wireframe when enabled; smaller overlays retain direct drawing. A new projected overlay rasterizes once. Repeated paints of that exact frame reuse its pixels. Picking still uses the original projected geometry.
 
@@ -129,6 +133,8 @@ The small Teal box retained direct drawing. Its three-repeat check met the respo
 
 ## Fourth phase completed: EP05
 
+Commit `203b966` implemented EP05 and was pushed to `origin/main`.
+
 Position-only translations in `PolygonMesh` retain validated immutable topology. A vertex-to-face incidence table is built with the topology and identifies faces needing geometric validation after vertex, edge or face moves. Unchanged vertex records and face normals are retained. Lookup maps and the vertex list are copied; this remains proportional to mesh size, but no longer reconstructs every edge and adjacency set. Closed meshes still undergo the complete signed-volume calculation in the original face/fan order. Material capabilities are recomputed, and new positions get an independent prepared-geometry cache. Extrusion and mesh creation retain full validation.
 
 [IncrementalMeshTest](tst/engine/IncrementalMeshTest.java) compares 900 deterministic random vertex/edge/face translations with independently reconstructed meshes. It checks acceptance/rejection, stable content, capabilities, normals, adjacency and prepared primitives. Additional cases cover chained moves, old prepared-data stability, nonplanar faces, volume inversion and extrusion after deformation. `./verify.ps1`, this test, `EditableMeshTest`, `SceneEditorPreviewTest`, `EditorControllerTest`, `GizmoDragTest` and `RenderViewHandoffTest` passed. The style baseline was tightened without adding allowances.
@@ -143,6 +149,44 @@ Three matching dense-sphere drag repetitions compared the phase-three mesh class
 Edit cost fell about 90% and allocation about 93%. Fresh-frame progress improved in both panes, while fresh overlay drawing remains a substantial dense-mesh cost. [Before](benchmarks/editor-drag/phase4-dense-before.log), [after](benchmarks/editor-drag/phase4-dense-after.log). The Teal box check retained the targets: 37–44 fresh FPS across both panes, longest hold 105 ms and final revision within 50 ms. This check has no matching phase-three Teal-box baseline, so its FPS difference is not attributed solely to EP05. [Teal box results](benchmarks/editor-drag/phase4-box-after.log).
 
 Human GUI test pending: deform a dense sphere and the Teal box using vertices, edges and faces; verify final release, undo/redo and Escape cancellation. Try an invalid move and confirm it leaves the last valid geometry intact. Continuing implementation is authorized without waiting for that response.
+
+## Fifth phase completed: EP07; remaining alternatives deferred
+
+Commit `4cc029e` implements EP07 and the preview-test precondition correction described below.
+
+`SpatialQuery.prepare` now shares an immutable query between views while callers retain it. New snapshots can reuse unchanged per-object preparations from the previous query, checking geometry identity, transform, material and stable node identity on the query worker. New entries supply the current scene and geometry-asset revisions to hits. Changed objects rebuild their bounds and BVH. This changes picking preparation; render sessions continue owning their tracing state independently.
+
+Snapshot caches use weak references, so retaining a snapshot in undo history does not keep an unused query or inherited preparation alive. If the garbage collector reclaims the cache, the next query request safely rebuilds it. There is no global cache or chain of previous snapshots. Preparation is serialized only for one snapshot, outside the editor input monitor. Query intersection scratch remains local to each call; the independent brute-force reference does not reuse accelerated object preparations.
+
+[SharedSpatialQueryTest](tst/engine/SharedSpatialQueryTest.java) checks eight concurrent callers sharing a query, brute-force hit equivalence, object reuse, geometry/transform/material changes, rename, restored revisions, removal and deterministic cache reclamation. The existing preview suite exercises both views, stale picks and element gestures.
+
+`EditorPreparationBenchmark` isolates the two views' preparation calls and two scene-snapshot constructions in the starter scene with a detail-32 sphere. It uses 20 warm-up and 60 measured iterations per case, with three repetitions. Geometry edits occur before timing query preparation. The box-edit case leaves the dense sphere unchanged, while the sphere-edit case rebuilds its geometry. Snapshot construction is measured separately and excludes content/transport comparisons and publication metadata work. Run `editor.EditorPreparationBenchmark 3` on the compiled classpath above.
+
+Three matched repetitions compared the `203b966` query/snapshot/document classes with EP07. Medians of per-run means were:
+
+| Edited object, with a detail-32 sphere present | Two-query preparation before / after | Preparation allocation before / after |
+| --- | ---: | ---: |
+| Teal box; dense sphere unchanged | 7.423 / 0.010 ms | 3647.5 / 7.7 KiB |
+| Dense sphere | 7.308 / 4.031 ms | 4488.8 / 2661.8 KiB |
+
+The dense-sphere case saves about 45% of preparation time and 41% of preparation allocation. Unchanged-object reuse removes nearly all repeated dense preparation in the box-edit case. These figures measure preparation on one calling thread, not parallel wall-clock improvement or monitor FPS. [Before preparation](benchmarks/editor-drag/phase5-preparation-before.log), [after preparation](benchmarks/editor-drag/phase5-preparation-after.log).
+
+The three-repeat active drag comparison uses the preceding settings: both panes, 360 by 225 tracing grids, full-panel painting and detail-32 vertex edits of amplitude 0.0001. Median fresh FPS changes are small, consistent with fresh cue painting remaining the larger cost:
+
+| Mesh and requested input interval | View A before / after | View B before / after |
+| --- | ---: | ---: |
+| Dense sphere, 16 ms | 21.43 / 22.55 | 20.60 / 21.31 |
+| Dense sphere, 4 ms | 21.86 / 23.22 | 21.14 / 21.72 |
+| Teal box, 16 ms | 38.37 / 39.10 | 38.33 / 38.85 |
+| Teal box, 4 ms | 42.48 / 43.37 | 42.48 / 43.37 |
+
+The Teal box retains amplitude 0.15 and the unmodified starter scene. Both views meet the targets: all updated cases exceed 36 fresh FPS, longest hold is 117 ms and final-revision latency is at most 70 ms. The dense sphere still has one first-run interval as long as 366 ms; its median progress and settling improve modestly. EP07 principally reduces preparation CPU work and allocations; these results do not establish a large visible drag improvement by themselves. [Dense before](benchmarks/editor-drag/phase5-dense-before.log), [dense after](benchmarks/editor-drag/phase5-dense-after.log), [Teal box before](benchmarks/editor-drag/phase5-box-before.log), [Teal box after](benchmarks/editor-drag/phase5-box-after.log).
+
+During verification, the asynchronous cross-view picking scenario timed out with both the new implementation and [the unchanged baseline](benchmarks/editor-drag/phase5-preview-before-3.log). Its readiness/blocking loops paint both panes and can replace a previously checked context. The test now waits for a current context before each simulated click. Ordering and stale-pick assertions remain intact; three corrected runs passed for each implementation. [Baseline example](benchmarks/editor-drag/phase5-preview-fixed-before-3.log), [updated example](benchmarks/editor-drag/phase5-preview-fixed-after-3.log). `./verify.ps1`, `SharedSpatialQueryTest`, `SpatialQueryTest`, `SceneDocumentTest`, `RenderViewHandoffTest`, `EditorControllerTest` and `GizmoDragTest` passed. No style allowances were added.
+
+Duplicate snapshot construction costs about 0.015 ms after warm-up in the baseline, so EP06 remains deferred for this workload. EP08–EP10 are also deferred: the Teal-box progress and settling targets already pass with existing input delivery and rendering quality. Reopen them if their tracker conditions occur. Fresh dense-cue rasterization remains a measured limitation; the current plan does not promise 60 FPS on the dense sphere.
+
+Human GUI test pending: switch between both views while picking and dragging vertices/edges/faces, change a camera or object transform, and exercise undo/redo and object removal. Confirm selection corresponds to the shown image and stale clicks are rejected. These checks remain useful even when the automated pass is complete.
 
 ## Proposed changes and safeguards
 
@@ -172,25 +216,25 @@ Reduced marker density, simpler antialiasing, or fewer wireframe details during 
 
 Validate affected polygons and preserve closed-solid volume/orientation checks and material capability checks. A local move can change emitter or volume eligibility. Do not publish invalid intermediate geometry merely to make dragging faster. Compare incremental results with the full constructor for valid and invalid edits, nonplanar faces, closed meshes, and undo/cancel. Topology-changing operations such as extrusion retain full validation until separately optimized.
 
-### EP06 Reuse snapshot work
+### EP06 Deferred snapshot-construction reuse
 
-[SceneDocument.java](src/engine/SceneDocument.java) constructs a candidate and then a published [SceneSnapshot](src/engine/SceneSnapshot.java). Evaluate reusing validated candidate content with new publication revisions, plus sharing unchanged transform and render-entry data. Preserve the single-writer model, atomic snapshots, asset revisions, and edit/undo invalidation. Do not mutate a snapshot already used by rendering or picking.
+[SceneDocument.java](src/engine/SceneDocument.java) constructs a candidate and then a published [SceneSnapshot](src/engine/SceneSnapshot.java). The isolated benchmark below finds duplicate construction inexpensive for the starter scene, so this work is deferred. If larger scenes make publication a measured bottleneck, evaluate reusing validated candidate content with new publication revisions and sharing unchanged transform/render-entry data. Preserve the single-writer model, atomic snapshots, asset revisions, and edit/undo invalidation. Do not mutate a snapshot already used by rendering or picking.
 
-### EP07 Reuse picking and acceleration data
+### EP07 Implemented shared picking preparation and continuing safeguards
 
-Both view threads call [SpatialQuery.prepare](src/engine/SpatialQuery.java) for new revisions. Evaluate sharing immutable world-query preparation between views and rebuilding only changed objects. Camera-independent prepared geometry can be shared; mutable query scratch must remain private to its worker.
+Both view threads now share one lazy immutable [SpatialQuery](src/engine/SpatialQuery.java) per snapshot. A new publication inherits prepared objects only when node identity, geometry reference, world transform and material match. Changed objects rebuild their bounds and hierarchy. The new query uses new snapshot entries, so hit revision and asset metadata remain current. Independent brute-force reference queries still prepare separately. Retain these invalidation rules; mutable query scratch must remain private to its worker.
 
-For position-only mesh changes, consider BVH refitting, which updates bounding boxes while retaining tree structure. Compare its traversal quality with rebuilding, and rebuild when quality deteriorates. Invalidate on geometry, transforms, relevant materials, topology changes, and undo as required by each cached representation. Verify hits against the brute-force reference, including shared assets and rapid edits.
+BVH refitting, which updates bounding boxes while retaining tree structure, remains a possible measured follow-up rather than an unfinished EP07 commitment. Compare its traversal quality with rebuilding before adoption, and rebuild when quality deteriorates. Verify any future changes against brute-force hits, including shared assets and rapid edits.
 
-### EP08 Coalesce excess input work
+### EP08 Deferred input coalescing
 
 Keep the newest pending drag position and process it at a bounded cadence if input events outrun useful publication. Compute each position from the gesture baseline; do not lose accumulated movement. Apply the final mouse-release position synchronously or through a completion barrier before committing. Keep one undo entry per gesture and preserve Escape/focus-loss cancellation and invalid-edit behavior. Measure actual delivered input and latency; a nominal timer interval is not an achieved event rate.
 
-### EP09 Render scheduling
+### EP09 Deferred render-scheduling alternatives
 
 The Teal box reproduction had no cancelled jobs, so changing tracing cancellation is not the first fix. If heavier scenes later show cancellation starvation, evaluate allowing one immutable captured geometry pass to complete before switching to the newest pending edit. Never merge its samples into a different scene revision. Also evaluate prioritizing the actively edited view over the secondary view, without allowing the secondary view to stall indefinitely. Preserve pause, close, and resource bounds.
 
-### EP10 Temporary interaction quality
+### EP10 Deferred temporary interaction quality
 
 If needed, evaluate reduced tracing resolution during a gesture, delayed refinement until input settles, or a separate lightweight editing preview. Define what appears during dragging, what remains selectable, and when full quality returns. These options must not conceal or substitute for EP02. Do not mix samples across grids or revisions; camera framing and final geometry remain unchanged. Any approximate preview needs explicit rules for correspondence with picking.
 
@@ -205,4 +249,4 @@ The following are proposed engineering targets for the starter-scene reproductio
 - Exercise vertex, edge, and face dragging; rapid repeated gestures; both views; wireframe on/off; dense meshes; invalid moves; release, undo, redo, cancel, resize, camera/selection changes, and close. Confirm no stale selection, lost final edit, unbounded queue, or mutation of leased images.
 - Run `./verify.ps1` and relevant editor, mesh, spatial-query, and rendering tests for implementation changes. Follow with human GUI QA on the Teal box at normal and fast dragging speeds; offscreen rendering cannot certify physical input-to-screen responsiveness.
 
-For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP05 are complete. Continue measuring and ranking EP06–EP10 using the remaining bottlenecks.
+For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP05 and EP07 are complete. Retain the GUI checklist and use new measurements to reopen deferred items or propose further dense-cue work. A deferred item is not an implemented optimization.
