@@ -1,5 +1,6 @@
 package engine;
 
+import engine.lights.DirectionalLight;
 import engine.lights.PointLight;
 import engine.objects.RenderPrimitive;
 
@@ -47,6 +48,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             List<SceneInstance> instances,
             List<RenderPrimitive> legacy,
             List<engine.lights.Light> lights,
+            Sky sky,
             Camera.Identity camera,
             int width,
             int height,
@@ -129,6 +131,7 @@ public final class DirectRgbTracer implements AutoCloseable {
     }
 
     private void prepare() {
+        WorldSnapshot.validateEnvironment(state.instances(), state.lights(), state.sky());
         var instances = List.copyOf(state.instances());
         var legacy = List.copyOf(state.objects());
         if (instances.equals(cachedInstances) && legacy.equals(cachedLegacyObjects)) return;
@@ -206,6 +209,8 @@ public final class DirectRgbTracer implements AutoCloseable {
             PreparedObject[] objects,
             PreparedEmitter[] emitters,
             PointLight[] lights,
+            DirectionalLight[] sunlight,
+            Sky sky,
             Camera.Compiled camera,
             int width,
             int height,
@@ -281,6 +286,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                         cachedInstances,
                         cachedLegacyObjects,
                         List.copyOf(state.lights()),
+                        state.sky(),
                         state.camera().identity(),
                         width,
                         height,
@@ -344,6 +350,8 @@ public final class DirectRgbTracer implements AutoCloseable {
                             objects,
                             emitters,
                             lights,
+                            directionalLights(),
+                            state.sky(),
                             camera,
                             width,
                             height,
@@ -488,6 +496,13 @@ public final class DirectRgbTracer implements AutoCloseable {
         workers = List.of();
     }
 
+    private DirectionalLight[] directionalLights() {
+        return state.lights().stream()
+                .filter(DirectionalLight.class::isInstance)
+                .map(DirectionalLight.class::cast)
+                .toArray(DirectionalLight[]::new);
+    }
+
     private Worker adapter() {
         prepare();
         var worker = new Worker();
@@ -496,6 +511,8 @@ public final class DirectRgbTracer implements AutoCloseable {
                         objects,
                         emitters,
                         new PointLight[0],
+                        directionalLights(),
+                        state.sky(),
                         state.camera().compile(),
                         state.sensorPixelsW(),
                         state.sensorPixelsH(),
@@ -968,7 +985,11 @@ public final class DirectRgbTracer implements AutoCloseable {
             System.arraycopy(initialMedia, 0, media, 0, mediumCount);
             for (int depth = 0; depth <= snapshot.depth(); depth++) {
                 continuation = depth != 0;
-                if (!nearestHit(ox, oy, oz, dx, dy, dz, hit)) break; // Black environment.
+                if (!nearestHit(ox, oy, oz, dx, dy, dz, hit)) {
+                    snapshot.sky().sample(dy, lighting);
+                    addLighting(rgb, lighting, red, green, blue);
+                    break;
+                }
                 if (depth == 0) {
                     primaryHits++;
                     primarySurface = hit.primitive;
@@ -995,9 +1016,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                     volumeEvents++;
                     float x = ox + dx * travel, y = oy + dy * travel, z = oz + dz * travel;
                     volumeLight(x, y, z, dx, dy, dz, medium, lights, lighting, sampler);
-                    rgb[0] += red * lighting[0];
-                    rgb[1] += green * lighting[1];
-                    rgb[2] += blue * lighting[2];
+                    addLighting(rgb, lighting, red, green, blue);
                     if (depth == snapshot.depth() || red + green + blue == 0) break;
                     Volume.sample(
                             dx,
@@ -1053,9 +1072,8 @@ public final class DirectRgbTracer implements AutoCloseable {
                                         : media[mediumCount - 2].primitives[0].material.ior();
                 if (material.kind() == Material.Kind.DIFFUSE) {
                     light(hit, lights, lighting, medium);
-                    rgb[0] += red * lighting[0];
-                    rgb[1] += green * lighting[1];
-                    rgb[2] += blue * lighting[2];
+                    sunlight(hit, lighting);
+                    addLighting(rgb, lighting, red, green, blue);
                 } else if (!material.delta(incident, exit)) {
                     roughPointLight(
                             hit,
@@ -1070,9 +1088,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                             incident,
                             exit,
                             evaluation);
-                    rgb[0] += red * lighting[0];
-                    rgb[1] += green * lighting[1];
-                    rgb[2] += blue * lighting[2];
+                    addLighting(rgb, lighting, red, green, blue);
                 }
                 if (!material.delta(incident, exit) && emitters.length > 0) {
                     areaLight(
@@ -1089,9 +1105,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                             sampler,
                             evaluation,
                             depth < snapshot.depth());
-                    rgb[0] += red * lighting[0];
-                    rgb[1] += green * lighting[1];
-                    rgb[2] += blue * lighting[2];
+                    addLighting(rgb, lighting, red, green, blue);
                 }
                 // Evaluate direct lighting at the final vertex before stopping continuation.
                 if (!canContinue(depth, material, red, green, blue)) {
@@ -1162,6 +1176,13 @@ public final class DirectRgbTracer implements AutoCloseable {
                 oz = hit.z + nz * offset;
                 continuationRays++;
             }
+        }
+
+        private static void addLighting(
+                float[] rgb, float[] lighting, float red, float green, float blue) {
+            rgb[0] += red * lighting[0];
+            rgb[1] += green * lighting[1];
+            rgb[2] += blue * lighting[2];
         }
 
         private void volumeLight(
@@ -1510,6 +1531,40 @@ public final class DirectRgbTracer implements AutoCloseable {
                     (t.b * hit.nx + t.e * hit.ny + t.h * hit.nz) * t.scale.y(),
                     (t.c * hit.nx + t.f * hit.ny + t.i * hit.nz) * t.scale.z(),
                     textureReflectance);
+        }
+
+        /** Strength is irradiance on a perpendicular surface, with no inverse-square falloff. */
+        private void sunlight(Hit hit, float[] rgb) {
+            float sign = hit.frontFace ? 1 : -1;
+            float nx = hit.nx * sign;
+            float ny = hit.ny * sign;
+            float nz = hit.nz * sign;
+            var reflectance = hit.primitive.material.color();
+            for (var sun : snapshot.sunlight()) {
+                var direction = sun.direction();
+                float cosine = nx * direction.x() + ny * direction.y() + nz * direction.z();
+                if (cosine <= 0 || sun.strength() == 0) {
+                    continue;
+                }
+                shadowRays++;
+                if (occluded(
+                        hit.x + nx * BIAS,
+                        hit.y + ny * BIAS,
+                        hit.z + nz * BIAS,
+                        direction.x(),
+                        direction.y(),
+                        direction.z(),
+                        Float.POSITIVE_INFINITY,
+                        hit.primitive,
+                        null)) {
+                    shadowsOccluded++;
+                    continue;
+                }
+                float weight = cosine * sun.strength() / (float) Math.PI;
+                rgb[0] += weight * reflectance.x() * textureReflectance[0] * sun.color().x();
+                rgb[1] += weight * reflectance.y() * textureReflectance[1] * sun.color().y();
+                rgb[2] += weight * reflectance.z() * textureReflectance[2] * sun.color().z();
+            }
         }
 
         private void light(Hit hit, PointLight[] lights, float[] rgb, Material medium) {

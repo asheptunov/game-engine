@@ -46,6 +46,7 @@ final class DefaultRenderSession implements RenderSession {
                 state.objects().addAll(nextWorld.legacyObjects());
                 state.lights().clear();
                 state.lights().addAll(nextWorld.lights());
+                state.sky(nextWorld.sky());
                 if (world != null || nextWorld.revision() != 0) state.restart();
                 world = nextWorld;
             }

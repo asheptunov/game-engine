@@ -15,11 +15,17 @@ import java.util.concurrent.TimeUnit;
 /** One background owner for the session. Published display images are never modified. */
 public final class GameRenderer implements AutoCloseable {
     public record Frame(
-            BufferedImage image, int requestedWidth, int requestedHeight, long generation) {}
+            BufferedImage image,
+            int requestedWidth,
+            int requestedHeight,
+            long generation,
+            long samples) {}
 
     private final GameNavigation navigation;
-    private final engine.WorldSnapshot world;
-    private final RenderSettings settings = RenderSettings.defaults();
+    private engine.WorldSnapshot world;
+    private GameLighting lighting = GameLighting.defaults();
+    private final RenderSettings settings =
+            RenderSettings.defaults().withPathDepth(2).withSampleTarget(0);
     private final RenderSession session;
     private final ScheduledExecutorService executor;
     private volatile Frame frame;
@@ -31,7 +37,14 @@ public final class GameRenderer implements AutoCloseable {
 
     public GameRenderer(GameNavigation navigation, BlockWorld blocks) {
         this.navigation = navigation;
-        world = blocks.snapshot();
+        var gallery = blocks.snapshot();
+        world =
+                new engine.WorldSnapshot(
+                        0,
+                        gallery.instances(),
+                        gallery.legacyObjects(),
+                        java.util.List.of(lighting.sun()),
+                        lighting.sky());
         session = RenderEngine.openSession(world, navigation.view(), settings);
         executor =
                 Executors.newSingleThreadScheduledExecutor(
@@ -65,7 +78,13 @@ public final class GameRenderer implements AutoCloseable {
             try (var image = session.acquireImage()) {
                 if (image != null && image.publicationNanos() != converted) {
                     var display = copyImage(image);
-                    frame = new Frame(display, view.width(), view.height(), image.generation());
+                    frame =
+                            new Frame(
+                                    display,
+                                    view.width(),
+                                    view.height(),
+                                    image.generation(),
+                                    image.samples());
                     converted = image.publicationNanos();
                 }
             }
@@ -96,6 +115,24 @@ public final class GameRenderer implements AutoCloseable {
 
     public Frame frame() {
         return frame;
+    }
+
+    public synchronized GameLighting lighting() {
+        return lighting;
+    }
+
+    /** Replace immutable input once per effective edit; reset/undo must not revive old images. */
+    public synchronized void lighting(GameLighting value) {
+        if (!lighting.equals(value)) {
+            lighting = value;
+            world =
+                    new engine.WorldSnapshot(
+                            world.revision() + 1,
+                            world.instances(),
+                            world.legacyObjects(),
+                            java.util.List.of(value.sun()),
+                            value.sky());
+        }
     }
 
     public String error() {

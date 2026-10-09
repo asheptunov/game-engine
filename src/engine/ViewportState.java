@@ -15,6 +15,7 @@ public class ViewportState {
             List<SceneInstance> instances,
             List<RenderPrimitive> objects,
             List<Light> lights,
+            Sky sky,
             Camera.Identity camera,
             int width,
             int height,
@@ -37,6 +38,7 @@ public class ViewportState {
                     && instances.equals(other.instances)
                     && objects.equals(other.objects)
                     && lights.equals(other.lights)
+                    && sky.equals(other.sky)
                     && width == other.width
                     && height == other.height
                     && depth == other.depth
@@ -50,6 +52,7 @@ public class ViewportState {
                 List.copyOf(instances),
                 List.copyOf(objects),
                 List.copyOf(lights),
+                sky,
                 camera.identity(),
                 sampledWidth(),
                 sampledHeight(),
@@ -66,6 +69,7 @@ public class ViewportState {
         copy.instances.addAll(instances);
         copy.objects.addAll(objects);
         copy.lights.addAll(lights);
+        copy.sky = sky;
         copy.focusSceneRevision = focusSceneRevision;
         copy.pathDepth = pathDepth;
         copy.seed = seed;
@@ -337,6 +341,16 @@ public class ViewportState {
 
     private final List<RenderPrimitive> objects = new QueryList<>((a, b) -> a == b);
     private final List<Light> lights = new ArrayList<>();
+    private Sky sky = Sky.BLACK;
+
+    public Sky sky() {
+        return sky;
+    }
+
+    public void sky(Sky value) {
+        sky = java.util.Objects.requireNonNull(value);
+    }
+
     private final List<SceneInstance> instances =
             new QueryList<>(
                     (a, b) ->

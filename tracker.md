@@ -727,3 +727,12 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
 - Epsilon for intersection: `1e-4f`. Tunable later.
 - Sealed interfaces for `SceneObject` so the compiler enforces exhaustive handling if/when intersection logic needs branching by type.
 - Rect's normal direction = `edge1 × edge2` normalized. Construct sensor rects with edges oriented so the normal faces the scene (sensing side).
+
+
+## Sample game G3 — sunlight and sky `[implemented; human GUI QA pending]`
+
+- Added immutable `engine.lights.DirectionalLight` and `engine.Sky` values. Sun direction points toward the source; strength is perpendicular-surface irradiance, with shadow visibility extending to infinity. Sky radiance is evaluated on misses and weighted by path throughput, including diffuse continuation rays.
+- `WorldSnapshot`, render-session state, captured worker snapshots, and transport identity carry the sky and sun. Existing constructors default to black sky. New lighting explicitly rejects mirror, dielectric, and volume instances at the world boundary; established point/area-light transport remains available in worlds without the new features.
+- The standalone gallery now uses a fixed noon sun and blue gradient sky, two continuation bounces, and progressive stationary refinement. Escape reveals Morning, Noon, Evening, and Sky on/off buttons. Camera reset preserves lighting. No constant ambient term or time-of-day simulation was added.
+- `./game-check.ps1` passes the existing game/texture suites plus seven `engine.SunSkyTest` cases and two `game.GameLightingTest` cases. Coverage includes distant occlusion, distance-independent lighting, texture modulation, sky directions/energy, immutable leases, edit/undo invalidation, worker/batch agreement, released-pointer buttons, and refinement.
+- `./verify.ps1`, advanced transport regression suites, and `./style-test.ps1` pass. Headless previews and the pending human sunlight/sky test are in [the game QA guide](benchmarks/game/README.md). G4 landscape construction and responsiveness measurements remain proposed.

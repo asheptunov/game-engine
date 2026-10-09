@@ -1,5 +1,6 @@
 package engine;
 
+import engine.lights.DirectionalLight;
 import engine.lights.Light;
 import engine.lights.PointLight;
 import engine.objects.RenderPrimitive;
@@ -11,7 +12,16 @@ public record WorldSnapshot(
         long revision,
         List<SceneInstance> instances,
         List<RenderPrimitive> legacyObjects,
-        List<Light> lights) {
+        List<Light> lights,
+        Sky sky) {
+    public WorldSnapshot(
+            long revision,
+            List<SceneInstance> instances,
+            List<RenderPrimitive> legacyObjects,
+            List<Light> lights) {
+        this(revision, instances, legacyObjects, lights, Sky.BLACK);
+    }
+
     public WorldSnapshot {
         if (revision < 0) throw new IllegalArgumentException("World revision must be nonnegative");
         instances = List.copyOf(instances);
@@ -21,9 +31,27 @@ public record WorldSnapshot(
                 || legacyObjects.stream().anyMatch(java.util.Objects::isNull)
                 || lights.stream().anyMatch(java.util.Objects::isNull))
             throw new IllegalArgumentException("World contents cannot contain null");
-        if (lights.stream().anyMatch(light -> !(light instanceof PointLight)))
+        java.util.Objects.requireNonNull(sky, "Sky is required; use Sky.BLACK for no environment");
+        if (lights.stream()
+                .anyMatch(
+                        light ->
+                                !(light instanceof PointLight)
+                                        && !(light instanceof DirectionalLight))) {
             throw new IllegalArgumentException(
-                    "Render sessions currently support immutable PointLight values only");
+                    "Render sessions support immutable point and directional lights only");
+        }
+        validateEnvironment(instances, lights, sky);
+    }
+
+    static void validateEnvironment(List<SceneInstance> instances, List<Light> lights, Sky sky) {
+        if ((!sky.equals(Sky.BLACK) || lights.stream().anyMatch(DirectionalLight.class::isInstance))
+                && instances.stream()
+                        .anyMatch(
+                                instance -> instance.material().kind() != Material.Kind.DIFFUSE)) {
+            throw new IllegalArgumentException(
+                    "Directional lights and sky currently require diffuse materials; mirror,"
+                            + " dielectric and volume transport are unsupported");
+        }
     }
 
     public static WorldSnapshot of(List<SceneInstance> instances, List<Light> lights) {

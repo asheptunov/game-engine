@@ -16,7 +16,7 @@ public final class SampleGameMain {
                     var navigation = new GameNavigation();
                     var renderer = new GameRenderer(navigation, BlockWorld.gallery());
                     var panel = new GamePanel(navigation, renderer);
-                    var window = new JFrame("Sample game — textured gallery (G2)");
+                    var window = new JFrame("Sample game — sunlight and sky (G3)");
                     window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                     window.setContentPane(panel);
                     window.pack();

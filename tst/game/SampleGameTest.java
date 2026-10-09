@@ -251,7 +251,7 @@ public final class SampleGameTest {
                             graphics.dispose();
                         }
                         try {
-                            ImageIO.write(image, "png", output.resolve("g2-gallery.png").toFile());
+                            ImageIO.write(image, "png", output.resolve("g3-gallery.png").toFile());
                         } catch (java.io.IOException error) {
                             throw new java.io.UncheckedIOException(error);
                         }

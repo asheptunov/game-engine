@@ -8,6 +8,7 @@ $sources = @(
     (Get-ChildItem (Join-Path $repository "tst/harness") -Filter *.java).FullName
     (Get-ChildItem (Join-Path $repository "tst/game") -Filter *.java).FullName
     (Join-Path $repository "tst/engine/CubeTextureTest.java")
+    (Join-Path $repository "tst/engine/SunSkyTest.java")
 )
 $jdk = Split-Path $styleJava
 $compileLog = Join-Path $repository "$OutputDirectory/test-compile.log"
@@ -28,8 +29,8 @@ try {
     Write-StyleUtf8 $compileLog ($stdout.Result + $stderr.Result)
     if ($process.ExitCode -ne 0) { throw "Game test compilation failed: $compileLog" }
 } finally { $process.Dispose() }
-foreach ($suite in @("game.SampleGameTest", "engine.CubeTextureTest")) {
-    $name = if ($suite -eq "game.SampleGameTest") { "tests.log" } else { "texture-tests.log" }
+foreach ($suite in @("game.SampleGameTest", "engine.CubeTextureTest", "engine.SunSkyTest", "game.GameLightingTest")) {
+    $name = if ($suite -eq "game.SampleGameTest") { "tests.log" } elseif ($suite -eq "engine.CubeTextureTest") { "texture-tests.log" } elseif ($suite -eq "engine.SunSkyTest") { "sun-sky-tests.log" } else { "lighting-tests.log" }
     $log = Join-Path (Join-Path $repository $OutputDirectory) $name
     $code = Invoke-StyleJava @("--enable-preview", "-Djava.awt.headless=true", "-cp", $classes, $suite) $log
     Get-Content $log

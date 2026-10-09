@@ -1,6 +1,6 @@
 # Sample game requirements
 
-Status: G1 and G2 are implemented with automated checks passing; human window/input and texture QA is pending. G3 and G4 are proposed. See [the game QA guide](benchmarks/game/README.md) for launch instructions, evidence, and the hands-on test.
+Status: G1 through G3 are implemented with automated checks passing; human window/input, texture, and lighting QA is pending. G4 is proposed. See [the game QA guide](benchmarks/game/README.md) for launch instructions, evidence, and the hands-on test.
 
 Build a standalone block-world exploration application using the public ray-tracing engine. The first complete sample lets a user fly around a small landscape of textured cubes under sunlight and a blue sky. It also demonstrates that a new application can use the engine without depending on the existing viewport or scene editor.
 
@@ -26,7 +26,7 @@ Milestones are cumulative. Each depends on the preceding milestone, and all earl
 | --- | --- | --- | --- |
 | G1 Explore a cube scene | Launch a separate application and fly around colored cubes | Reuse existing public camera, rendering, and input APIs | Implemented; human QA pending |
 | G2 Explore textured blocks | Inspect crisp grass, dirt, stone, and wood textures on cube faces | Immutable texture data and diffuse cube texture mapping | Implemented; human QA pending |
-| G3 Explore under sunlight and sky | Observe sun shadows, change sun presets, and compare sky illumination | Directional lights and optional sky radiance | Proposed |
+| G3 Explore under sunlight and sky | Observe sun shadows, change sun presets, and compare sky illumination | Directional lights and optional sky radiance | Implemented; human QA pending |
 | G4 Explore the sample landscape | Navigate a small coherent world with measured responsiveness | Integrate existing resolution adaptation; add acceleration only if measurements justify it | Proposed |
 
 ## Shared application and engine requirements
@@ -94,6 +94,8 @@ User test:
 4. Move closer to a block without changing lighting. Its surface lighting does not brighten merely because the camera approached it.
 
 Automated acceptance additionally verifies distance-independent sun illumination at separated identical surfaces, shadow occlusion, sky directions, and lighting invalidation. For an isolated diffuse surface under a constant sky with no other lights, converged outgoing radiance must match reflectance times sky radiance within a documented statistical tolerance.
+
+G3 implementation decision: `DirectionalLight.direction` points from a surface toward the source and is normalized on construction. `Sky(nadir, zenith)` interpolates linear radiance by world-space ray elevation; the horizon is halfway between its endpoint colors. New lighting supports diffuse instances and the existing white diffuse legacy primitives. `WorldSnapshot` rejects any mirror, dielectric, or volume instance when a directional light or nonblack sky is configured. Existing black-sky point-light worlds retain those transport modes. Editable lighting components and persistence remain deferred.
 
 ## G4 Explore the sample landscape
 

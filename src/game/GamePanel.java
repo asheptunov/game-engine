@@ -54,7 +54,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                     @Override
                     public void mousePressed(MouseEvent event) {
                         if (event.getButton() == MouseEvent.BUTTON1) {
-                            capturePointer();
+                            if (!lightingClick(event)) {
+                                capturePointer();
+                            }
                         }
                     }
 
@@ -96,6 +98,24 @@ public final class GamePanel extends JPanel implements AutoCloseable {
             pointerError = "Mouse capture unavailable: " + failure.getMessage();
             navigation.release();
         }
+    }
+
+    private boolean lightingClick(MouseEvent event) {
+        if (navigation.captured() || event.getY() < 120 || event.getY() >= 154) {
+            return false;
+        }
+        int button = (event.getX() - 24) / 104;
+        if (event.getX() < 24 || button > 3) {
+            return false;
+        }
+        var current = renderer.lighting();
+        renderer.lighting(
+                button == 3
+                        ? new GameLighting(current.preset(), !current.skyEnabled())
+                        : new GameLighting(
+                                GameLighting.Preset.values()[button], current.skyEnabled()));
+        repaint();
+        return true;
     }
 
     private void look(MouseEvent event) {
@@ -171,13 +191,14 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
     private void drawOverlay(Graphics2D draw, GameRenderer.Frame frame) {
         draw.setColor(new Color(15, 20, 28, 220));
-        draw.fillRoundRect(12, 12, Math.min(640, getWidth() - 24), 100, 12, 12);
+        draw.fillRoundRect(
+                12, 12, Math.min(640, getWidth() - 24), navigation.captured() ? 100 : 154, 12, 12);
         draw.setColor(Color.WHITE);
         String capture =
                 navigation.captured()
                         ? "Mouse captured | Esc releases pointer"
                         : "Pointer free | Click the view to fly";
-        draw.drawString("Sample game G2 | " + capture, 24, 34);
+        draw.drawString("Sample game G3 | " + capture, 24, 34);
         draw.drawString(
                 "WASD: heading movement | Space/Ctrl: up/down | Mouse: look | R: reset", 24, 56);
         var view = navigation.view();
@@ -193,19 +214,38 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         + " | Displayed "
                         + shown
                         + " | "
-                        + (navigation.active() ? "Active" : "Suspended"),
+                        + (navigation.active() ? "Active" : "Suspended")
+                        + (frame == null ? "" : " | " + frame.samples() + " spp"),
                 24,
                 78);
         String error = renderer.error() == null ? pointerError : renderer.error();
         draw.drawString(
                 error == null
-                        ? "Free flight: 3 units/s | No collision | Textured block gallery"
+                        ? "Free flight: 3 units/s | No collision | Sun + sky | Depth 2"
                         : error,
                 24,
                 100);
+        if (!navigation.captured()) {
+            drawLighting(draw);
+        }
         if (navigation.captured()) {
             draw.drawLine(getWidth() / 2 - 5, getHeight() / 2, getWidth() / 2 + 5, getHeight() / 2);
             draw.drawLine(getWidth() / 2, getHeight() / 2 - 5, getWidth() / 2, getHeight() / 2 + 5);
+        }
+    }
+
+    private void drawLighting(Graphics2D draw) {
+        var current = renderer.lighting();
+        String[] labels = {
+            "Morning", "Noon", "Evening", current.skyEnabled() ? "Sky: on" : "Sky: off"
+        };
+        for (int button = 0; button < labels.length; button++) {
+            boolean selected =
+                    button == 3 ? current.skyEnabled() : current.preset().ordinal() == button;
+            draw.setColor(selected ? new Color(65, 105, 145) : new Color(45, 50, 60));
+            draw.fillRoundRect(24 + button * 104, 120, 100, 34, 8, 8);
+            draw.setColor(Color.WHITE);
+            draw.drawString(labels[button], 34 + button * 104, 142);
         }
     }
 
