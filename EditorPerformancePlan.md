@@ -1,6 +1,6 @@
 # Scene and mesh editor performance plan
 
-Status: EP01 and EP02 implemented; automated checks and human drag testing passed. EP03–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
+Status: EP01–EP03 implemented and verified automatically. Human drag testing passed for EP01/EP02; EP03 GUI testing is pending and does not block further implementation. EP04–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
 
 The Swing scene editor becomes visibly unresponsive during rapid vertex dragging, even on the eight-vertex Teal box in the starter scene. The first priority is reliable display of completed edits during sustained input. Larger-mesh costs also need attention, but reducing those costs alone will not resolve the reproduced Teal box stall.
 
@@ -8,7 +8,7 @@ This is the implementation tracker for editor responsiveness. [PerformanceRequir
 
 ## Evidence and interpretation
 
-Measurements used Windows on an Intel Core i5-13600KF, OpenJDK 23.0.1, a window-free 1400 by 850 Swing panel, the starter scene, and both render views active. Painting was to a buffered image. These are exploratory single-run measurements, not monitor FPS or a reproduction of physical mouse delivery. Rendering remained asynchronous. Default wireframe was enabled except where stated otherwise. Each view used the editor defaults: depth 3, one sample per pixel per batch, target 8 samples, up to four workers, and its view-title-derived seed. Trace dimensions came from the editor's aspect-dependent sizing policy and were not recorded in the baseline logs; EP01 must record the actual dimensions.
+Measurements used Windows on an Intel Core i5-13600KF, OpenJDK 23.0.1, a window-free 1400 by 850 Swing panel, the starter scene, and both render views active. Painting was to a buffered image. These are exploratory single-run measurements, not monitor FPS or a reproduction of physical mouse delivery. Rendering remained asynchronous. Default wireframe was enabled except where stated otherwise. Each view used the editor defaults: depth 3, one sample per pixel per batch, target 8 samples, up to four workers, and its view-title-derived seed. Trace dimensions came from the editor's aspect-dependent sizing policy and were not recorded in the original exploratory logs. The maintained EP01 benchmark now records them; both panes used 360 by 225 grids in the completed-phase comparisons below.
 
 A **fresh displayed frame** here means a painted scene revision different from the previously painted revision in View A. View A is the left render pane titled "View A" in the scene editor; View B is the right pane titled "View B". Repainting the same revision does not count. A **candidate** is a completed rendered image awaiting display with its corresponding editing overlay. The overlay includes selection cues and handles. The **event dispatch thread (EDT)** is Swing's thread for input and painting. A **BVH** is a hierarchy of bounding boxes used to accelerate ray intersection queries.
 
@@ -44,13 +44,13 @@ Java Flight Recorder execution samples also identified whole-mesh construction o
 
 ## Work tracker
 
-Status values are Proposed, In progress, Blocked, Verified, and Deferred. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented the first phase; remaining items are unassigned.
+Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP03 in two delivery phases: phase 1 covers EP01/EP02, and phase 2 covers EP03. Remaining items are unassigned.
 
 | ID | Priority | Status | Work item | Completion evidence |
 | --- | --- | --- | --- | --- |
 | EP01 | First | Verified | Make fresh-frame progress measurable and reproducible | [Maintained benchmark](tst/editor/EditorDragBenchmark.java), [deterministic regression](tst/editor/RenderViewHandoffTest.java), and first-phase results below |
 | EP02 | First | Verified | Prevent image/overlay publication starvation | [Handoff implementation](src/editor/RenderViewPanel.java), first-phase results below, and successful human drag test |
-| EP03 | Next | Proposed | Avoid rebuilding unrelated Swing controls during edits | Same controls and state, with lower EDT update cost and allocation |
+| EP03 | Next | Verified | Avoid rebuilding unrelated Swing controls during edits | [Control-preservation test](tst/editor/EditorControlRefreshTest.java) and second-phase measurements below; human GUI test pending |
 | EP04 | Next | Proposed | Reduce mesh-cue and wireframe painting cost | Lower stationary and dragging paint times with unchanged picking semantics |
 | EP05 | Next | Proposed | Update moved mesh vertices incrementally | Lower allocation and edit time; full-validation equivalence tests pass |
 | EP06 | Next | Proposed | Reuse scene snapshot construction work | Avoid duplicate scene-wide work without weakening atomic publication |
@@ -63,7 +63,7 @@ EP01 now enables evaluation of every item. With EP02 verified, rank the remainin
 
 ## First phase completed: EP01 and EP02
 
-The implementation in `RenderViewPanel` allows a completed image/overlay pair to advance even when a newer geometry revision is waiting. The pair retains its captured camera, scene, image, overlay and picking token. Reusing an overlay for a different image still requires exact token and camera correspondence. Selection, tool mode and projected viewport dimensions still reject superseded projections. Close prevents new overlay publication. Only the existing bounded candidate, ready pair and painted pair are retained; intermediate input is not queued.
+Commit `ae728ea` implemented EP01/EP02 and was pushed to `origin/main`. The implementation in `RenderViewPanel` allows a completed image/overlay pair to advance even when a newer geometry revision is waiting. The pair retains its captured camera, scene, image, overlay and picking token. Reusing an overlay for a different image still requires exact token and camera correspondence. Selection, tool mode and projected viewport dimensions still reject superseded projections. Close prevents new overlay publication. Only the existing bounded candidate, ready pair and painted pair are retained; intermediate input is not queued.
 
 `RenderViewHandoffTest` manually advances the private handoff with the view workers stopped. It forces twenty repetitions of a newer geometry candidate arriving before an older projection completes, checks coherent progress and final catch-up, and covers superseded selection mode, tool, size and close contexts. The progress assertion [fails on the original code](benchmarks/editor-drag/phase1-regression-before.log) and [passes with the fix](benchmarks/editor-drag/phase1-regression-after.log). Existing editor preview tests additionally cover camera motion, both views, vertex/edge/face gestures, stale picks, invalid edits, release, undo, redo, cancellation and resizing.
 
@@ -88,7 +88,24 @@ To repeat the current measurements, run `./verify.ps1` to compile sources and te
 
 The first argument is the number of repetitions. An optional second argument selects `vertex`, `edge` or `face`; the recorded three-run comparison used `vertex`. For a historical comparison, compile the original `RenderViewPanel.java` from `ae8c129` into a separate directory and place that directory first on the same classpath. Window-free results measure software painting, not monitor scanout or physical mouse latency.
 
-Next, reduce remaining control-refresh and dense-overlay costs under EP03/EP04, then remeasure before adopting the geometry/cache changes or conditional quality policies.
+The second phase below reduces control-refresh costs. Dense-overlay work under EP04 is next; remeasure before adopting geometry/cache changes or conditional quality policies.
+
+## Second phase completed: EP03
+
+`SceneEditorPanel` rebuilds its hierarchy only when displayed node IDs, labels, parents, order or icons change. Selection changes update the existing tree selection. Inspector tabs and parent choices remain in place when their content is unchanged. Inspector fields refresh when their underlying label, transform, geometry, material, light or camera content changes, preserving drafts in unrelated fields. `RenderViewPanel` retains camera choices when their IDs and labels are unchanged. Rendering still receives every accepted scene publication.
+
+`EditorControlRefreshTest` checks twenty geometry updates for unchanged tree identity, inspector tab identity, field drafts, caret position and absence of tab/dropdown reconstruction events. It then verifies that rename, transform, material and selection changes refresh their controls. The test [fails with the phase-one UI](benchmarks/editor-drag/phase2-regression-before.log) and [passes with EP03](benchmarks/editor-drag/phase2-regression-after.log). `./verify.ps1` and all six relevant editor suites passed: the new control test, handoff test, editor preview test, controller test, gizmo test and overlay geometry test. Seven resolved style-baseline allowances were removed; none were added.
+
+Three matching benchmark repetitions compared the `ae728ea` UI classes with EP03 on the same machine and with the first-phase settings. Medians below are medians of the three per-run means, not pooled event percentiles:
+
+| Requested input interval | EDT edit mean before / after | EDT allocation per edit before / after | View A median fresh FPS before / after |
+| --- | ---: | ---: | ---: |
+| 16 ms | 1.084 / 0.379 ms | 106.1 / 69.7 KiB | 28.73 / 29.96 |
+| 4 ms | 1.123 / 0.377 ms | 104.9 / 68.7 KiB | 32.73 / 32.84 |
+
+EDT edit work decreased about 65–66%, with about 34% less allocation. Both views retained the EP02 responsiveness targets: all updated cases exceeded 27 fresh frames per second, the longest hold was 135 ms, and final-revision latency was at most 53 ms. View B median fresh FPS changed from 28.73 to 29.96 at 16 ms and from 32.60 to 32.72 at 4 ms. Painting remains the larger cost for this small scene. [Before logs](benchmarks/editor-drag/phase2-before.log) and [after logs including paint cost and percentiles](benchmarks/editor-drag/phase2-after.log).
+
+Human GUI test pending: type an unfinished transform or material value, switch inspector tabs, and drag a vertex or edge repeatedly. Confirm the unrelated draft and selected tab stay in place. Rename/reparent objects, select another object or clear selection, and add/remove a scene camera to confirm structural controls still refresh. The user authorized committing, pushing and continuing without waiting for a GUI response.
 
 ## Proposed changes and safeguards
 
@@ -102,9 +119,9 @@ EP02 retains the existing bounded completed image/overlay pair and permits paint
 
 Future changes must keep image, camera, scene snapshot, content rectangle, overlay, and picking token together. Never attach a new overlay to an unrelated older image. Preserve stale-pick rejection and the existing immutable-image/lease rules. Bound retained frames and pending work; do not queue every intermediate mouse position. Retain the regression coverage for newer candidates arriving between overlay request, completion, and painting, plus resize, camera changes, selection changes, and close.
 
-### EP03 Avoid unnecessary control reconstruction
+### EP03 Implemented control refresh policy
 
-In [SceneEditorPanel.java](src/editor/SceneEditorPanel.java), distinguish geometry-coordinate updates from hierarchy, selection, component, and label changes. Update values in place instead of rebuilding the tree model, inspector tabs/components, parent choices, and camera choices for each mouse event. Keep focus, text drafts, expanded tree nodes, and selected tabs intact. Verify that actual structural changes still refresh the controls.
+[SceneEditorPanel.java](src/editor/SceneEditorPanel.java) now distinguishes geometry-coordinate updates from hierarchy, selection, component, and label changes. It updates changed values while retaining controls whose source content is unchanged. Continue preserving focus, text drafts, expanded tree nodes and selected tabs in future changes; actual structural edits must still refresh their controls. The second-phase tests and measurements above verify this policy.
 
 ### EP04 Reduce overlay drawing work
 
@@ -151,4 +168,4 @@ The following are proposed engineering targets for the starter-scene reproductio
 - Exercise vertex, edge, and face dragging; rapid repeated gestures; both views; wireframe on/off; dense meshes; invalid moves; release, undo, redo, cancel, resize, camera/selection changes, and close. Confirm no stale selection, lost final edit, unbounded queue, or mutation of leased images.
 - Run `./verify.ps1` and relevant editor, mesh, spatial-query, and rendering tests for implementation changes. Follow with human GUI QA on the Teal box at normal and fast dragging speeds; offscreen rendering cannot certify physical input-to-screen responsiveness.
 
-For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01 and EP02 are complete. Continue measuring and ranking EP03–EP10 using the remaining bottlenecks.
+For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP03 are complete. Continue measuring and ranking EP04–EP10 using the remaining bottlenecks.

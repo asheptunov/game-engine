@@ -1,0 +1,43 @@
+2026-10-08T22:47:49.764194400  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T22:47:49.769215900  [INFO] harness.SuiteRunner: ? Suite editor.EditorControlRefreshTest [PT0.4647472S]
+2026-10-08T22:47:49.770221700  [INFO] harness.SuiteRunner: ? Test editor.EditorControlRefreshTest#draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts [PT0.4647472S]
+2026-10-08T22:47:49.774221600  [INFO] harness.SuiteRunner: ========================
+2026-10-08T22:47:49.773221700 [ERROR] harness.SuiteRunner: Test editor.EditorControlRefreshTest#draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts failed with exception: class java.util.concurrent.ExecutionException|java.util.concurrent.ExecutionException: java.lang.RuntimeException: Expected true, but got false|	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)|	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)|	at editor.EditorControlRefreshTest.onEdt(EditorControlRefreshTest.java:136)|	at editor.EditorControlRefreshTest.draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts(EditorControlRefreshTest.java:33)|	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)|	at java.base/java.lang.reflect.Method.invoke(Method.java:580)|	at harness.SuiteRunner.runTest(SuiteRunner.java:185)|	at harness.SuiteRunner.runTests(SuiteRunner.java:133)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)|	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)|	at harness.SuiteRunner.runThis(SuiteRunner.java:34)|	at editor.EditorControlRefreshTest.main(EditorControlRefreshTest.java:28)|Caused by: java.lang.RuntimeException: Expected true, but got false|	at harness.Assertions.assertTrue(Assertions.java:38)|	at editor.EditorControlRefreshTest.lambda$draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts$3(EditorControlRefreshTest.java:83)|	at editor.EditorControlRefreshTest.lambda$onEdt$4(EditorControlRefreshTest.java:132)|	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)|	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)|	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)|	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)|	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)|	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)|	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)|	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)|	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)|	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)|	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)|	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)|	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)|	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+java.util.concurrent.ExecutionException: java.lang.RuntimeException: Expected true, but got false
+	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)
+	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)
+	at editor.EditorControlRefreshTest.onEdt(EditorControlRefreshTest.java:136)
+	at editor.EditorControlRefreshTest.draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts(EditorControlRefreshTest.java:33)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at harness.SuiteRunner.runTest(SuiteRunner.java:185)
+	at harness.SuiteRunner.runTests(SuiteRunner.java:133)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.EditorControlRefreshTest.main(EditorControlRefreshTest.java:28)
+Caused by: java.lang.RuntimeException: Expected true, but got false
+	at harness.Assertions.assertTrue(Assertions.java:38)
+	at editor.EditorControlRefreshTest.lambda$draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts$3(EditorControlRefreshTest.java:83)
+	at editor.EditorControlRefreshTest.lambda$onEdt$4(EditorControlRefreshTest.java:132)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+Exception in thread "main" java.lang.AssertionError: Suite editor.EditorControlRefreshTest: 1 test(s) failed
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:99)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.EditorControlRefreshTest.main(EditorControlRefreshTest.java:28)

@@ -266,13 +266,22 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     }
 
     private void rebuildCameraChoices(SceneSnapshot snapshot) {
+        var choices = new ArrayList<CameraChoice>();
+        choices.add(new CameraChoice(null, "Editor camera"));
+        for (var node : snapshot.nodes()) {
+            if (node.camera() != null) {
+                choices.add(new CameraChoice(node.id(), node.label()));
+            }
+        }
+        if (cameraChoicesMatch(choices)) {
+            return;
+        }
         adjustingChoices = true;
         try {
             cameraChoice.removeAllItems();
-            cameraChoice.addItem(new CameraChoice(null, "Editor camera"));
-            for (var node : snapshot.nodes())
-                if (node.camera() != null)
-                    cameraChoice.addItem(new CameraChoice(node.id(), node.label()));
+            for (var choice : choices) {
+                cameraChoice.addItem(choice);
+            }
             int desired = 0;
             if (sceneCamera != null)
                 for (int i = 1; i < cameraChoice.getItemCount(); i++)
@@ -282,6 +291,18 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         } finally {
             adjustingChoices = false;
         }
+    }
+
+    private boolean cameraChoicesMatch(java.util.List<CameraChoice> choices) {
+        if (cameraChoice.getItemCount() != choices.size()) {
+            return false;
+        }
+        for (int index = 0; index < choices.size(); index++) {
+            if (!choices.get(index).equals(cameraChoice.getItemAt(index))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void chooseCamera() {

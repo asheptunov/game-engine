@@ -1,0 +1,4 @@
+2026-10-08T22:47:10.500589900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T22:47:10.505590000  [INFO] harness.SuiteRunner: ? Suite editor.EditorControlRefreshTest [PT0.5290728S]
+2026-10-08T22:47:10.506588700  [INFO] harness.SuiteRunner: ? Test editor.EditorControlRefreshTest#draggingRetainsHierarchyTabsChoicesAndUnrelatedDrafts [PT0.5290728S]
+2026-10-08T22:47:10.507589200  [INFO] harness.SuiteRunner: ========================

@@ -68,6 +68,7 @@ public final class SceneEditorPanel extends JPanel
     private boolean updatingTree;
     private String bindingWarning;
     private boolean closed;
+    private EditorController.State lastState;
 
     public SceneEditorPanel(EditorController controller) {
         this(
@@ -251,7 +252,12 @@ public final class SceneEditorPanel extends JPanel
 
     @Override
     public void changed(EditorController.State state) {
-        rebuildTree(state);
+        if (lastState == null || !sameHierarchy(lastState.snapshot(), state.snapshot())) {
+            rebuildTree(state);
+        } else if (!Objects.equals(lastState.selection(), state.selection())) {
+            updateTreeSelection(state.selection());
+        }
+        lastState = state;
         inspector.update(state);
         viewA.update(state);
         viewB.update(state);
@@ -265,6 +271,39 @@ public final class SceneEditorPanel extends JPanel
         var marker = (state.dirty() ? "● Unsaved" : "Saved") + (state.busy() ? " · working…" : "");
         dirty.setText(marker);
         dirtyFooter.setText(marker);
+    }
+
+    /** Compare only the node properties displayed by the hierarchy and parent choices. */
+    private static boolean sameHierarchy(SceneSnapshot first, SceneSnapshot second) {
+        var firstNodes = first.nodes();
+        var secondNodes = second.nodes();
+        if (firstNodes.size() != secondNodes.size()) {
+            return false;
+        }
+        for (int index = 0; index < firstNodes.size(); index++) {
+            var before = firstNodes.get(index);
+            var after = secondNodes.get(index);
+            if (!before.id().equals(after.id())
+                    || !Objects.equals(before.parentId(), after.parentId())
+                    || !before.label().equals(after.label())
+                    || !icon(before).equals(icon(after))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void updateTreeSelection(NodeId selection) {
+        updatingTree = true;
+        try {
+            if (selection == null) {
+                hierarchy.clearSelection();
+            } else {
+                selectTreeNode((DefaultMutableTreeNode) hierarchy.getModel().getRoot(), selection);
+            }
+        } finally {
+            updatingTree = false;
+        }
     }
 
     private void rebuildTree(EditorController.State state) {
@@ -791,91 +830,180 @@ public final class SceneEditorPanel extends JPanel
         }
 
         void update(EditorController.State state) {
+            var previousState = this.state;
+            var previousNode = selected();
             this.state = state;
             var node = selected();
             rebuildTabs(node);
             if (node == null) return;
-            name.setText(node.label());
+            boolean changedSelection = previousNode == null || !previousNode.id().equals(node.id());
+            updateTransformFields(node, previousNode, changedSelection);
+            if (changedSelection
+                    || !sameHierarchy(previousState.snapshot(), state.snapshot())
+                    || !Objects.equals(previousNode.parentId(), node.parentId())) {
+                rebuildParentChoices(node);
+            }
+            if (geometryContextChanged(previousState, previousNode, node, changedSelection)) {
+                updateGeometryFields(node);
+            }
+            if (materialContextChanged(previousState, previousNode, node, changedSelection)) {
+                updateMaterialFields(node);
+            }
+            if (changedSelection
+                    || !Objects.equals(previousNode.light(), node.light())
+                    || !Objects.equals(previousNode.camera(), node.camera())) {
+                rebuildComponents(node);
+            }
+        }
+
+        private void updateTransformFields(
+                SceneNode node, SceneNode previous, boolean changedSelection) {
+            if (changedSelection || !node.label().equals(previous.label())) {
+                name.setText(node.label());
+            }
+            if (!changedSelection && node.localTransform().equals(previous.localTransform())) {
+                return;
+            }
             var t = node.localTransform();
             put(transform, t.position, 0);
             put(transform, t.rotation, 3);
             put(transform, t.scale, 6);
+        }
+
+        private void rebuildParentChoices(SceneNode node) {
             parent.removeAllItems();
             parent.addItem(new NodeChoice(null, "Scene root"));
-            int parentIndex = 0, index = 1;
-            for (var n : state.snapshot().nodes())
+            int parentIndex = 0;
+            int index = 1;
+            for (var n : state.snapshot().nodes()) {
                 if (!n.id().equals(node.id())) {
                     parent.addItem(new NodeChoice(n.id(), n.label()));
-                    if (n.id().equals(node.parentId())) parentIndex = index;
+                    if (n.id().equals(node.parentId())) {
+                        parentIndex = index;
+                    }
                     index++;
                 }
-            parent.setSelectedIndex(parentIndex);
-            if (node.geometry() != null) {
-                var geometry = state.snapshot().requireGeometry(node.geometry().geometryId());
-                var geometryValue = geometry.geometry();
-                boolean polygon = geometryValue instanceof PolygonMesh;
-                meshNote.setText(geometryLabel(geometryValue));
-                ((CardLayout) geometryEditor.getLayout())
-                        .show(
-                                geometryEditor,
-                                geometryValue instanceof AnalyticSphere ? "analytic" : "polygon");
-                if (geometryValue instanceof AnalyticSphere sphere) {
-                    put(sphereCenter, sphere.center(), 0);
-                    sphereRadius.setText(Float.toString(sphere.radius()));
-                }
-                var selectedVertex = state.vertexSelection();
-                var selectedEdge = state.edgeSelection();
-                var selectedFace = state.faceSelection();
-                if (selectedVertex != null && selectedVertex.nodeId().equals(node.id())) {
-                    meshFace.setText("Selected vertex ID: " + selectedVertex.vertexId());
-                } else if (selectedEdge != null && selectedEdge.nodeId().equals(node.id())) {
-                    meshFace.setText(
-                            "Selected edge IDs: "
-                                    + selectedEdge.firstVertexId()
-                                    + " - "
-                                    + selectedEdge.secondVertexId());
-                } else if (selectedFace != null && selectedFace.nodeId().equals(node.id())) {
-                    meshFace.setText("Selected face ID: " + selectedFace.faceId());
-                } else {
-                    meshFace.setText("No mesh element selected");
-                }
-                applySphere.setEnabled(geometryValue instanceof AnalyticSphere);
-                approximateSphere.setEnabled(geometryValue instanceof AnalyticSphere);
-                boolean selectedTranslatableElement =
-                        (selectedVertex != null && selectedVertex.nodeId().equals(node.id()))
-                                || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()))
-                                || (selectedFace != null
-                                        && selectedFace.nodeId().equals(node.id()));
-                translateElement.setEnabled(polygon && selectedTranslatableElement);
-                extrudeFace.setEnabled(
-                        polygon && selectedFace != null && selectedFace.nodeId().equals(node.id()));
-                var asset = state.snapshot().requireMaterial(node.geometry().materialId());
-                var m = asset.material();
-                put(color, m.color(), 0);
-                kind.setSelectedItem(m.kind());
-                roughness.setText(Float.toString(m.roughness()));
-                ior.setText(Float.toString(m.ior()));
             }
-            rebuildComponents(node);
+            parent.setSelectedIndex(parentIndex);
+        }
+
+        private boolean geometryContextChanged(
+                EditorController.State previous,
+                SceneNode previousNode,
+                SceneNode node,
+                boolean changedSelection) {
+            if (changedSelection
+                    || !Objects.equals(previousNode.geometry(), node.geometry())
+                    || !Objects.equals(previous.vertexSelection(), state.vertexSelection())
+                    || !Objects.equals(previous.edgeSelection(), state.edgeSelection())
+                    || !Objects.equals(previous.faceSelection(), state.faceSelection())) {
+                return true;
+            }
+            return node.geometry() != null
+                    && !Objects.equals(
+                            previous.snapshot().requireGeometry(node.geometry().geometryId()),
+                            state.snapshot().requireGeometry(node.geometry().geometryId()));
+        }
+
+        private boolean materialContextChanged(
+                EditorController.State previous,
+                SceneNode previousNode,
+                SceneNode node,
+                boolean changedSelection) {
+            if (node.geometry() == null) {
+                return false;
+            }
+            return changedSelection
+                    || !Objects.equals(previousNode.geometry(), node.geometry())
+                    || !Objects.equals(
+                            previous.snapshot().requireMaterial(node.geometry().materialId()),
+                            state.snapshot().requireMaterial(node.geometry().materialId()));
+        }
+
+        private void updateGeometryFields(SceneNode node) {
+            if (node.geometry() == null) {
+                return;
+            }
+            var geometry = state.snapshot().requireGeometry(node.geometry().geometryId());
+            var geometryValue = geometry.geometry();
+            boolean polygon = geometryValue instanceof PolygonMesh;
+            meshNote.setText(geometryLabel(geometryValue));
+            ((CardLayout) geometryEditor.getLayout())
+                    .show(
+                            geometryEditor,
+                            geometryValue instanceof AnalyticSphere ? "analytic" : "polygon");
+            if (geometryValue instanceof AnalyticSphere sphere) {
+                put(sphereCenter, sphere.center(), 0);
+                sphereRadius.setText(Float.toString(sphere.radius()));
+            }
+            var selectedVertex = state.vertexSelection();
+            var selectedEdge = state.edgeSelection();
+            var selectedFace = state.faceSelection();
+            if (selectedVertex != null && selectedVertex.nodeId().equals(node.id())) {
+                meshFace.setText("Selected vertex ID: " + selectedVertex.vertexId());
+            } else if (selectedEdge != null && selectedEdge.nodeId().equals(node.id())) {
+                meshFace.setText(
+                        "Selected edge IDs: "
+                                + selectedEdge.firstVertexId()
+                                + " - "
+                                + selectedEdge.secondVertexId());
+            } else if (selectedFace != null && selectedFace.nodeId().equals(node.id())) {
+                meshFace.setText("Selected face ID: " + selectedFace.faceId());
+            } else {
+                meshFace.setText("No mesh element selected");
+            }
+            applySphere.setEnabled(geometryValue instanceof AnalyticSphere);
+            approximateSphere.setEnabled(geometryValue instanceof AnalyticSphere);
+            boolean selectedTranslatableElement =
+                    (selectedVertex != null && selectedVertex.nodeId().equals(node.id()))
+                            || (selectedEdge != null && selectedEdge.nodeId().equals(node.id()))
+                            || (selectedFace != null && selectedFace.nodeId().equals(node.id()));
+            translateElement.setEnabled(polygon && selectedTranslatableElement);
+            extrudeFace.setEnabled(
+                    polygon && selectedFace != null && selectedFace.nodeId().equals(node.id()));
+        }
+
+        private void updateMaterialFields(SceneNode node) {
+            var asset = state.snapshot().requireMaterial(node.geometry().materialId());
+            var m = asset.material();
+            put(color, m.color(), 0);
+            kind.setSelectedItem(m.kind());
+            roughness.setText(Float.toString(m.roughness()));
+            ior.setText(Float.toString(m.ior()));
         }
 
         private void rebuildTabs(SceneNode node) {
+            setEnabledAt(0, node != null);
+            boolean geometry = node != null && node.geometry() != null;
+            boolean components = node != null && (node.light() != null || node.camera() != null);
+            int desiredCount = 1 + (geometry ? 2 : 0) + (components ? 1 : 0);
+            if (getTabCount() == desiredCount
+                    && (!geometry || getComponentAt(1) == meshPanel)
+                    && (!components || getComponentAt(desiredCount - 1) == componentsPanel)) {
+                return;
+            }
             String selectedTitle =
                     getSelectedIndex() < 0 ? "Transform" : getTitleAt(getSelectedIndex());
             removeAll();
             addTab("Transform", transformPanel);
             setEnabledAt(0, node != null);
-            if (node != null && node.geometry() != null) {
+            if (geometry) {
                 addTab("Mesh", meshPanel);
                 addTab("Material", materialPanel);
             }
-            if (node != null && (node.light() != null || node.camera() != null))
+            if (components) {
                 addTab("Components", componentsPanel);
-            for (int i = 0; i < getTabCount(); i++)
+            }
+            restoreSelectedTab(selectedTitle);
+        }
+
+        private void restoreSelectedTab(String selectedTitle) {
+            for (int i = 0; i < getTabCount(); i++) {
                 if (getTitleAt(i).equals(selectedTitle)) {
                     setSelectedIndex(i);
                     return;
                 }
+            }
             setSelectedIndex(0);
         }
 
