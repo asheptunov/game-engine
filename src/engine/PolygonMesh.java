@@ -57,6 +57,7 @@ public final class PolygonMesh implements GeometryData {
     private final Map<Long, Face> faceById;
     private final Map<Long, Vec3> normalByFace;
     private final Map<Long, List<Long>> adjacentFaces;
+    private final Map<Long, List<Long>> incidentFacesByVertex;
     private final long nextVertexId;
     private final long nextFaceId;
     private final boolean closed;
@@ -185,10 +186,75 @@ public final class PolygonMesh implements GeometryData {
         }
         if (closed) validateClosedSolid(adjacency);
         edges = List.copyOf(builtEdges);
-        var frozenAdjacency = new LinkedHashMap<Long, List<Long>>();
-        adjacency.forEach((id, values) -> frozenAdjacency.put(id, List.copyOf(values)));
-        adjacentFaces = Collections.unmodifiableMap(frozenAdjacency);
+        adjacentFaces = freezeAdjacency(adjacency);
+        incidentFacesByVertex = buildIncidentFaces();
         capabilities = new GeometryCapabilities(closed, false, isParallelogram(), isCanonicalBox());
+    }
+
+    private static Map<Long, List<Long>> freezeAdjacency(Map<Long, LinkedHashSet<Long>> adjacency) {
+        var frozen = new LinkedHashMap<Long, List<Long>>();
+        adjacency.forEach((id, values) -> frozen.put(id, List.copyOf(values)));
+        return Collections.unmodifiableMap(frozen);
+    }
+
+    private Map<Long, List<Long>> buildIncidentFaces() {
+        var incident = new LinkedHashMap<Long, List<Long>>();
+        for (var vertex : editableVertices) {
+            incident.put(vertex.id(), new ArrayList<>());
+        }
+        for (var face : faces) {
+            for (long vertexId : face.vertexIds()) {
+                incident.get(vertexId).add(face.id());
+            }
+        }
+        incident.replaceAll((_, values) -> List.copyOf(values));
+        return Collections.unmodifiableMap(incident);
+    }
+
+    /** Positions change; immutable connectivity and stable identities retain their validation. */
+    private PolygonMesh(PolygonMesh source, Set<Long> movedVertexIds, Vec3 localDelta) {
+        faces = source.faces;
+        edges = source.edges;
+        faceById = source.faceById;
+        adjacentFaces = source.adjacentFaces;
+        incidentFacesByVertex = source.incidentFacesByVertex;
+        nextVertexId = source.nextVertexId;
+        nextFaceId = source.nextFaceId;
+        closed = source.closed;
+        var vertices = new ArrayList<Vertex>(source.editableVertices.size());
+        var verticesById = new LinkedHashMap<>(source.vertexById);
+        var affectedFaces = new LinkedHashSet<Long>();
+        for (var vertex : source.editableVertices) {
+            if (movedVertexIds.contains(vertex.id())) {
+                var position = vertex.position().add(localDelta);
+                if (!finite(position)) {
+                    throw new IllegalArgumentException(
+                            "Editable vertex " + vertex.id() + " must be finite");
+                }
+                vertex = new Vertex(vertex.id(), position);
+                verticesById.put(vertex.id(), vertex);
+                affectedFaces.addAll(incidentFacesByVertex.get(vertex.id()));
+            }
+            vertices.add(vertex);
+        }
+        editableVertices = List.copyOf(vertices);
+        vertexById = Collections.unmodifiableMap(verticesById);
+        var normals = new LinkedHashMap<>(source.normalByFace);
+        for (long faceId : affectedFaces) {
+            var face = requireFace(faceId);
+            var points = new ArrayList<Vec3>(face.vertexIds().size());
+            for (long vertexId : face.vertexIds()) {
+                points.add(requireVertex(vertexId).position());
+            }
+            normals.put(faceId, validatePolygon(faceId, points));
+        }
+        normalByFace = Collections.unmodifiableMap(normals);
+        // A local move can invert the whole solid or change emitter/volume eligibility.
+        if (closed) {
+            validateClosedVolume();
+        }
+        capabilities = new GeometryCapabilities(closed, false, isParallelogram(), isCanonicalBox());
+        // The prepared geometry belongs to these positions and remains unprepared until requested.
     }
 
     public List<Vertex> editableVertices() {
@@ -276,15 +342,7 @@ public final class PolygonMesh implements GeometryData {
         if (localDelta.equals(Vec3.ZERO)) {
             return this;
         }
-        var translated = new ArrayList<Vertex>(editableVertices.size());
-        for (var vertex : editableVertices) {
-            var position =
-                    vertexIds.contains(vertex.id())
-                            ? vertex.position().add(localDelta)
-                            : vertex.position();
-            translated.add(new Vertex(vertex.id(), position));
-        }
-        return new PolygonMesh(translated, faces, nextVertexId, nextFaceId, closed);
+        return new PolygonMesh(this, vertexIds, localDelta);
     }
 
     /**
@@ -442,6 +500,10 @@ public final class PolygonMesh implements GeometryData {
         if (seen.size() != faces.size())
             throw new IllegalArgumentException(
                     "Closed polygon mesh must be one connected component");
+        validateClosedVolume();
+    }
+
+    private void validateClosedVolume() {
         Vec3 reference = editableVertices.getFirst().position();
         double volume6 = 0;
         for (var face : faces) {

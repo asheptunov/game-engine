@@ -1,0 +1,10 @@
+java=23.0.1 os=Windows 11 processors=20 sphereDetail=32 warmup=20 samples=60
+repeat=1 workload=two-snapshot-constructions meanMs=0.150 allocatedKiB=23.134
+repeat=1 workload=two-query-preparations-edit=Teal box meanMs=8.069 allocatedKiB=3647.524
+repeat=1 workload=two-query-preparations-edit=Terracotta sphere meanMs=7.501 allocatedKiB=4488.750
+repeat=2 workload=two-snapshot-constructions meanMs=0.021 allocatedKiB=21.156
+repeat=2 workload=two-query-preparations-edit=Teal box meanMs=7.339 allocatedKiB=3647.492
+repeat=2 workload=two-query-preparations-edit=Terracotta sphere meanMs=7.494 allocatedKiB=4488.750
+repeat=3 workload=two-snapshot-constructions meanMs=0.015 allocatedKiB=21.156
+repeat=3 workload=two-query-preparations-edit=Teal box meanMs=7.301 allocatedKiB=3647.492
+repeat=3 workload=two-query-preparations-edit=Terracotta sphere meanMs=7.433 allocatedKiB=4488.750

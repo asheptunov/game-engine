@@ -1,6 +1,6 @@
 # Scene and mesh editor performance plan
 
-Status: EP01–EP04 implemented and verified automatically. Human drag testing passed for EP01/EP02; EP03/EP04 GUI testing is pending and does not block further implementation. EP05–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
+Status: EP01–EP05 implemented and verified automatically. Human drag testing passed for EP01/EP02; EP03–EP05 GUI testing is pending and does not block further implementation. EP06–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
 
 The Swing scene editor becomes visibly unresponsive during rapid vertex dragging, even on the eight-vertex Teal box in the starter scene. The first priority is reliable display of completed edits during sustained input. Larger-mesh costs also need attention, but reducing those costs alone will not resolve the reproduced Teal box stall.
 
@@ -44,7 +44,7 @@ Java Flight Recorder execution samples also identified whole-mesh construction o
 
 ## Work tracker
 
-Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP04 in three delivery phases: phase 1 covers EP01/EP02, phase 2 covers EP03, and phase 3 covers EP04. Remaining items are unassigned.
+Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP05 in four delivery phases: phase 1 covers EP01/EP02, phase 2 covers EP03, phase 3 covers EP04, and phase 4 covers EP05. Remaining items are unassigned.
 
 | ID | Priority | Status | Work item | Completion evidence |
 | --- | --- | --- | --- | --- |
@@ -52,14 +52,14 @@ Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verifi
 | EP02 | First | Verified | Prevent image/overlay publication starvation | [Handoff implementation](src/editor/RenderViewPanel.java), first-phase results below, and successful human drag test |
 | EP03 | Next | Verified | Avoid rebuilding unrelated Swing controls during edits | [Control-preservation test](tst/editor/EditorControlRefreshTest.java) and second-phase measurements below; human GUI test pending |
 | EP04 | Next | Verified | Cache dense mesh-cue and wireframe painting | [Raster tests](tst/editor/OverlayRasterCacheTest.java) and third-phase measurements below; human GUI test pending |
-| EP05 | Next | Proposed | Update moved mesh vertices incrementally | Lower allocation and edit time; full-validation equivalence tests pass |
+| EP05 | Next | Verified | Update moved mesh vertices incrementally | [Full-validation comparisons](tst/engine/IncrementalMeshTest.java) and fourth-phase measurements below; human GUI test pending |
 | EP06 | Next | Proposed | Reuse scene snapshot construction work | Avoid duplicate scene-wide work without weakening atomic publication |
 | EP07 | Next | Proposed | Share and incrementally update picking preparation | Unchanged objects reuse prepared data; both views remain correct |
 | EP08 | Conditional | Proposed | Coalesce excess drag updates | Latest pointer position and final release are preserved; measured benefit beyond EP02 |
 | EP09 | Conditional | Proposed | Improve render scheduling during geometry edits | Adopt only if cancellation or render cost remains a measured bottleneck |
 | EP10 | Conditional | Proposed | Add cheaper visual feedback while dragging | Adopt only if earlier work misses responsiveness targets; explicit quality policy |
 
-EP01 now enables evaluation of every item. EP01–EP04 are verified; rank EP05–EP10 by gains in fresh displayed frames. Coordinate EP05–EP07 around immutable geometry ownership and cache invalidation. Conditional items are alternatives to evaluate, not commitments to reduce quality or relax correctness.
+EP01 now enables evaluation of every item. EP01–EP05 are verified; rank EP06–EP10 by gains in fresh displayed frames. Coordinate remaining EP06/EP07 work around immutable geometry ownership and cache invalidation, preserving the completed EP05 safeguards. Conditional items are alternatives to evaluate, not commitments to reduce quality or relax correctness.
 
 ## First phase completed: EP01 and EP02
 
@@ -88,7 +88,7 @@ To repeat the current measurements, run `./verify.ps1` to compile sources and te
 
 The first argument is the number of repetitions. An optional second argument selects `vertex`, `edge` or `face`; the recorded three-run comparison used `vertex`. For a historical comparison, compile the original `RenderViewPanel.java` from `ae8c129` into a separate directory and place that directory first on the same classpath. Window-free results measure software painting, not monitor scanout or physical mouse latency.
 
-The second phase below reduces control-refresh costs. Dense-overlay caching under EP04 is complete below. Incremental mesh editing under EP05 is next; remeasure before adopting further cache changes or conditional quality policies.
+The second phase below reduces control-refresh costs. Dense-overlay caching under EP04 is complete below. Incremental mesh editing under EP05 is complete below; remeasure before adopting further cache changes or conditional quality policies.
 
 ## Second phase completed: EP03
 
@@ -127,6 +127,23 @@ Active dragging needs a fresh raster for each projected edit. The same three-rep
 
 The small Teal box retained direct drawing. Its three-repeat check met the responsiveness targets in both views: 30–33 fresh FPS, longest hold 147 ms and final-revision latency at most 51 ms. [Teal box check](benchmarks/editor-drag/phase3-box-after.log). Human GUI test pending: select vertices and edges on a dense sphere, toggle wireframe, resize the window and move it between display scales. Check that cues remain aligned, picking selects the shown elements, and close/reopen works. GUI response does not block the next phase.
 
+## Fourth phase completed: EP05
+
+Position-only translations in `PolygonMesh` retain validated immutable topology. A vertex-to-face incidence table is built with the topology and identifies faces needing geometric validation after vertex, edge or face moves. Unchanged vertex records and face normals are retained. Lookup maps and the vertex list are copied; this remains proportional to mesh size, but no longer reconstructs every edge and adjacency set. Closed meshes still undergo the complete signed-volume calculation in the original face/fan order. Material capabilities are recomputed, and new positions get an independent prepared-geometry cache. Extrusion and mesh creation retain full validation.
+
+[IncrementalMeshTest](tst/engine/IncrementalMeshTest.java) compares 900 deterministic random vertex/edge/face translations with independently reconstructed meshes. It checks acceptance/rejection, stable content, capabilities, normals, adjacency and prepared primitives. Additional cases cover chained moves, old prepared-data stability, nonplanar faces, volume inversion and extrusion after deformation. `./verify.ps1`, this test, `EditableMeshTest`, `SceneEditorPreviewTest`, `EditorControllerTest`, `GizmoDragTest` and `RenderViewHandoffTest` passed. The style baseline was tightened without adding allowances.
+
+Three matching dense-sphere drag repetitions compared the phase-three mesh class with EP05, using the preceding detail-32 workload. Medians of per-run means and fresh FPS were:
+
+| Requested input interval | EDT edit before / after | EDT allocation before / after | View A fresh FPS before / after | View B fresh FPS before / after |
+| --- | ---: | ---: | ---: | ---: |
+| 16 ms | 5.550 / 0.529 ms | 9417.9 / 636.6 KiB | 17.38 / 21.82 | 14.99 / 20.30 |
+| 4 ms | 4.731 / 0.470 ms | 9417.2 / 635.7 KiB | 17.68 / 21.97 | 15.93 / 20.22 |
+
+Edit cost fell about 90% and allocation about 93%. Fresh-frame progress improved in both panes, while fresh overlay drawing remains a substantial dense-mesh cost. [Before](benchmarks/editor-drag/phase4-dense-before.log), [after](benchmarks/editor-drag/phase4-dense-after.log). The Teal box check retained the targets: 37–44 fresh FPS across both panes, longest hold 105 ms and final revision within 50 ms. This check has no matching phase-three Teal-box baseline, so its FPS difference is not attributed solely to EP05. [Teal box results](benchmarks/editor-drag/phase4-box-after.log).
+
+Human GUI test pending: deform a dense sphere and the Teal box using vertices, edges and faces; verify final release, undo/redo and Escape cancellation. Try an invalid move and confirm it leaves the last valid geometry intact. Continuing implementation is authorized without waiting for that response.
+
 ## Proposed changes and safeguards
 
 ### EP01 and EP02 Implemented publication policy and continuing safeguards
@@ -149,9 +166,9 @@ The third phase caches dense rasterized overlays by their exact visual context, 
 
 Reduced marker density, simpler antialiasing, or fewer wireframe details during motion are optional quality tradeoffs. Measure them separately and retain clear selected elements and handles. Do not silently alter x-ray selection or hit radii. Compare screenshots and selection tests at multiple window scales.
 
-### EP05 Incremental mesh edits
+### EP05 Implemented incremental mesh edits and continuing safeguards
 
-[PolygonMesh.java](src/engine/PolygonMesh.java) currently recreates every vertex record, validates every face, and rebuilds edges and adjacency for a translated vertex or edge. Separate immutable topology from positions. Reuse stable IDs, edge connectivity, and adjacency when topology is unchanged; recompute affected face geometry and any dependent global properties.
+[PolygonMesh.java](src/engine/PolygonMesh.java) now shares immutable faces, edges, stable IDs, face adjacency and vertex-to-face incidence during vertex, edge and face translations. It retains unchanged vertex records, copies position/normal lookup maps and validates affected faces. Closed-solid volume and material capabilities are still recomputed. Prepared geometry is specific to the new positions; previously prepared meshes remain immutable.
 
 Validate affected polygons and preserve closed-solid volume/orientation checks and material capability checks. A local move can change emitter or volume eligibility. Do not publish invalid intermediate geometry merely to make dragging faster. Compare incremental results with the full constructor for valid and invalid edits, nonplanar faces, closed meshes, and undo/cancel. Topology-changing operations such as extrusion retain full validation until separately optimized.
 
@@ -188,4 +205,4 @@ The following are proposed engineering targets for the starter-scene reproductio
 - Exercise vertex, edge, and face dragging; rapid repeated gestures; both views; wireframe on/off; dense meshes; invalid moves; release, undo, redo, cancel, resize, camera/selection changes, and close. Confirm no stale selection, lost final edit, unbounded queue, or mutation of leased images.
 - Run `./verify.ps1` and relevant editor, mesh, spatial-query, and rendering tests for implementation changes. Follow with human GUI QA on the Teal box at normal and fast dragging speeds; offscreen rendering cannot certify physical input-to-screen responsiveness.
 
-For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP04 are complete. Continue measuring and ranking EP05–EP10 using the remaining bottlenecks.
+For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP05 are complete. Continue measuring and ranking EP06–EP10 using the remaining bottlenecks.
