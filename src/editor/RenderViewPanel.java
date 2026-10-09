@@ -95,6 +95,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
     private final JPanel viewHeader = new JPanel(new BorderLayout(6, 3));
     private final Map<Long, PickToken> tokens = new HashMap<>();
     private final OverlayGeometry overlayGeometry = new OverlayGeometry();
+    private final OverlayRasterCache overlayRaster = new OverlayRasterCache();
     private volatile DisplayFrame candidateFrame;
     private volatile DisplayBundle readyBundle;
     private volatile PaintedFrame paintedFrame;
@@ -1152,7 +1153,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                             oldArea.width,
                             oldArea.height,
                             null);
-                    drawOverlay((Graphics2D) graphics, oldArea, previous.overlay());
+                    paintOverlay((Graphics2D) graphics, oldArea, previous.overlay());
                     paintedFrame =
                             new PaintedFrame(
                                     previous.frame(),
@@ -1172,7 +1173,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
 
     private void paintBundle(Graphics graphics, DisplayBundle bundle, Rectangle area) {
         graphics.drawImage(bundle.frame().image(), area.x, area.y, area.width, area.height, null);
-        drawOverlay((Graphics2D) graphics, area, bundle.overlay());
+        paintOverlay((Graphics2D) graphics, area, bundle.overlay());
     }
 
     private static boolean projectionMatches(
@@ -1227,6 +1228,34 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                 && Objects.equals(first.vertexSelection(), second.vertexSelection())
                 && Objects.equals(first.edgeSelection(), second.edgeSelection())
                 && Objects.equals(first.faceSelection(), second.faceSelection());
+    }
+
+    private void paintOverlay(Graphics2D source, Rectangle area, OverlayGeometry.Frame overlay) {
+        int cues =
+                overlay.elementCueLines().size()
+                        + overlay.elementCuePoints().size()
+                        + overlay.selectedFace().size()
+                        + overlay.selectedEdges().size()
+                        + overlay.selectedVertices().size();
+        if (wireframe.isSelected()) {
+            cues += overlay.wireframe().size();
+        }
+        // Raster compositing is worthwhile for dense cues, but adds work to a small box overlay.
+        if (cues < 256) {
+            overlayRaster.clear();
+            drawOverlay(source, area, overlay);
+            return;
+        }
+        if (!overlayRaster.paint(
+                source,
+                getWidth(),
+                getHeight(),
+                area,
+                overlay,
+                wireframe.isSelected(),
+                (graphics, content) -> drawOverlay(graphics, content, overlay))) {
+            drawOverlay(source, area, overlay);
+        }
     }
 
     private void drawOverlay(Graphics2D source, Rectangle area, OverlayGeometry.Frame overlay) {
@@ -1840,6 +1869,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
         inputBindings.clearTransient();
         cancelGizmo();
         closed = true;
+        overlayRaster.clear();
         pending.set(null);
         pendingOverlay.set(null);
         desiredOverlay = null;

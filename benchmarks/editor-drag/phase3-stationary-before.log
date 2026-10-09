@@ -1,0 +1,19 @@
+java=23.0.1 panel=1400x850 mesh=sphere detail=32 vertices=1986 faces=3968 paints=60 warmup=20 stationary=true
+repeat=1 mode=OBJECT wireframe=true paint-ms mean=19.916 p50=20.250 p95=24.693 max=26.867
+repeat=1 mode=VERTEX wireframe=true paint-ms mean=61.081 p50=60.518 p95=67.817 max=69.326
+repeat=1 mode=EDGE wireframe=true paint-ms mean=44.855 p50=44.436 p95=51.100 max=52.575
+repeat=1 mode=OBJECT wireframe=false paint-ms mean=7.437 p50=7.494 p95=9.497 max=9.572
+repeat=1 mode=VERTEX wireframe=false paint-ms mean=41.686 p50=41.280 p95=46.927 max=51.216
+repeat=1 mode=EDGE wireframe=false paint-ms mean=26.526 p50=26.281 p95=29.999 max=30.987
+repeat=2 mode=OBJECT wireframe=true paint-ms mean=21.150 p50=20.829 p95=26.113 max=26.509
+repeat=2 mode=VERTEX wireframe=true paint-ms mean=65.823 p50=65.497 p95=72.120 max=76.942
+repeat=2 mode=EDGE wireframe=true paint-ms mean=36.335 p50=36.961 p95=43.630 max=51.456
+repeat=2 mode=OBJECT wireframe=false paint-ms mean=6.514 p50=6.314 p95=9.107 max=10.273
+repeat=2 mode=VERTEX wireframe=false paint-ms mean=43.534 p50=44.054 p95=51.816 max=54.271
+repeat=2 mode=EDGE wireframe=false paint-ms mean=23.873 p50=23.933 p95=29.126 max=29.553
+repeat=3 mode=OBJECT wireframe=true paint-ms mean=19.377 p50=20.092 p95=24.396 max=24.613
+repeat=3 mode=VERTEX wireframe=true paint-ms mean=57.563 p50=59.472 p95=64.815 max=65.483
+repeat=3 mode=EDGE wireframe=true paint-ms mean=38.895 p50=39.970 p95=46.229 max=47.830
+repeat=3 mode=OBJECT wireframe=false paint-ms mean=6.134 p50=5.933 p95=8.157 max=8.429
+repeat=3 mode=VERTEX wireframe=false paint-ms mean=43.209 p50=43.813 p95=51.856 max=57.210
+repeat=3 mode=EDGE wireframe=false paint-ms mean=20.264 p50=20.445 p95=25.852 max=26.329

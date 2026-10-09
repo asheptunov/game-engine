@@ -32,6 +32,13 @@ public final class EditorDragBenchmark {
                 args.length < 2
                         ? EditorController.SelectionMode.VERTEX
                         : EditorController.SelectionMode.valueOf(args[1].toUpperCase(Locale.ROOT));
+        int detail = args.length < 3 ? 0 : Integer.parseInt(args[2]);
+        System.out.printf(
+                Locale.ROOT,
+                "mesh=%s detail=%d amplitude=%s%n",
+                detail == 0 ? "Teal box" : "Terracotta sphere",
+                detail,
+                detail == 0 ? "0.15" : "0.0001");
         System.out.printf(
                 Locale.ROOT,
                 "java=%s os=%s processors=%d panel=%dx%d mode=%s durationMs=%d paintPeriodMs=16"
@@ -47,14 +54,14 @@ public final class EditorDragBenchmark {
                 Math.min(4, Math.max(1, Runtime.getRuntime().availableProcessors() / 2)));
         for (int repeat = 1; repeat <= repeats; repeat++) {
             for (int period : new int[] {16, 4}) {
-                run(repeat, period, mode);
+                run(repeat, period, mode, detail);
             }
         }
     }
 
-    private static void run(int repeat, int period, EditorController.SelectionMode mode)
+    private static void run(int repeat, int period, EditorController.SelectionMode mode, int detail)
             throws Exception {
-        var workload = onEdt(() -> new Workload(mode));
+        var workload = onEdt(() -> new Workload(mode, detail));
         try {
             for (int warmup = 0; warmup < 100; warmup++) {
                 onEdt(
@@ -106,6 +113,7 @@ public final class EditorDragBenchmark {
         private final ArrayList<Double> editKiB = new ArrayList<>();
         private final ArrayList<Double> paintMillis = new ArrayList<>();
         private final HashMap<Long, Long> revisionTimes = new HashMap<>();
+        private final float amplitude;
         private Timer input;
         private Timer painter;
         private Throwable failure;
@@ -113,8 +121,9 @@ public final class EditorDragBenchmark {
         private long end;
         private long finalRevision;
 
-        Workload(EditorController.SelectionMode mode) throws Exception {
-            selectElement(mode);
+        Workload(EditorController.SelectionMode mode, int detail) throws Exception {
+            amplitude = detail == 0 ? .15f : .0001f;
+            selectElement(mode, detail);
             panel = new SceneEditorPanel(controller);
             panel.setSize(WIDTH, HEIGHT);
             views =
@@ -124,13 +133,17 @@ public final class EditorDragBenchmark {
                     };
         }
 
-        private void selectElement(EditorController.SelectionMode mode) {
+        private void selectElement(EditorController.SelectionMode mode, int detail) {
+            String label = detail == 0 ? "Teal box" : "Terracotta sphere";
             var node =
                     controller.snapshot().nodes().stream()
-                            .filter(candidate -> candidate.label().equals("Teal box"))
+                            .filter(candidate -> candidate.label().equals(label))
                             .findFirst()
                             .orElseThrow();
             controller.select(node.id());
+            if (detail != 0) {
+                require(controller.approximateAnalyticSphere(node.id(), detail), controller);
+            }
             require(controller.setSelectionMode(mode), controller);
             var mesh =
                     (PolygonMesh)
@@ -186,7 +199,7 @@ public final class EditorDragBenchmark {
             double seconds = (started - start) / 1e9;
             require(
                     controller.updateElementGesture(
-                            new Vec3((float) (.15 * Math.sin(seconds * 8)), 0, 0)),
+                            new Vec3((float) (amplitude * Math.sin(seconds * 8)), 0, 0)),
                     controller);
             long finished = System.nanoTime();
             editMillis.add((finished - started) / 1e6);

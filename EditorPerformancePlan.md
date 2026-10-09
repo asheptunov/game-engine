@@ -1,6 +1,6 @@
 # Scene and mesh editor performance plan
 
-Status: EP01–EP03 implemented and verified automatically. Human drag testing passed for EP01/EP02; EP03 GUI testing is pending and does not block further implementation. EP04–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
+Status: EP01–EP04 implemented and verified automatically. Human drag testing passed for EP01/EP02; EP03/EP04 GUI testing is pending and does not block further implementation. EP05–EP10 remain proposed. Baseline: `ae8c129`, investigated October 8, 2026.
 
 The Swing scene editor becomes visibly unresponsive during rapid vertex dragging, even on the eight-vertex Teal box in the starter scene. The first priority is reliable display of completed edits during sustained input. Larger-mesh costs also need attention, but reducing those costs alone will not resolve the reproduced Teal box stall.
 
@@ -44,14 +44,14 @@ Java Flight Recorder execution samples also identified whole-mesh construction o
 
 ## Work tracker
 
-Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP03 in two delivery phases: phase 1 covers EP01/EP02, and phase 2 covers EP03. Remaining items are unassigned.
+Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verified means the linked automated checks and measurements pass; human GUI outcomes are recorded separately. Change a status only with a linked implementation or measurement result. Preserve the IDs as work is split into issues or pull requests. Codex implemented EP01–EP04 in three delivery phases: phase 1 covers EP01/EP02, phase 2 covers EP03, and phase 3 covers EP04. Remaining items are unassigned.
 
 | ID | Priority | Status | Work item | Completion evidence |
 | --- | --- | --- | --- | --- |
 | EP01 | First | Verified | Make fresh-frame progress measurable and reproducible | [Maintained benchmark](tst/editor/EditorDragBenchmark.java), [deterministic regression](tst/editor/RenderViewHandoffTest.java), and first-phase results below |
 | EP02 | First | Verified | Prevent image/overlay publication starvation | [Handoff implementation](src/editor/RenderViewPanel.java), first-phase results below, and successful human drag test |
 | EP03 | Next | Verified | Avoid rebuilding unrelated Swing controls during edits | [Control-preservation test](tst/editor/EditorControlRefreshTest.java) and second-phase measurements below; human GUI test pending |
-| EP04 | Next | Proposed | Reduce mesh-cue and wireframe painting cost | Lower stationary and dragging paint times with unchanged picking semantics |
+| EP04 | Next | Verified | Cache dense mesh-cue and wireframe painting | [Raster tests](tst/editor/OverlayRasterCacheTest.java) and third-phase measurements below; human GUI test pending |
 | EP05 | Next | Proposed | Update moved mesh vertices incrementally | Lower allocation and edit time; full-validation equivalence tests pass |
 | EP06 | Next | Proposed | Reuse scene snapshot construction work | Avoid duplicate scene-wide work without weakening atomic publication |
 | EP07 | Next | Proposed | Share and incrementally update picking preparation | Unchanged objects reuse prepared data; both views remain correct |
@@ -59,7 +59,7 @@ Status values are Proposed, In progress, Blocked, Verified, and Deferred. Verifi
 | EP09 | Conditional | Proposed | Improve render scheduling during geometry edits | Adopt only if cancellation or render cost remains a measured bottleneck |
 | EP10 | Conditional | Proposed | Add cheaper visual feedback while dragging | Adopt only if earlier work misses responsiveness targets; explicit quality policy |
 
-EP01 now enables evaluation of every item. With EP02 verified, rank the remaining work by gains in fresh displayed frames. EP03 and EP04 can be assessed independently. Coordinate EP05–EP07 around immutable geometry ownership and cache invalidation. Conditional items are alternatives to evaluate, not commitments to reduce quality or relax correctness.
+EP01 now enables evaluation of every item. EP01–EP04 are verified; rank EP05–EP10 by gains in fresh displayed frames. Coordinate EP05–EP07 around immutable geometry ownership and cache invalidation. Conditional items are alternatives to evaluate, not commitments to reduce quality or relax correctness.
 
 ## First phase completed: EP01 and EP02
 
@@ -88,7 +88,7 @@ To repeat the current measurements, run `./verify.ps1` to compile sources and te
 
 The first argument is the number of repetitions. An optional second argument selects `vertex`, `edge` or `face`; the recorded three-run comparison used `vertex`. For a historical comparison, compile the original `RenderViewPanel.java` from `ae8c129` into a separate directory and place that directory first on the same classpath. Window-free results measure software painting, not monitor scanout or physical mouse latency.
 
-The second phase below reduces control-refresh costs. Dense-overlay work under EP04 is next; remeasure before adopting geometry/cache changes or conditional quality policies.
+The second phase below reduces control-refresh costs. Dense-overlay caching under EP04 is complete below. Incremental mesh editing under EP05 is next; remeasure before adopting further cache changes or conditional quality policies.
 
 ## Second phase completed: EP03
 
@@ -107,6 +107,26 @@ EDT edit work decreased about 65–66%, with about 34% less allocation. Both vie
 
 Human GUI test pending: type an unfinished transform or material value, switch inspector tabs, and drag a vertex or edge repeatedly. Confirm the unrelated draft and selected tab stay in place. Rename/reparent objects, select another object or clear selection, and add/remove a scene camera to confirm structural controls still refresh. The user authorized committing, pushing and continuing without waiting for a GUI response.
 
+## Third phase completed: EP04
+
+Dense overlays now use one reusable transparent raster per render view in [OverlayRasterCache.java](src/editor/OverlayRasterCache.java). `RenderViewPanel` uses the cache for at least 256 cues, including wireframe when enabled; smaller overlays retain direct drawing. A new projected overlay rasterizes once. Repeated paints of that exact frame reuse its pixels. Picking still uses the original projected geometry.
+
+The cache checks frame identity, content rectangle, wireframe setting, raster dimensions, font, rendering hints, display scale and fractional pane origin. It retains at most 16 MiB of pixel payload per view and releases that buffer on close or return to a small overlay. Oversize rasters, rotation/shear and nonstandard alpha composition use direct drawing. `OverlayRasterCacheTest` compares translucent overlapping cues and text against direct drawing at 100%, 125%, 150% and 200% scale, including fractional pane origins. Differences are bounded to three channel levels from premultiplied alpha rounding. The suite also checks cache invalidation, reuse and fallback. `./verify.ps1`, this suite, the handoff/control suites, `SceneEditorPreviewTest` and `OverlayGeometryTest` passed. No style allowances were added.
+
+[EditorOverlayBenchmark.java](tst/editor/EditorOverlayBenchmark.java) measures stationary full-panel painting with a 3968-face sphere at detail 32, both views active, 20 warm-up paints and 60 measured paints. Three repetitions compared the `aa21dd3` view class with EP04 using identical compiled dependencies. Medians of per-run paint means with default wireframe were:
+
+| Selection mode | Before | After |
+| --- | ---: | ---: |
+| Object | 19.916 ms | 6.074 ms |
+| Vertex | 61.081 ms | 5.505 ms |
+| Edge | 38.895 ms | 5.392 ms |
+
+Vertex and edge painting improved about 91% and 86%. With wireframe disabled, the vertex median changed from 43.209 to 5.013 ms and edge from 23.873 to 4.302 ms. Object mode without wireframe uses direct drawing, so variation in that case is not attributed to caching. [Stationary before](benchmarks/editor-drag/phase3-stationary-before.log), [stationary after](benchmarks/editor-drag/phase3-stationary-after.log). Repeat with `editor.EditorOverlayBenchmark 3` on the compiled classpath above.
+
+Active dragging needs a fresh raster for each projected edit. The same three-repeat drag workload at sphere detail 32 uses amplitude 0.0001 scene units to avoid invalid large moves. Median full-panel paint means changed from 51.090 to 46.525 ms at requested 16 ms input and from 48.844 to 46.067 ms at 4 ms. View A median fresh FPS changed from 14.36 to 15.43 and from 15.09 to 16.13 respectively; View B changed from 14.11 to 15.19 and from 14.96 to 15.33. Some dense-mesh holds still exceeded 200 ms. This is a modest active-drag gain, and dense geometry construction and fresh cue drawing remain bottlenecks. [Dense before](benchmarks/editor-drag/phase3-dense-before.log), [dense after](benchmarks/editor-drag/phase3-dense-after.log). Run the drag benchmark with `3 vertex 32` to select this workload; the third argument is sphere approximation detail, with zero retaining the default Teal box.
+
+The small Teal box retained direct drawing. Its three-repeat check met the responsiveness targets in both views: 30–33 fresh FPS, longest hold 147 ms and final-revision latency at most 51 ms. [Teal box check](benchmarks/editor-drag/phase3-box-after.log). Human GUI test pending: select vertices and edges on a dense sphere, toggle wireframe, resize the window and move it between display scales. Check that cues remain aligned, picking selects the shown elements, and close/reopen works. GUI response does not block the next phase.
+
 ## Proposed changes and safeguards
 
 ### EP01 and EP02 Implemented publication policy and continuing safeguards
@@ -123,9 +143,9 @@ Future changes must keep image, camera, scene snapshot, content rectangle, overl
 
 [SceneEditorPanel.java](src/editor/SceneEditorPanel.java) now distinguishes geometry-coordinate updates from hierarchy, selection, component, and label changes. It updates changed values while retaining controls whose source content is unchanged. Continue preserving focus, text drafts, expanded tree nodes and selected tabs in future changes; actual structural edits must still refresh their controls. The second-phase tests and measurements above verify this policy.
 
-### EP04 Reduce overlay drawing work
+### EP04 Implemented dense overlay cache and continuing safeguards
 
-In `RenderViewPanel.drawOverlay` and [OverlayGeometry.java](src/editor/overlay/OverlayGeometry.java), evaluate caching rasterized overlays by their exact visual context, batching lines with the same style, reusing strokes/colors, and clipping cues outside the viewport. Cached geometry alone does not eliminate repeated Java2D rasterization. Include projection, scene/selection revisions, viewport size, display scale, and overlay settings in invalidation.
+The third phase caches dense rasterized overlays by their exact visual context, with invalidation and resource limits described above. Retain those safeguards in future changes to `RenderViewPanel.drawOverlay` or [OverlayGeometry.java](src/editor/overlay/OverlayGeometry.java). Batching lines, reusing strokes/colors and clipping cues are possible follow-ups if fresh cue drawing remains a measured bottleneck; they are not unfinished EP04 commitments.
 
 Reduced marker density, simpler antialiasing, or fewer wireframe details during motion are optional quality tradeoffs. Measure them separately and retain clear selected elements and handles. Do not silently alter x-ray selection or hit radii. Compare screenshots and selection tests at multiple window scales.
 
@@ -168,4 +188,4 @@ The following are proposed engineering targets for the starter-scene reproductio
 - Exercise vertex, edge, and face dragging; rapid repeated gestures; both views; wireframe on/off; dense meshes; invalid moves; release, undo, redo, cancel, resize, camera/selection changes, and close. Confirm no stale selection, lost final edit, unbounded queue, or mutation of leased images.
 - Run `./verify.ps1` and relevant editor, mesh, spatial-query, and rendering tests for implementation changes. Follow with human GUI QA on the Teal box at normal and fast dragging speeds; offscreen rendering cannot certify physical input-to-screen responsiveness.
 
-For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP03 are complete. Continue measuring and ranking EP04–EP10 using the remaining bottlenecks.
+For each completed item, add its commit or PR, workload/settings, before/after measurements, correctness checks, and human-QA outcome beside its status or in a linked result record. EP01–EP04 are complete. Continue measuring and ranking EP05–EP10 using the remaining bottlenecks.
