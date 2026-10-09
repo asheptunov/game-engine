@@ -1,0 +1,25 @@
+2026-10-08T23:25:50.603734900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T23:25:50.606086900  [INFO] harness.SuiteRunner: ? Suite editor.SceneEditorPreviewTest [PT8.1903669S]
+2026-10-08T23:25:50.606086900  [INFO] harness.SuiteRunner: ? Test editor.SceneEditorPreviewTest#editorMouseRouteUsesRemappedBindingFile [PT0.4004023S]
+2026-10-08T23:25:50.606086900  [INFO] harness.SuiteRunner: ? Test editor.SceneEditorPreviewTest#realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow [PT7.7899646S]
+2026-10-08T23:25:50.606086900  [INFO] harness.SuiteRunner: ========================
+2026-10-08T23:25:50.606086900 [ERROR] harness.SuiteRunner: Test editor.SceneEditorPreviewTest#realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow failed with exception: class java.lang.AssertionError|java.lang.AssertionError: Vertex pick did not complete for bb70ac4d-8d08-48e7-a8b8-e3647db0d7a5 vertex 0|	at editor.SceneEditorPreviewTest.awaitVertexSelection(SceneEditorPreviewTest.java:1259)|	at editor.SceneEditorPreviewTest.assertNewerCrossViewVertexPickWins(SceneEditorPreviewTest.java:1235)|	at editor.SceneEditorPreviewTest.realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow(SceneEditorPreviewTest.java:739)|	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)|	at java.base/java.lang.reflect.Method.invoke(Method.java:580)|	at harness.SuiteRunner.runTest(SuiteRunner.java:185)|	at harness.SuiteRunner.runTests(SuiteRunner.java:133)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)|	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)|	at harness.SuiteRunner.runThis(SuiteRunner.java:34)|	at editor.SceneEditorPreviewTest.main(SceneEditorPreviewTest.java:31)
+java.lang.AssertionError: Vertex pick did not complete for bb70ac4d-8d08-48e7-a8b8-e3647db0d7a5 vertex 0
+	at editor.SceneEditorPreviewTest.awaitVertexSelection(SceneEditorPreviewTest.java:1259)
+	at editor.SceneEditorPreviewTest.assertNewerCrossViewVertexPickWins(SceneEditorPreviewTest.java:1235)
+	at editor.SceneEditorPreviewTest.realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow(SceneEditorPreviewTest.java:739)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at harness.SuiteRunner.runTest(SuiteRunner.java:185)
+	at harness.SuiteRunner.runTests(SuiteRunner.java:133)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.SceneEditorPreviewTest.main(SceneEditorPreviewTest.java:31)
+Exception in thread "main" java.lang.AssertionError: Suite editor.SceneEditorPreviewTest: 1 test(s) failed
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:99)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.SceneEditorPreviewTest.main(SceneEditorPreviewTest.java:31)

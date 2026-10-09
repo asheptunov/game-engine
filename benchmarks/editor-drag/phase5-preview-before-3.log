@@ -1,0 +1,30 @@
+2026-10-08T23:33:54.491646100  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T23:33:54.491646100  [INFO] harness.SuiteRunner: ? Suite editor.SceneEditorPreviewTest [PT7.9763198S]
+2026-10-08T23:33:54.491646100  [INFO] harness.SuiteRunner: ? Test editor.SceneEditorPreviewTest#editorMouseRouteUsesRemappedBindingFile [PT0.348237S]
+2026-10-08T23:33:54.491646100  [INFO] harness.SuiteRunner: ? Test editor.SceneEditorPreviewTest#realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow [PT7.6280828S]
+2026-10-08T23:33:54.491646100  [INFO] harness.SuiteRunner: ========================
+2026-10-08T23:33:54.491646100 [ERROR] harness.SuiteRunner: Test editor.SceneEditorPreviewTest#realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow failed with exception: class java.lang.RuntimeException|java.lang.RuntimeException: Expected equal objects, but got two non-equal ones:|expected:|0|actual:|1|	at harness.Assertions.assertEquals(Assertions.java:10)|	at editor.SceneEditorPreviewTest.awaitProjectionBlocked(SceneEditorPreviewTest.java:1393)|	at editor.SceneEditorPreviewTest.assertNewerCrossViewVertexPickWins(SceneEditorPreviewTest.java:1232)|	at editor.SceneEditorPreviewTest.realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow(SceneEditorPreviewTest.java:739)|	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)|	at java.base/java.lang.reflect.Method.invoke(Method.java:580)|	at harness.SuiteRunner.runTest(SuiteRunner.java:185)|	at harness.SuiteRunner.runTests(SuiteRunner.java:133)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)|	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)|	at harness.SuiteRunner.runThis(SuiteRunner.java:34)|	at editor.SceneEditorPreviewTest.main(SceneEditorPreviewTest.java:31)
+java.lang.RuntimeException: Expected equal objects, but got two non-equal ones:
+expected:
+0
+actual:
+1
+	at harness.Assertions.assertEquals(Assertions.java:10)
+	at editor.SceneEditorPreviewTest.awaitProjectionBlocked(SceneEditorPreviewTest.java:1393)
+	at editor.SceneEditorPreviewTest.assertNewerCrossViewVertexPickWins(SceneEditorPreviewTest.java:1232)
+	at editor.SceneEditorPreviewTest.realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow(SceneEditorPreviewTest.java:739)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at harness.SuiteRunner.runTest(SuiteRunner.java:185)
+	at harness.SuiteRunner.runTests(SuiteRunner.java:133)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.SceneEditorPreviewTest.main(SceneEditorPreviewTest.java:31)
+Exception in thread "main" java.lang.AssertionError: Suite editor.SceneEditorPreviewTest: 1 test(s) failed
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:99)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.SceneEditorPreviewTest.main(SceneEditorPreviewTest.java:31)

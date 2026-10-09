@@ -5,6 +5,7 @@ import engine.lights.PointLight;
 
 import math.Vec3;
 
+import java.lang.ref.WeakReference;
 import java.util.*;
 
 /** Immutable graph/assets publication consumed by render and query workers. */
@@ -30,6 +31,46 @@ public final class SceneSnapshot {
     private final Map<NodeId, Transform> worldTransforms;
     private final List<RenderEntry> renderEntries;
     private final WorldSnapshot world;
+    // Undo retains snapshots. Completed query caches must not pin their BVHs in undo history.
+    private volatile WeakReference<SpatialQuery> preparedQuery = new WeakReference<>(null);
+    private volatile WeakReference<Map<NodeId, SpatialQuery.PreparedEntry>> inheritedQueryObjects;
+
+    /** Called only before this snapshot is published by its owning document writer. */
+    void inheritPreparedQueries(SceneSnapshot previous) {
+        var previousObjects = previous.queryObjects();
+        if (previousObjects.isEmpty()) {
+            return;
+        }
+        // The worker checks current-object correspondence. Undo holds neither preparation strongly.
+        inheritedQueryObjects = new WeakReference<>(previousObjects);
+    }
+
+    Map<NodeId, SpatialQuery.PreparedEntry> queryObjects() {
+        var current = preparedQuery.get();
+        if (current != null) {
+            return current.preparedObjects();
+        }
+        var inherited = inheritedQueryObjects;
+        var objects = inherited == null ? null : inherited.get();
+        return objects == null ? Map.of() : objects;
+    }
+
+    SpatialQuery spatialQuery() {
+        var current = preparedQuery.get();
+        if (current != null) {
+            return current;
+        }
+        // Serialize this snapshot's preparation independently of editor state/input locks.
+        synchronized (this) {
+            current = preparedQuery.get();
+            if (current == null) {
+                current = SpatialQuery.build(this);
+                inheritedQueryObjects = null;
+                preparedQuery = new WeakReference<>(current);
+            }
+            return current;
+        }
+    }
 
     SceneSnapshot(
             long revision,

@@ -1,0 +1,62 @@
+mesh=Teal box detail=0 amplitude=0.15
+java=23.0.1 os=Windows 11 processors=20 panel=1400x850 mode=VERTEX durationMs=8000 paintPeriodMs=16 depth=3 sppPerBatch=1 target=8 workers=4 wireframe=true seeds=View A/View B title hashes
+repeat=1 inputPeriodMs=16 durationSeconds=8.009 edits=351 deliveredEditsPerSecond=43.83 paints=351
+edit-ms mean=0.501 p50=0.391 p95=1.142 max=4.145
+edit-allocated-KiB mean=60.898 p50=60.211 p95=62.961 max=105.180
+paint-ms mean=4.542 p50=4.177 p95=7.093 max=13.099
+view=0 trace=360x225 fresh=301 freshFPS=37.58 candidateGenerationsObserved=302 overlaySerialsObserved=303 cancelled=2 wastedPaths=99072 finalRevisionLatencyMs=47.687
+view-0-fresh-interval-ms-including-final-hold mean=26.519 p50=21.447 p95=50.093 max=78.025
+view-0-edit-to-paint-age-ms mean=62.303 p50=61.279 p95=76.139 max=90.385
+view=1 trace=360x225 fresh=301 freshFPS=37.58 candidateGenerationsObserved=302 overlaySerialsObserved=302 cancelled=2 wastedPaths=79360 finalRevisionLatencyMs=47.687
+view-1-fresh-interval-ms-including-final-hold mean=26.519 p50=21.470 p95=50.093 max=78.025
+view-1-edit-to-paint-age-ms mean=62.540 p50=61.445 p95=76.139 max=90.385
+repeat=1 inputPeriodMs=4 durationSeconds=8.004 edits=781 deliveredEditsPerSecond=97.57 paints=342
+edit-ms mean=0.174 p50=0.160 p95=0.314 max=0.636
+edit-allocated-KiB mean=56.349 p50=56.211 p95=58.242 max=59.141
+paint-ms mean=4.294 p50=3.947 p95=6.015 max=10.269
+view=0 trace=360x225 fresh=340 freshFPS=42.48 candidateGenerationsObserved=342 overlaySerialsObserved=341 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=66.345
+view-0-fresh-interval-ms-including-final-hold mean=23.473 p50=21.492 p95=33.019 max=93.418
+view-0-edit-to-paint-age-ms mean=58.461 p50=59.441 p95=74.395 max=87.711
+view=1 trace=360x225 fresh=340 freshFPS=42.48 candidateGenerationsObserved=342 overlaySerialsObserved=341 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=66.345
+view-1-fresh-interval-ms-including-final-hold mean=23.473 p50=21.492 p95=33.019 max=93.418
+view-1-edit-to-paint-age-ms mean=58.445 p50=59.397 p95=73.595 max=87.711
+repeat=2 inputPeriodMs=16 durationSeconds=8.001 edits=352 deliveredEditsPerSecond=44.00 paints=351
+edit-ms mean=0.173 p50=0.161 p95=0.277 max=0.456
+edit-allocated-KiB mean=54.952 p50=54.820 p95=55.227 max=56.266
+paint-ms mean=4.130 p50=3.791 p95=6.436 max=9.036
+view=0 trace=360x225 fresh=307 freshFPS=38.37 candidateGenerationsObserved=308 overlaySerialsObserved=309 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=54.538
+view-0-fresh-interval-ms-including-final-hold mean=25.977 p50=21.077 p95=49.786 max=98.628
+view-0-edit-to-paint-age-ms mean=61.499 p50=61.234 p95=74.916 max=88.885
+view=1 trace=360x225 fresh=307 freshFPS=38.37 candidateGenerationsObserved=308 overlaySerialsObserved=309 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=54.538
+view-1-fresh-interval-ms-including-final-hold mean=25.977 p50=21.077 p95=49.786 max=98.628
+view-1-edit-to-paint-age-ms mean=61.697 p50=62.039 p95=75.748 max=88.885
+repeat=2 inputPeriodMs=4 durationSeconds=8.001 edits=760 deliveredEditsPerSecond=94.99 paints=350
+edit-ms mean=0.142 p50=0.132 p95=0.242 max=0.432
+edit-allocated-KiB mean=54.754 p50=54.727 p95=54.820 max=57.961
+paint-ms mean=4.064 p50=3.813 p95=5.949 max=9.115
+view=0 trace=360x225 fresh=343 freshFPS=42.87 candidateGenerationsObserved=345 overlaySerialsObserved=344 cancelled=1 wastedPaths=81000 finalRevisionLatencyMs=54.732
+view-0-fresh-interval-ms-including-final-hold mean=23.258 p50=20.604 p95=33.552 max=72.709
+view-0-edit-to-paint-age-ms mean=58.442 p50=58.379 p95=74.007 max=85.106
+view=1 trace=360x225 fresh=341 freshFPS=42.62 candidateGenerationsObserved=343 overlaySerialsObserved=342 cancelled=1 wastedPaths=60672 finalRevisionLatencyMs=54.732
+view-1-fresh-interval-ms-including-final-hold mean=23.394 p50=20.604 p95=36.266 max=72.709
+view-1-edit-to-paint-age-ms mean=58.349 p50=58.043 p95=74.354 max=85.106
+repeat=3 inputPeriodMs=16 durationSeconds=8.010 edits=351 deliveredEditsPerSecond=43.82 paints=350
+edit-ms mean=0.170 p50=0.161 p95=0.268 max=0.456
+edit-allocated-KiB mean=54.739 p50=54.727 p95=54.727 max=56.172
+paint-ms mean=3.904 p50=3.630 p95=5.482 max=8.362
+view=0 trace=360x225 fresh=308 freshFPS=38.45 candidateGenerationsObserved=310 overlaySerialsObserved=310 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=21.573
+view-0-fresh-interval-ms-including-final-hold mean=25.922 p50=21.614 p95=47.845 max=84.854
+view-0-edit-to-paint-age-ms mean=61.455 p50=60.839 p95=73.797 max=83.136
+view=1 trace=360x225 fresh=307 freshFPS=38.33 candidateGenerationsObserved=309 overlaySerialsObserved=309 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=21.573
+view-1-fresh-interval-ms-including-final-hold mean=26.006 p50=21.614 p95=48.331 max=84.854
+view-1-edit-to-paint-age-ms mean=61.133 p50=60.106 p95=73.833 max=90.792
+repeat=3 inputPeriodMs=4 durationSeconds=8.007 edits=721 deliveredEditsPerSecond=90.04 paints=343
+edit-ms mean=0.136 p50=0.127 p95=0.228 max=2.505
+edit-allocated-KiB mean=53.999 p50=53.883 p95=54.727 max=57.117
+paint-ms mean=3.953 p50=3.628 p95=5.704 max=11.096
+view=0 trace=360x225 fresh=338 freshFPS=42.21 candidateGenerationsObserved=340 overlaySerialsObserved=338 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=41.520
+view-0-fresh-interval-ms-including-final-hold mean=23.620 p50=21.952 p95=32.376 max=79.342
+view-0-edit-to-paint-age-ms mean=59.180 p50=59.562 p95=74.236 max=88.421
+view=1 trace=360x225 fresh=338 freshFPS=42.21 candidateGenerationsObserved=340 overlaySerialsObserved=339 cancelled=0 wastedPaths=0 finalRevisionLatencyMs=41.520
+view-1-fresh-interval-ms-including-final-hold mean=23.620 p50=21.952 p95=32.376 max=79.342
+view-1-edit-to-paint-age-ms mean=59.232 p50=59.562 p95=74.314 max=88.421

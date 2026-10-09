@@ -10,26 +10,68 @@ import java.util.*;
 public final class SpatialQuery {
     private record Entry(SceneSnapshot.RenderEntry source, PreparedObject prepared) {}
 
+    /** Query-only prepared objects; no snapshot or mutable tracing scratch is retained. */
+    record PreparedEntry(SceneInstance instance, PreparedObject prepared) {}
+
     private final SceneSnapshot snapshot;
     private final List<Entry> entries;
     private final boolean acceleration;
+    private final Map<NodeId, PreparedEntry> preparedObjects;
 
     private SpatialQuery(SceneSnapshot snapshot, boolean acceleration) {
         this.snapshot = Objects.requireNonNull(snapshot);
         this.acceleration = acceleration;
+        var reusable = acceleration ? snapshot.queryObjects() : Map.<NodeId, PreparedEntry>of();
         entries =
                 snapshot.renderEntries().stream()
-                        .map(e -> new Entry(e, new PreparedObject(e.instance())))
+                        .map(
+                                source -> {
+                                    var previous = reusable.get(source.node().id());
+                                    var prepared =
+                                            previous == null
+                                                            || !samePreparation(
+                                                                    previous.instance(),
+                                                                    source.instance())
+                                                    ? new PreparedObject(source.instance())
+                                                    : previous.prepared();
+                                    return new Entry(source, prepared);
+                                })
                         .toList();
+        preparedObjects = indexPreparedObjects();
+    }
+
+    private static boolean samePreparation(SceneInstance previous, SceneInstance current) {
+        return previous.geometry() == current.geometry()
+                && previous.name().equals(current.name())
+                && previous.transform().equals(current.transform())
+                && previous.material().equals(current.material());
     }
 
     public static SpatialQuery prepare(SceneSnapshot snapshot) {
-        return new SpatialQuery(snapshot, true);
+        return Objects.requireNonNull(snapshot, "snapshot").spatialQuery();
     }
 
     /** Reference option used to verify accelerated query results. */
     public static SpatialQuery prepare(SceneSnapshot snapshot, boolean acceleration) {
-        return new SpatialQuery(snapshot, acceleration);
+        return acceleration ? prepare(snapshot) : new SpatialQuery(snapshot, false);
+    }
+
+    static SpatialQuery build(SceneSnapshot snapshot) {
+        return new SpatialQuery(snapshot, true);
+    }
+
+    private Map<NodeId, PreparedEntry> indexPreparedObjects() {
+        var result = new LinkedHashMap<NodeId, PreparedEntry>();
+        for (var entry : entries) {
+            result.put(
+                    entry.source().node().id(),
+                    new PreparedEntry(entry.source().instance(), entry.prepared()));
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    Map<NodeId, PreparedEntry> preparedObjects() {
+        return preparedObjects;
     }
 
     /** Exact reference (zero-aperture) camera ray; u/v are 0..1 and v=0 is the image bottom. */

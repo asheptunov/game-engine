@@ -1225,11 +1225,15 @@ public class SceneEditorPreviewTest {
         awaitPaintedContext(panel, controller, 0);
         awaitPaintedContext(panel, controller, 1);
 
+        // The other view's readiness loop also pumps paints in this view.
+        awaitPaintedContext(panel, controller, 0);
         var olderPickBlock = onEdt(() -> panel.blockNextElementPickForTest(0));
         EditorController.VertexSelection acceptedNewerSelection;
         try {
             assertTrue(onEdt(() -> panel.pickVisibleVertexForTest(0, olderTarget)) >= 0);
             awaitProjectionBlocked(panel, olderPickBlock);
+            // Waiting pumps paints; the second click must use a current context as well.
+            awaitPaintedContext(panel, controller, 1);
             long newerVertex = onEdt(() -> panel.pickVisibleVertexForTest(1, newerTarget));
             assertTrue(newerVertex >= 0);
             acceptedNewerSelection = awaitVertexSelection(controller, newerTarget, newerVertex);

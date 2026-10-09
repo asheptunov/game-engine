@@ -42,6 +42,7 @@ public final class SceneDocument {
             long transport =
                     base.sameTransport(candidate) ? base.transportRevision() : nextTransportEpoch();
             var published = edit.publish(next, transport);
+            published.inheritPreparedQueries(base);
             snapshot = published;
             return published;
         } finally {
@@ -78,7 +79,9 @@ public final class SceneDocument {
                     content.materialAssets().stream()
                             .map(a -> new MaterialAsset(a.id(), a.label(), next, a.material()))
                             .toList();
-            snapshot = new SceneSnapshot(next, transport, content.nodes(), gs, ms);
+            var restored = new SceneSnapshot(next, transport, content.nodes(), gs, ms);
+            restored.inheritPreparedQueries(base);
+            snapshot = restored;
             return snapshot;
         } finally {
             activeEdit = false;

@@ -1,0 +1,5 @@
+2026-10-08T23:33:45.265535500  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T23:33:45.267554600  [INFO] harness.SuiteRunner: ? Suite editor.SceneEditorPreviewTest [PT7.5092708S]
+2026-10-08T23:33:45.268554000  [INFO] harness.SuiteRunner: ? Test editor.SceneEditorPreviewTest#realPanelRendersTwoViewsAndExposesAuthoringControlsWithoutWindow [PT7.47796S]
+2026-10-08T23:33:45.269554400  [INFO] harness.SuiteRunner: ? Test editor.SceneEditorPreviewTest#editorMouseRouteUsesRemappedBindingFile [PT0.0313108S]
+2026-10-08T23:33:45.269554400  [INFO] harness.SuiteRunner: ========================
