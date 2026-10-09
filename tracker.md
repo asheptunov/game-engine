@@ -25,8 +25,8 @@ The next renderer requirements and six playable implementation phases are in
 
 The proposed performance roadmap is in [PerformanceRequirements.md](PerformanceRequirements.md).
 It ranks CPU optimization phases by estimated practical impact, with measurement and
-completion gates, plus separate GPU and native backend evaluations. All performance
-phases are pending; begin with P0 through P3.
+completion gates, plus separate GPU and native backend evaluations. P0 through P5,
+P5.1 and P5.2 are implemented; P6 onward and P11.1 remain proposed.
 
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
@@ -684,6 +684,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   and shared input routing. Window-free evidence is `scene-editor-vertex-mode-preview.png`,
   `scene-editor-edge-mode-preview.png`, and `scene-editor-face-mode-preview.png`; native QA remains
   pending using the [editor QA card](benchmarks/editor/README.md).
+
+## Sample game G1 — colored cube exploration `[implemented; human GUI QA pending]`
+
+- `game.SampleGameMain` opens a separate window with 128 unit cubes and existing point lights.
+  `game.ps1` builds and launches it against the independent engine; no engine changes were needed.
+  Game-owned block coordinates/types derive shared-geometry engine instances.
+- Click captures mouse look; Escape releases it. WASD follows horizontal heading, Space/Ctrl
+  moves vertically, and normalized elapsed-time flight runs at three world units per second.
+  R resets the camera. Focus loss clears input, releases the pointer and suspends rendering;
+  return resumes rendering with the pointer free. Resize retains vertical framing. Close releases
+  the render session, update worker and repaint timer.
+- `game-check.ps1` passed four headless cases covering navigation, framing, lifecycle, continuous
+  movement publications and immutable display copies. `verify.ps1` passed on 2026-10-09, retaining
+  its existing Caps-on synthetic-console skip. Native mouse capture and window focus QA remain
+  pending using the [game QA guide](benchmarks/game/README.md), which includes test-generated previews.
 
 ## Notes / Decisions
 
