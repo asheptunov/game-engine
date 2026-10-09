@@ -194,7 +194,8 @@ public final class SceneSnapshot {
                 m.roughness(),
                 m.emission(),
                 m.scattering(),
-                m.anisotropy());
+                m.anisotropy(),
+                m.textures());
     }
 
     public long revision() {

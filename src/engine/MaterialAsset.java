@@ -19,7 +19,8 @@ public record MaterialAsset(MaterialId id, String label, long revision, Material
                         material.roughness(),
                         material.emission(),
                         material.scattering(),
-                        material.anisotropy());
+                        material.anisotropy(),
+                        material.textures());
     }
 
     MaterialAsset withRevision(long value) {

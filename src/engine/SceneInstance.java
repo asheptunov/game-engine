@@ -10,6 +10,9 @@ public record SceneInstance(
                 || transform == null
                 || material == null) throw new IllegalArgumentException("Invalid instance");
         var capabilities = geometry.capabilities();
+        if (material.textures() != null && !capabilities.canonicalBoxVolume()) {
+            throw new IllegalArgumentException("Cube textures require canonical cube geometry");
+        }
         if (material.scattering() > 0
                 && !capabilities.analyticSphere()
                 && !capabilities.canonicalBoxVolume())

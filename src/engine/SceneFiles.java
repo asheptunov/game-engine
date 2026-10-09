@@ -167,6 +167,12 @@ public final class SceneFiles {
     /** Validate persistence bounds without retaining a serialized copy in memory. */
     public static void validateForSave(SceneSnapshot snapshot) throws IOException {
         Objects.requireNonNull(snapshot, "snapshot");
+        for (var asset : snapshot.materialAssets()) {
+            if (asset.material().textures() != null) {
+                throw new IOException(
+                        "Scene saving does not support cube textures: " + asset.label());
+            }
+        }
         validateLimits(snapshot);
         write(new BoundedCountingOutputStream(MAX_FILE_BYTES), snapshot);
     }

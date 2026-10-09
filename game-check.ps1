@@ -7,6 +7,7 @@ $classes = Join-Path (Join-Path $repository $OutputDirectory) "classes"
 $sources = @(
     (Get-ChildItem (Join-Path $repository "tst/harness") -Filter *.java).FullName
     (Get-ChildItem (Join-Path $repository "tst/game") -Filter *.java).FullName
+    (Join-Path $repository "tst/engine/CubeTextureTest.java")
 )
 $jdk = Split-Path $styleJava
 $compileLog = Join-Path $repository "$OutputDirectory/test-compile.log"
@@ -27,8 +28,11 @@ try {
     Write-StyleUtf8 $compileLog ($stdout.Result + $stderr.Result)
     if ($process.ExitCode -ne 0) { throw "Game test compilation failed: $compileLog" }
 } finally { $process.Dispose() }
-$log = Join-Path $repository "$OutputDirectory/tests.log"
-$code = Invoke-StyleJava @("--enable-preview", "-Djava.awt.headless=true", "-cp", $classes, "game.SampleGameTest") $log
-Get-Content $log
-if ($code -ne 0) { throw "Game tests failed: $log" }
+foreach ($suite in @("game.SampleGameTest", "engine.CubeTextureTest")) {
+    $name = if ($suite -eq "game.SampleGameTest") { "tests.log" } else { "texture-tests.log" }
+    $log = Join-Path (Join-Path $repository $OutputDirectory) $name
+    $code = Invoke-StyleJava @("--enable-preview", "-Djava.awt.headless=true", "-cp", $classes, $suite) $log
+    Get-Content $log
+    if ($code -ne 0) { throw "Game checks failed: $log" }
+}
 Write-Output "Game checks passed; native pointer/window QA remains manual."

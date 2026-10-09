@@ -177,7 +177,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 navigation.captured()
                         ? "Mouse captured | Esc releases pointer"
                         : "Pointer free | Click the view to fly";
-        draw.drawString("Sample game G1 | " + capture, 24, 34);
+        draw.drawString("Sample game G2 | " + capture, 24, 34);
         draw.drawString(
                 "WASD: heading movement | Space/Ctrl: up/down | Mouse: look | R: reset", 24, 56);
         var view = navigation.view();
@@ -199,7 +199,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         String error = renderer.error() == null ? pointerError : renderer.error();
         draw.drawString(
                 error == null
-                        ? "Free flight: 3 units/s | No collision | Colored cube gallery"
+                        ? "Free flight: 3 units/s | No collision | Textured block gallery"
                         : error,
                 24,
                 100);

@@ -1,6 +1,6 @@
 # Sample game requirements
 
-Status: G1 is implemented with automated checks passing; human window/input QA is pending. G2 through G4 are proposed. See [the game QA guide](benchmarks/game/README.md) for launch instructions, evidence, and the hands-on test.
+Status: G1 and G2 are implemented with automated checks passing; human window/input and texture QA is pending. G3 and G4 are proposed. See [the game QA guide](benchmarks/game/README.md) for launch instructions, evidence, and the hands-on test.
 
 Build a standalone block-world exploration application using the public ray-tracing engine. The first complete sample lets a user fly around a small landscape of textured cubes under sunlight and a blue sky. It also demonstrates that a new application can use the engine without depending on the existing viewport or scene editor.
 
@@ -25,7 +25,7 @@ Milestones are cumulative. Each depends on the preceding milestone, and all earl
 | Milestone | User can test | Engine work delivered with it | Status |
 | --- | --- | --- | --- |
 | G1 Explore a cube scene | Launch a separate application and fly around colored cubes | Reuse existing public camera, rendering, and input APIs | Implemented; human QA pending |
-| G2 Explore textured blocks | Inspect crisp grass, dirt, stone, and wood textures on cube faces | Immutable texture data and diffuse cube texture mapping | Proposed |
+| G2 Explore textured blocks | Inspect crisp grass, dirt, stone, and wood textures on cube faces | Immutable texture data and diffuse cube texture mapping | Implemented; human QA pending |
 | G3 Explore under sunlight and sky | Observe sun shadows, change sun presets, and compare sky illumination | Directional lights and optional sky radiance | Proposed |
 | G4 Explore the sample landscape | Navigate a small coherent world with measured responsiveness | Integrate existing resolution adaptation; add acceleration only if measurements justify it | Proposed |
 

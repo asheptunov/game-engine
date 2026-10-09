@@ -12,7 +12,37 @@ public record Material(
         float roughness,
         Vec3 emission,
         float scattering,
-        float anisotropy) {
+        float anisotropy,
+        CubeTextures textures) {
+    /** Preserve the existing nine-argument public API for engine consumers. */
+    @SuppressWarnings("PMD.ExcessiveParameterList")
+    public Material(
+            String name,
+            Vec3 color,
+            Kind kind,
+            float ior,
+            Vec3 absorption,
+            float roughness,
+            Vec3 emission,
+            float scattering,
+            float anisotropy) {
+        this(name, color, kind, ior, absorption, roughness, emission, scattering, anisotropy, null);
+    }
+
+    public Material withTextures(CubeTextures value) {
+        return new Material(
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                value);
+    }
+
     public Material(
             String name,
             Vec3 color,
@@ -43,6 +73,9 @@ public record Material(
     }
 
     public Material {
+        if (textures != null && kind != Kind.DIFFUSE) {
+            throw new IllegalArgumentException("Cube textures require a diffuse material");
+        }
         if (!Float.isFinite(scattering) || scattering < 0 || scattering > 100)
             throw new IllegalArgumentException("Scattering must be 0..100 per scene unit");
         if (!Float.isFinite(anisotropy) || Math.abs(anisotropy) > .95f)
@@ -78,42 +111,106 @@ public record Material(
                 roughness,
                 emission,
                 next == Kind.DIELECTRIC ? scattering : 0,
-                anisotropy);
+                anisotropy,
+                textures);
     }
 
     public Material withColor(Vec3 next) {
         return new Material(
-                name, next, kind, ior, absorption, roughness, emission, scattering, anisotropy);
+                name,
+                next,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                textures);
     }
 
     public Material withIor(float next) {
         return new Material(
-                name, color, kind, next, absorption, roughness, emission, scattering, anisotropy);
+                name,
+                color,
+                kind,
+                next,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                textures);
     }
 
     public Material withAbsorption(Vec3 next) {
         return new Material(
-                name, color, kind, ior, next, roughness, emission, scattering, anisotropy);
+                name,
+                color,
+                kind,
+                ior,
+                next,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                textures);
     }
 
     public Material withRoughness(float next) {
         return new Material(
-                name, color, kind, ior, absorption, next, emission, scattering, anisotropy);
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                next,
+                emission,
+                scattering,
+                anisotropy,
+                textures);
     }
 
     public Material withEmission(Vec3 next) {
         return new Material(
-                name, color, kind, ior, absorption, roughness, next, scattering, anisotropy);
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                next,
+                scattering,
+                anisotropy,
+                textures);
     }
 
     public Material withScattering(float next) {
         return new Material(
-                name, color, kind, ior, absorption, roughness, emission, next, anisotropy);
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                next,
+                anisotropy,
+                textures);
     }
 
     public Material withAnisotropy(float next) {
         return new Material(
-                name, color, kind, ior, absorption, roughness, emission, scattering, next);
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                next,
+                textures);
     }
 
     public boolean emissive() {

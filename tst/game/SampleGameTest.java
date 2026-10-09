@@ -163,12 +163,74 @@ public final class SampleGameTest {
     }
 
     @Test
+    void missingAndTransparentAssetsNameTheirPaths() throws Exception {
+        var missing = Path.of("out/game-check/no-such-texture.png");
+        boolean rejected = false;
+        try {
+            GameTextures.load(missing);
+        } catch (IllegalArgumentException failure) {
+            rejected = failure.getMessage().contains(missing.toAbsolutePath().toString());
+        }
+        assertTrue(rejected);
+        var transparent = Path.of("out/game-check/transparent.png");
+        ImageIO.write(
+                new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), "png", transparent.toFile());
+        rejected = false;
+        try {
+            GameTextures.load(transparent);
+        } catch (IllegalArgumentException failure) {
+            rejected = failure.getMessage().contains(transparent.toAbsolutePath().toString());
+        }
+        assertTrue(rejected);
+    }
+
+    private static void detailPreview(
+            engine.WorldSnapshot world, math.Vec3 eye, math.Vec3 target, Path output)
+            throws Exception {
+        var forward = target.sub(eye).normalized();
+        var right = new math.Vec3(0, 1, 0).cross(forward).normalized();
+        var up = forward.cross(right);
+        var horizontal = right.scale(1.28f);
+        var vertical = up.scale(.8f);
+        var camera =
+                new engine.Camera(
+                        eye,
+                        new engine.objects.Rect(
+                                eye.add(forward)
+                                        .sub(horizontal.scale(.5f))
+                                        .sub(vertical.scale(.5f)),
+                                horizontal,
+                                vertical));
+        try (var session =
+                RenderEngine.openSession(
+                        world,
+                        new engine.RenderView(camera, 480, 300),
+                        RenderSettings.defaults())) {
+            long deadline = System.nanoTime() + 10_000_000_000L;
+            while (System.nanoTime() < deadline) {
+                session.request();
+                try (var image = session.acquireImage()) {
+                    if (image != null) {
+                        ImageIO.write(GameRenderer.copyImage(image), "png", output.toFile());
+                        return;
+                    }
+                }
+                Thread.sleep(10);
+            }
+            throw new AssertionError("No detail preview");
+        }
+    }
+
+    @Test
     void gallerySharesUnitGeometryAndWritesRepresentativePreviews() throws Exception {
         var world = BlockWorld.gallery().snapshot();
         assertEquals(128, world.instances().size());
         for (var instance : world.instances()) {
             assertSame(world.instances().getFirst().geometry(), instance.geometry());
-            near(1, instance.transform().vector(new math.Vec3(2, 0, 0)).length());
+            if (!instance.name().equals("block 3,0,8")) {
+                near(1, instance.transform().vector(new math.Vec3(2, 0, 0)).length());
+            }
+            assertTrue(instance.material().textures() != null);
         }
         var navigation = new GameNavigation();
         var output = Path.of("benchmarks/game");
@@ -189,7 +251,7 @@ public final class SampleGameTest {
                             graphics.dispose();
                         }
                         try {
-                            ImageIO.write(image, "png", output.resolve("g1-gallery.png").toFile());
+                            ImageIO.write(image, "png", output.resolve("g2-gallery.png").toFile());
                         } catch (java.io.IOException error) {
                             throw new java.io.UncheckedIOException(error);
                         }
@@ -201,6 +263,16 @@ public final class SampleGameTest {
                 renderer.close();
             }
         }
+        detailPreview(
+                world,
+                new math.Vec3(4.5f, 1.6f, 6),
+                new math.Vec3(3, .2f, 8),
+                output.resolve("g2-wood-detail.png"));
+        detailPreview(
+                world,
+                new math.Vec3(-1, .2f, 3.5f),
+                new math.Vec3(-1, 2, 5),
+                output.resolve("g2-underside.png"));
         navigation.reset();
         navigation.resize(600, 800);
         try (var session =
@@ -214,7 +286,7 @@ public final class SampleGameTest {
                         ImageIO.write(
                                 GameRenderer.copyImage(image),
                                 "png",
-                                output.resolve("g1-portrait.png").toFile());
+                                output.resolve("g2-portrait.png").toFile());
                         written = true;
                     }
                 }

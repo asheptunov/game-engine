@@ -700,6 +700,21 @@ Run app, verify viewport shows light hitting the tri reaching the camera. Iterat
   its existing Caps-on synthetic-console skip. Native mouse capture and window focus QA remain
   pending using the [game QA guide](benchmarks/game/README.md), which includes test-generated previews.
 
+## Sample game G2 — textured blocks `[implemented; human GUI QA pending]`
+
+- Original grass/dirt, stone and wood PNGs under `assets/game/` replace gallery colors.
+  The elevated grass block exposes a dirt underside; a rotated/scaled wood block demonstrates
+  object-local texture attachment. The app decodes assets and reports failures by path.
+- Immutable `Texture2D` and `CubeTextures` bind separate top/bottom/side images to diffuse
+  canonical cubes. The tracer samples nearest texels in local coordinates without per-ray
+  allocations and applies linear reflectance to point/area light and diffuse continuation.
+  Material copies retain bindings; unsupported geometry/kinds fail. `SceneFiles.save` rejects
+  textured documents before replacing their destination.
+- `game-check.ps1` passed five application tests and seven texture tests. `verify.ps1`, plus
+  progressive-path and rough-lighting regressions, passed on 2026-10-09. The readability baseline
+  was pruned without expansion. The [game QA guide](benchmarks/game/README.md) includes generated
+  close-up previews and pending native-window/texture inspection steps.
+
 ## Notes / Decisions
 
 - Viewport input: simultaneous physical held keys now drive per-frame camera movement,

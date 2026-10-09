@@ -633,6 +633,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         private int tileSize, tilesX, tileCount;
         private final Hit hit = new Hit();
         private final float[] rgb = new float[3], lighting = new float[3];
+        private final float[] textureReflectance = new float[3];
         private final Sampler sampler = new Sampler();
         private final Material.Sample scattering = new Material.Sample(),
                 evaluation = new Material.Sample();
@@ -1022,6 +1023,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                     continue;
                 }
                 var material = hit.primitive.material;
+                sampleTexture(hit);
                 if (material.emissive() && hit.frontFace) {
                     emitterHits++;
                     float weight = 1;
@@ -1092,13 +1094,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                     rgb[2] += blue * lighting[2];
                 }
                 // Evaluate direct lighting at the final vertex before stopping continuation.
-                if (depth == snapshot.depth()) break;
-                if (red + green + blue == 0) break;
-                if (material.kind() != Material.Kind.DIELECTRIC
-                        && material.color().x() * red
-                                        + material.color().y() * green
-                                        + material.color().z() * blue
-                                == 0) break;
+                if (!canContinue(depth, material, red, green, blue)) {
+                    break;
+                }
                 float sign = hit.frontFace ? 1 : -1;
                 float nx = hit.nx * sign, ny = hit.ny * sign, nz = hit.nz * sign;
                 if (material.kind() == Material.Kind.DIELECTRIC) {
@@ -1142,6 +1140,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                 else
                     material.sample(
                             dx, dy, dz, nx, ny, nz, sampler.next(), sampler.next(), scattering);
+                applyTexture(scattering);
                 if (scattering.red + scattering.green + scattering.blue == 0) break;
                 if (material.kind() != Material.Kind.DIFFUSE && !scattering.delta) roughEvents++;
                 previousDelta = scattering.delta;
@@ -1388,6 +1387,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                 hit.primitive.material.evaluate(
                         dx, dy, dz, lx, ly, lz, nx, ny, nz, incident, exit, evaluation);
                 if (evaluation.red + evaluation.green + evaluation.blue == 0) continue;
+                applyTexture(evaluation);
                 boolean transmission = nx * lx + ny * ly + nz * lz < 0;
                 float offset = transmission ? -BIAS : BIAS;
                 shadowRays++;
@@ -1471,6 +1471,47 @@ public final class DirectRgbTracer implements AutoCloseable {
             }
         }
 
+        private boolean canContinue(
+                int depth, Material material, float red, float green, float blue) {
+            return depth < snapshot.depth()
+                    && red + green + blue > 0
+                    && (material.kind() == Material.Kind.DIELECTRIC
+                            || material.color().x() * red
+                                            + material.color().y() * green
+                                            + material.color().z() * blue
+                                    > 0);
+        }
+
+        private void applyTexture(Material.Sample sample) {
+            sample.red *= textureReflectance[0];
+            sample.green *= textureReflectance[1];
+            sample.blue *= textureReflectance[2];
+        }
+
+        /**
+         * Recover object-local position/normal using scalar inverse TRS, without per-hit
+         * allocation.
+         */
+        private void sampleTexture(Hit hit) {
+            textureReflectance[0] = textureReflectance[1] = textureReflectance[2] = 1;
+            var textures = hit.primitive.material.textures();
+            if (textures == null) {
+                return;
+            }
+            var t = hit.primitive.transform;
+            float dx = hit.x - t.position.x();
+            float dy = hit.y - t.position.y();
+            float dz = hit.z - t.position.z();
+            textures.sampleLocal(
+                    (t.a * dx + t.d * dy + t.g * dz) / t.scale.x(),
+                    (t.b * dx + t.e * dy + t.h * dz) / t.scale.y(),
+                    (t.c * dx + t.f * dy + t.i * dz) / t.scale.z(),
+                    (t.a * hit.nx + t.d * hit.ny + t.g * hit.nz) * t.scale.x(),
+                    (t.b * hit.nx + t.e * hit.ny + t.h * hit.nz) * t.scale.y(),
+                    (t.c * hit.nx + t.f * hit.ny + t.i * hit.nz) * t.scale.z(),
+                    textureReflectance);
+        }
+
         private void light(Hit hit, PointLight[] lights, float[] rgb, Material medium) {
             float red = 0, green = 0, blue = 0;
             float sign = hit.frontFace ? 1 : -1;
@@ -1506,9 +1547,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                 float weight = cosine * light.intensity() / ((float) Math.PI * distanceSquared);
                 var color = hit.primitive.material.color();
                 float ar = transmission[0], ag = transmission[1], ab = transmission[2];
-                red += weight * color.x() * light.color().x() * ar;
-                green += weight * color.y() * light.color().y() * ag;
-                blue += weight * color.z() * light.color().z() * ab;
+                red += weight * color.x() * textureReflectance[0] * light.color().x() * ar;
+                green += weight * color.y() * textureReflectance[1] * light.color().y() * ag;
+                blue += weight * color.z() * textureReflectance[2] * light.color().z() * ab;
             }
             rgb[0] = red;
             rgb[1] = green;
