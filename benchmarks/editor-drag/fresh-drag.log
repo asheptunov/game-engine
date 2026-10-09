@@ -1,0 +1,9 @@
+inputPeriod=50ms duration=8.01s edits=124 paints=274 fresh=119 freshFPS=14.86 candidateGenerations=124 cancelled=0 wastedPaths=0 trailingHoldMs=43.4 requestedGen=125 shownGen=-1
+fresh-interval-ms-including-final-hold,66.7395,62.3515,94.5670,157.9692
+settledCurrent=true
+inputPeriod=16ms duration=8.01s edits=265 paints=265 fresh=37 freshFPS=4.62 candidateGenerations=227 cancelled=0 wastedPaths=0 trailingHoldMs=32.5 requestedGen=267 shownGen=-1
+fresh-interval-ms-including-final-hold,210.8878,168.9508,545.0709,636.4321
+settledCurrent=true
+inputPeriod=4ms duration=8.02s edits=365 paints=272 fresh=2 freshFPS=0.25 candidateGenerations=270 cancelled=0 wastedPaths=0 trailingHoldMs=2114.3 requestedGen=365 shownGen=-1
+fresh-interval-ms-including-final-hold,2672.0669,2114.2767,3997.9414,3997.9414
+settledCurrent=true

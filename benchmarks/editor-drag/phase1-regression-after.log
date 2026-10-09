@@ -1,0 +1,5 @@
+2026-10-08T22:35:41.545239800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T22:35:41.550270500  [INFO] harness.SuiteRunner: ? Suite editor.RenderViewHandoffTest [PT1.9296747S]
+2026-10-08T22:35:41.552267600  [INFO] harness.SuiteRunner: ? Test editor.RenderViewHandoffTest#completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest [PT0.8351845S]
+2026-10-08T22:35:41.553268100  [INFO] harness.SuiteRunner: ? Test editor.RenderViewHandoffTest#selectionResizeAndToolChangesRejectSupersededProjection [PT1.0944902S]
+2026-10-08T22:35:41.554268900  [INFO] harness.SuiteRunner: ========================

@@ -1,0 +1,51 @@
+2026-10-08T22:30:23.006415600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-08T22:30:23.013933300  [INFO] harness.SuiteRunner: ? Suite editor.RenderViewHandoffTest [PT9.7653944S]
+2026-10-08T22:30:23.016950500  [INFO] harness.SuiteRunner: ? Test editor.RenderViewHandoffTest#completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest [PT0.2200156S]
+2026-10-08T22:30:23.016950500  [INFO] harness.SuiteRunner: ? Test editor.RenderViewHandoffTest#selectionResizeAndToolChangesRejectSupersededProjection [PT9.5453788S]
+2026-10-08T22:30:23.021484200 [ERROR] harness.SuiteRunner: Test editor.RenderViewHandoffTest#completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest failed with exception: class java.util.concurrent.ExecutionException|java.util.concurrent.ExecutionException: java.lang.RuntimeException: Expected equal objects, but got two non-equal ones:|expected:|2|actual:|1|	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)|	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)|	at editor.RenderViewHandoffTest.onEdt(RenderViewHandoffTest.java:210)|	at editor.RenderViewHandoffTest.completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest(RenderViewHandoffTest.java:31)|	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)|	at java.base/java.lang.reflect.Method.invoke(Method.java:580)|	at harness.SuiteRunner.runTest(SuiteRunner.java:185)|	at harness.SuiteRunner.runTests(SuiteRunner.java:133)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)|	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)|	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)|	at harness.SuiteRunner.runThis(SuiteRunner.java:34)|	at editor.RenderViewHandoffTest.main(RenderViewHandoffTest.java:25)|Caused by: java.lang.RuntimeException: Expected equal objects, but got two non-equal ones:|expected:|2|actual:|1|	at harness.Assertions.assertEquals(Assertions.java:10)|	at editor.RenderViewHandoffTest.lambda$completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest$0(RenderViewHandoffTest.java:42)|	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)|	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)|	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)|	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)|	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)|	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)|	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)|	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)|	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)|	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)|	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)|	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)|	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)|	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+java.util.concurrent.ExecutionException: java.lang.RuntimeException: Expected equal objects, but got two non-equal ones:
+expected:
+2
+actual:
+1
+	at java.base/java.util.concurrent.FutureTask.report(FutureTask.java:122)
+	at java.base/java.util.concurrent.FutureTask.get(FutureTask.java:191)
+	at editor.RenderViewHandoffTest.onEdt(RenderViewHandoffTest.java:210)
+	at editor.RenderViewHandoffTest.completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest(RenderViewHandoffTest.java:31)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at harness.SuiteRunner.runTest(SuiteRunner.java:185)
+	at harness.SuiteRunner.runTests(SuiteRunner.java:133)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:94)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.RenderViewHandoffTest.main(RenderViewHandoffTest.java:25)
+Caused by: java.lang.RuntimeException: Expected equal objects, but got two non-equal ones:
+expected:
+2
+actual:
+1
+	at harness.Assertions.assertEquals(Assertions.java:10)
+	at editor.RenderViewHandoffTest.lambda$completedPairsAdvanceWhenNewGeometrySupersedesTheirRequest$0(RenderViewHandoffTest.java:42)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:308)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+2026-10-08T22:30:23.022482100  [INFO] harness.SuiteRunner: ========================
+Exception in thread "main" java.lang.AssertionError: Suite editor.RenderViewHandoffTest: 1 test(s) failed
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:99)
+	at harness.SuiteRunner.runAllIn(SuiteRunner.java:67)
+	at harness.SuiteRunner.runAllInCallingClass(SuiteRunner.java:40)
+	at harness.SuiteRunner.runThis(SuiteRunner.java:34)
+	at editor.RenderViewHandoffTest.main(RenderViewHandoffTest.java:25)

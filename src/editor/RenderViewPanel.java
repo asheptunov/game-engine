@@ -622,8 +622,12 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                         request.height(),
                         72);
         var desired = desiredOverlay;
-        if (desired == null || !sameProjectionContext(request, desired)) return;
-        if (request.serial() < publishedOverlaySerial) return;
+        if (closed || desired == null || !samePresentationContext(request, desired)) {
+            return;
+        }
+        if (request.serial() < publishedOverlaySerial) {
+            return;
+        }
         publishedOverlaySerial = request.serial();
         readyBundle =
                 new DisplayBundle(
@@ -1099,7 +1103,7 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                 }
                 var previous = paintedFrame;
                 if (bundle != null
-                        && sameProjectionContext(bundle, desiredOverlay)
+                        && samePresentationContext(bundle, desiredOverlay)
                         && (previous == null || bundle.serial() > previous.serial())) {
                     int oldWidth = bundle.width(), oldHeight = bundle.height();
                     var oldArea =
@@ -1176,18 +1180,32 @@ public final class RenderViewPanel extends JPanel implements AutoCloseable {
                 && request.mode() == mode;
     }
 
-    private static boolean sameProjectionContext(OverlayRequest first, OverlayRequest second) {
-        return first.frame().token() == second.frame().token()
+    private static boolean samePresentationContext(OverlayRequest first, OverlayRequest second) {
+        return sameSelectionContext(first.frame().token(), second.frame().token())
                 && first.width() == second.width()
                 && first.height() == second.height()
                 && first.mode() == second.mode();
     }
 
-    private static boolean sameProjectionContext(DisplayBundle bundle, OverlayRequest request) {
-        return bundle.frame().token() == request.frame().token()
+    private static boolean samePresentationContext(DisplayBundle bundle, OverlayRequest request) {
+        return sameSelectionContext(bundle.frame().token(), request.frame().token())
                 && bundle.width() == request.width()
                 && bundle.height() == request.height()
                 && bundle.mode() == request.mode();
+    }
+
+    /**
+     * Completed pairs may lag geometry or camera edits. Requiring the newest snapshot here starves
+     * painting under sustained input. Each pair still owns its captured image, camera, overlay and
+     * picking token; requestMatches/projectionMatches remain strict when reusing an overlay for a
+     * different image. Selection and tool/size changes supersede pending projection.
+     */
+    private static boolean sameSelectionContext(PickToken first, PickToken second) {
+        return Objects.equals(first.selection(), second.selection())
+                && first.selectionMode() == second.selectionMode()
+                && Objects.equals(first.vertexSelection(), second.vertexSelection())
+                && Objects.equals(first.edgeSelection(), second.edgeSelection())
+                && Objects.equals(first.faceSelection(), second.faceSelection());
     }
 
     private void drawOverlay(Graphics2D source, Rectangle area, OverlayGeometry.Frame overlay) {

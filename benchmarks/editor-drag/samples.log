@@ -1,0 +1,120 @@
+box-controller-edge.jfr GC event duration ms=0.0 sampled threads={}
+box-controller-vertex.jfr GC event duration ms=3.3723 sampled threads={}
+box-panel-edge.jfr GC event duration ms=11.641 sampled threads={AWT-EventQueue-0=2, rgb-trace-worker=34, scene-editor-view-view-a=19, scene-editor-view-view-b=34, viewport-trace-coordinator=11}
+editor.RenderViewPanel$$Lambda+0x00000298811cddf8.34875064.run=50
+editor.RenderViewPanel.tick=50
+engine.AsyncViewportTrace.request=22
+engine.DefaultRenderSession.request=22
+engine.AsyncViewportTrace.invalidate=15
+editor.RenderViewPanel.apply=15
+engine.SpatialQuery.<init>=14
+engine.SpatialQuery.prepare=14
+engine.SpatialQuery$$Lambda+0x00000298811d5c78.459283898.apply=13
+editor.RenderViewPanel.convert=12
+engine.SpatialQuery.lambda$new$0=11
+engine.PreparedObject.<init>=11
+engine.ViewportState$RenderKey.equals=11
+engine.PreparedGeometry.prepare=7
+engine.PolygonMesh.preparedGeometry=5
+engine.PolygonMesh.buildPrepared=4
+engine.Camera$Identity.equals=3
+engine.ViewportState.renderSnapshot=3
+box-panel-vertex.jfr GC event duration ms=5.1472 sampled threads={AWT-EventQueue-0=1, rgb-trace-worker=17, scene-editor-view-view-a=40, scene-editor-view-view-b=33, viewport-trace-coordinator=7}
+editor.RenderViewPanel$$Lambda+0x00000298811cddf8.34875064.run=68
+editor.RenderViewPanel.tick=68
+engine.DefaultRenderSession.request=36
+engine.AsyncViewportTrace.request=35
+engine.AsyncViewportTrace.invalidate=21
+editor.RenderViewPanel.apply=21
+engine.SpatialQuery.<init>=16
+engine.SpatialQuery.prepare=16
+engine.SpatialQuery$$Lambda+0x00000298811d5c78.459283898.apply=15
+engine.SpatialQuery.lambda$new$0=15
+engine.PreparedObject.<init>=14
+engine.ViewportState$RenderKey.equals=13
+engine.PreparedGeometry.prepare=9
+editor.RenderViewPanel.convert=8
+engine.ViewportState.renderKey=7
+engine.PolygonMesh.buildPrepared=7
+engine.PolygonMesh.preparedGeometry=7
+engine.ViewportState.renderSnapshot=6
+sphere16-controller-edge.jfr GC event duration ms=4.0172 sampled threads={AWT-EventQueue-0=8}
+sphere16-controller-vertex.jfr GC event duration ms=1.6105 sampled threads={AWT-EventQueue-0=16}
+sphere16-panel-edge.jfr GC event duration ms=96.4519 sampled threads={AWT-EventQueue-0=11, JFR Periodic Tasks=1, main=1, rgb-trace-worker=502, scene-editor-view-view-a=106, scene-editor-view-view-b=90, viewport-trace-coordinator=79}
+editor.RenderViewPanel.tick=192
+editor.RenderViewPanel$$Lambda+0x00000298811cddf8.34875064.run=192
+editor.RenderViewPanel.convert=94
+editor.RenderViewPanel.apply=71
+engine.SpatialQuery.<init>=61
+engine.SpatialQuery.prepare=61
+engine.SpatialQuery$$Lambda+0x00000298811d5c78.459283898.apply=58
+engine.SpatialQuery.lambda$new$0=58
+engine.PreparedObject.<init>=57
+engine.PreparedGeometry.prepare=49
+engine.PolygonMesh.preparedGeometry=48
+engine.PolygonMesh.buildPrepared=47
+editor.RenderViewPanel.projectOverlay=19
+editor.overlay.OverlayGeometry.project=19
+engine.CameraProjector.clipAndProject=12
+editor.overlay.OverlayGeometry.prepare=8
+editor.overlay.OverlayGeometry.wireframe=5
+editor.overlay.OverlayGeometry.cached=5
+sphere16-panel-vertex.jfr GC event duration ms=79.0103 sampled threads={AWT-EventQueue-0=26, AWT-Shutdown=1, rgb-trace-worker=633, scene-editor-view-view-a=139, scene-editor-view-view-b=115, viewport-trace-coordinator=93}
+editor.RenderViewPanel$$Lambda+0x00000298811cddf8.34875064.run=250
+editor.RenderViewPanel.tick=248
+editor.RenderViewPanel.convert=116
+editor.RenderViewPanel.apply=91
+engine.SpatialQuery.<init>=80
+engine.SpatialQuery$$Lambda+0x00000298811d5c78.459283898.apply=80
+engine.SpatialQuery.prepare=80
+engine.PreparedObject.<init>=79
+engine.SpatialQuery.lambda$new$0=79
+engine.PolygonMesh.buildPrepared=65
+engine.PreparedGeometry.prepare=65
+engine.PolygonMesh.preparedGeometry=65
+editor.RenderViewPanel.projectOverlay=20
+editor.overlay.OverlayGeometry.project=20
+engine.DefaultRenderSession.request=18
+engine.AsyncViewportTrace.request=17
+engine.CameraProjector.clipAndProject=11
+engine.AsyncViewportTrace.invalidate=10
+sphere32-controller-edge.jfr GC event duration ms=7.385800000000001 sampled threads={AWT-EventQueue-0=148}
+sphere32-controller-vertex.jfr GC event duration ms=7.8263 sampled threads={AWT-EventQueue-0=158}
+sphere32-panel-edge.jfr GC event duration ms=351.2716 sampled threads={AWT-EventQueue-0=43, main=1, rgb-trace-worker=871, scene-editor-view-view-a=194, scene-editor-view-view-b=156, viewport-trace-coordinator=96}
+editor.RenderViewPanel.tick=347
+editor.RenderViewPanel$$Lambda+0x00000298811cddf8.34875064.run=347
+editor.RenderViewPanel.apply=210
+engine.SpatialQuery.<init>=206
+engine.SpatialQuery.prepare=206
+engine.SpatialQuery$$Lambda+0x00000298811d5c78.459283898.apply=205
+engine.SpatialQuery.lambda$new$0=205
+engine.PreparedObject.<init>=204
+engine.PrimitiveBvh.<init>=127
+engine.PrimitiveBvh.build=123
+editor.RenderViewPanel.convert=78
+engine.PolygonMesh.buildPrepared=73
+engine.PreparedGeometry.prepare=73
+engine.PolygonMesh.preparedGeometry=73
+engine.PrimitiveBvh.lambda$build$1=63
+engine.PrimitiveBvh$$Lambda+0x0000029881259568.76715808.applyAsDouble=63
+editor.RenderViewPanel.projectOverlay=46
+editor.overlay.OverlayGeometry.project=46
+sphere32-panel-vertex.jfr GC event duration ms=409.98890000000006 sampled threads={AWT-EventQueue-0=17, rgb-trace-worker=935, scene-editor-view-view-a=223, scene-editor-view-view-b=178, viewport-trace-coordinator=56}
+editor.RenderViewPanel$$Lambda+0x00000298811cddf8.34875064.run=389
+editor.RenderViewPanel.tick=386
+editor.RenderViewPanel.apply=184
+engine.SpatialQuery.<init>=183
+engine.SpatialQuery$$Lambda+0x00000298811d5c78.459283898.apply=183
+engine.PreparedObject.<init>=183
+engine.SpatialQuery.prepare=183
+engine.SpatialQuery.lambda$new$0=183
+engine.PrimitiveBvh.<init>=111
+engine.PrimitiveBvh.build=109
+editor.RenderViewPanel.convert=88
+editor.RenderViewPanel.projectOverlay=82
+editor.overlay.OverlayGeometry.project=82
+engine.PolygonMesh.buildPrepared=68
+engine.PreparedGeometry.prepare=68
+engine.PolygonMesh.preparedGeometry=68
+engine.PrimitiveBvh.lambda$build$1=60
+engine.PrimitiveBvh$$Lambda+0x0000029881259568.76715808.applyAsDouble=60

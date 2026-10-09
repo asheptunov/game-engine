@@ -1,0 +1,194 @@
+metric,mean,p50,p95,max
+# box-controller-vertex vertices=8 faces=6
+box-controller-vertex edit-ms,0.1883,0.1507,0.3545,4.0443
+box-controller-vertex edt-cpu-ms,0.0000,0.0000,0.0000,0.0000
+box-controller-vertex edt-allocated-KiB,45.2802,45.3828,45.3828,45.5703
+# EDT sampled stacks 0 (inclusive counts)
+# box-controller-edge vertices=8 faces=6
+box-controller-edge edit-ms,0.0961,0.0888,0.1801,0.3401
+box-controller-edge edt-cpu-ms,0.0868,0.0000,0.0000,15.6250
+box-controller-edge edt-allocated-KiB,44.9070,44.4688,45.5938,45.5938
+# EDT sampled stacks 0 (inclusive counts)
+# box-panel-vertex vertices=8 faces=6
+box-panel-vertex edit-ms,2.0364,1.9194,3.1120,7.4946
+box-panel-vertex edt-cpu-ms,2.7778,0.0000,15.6250,15.6250
+box-panel-vertex edt-allocated-KiB,113.3387,113.9141,115.0469,116.3047
+box-panel-vertex paint-ms,6.6153,6.4183,8.8691,12.0157
+# EDT sampled stacks 1 (inclusive counts)
+# editor.DragProfile.lambda$main$2=1
+# engine.PolygonMesh.translateVertex=1
+# engine.PolygonMesh.<init>=1
+# engine.PolygonMesh.translateVertices=1
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=1
+# editor.EditorController.updateElementGesture=1
+# box-panel-edge vertices=8 faces=6
+box-panel-edge edit-ms,1.7088,1.4223,2.7362,26.4361
+box-panel-edge edt-cpu-ms,0.2604,0.0000,0.0000,15.6250
+box-panel-edge edt-allocated-KiB,105.6176,105.5547,107.4219,107.5703
+box-panel-edge paint-ms,6.1032,5.9658,8.4936,22.6912
+# EDT sampled stacks 2 (inclusive counts)
+# editor.DragProfile.lambda$main$2=2
+# engine.PolygonMesh.translateEdge=2
+# engine.PolygonMesh.<init>=2
+# engine.PolygonMesh.translateVertices=2
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=2
+# editor.EditorController.updateElementGesture=2
+# sphere16-controller-vertex vertices=482 faces=960
+sphere16-controller-vertex edit-ms,1.6436,1.5102,2.6408,3.9018
+sphere16-controller-vertex edt-cpu-ms,0.5208,0.0000,0.0000,15.6250
+sphere16-controller-vertex edt-allocated-KiB,2238.3806,2254.6250,2263.0234,2263.0234
+# EDT sampled stacks 16 (inclusive counts)
+# engine.PolygonMesh.translateVertex=16
+# engine.PolygonMesh.<init>=16
+# editor.DragProfile.lambda$main$2=16
+# engine.PolygonMesh.translateVertices=16
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=16
+# editor.EditorController.updateElementGesture=16
+# engine.PolygonMesh$$Lambda+0x0000029881013db0.364941304.apply=1
+# engine.PolygonMesh.lambda$new$2=1
+# engine.PolygonMesh$$Lambda+0x000002988101fa10.639656590.accept=1
+# sphere16-controller-edge vertices=482 faces=960
+sphere16-controller-edge edit-ms,1.0440,0.9981,1.4205,3.3014
+sphere16-controller-edge edt-cpu-ms,0.2604,0.0000,0.0000,15.6250
+sphere16-controller-edge edt-allocated-KiB,2197.3513,2209.5781,2209.5781,2209.6484
+# EDT sampled stacks 8 (inclusive counts)
+# engine.PolygonMesh.translateEdge=8
+# engine.PolygonMesh.<init>=8
+# editor.DragProfile.lambda$main$2=8
+# engine.PolygonMesh.translateVertices=8
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=8
+# editor.EditorController.updateElementGesture=8
+# engine.PolygonMesh$$Lambda+0x0000029881013db0.364941304.apply=1
+# engine.PolygonMesh.validatePolygon=1
+# engine.PolygonMesh.lambda$new$2=1
+# engine.PolygonMesh$EdgeKey.of=1
+# engine.PolygonMesh$$Lambda+0x000002988101fa10.639656590.accept=1
+# sphere16-panel-vertex vertices=482 faces=960
+sphere16-panel-vertex edit-ms,2.8785,2.4741,4.4734,17.7857
+sphere16-panel-vertex edt-cpu-ms,3.7326,0.0000,15.6250,15.6250
+sphere16-panel-vertex edt-allocated-KiB,2261.4912,2273.5234,2273.8359,2273.8359
+sphere16-panel-vertex paint-ms,18.4742,17.9700,26.5193,119.0467
+# EDT sampled stacks 26 (inclusive counts)
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=26
+# editor.DragProfile.lambda$main$2=26
+# editor.EditorController.updateElementGesture=15
+# engine.PolygonMesh.<init>=13
+# engine.PolygonMesh.translateVertex=13
+# engine.PolygonMesh.translateVertices=13
+# editor.RenderViewPanel.paintComponent=11
+# editor.RenderViewPanel.drawOverlay=11
+# editor.DragProfile.paint=11
+# editor.RenderViewPanel.drawLine=4
+# editor.RenderViewPanel.paintBundle=3
+# engine.PolygonMesh.validatePolygon=2
+# javax.swing.plaf.basic.BasicTreeUI$Handler.valueChanged=1
+# engine.Transform.compose=1
+# engine.PolygonMesh.requireVertex=1
+# engine.SceneEdit.candidate=1
+# engine.PolygonMesh.length=1
+# engine.PolygonMesh.validateClosedSolid=1
+# engine.UndoHistory.updateGroup=1
+# engine.SceneSnapshot.computeWorldTransforms=1
+# engine.SceneDocument.transact=1
+# editor.SceneEditorPanel.changed=1
+# editor.SceneEditorPanel.rebuildTree=1
+# engine.PolygonMesh.isCanonicalBox=1
+# sphere16-panel-edge vertices=482 faces=960
+sphere16-panel-edge edit-ms,2.8269,2.6020,3.7683,20.1555
+sphere16-panel-edge edt-cpu-ms,1.6493,0.0000,15.6250,15.6250
+sphere16-panel-edge edt-allocated-KiB,2261.1406,2273.5313,2273.5313,2273.6094
+sphere16-panel-edge paint-ms,13.9747,13.4941,19.0532,34.8299
+# EDT sampled stacks 11 (inclusive counts)
+# editor.DragProfile.lambda$main$2=11
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=11
+# engine.PolygonMesh.<init>=8
+# editor.EditorController.updateElementGesture=8
+# engine.PolygonMesh.translateEdge=8
+# engine.PolygonMesh.translateVertices=8
+# editor.RenderViewPanel.paintComponent=3
+# editor.DragProfile.paint=3
+# editor.RenderViewPanel.drawOverlay=3
+# editor.RenderViewPanel.drawLine=2
+# engine.PolygonMesh.validatePolygon=2
+# engine.PolygonMesh.validateClosedSolid=1
+# engine.PolygonMesh.length=1
+# editor.RenderViewPanel.paintBundle=1
+# sphere32-controller-vertex vertices=1986 faces=3968
+sphere32-controller-vertex edit-ms,3.5672,3.1528,6.2091,8.3003
+sphere32-controller-vertex edt-cpu-ms,2.7778,0.0000,15.6250,15.6250
+sphere32-controller-vertex edt-allocated-KiB,9179.1353,9230.2891,9230.2891,9230.5313
+# EDT sampled stacks 158 (inclusive counts)
+# editor.DragProfile.lambda$main$2=158
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=158
+# editor.EditorController.updateElementGesture=158
+# engine.PolygonMesh.translateVertex=157
+# engine.PolygonMesh.<init>=157
+# engine.PolygonMesh.translateVertices=157
+# engine.PolygonMesh.validateClosedSolid=32
+# engine.PolygonMesh$$Lambda+0x0000029881013db0.364941304.apply=21
+# engine.PolygonMesh.validatePolygon=17
+# engine.PolygonMesh.lambda$new$2=15
+# engine.PolygonMesh$$Lambda+0x000002988101fa10.639656590.accept=15
+# engine.PolygonMesh.length=9
+# engine.PolygonMesh.requireVertex=7
+# engine.PolygonMesh$Edge.<init>=3
+# engine.UndoHistory.updateGroup=1
+# engine.SceneDocument.transact=1
+# engine.SceneSnapshot.sameTransport=1
+# engine.PolygonMesh.extent=1
+# sphere32-controller-edge vertices=1986 faces=3968
+sphere32-controller-edge edit-ms,3.2073,2.9965,4.6899,6.4696
+sphere32-controller-edge edt-cpu-ms,2.4306,0.0000,15.6250,15.6250
+sphere32-controller-edge edt-allocated-KiB,9179.3447,9230.5000,9230.5000,9230.5000
+# EDT sampled stacks 148 (inclusive counts)
+# engine.PolygonMesh.<init>=148
+# editor.DragProfile.lambda$main$2=148
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=148
+# editor.EditorController.updateElementGesture=148
+# engine.PolygonMesh.translateEdge=148
+# engine.PolygonMesh.translateVertices=148
+# engine.PolygonMesh.validateClosedSolid=27
+# engine.PolygonMesh$$Lambda+0x0000029881013db0.364941304.apply=18
+# engine.PolygonMesh.validatePolygon=14
+# engine.PolygonMesh.lambda$new$2=11
+# engine.PolygonMesh$$Lambda+0x000002988101fa10.639656590.accept=11
+# engine.PolygonMesh.length=9
+# engine.PolygonMesh.requireVertex=4
+# engine.PolygonMesh$Edge.<init>=2
+# engine.PolygonMesh$EdgeKey.of=1
+# sphere32-panel-vertex vertices=1986 faces=3968
+sphere32-panel-vertex edit-ms,7.2010,6.3280,11.8659,33.8747
+sphere32-panel-vertex edt-cpu-ms,6.0764,0.0000,15.6250,15.6250
+sphere32-panel-vertex edt-allocated-KiB,9242.5305,9293.6641,9293.7578,9293.7891
+sphere32-panel-vertex paint-ms,40.0184,37.7441,59.3982,81.3169
+# EDT sampled stacks 17 (inclusive counts)
+# editor.DragProfile.lambda$main$2=17
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=17
+# editor.DragProfile.paint=12
+# editor.RenderViewPanel.paintComponent=11
+# editor.RenderViewPanel.drawOverlay=11
+# editor.RenderViewPanel.drawLine=6
+# engine.PolygonMesh.translateVertex=5
+# engine.PolygonMesh.<init>=5
+# editor.EditorController.updateElementGesture=5
+# engine.PolygonMesh.translateVertices=5
+# javax.swing.plaf.basic.BasicTreeUI.paint=1
+# javax.swing.plaf.ComponentUI.update=1
+# javax.swing.plaf.metal.MetalTreeUI.paint=1
+# engine.PolygonMesh$EdgeKey.of=1
+# sphere32-panel-edge vertices=1986 faces=3968
+sphere32-panel-edge edit-ms,7.2534,6.3871,11.5250,39.7159
+sphere32-panel-edge edt-cpu-ms,5.2951,0.0000,15.6250,15.6250
+sphere32-panel-edge edt-allocated-KiB,9242.2727,9293.4141,9293.4844,9293.5938
+sphere32-panel-edge paint-ms,29.6281,30.5249,39.4137,65.0400
+# EDT sampled stacks 43 (inclusive counts)
+# editor.DragProfile.lambda$main$2=43
+# editor.DragProfile$$Lambda+0x0000029881094218.391914049.call=43
+# editor.EditorController.updateElementGesture=24
+# engine.PolygonMesh.translateEdge=24
+# engine.PolygonMesh.translateVertices=24
+# editor.RenderViewPanel.paintComponent=19
+# editor.DragProfile.paint=19
+# editor.RenderViewPanel.drawOverlay=19
+# editor.RenderViewPanel.drawLine=17
+# engine.PolygonMesh.<init>=14
