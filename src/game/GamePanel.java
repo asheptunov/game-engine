@@ -101,6 +101,15 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     }
 
     private boolean lightingClick(MouseEvent event) {
+        if (!navigation.captured()
+                && event.getY() >= 160
+                && event.getY() < 194
+                && event.getX() >= 24
+                && event.getX() < 228) {
+            renderer.adaptive(!renderer.adaptive());
+            repaint();
+            return true;
+        }
         if (navigation.captured() || event.getY() < 120 || event.getY() >= 154) {
             return false;
         }
@@ -192,13 +201,13 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private void drawOverlay(Graphics2D draw, GameRenderer.Frame frame) {
         draw.setColor(new Color(15, 20, 28, 220));
         draw.fillRoundRect(
-                12, 12, Math.min(640, getWidth() - 24), navigation.captured() ? 100 : 154, 12, 12);
+                12, 12, Math.min(640, getWidth() - 24), navigation.captured() ? 100 : 194, 12, 12);
         draw.setColor(Color.WHITE);
         String capture =
                 navigation.captured()
                         ? "Mouse captured | Esc releases pointer"
                         : "Pointer free | Click the view to fly";
-        draw.drawString("Sample game G3 | " + capture, 24, 34);
+        draw.drawString("Sample game G4 | " + capture, 24, 34);
         draw.drawString(
                 "WASD: heading movement | Space/Ctrl: up/down | Mouse: look | R: reset", 24, 56);
         var view = navigation.view();
@@ -221,7 +230,8 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         String error = renderer.error() == null ? pointerError : renderer.error();
         draw.drawString(
                 error == null
-                        ? "Free flight: 3 units/s | No collision | Sun + sky | Depth 2"
+                        ? "Free flight: 3 units/s | No collision | Depth 2 | Adaptive: "
+                                + (renderer.adaptive() ? "on" : "off")
                         : error,
                 24,
                 100);
@@ -247,6 +257,10 @@ public final class GamePanel extends JPanel implements AutoCloseable {
             draw.setColor(Color.WHITE);
             draw.drawString(labels[button], 34 + button * 104, 142);
         }
+        draw.setColor(new Color(45, 50, 60));
+        draw.fillRoundRect(24, 160, 204, 34, 8, 8);
+        draw.setColor(Color.WHITE);
+        draw.drawString("Adaptive: " + (renderer.adaptive() ? "on" : "off"), 34, 182);
     }
 
     @Override

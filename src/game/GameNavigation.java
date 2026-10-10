@@ -75,6 +75,23 @@ public final class GameNavigation {
         held.clear();
     }
 
+    /** Replay poses use world units and radians, with unwrapped yaw interpolated by the caller. */
+    public synchronized void pose(Vec3 position, double yaw, double pitch) {
+        if (!Float.isFinite(position.x())
+                || !Float.isFinite(position.y())
+                || !Float.isFinite(position.z())
+                || !Double.isFinite(yaw)
+                || !Double.isFinite(pitch)
+                || Math.abs(pitch) > PITCH_LIMIT) {
+            throw new IllegalArgumentException(
+                    "Replay pose must be finite with pitch within 89 degrees");
+        }
+        this.position = position;
+        this.yaw = yaw;
+        this.pitch = pitch;
+        held.clear();
+    }
+
     /** Positive screen X turns right; positive screen Y looks down. */
     public synchronized void look(int dx, int dy) {
         if (captured) {

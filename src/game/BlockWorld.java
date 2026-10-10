@@ -18,7 +18,8 @@ public final class BlockWorld {
         GRASS,
         DIRT,
         STONE,
-        WOOD;
+        WOOD,
+        LEAVES;
     }
 
     /** Integer coordinates identify block centers; each block is one world unit wide. */
@@ -84,5 +85,63 @@ public final class BlockWorld {
         blocks.add(new Block(2, 0, 8, Type.GRASS));
         blocks.add(new Block(3, 0, 8, Type.WOOD, true));
         return new BlockWorld(blocks);
+    }
+
+    public static BlockWorld landscape() {
+        var blocks = new ArrayList<Block>();
+        addGround(blocks);
+        addTree(blocks);
+        blocks.add(new Block(-5, 0, 5, Type.STONE));
+        blocks.add(new Block(-4, 0, 5, Type.STONE));
+        blocks.add(new Block(-5, 1, 5, Type.STONE));
+        addShelter(blocks);
+        return new BlockWorld(blocks);
+    }
+
+    private static void addGround(List<Block> blocks) {
+        for (int x = -6; x < 6; x++) {
+            for (int z = 0; z < 12; z++) {
+                int top = groundHeight(z);
+                for (int y = -1; y <= top; y++) {
+                    blocks.add(new Block(x, y, z, y == top ? Type.GRASS : Type.DIRT));
+                }
+            }
+        }
+    }
+
+    private static int groundHeight(int z) {
+        if (z >= 9) {
+            return 1;
+        }
+        return z >= 7 ? 0 : -1;
+    }
+
+    private static void addTree(List<Block> blocks) {
+        // Tree on the lower lawn; the opaque canopy uses the shared grass-top texture.
+        for (int y = 0; y <= 3; y++) {
+            blocks.add(new Block(-3, y, 3, Type.WOOD));
+        }
+        for (int x = -4; x <= -2; x++) {
+            for (int z = 2; z <= 4; z++) {
+                blocks.add(new Block(x, 4, z, Type.LEAVES));
+                if (x == -3 || z == 3) {
+                    blocks.add(new Block(x, 5, z, Type.LEAVES));
+                }
+            }
+        }
+    }
+
+    private static void addShelter(List<Block> blocks) {
+        // Small open-front shelter, clear of the stepped bank.
+        for (int x = 1; x <= 4; x++) {
+            for (int z = 3; z <= 6; z++) {
+                blocks.add(new Block(x, 0, z, Type.STONE));
+                blocks.add(new Block(x, 3, z, Type.WOOD));
+                if (x == 1 || x == 4 || z == 6) {
+                    blocks.add(new Block(x, 1, z, Type.WOOD));
+                    blocks.add(new Block(x, 2, z, Type.WOOD));
+                }
+            }
+        }
     }
 }

@@ -50,6 +50,10 @@ public final class GameTextures {
         result.put(BlockWorld.Type.DIRT, material("dirt", new CubeTextures(dirt, dirt, dirt)));
         result.put(BlockWorld.Type.STONE, material("stone", new CubeTextures(stone, stone, stone)));
         result.put(BlockWorld.Type.WOOD, material("wood", wood));
+        var leaves = load(directory.resolve("grass-top.png"));
+        result.put(
+                BlockWorld.Type.LEAVES,
+                material("leaves", new CubeTextures(leaves, leaves, leaves)));
         return Map.copyOf(result);
     }
 

@@ -1,6 +1,6 @@
 # Sample game requirements
 
-Status: G1 through G3 are implemented with automated checks passing; human window/input, texture, and lighting QA is pending. G4 is proposed. See [the game QA guide](benchmarks/game/README.md) for launch instructions, evidence, and the hands-on test.
+Status: G1 through G4 are implemented with automated checks passing; G4 meets its development-machine headless freshness target. Human native-window/input, texture, lighting, and landscape QA remains pending. See [the game QA guide](benchmarks/game/README.md) for launch instructions, evidence, and the hands-on test.
 
 Build a standalone block-world exploration application using the public ray-tracing engine. The first complete sample lets a user fly around a small landscape of textured cubes under sunlight and a blue sky. It also demonstrates that a new application can use the engine without depending on the existing viewport or scene editor.
 
@@ -16,7 +16,7 @@ Deliver the work as the vertical milestones below. Each milestone includes its a
 - Sun direction is fixed during normal play. Diagnostic presets may change it; a time-of-day simulation and visible sun disk are deferred.
 - Use a separate executable and window. Do not replace startup behavior in the existing application or add the game as another viewport preset.
 
-The initial world dimensions and performance settings below are proposed starting values. The implementation must report measured results before treating those values as validated defaults. No open decision prevents starting G1; later gameplay and storage designs remain unspecified deliberately.
+The G4 world dimensions and default settings below are validated by development-machine headless measurements recorded in the game QA guide; native-window responsiveness remains unverified. No open decision prevents using the delivered sample; later gameplay and storage designs remain unspecified deliberately.
 
 ## Milestones and delivery status
 
@@ -27,7 +27,7 @@ Milestones are cumulative. Each depends on the preceding milestone, and all earl
 | G1 Explore a cube scene | Launch a separate application and fly around colored cubes | Reuse existing public camera, rendering, and input APIs | Implemented; human QA pending |
 | G2 Explore textured blocks | Inspect crisp grass, dirt, stone, and wood textures on cube faces | Immutable texture data and diffuse cube texture mapping | Implemented; human QA pending |
 | G3 Explore under sunlight and sky | Observe sun shadows, change sun presets, and compare sky illumination | Directional lights and optional sky radiance | Implemented; human QA pending |
-| G4 Explore the sample landscape | Navigate a small coherent world with measured responsiveness | Integrate existing resolution adaptation; add acceleration only if measurements justify it | Proposed |
+| G4 Explore the sample landscape | Navigate a small coherent world with measured responsiveness | Reuse existing resolution adaptation; no new acceleration was needed for the measured target | Implemented; human QA pending |
 
 ## Shared application and engine requirements
 
@@ -49,7 +49,7 @@ The window starts with a visible pointer and instructions. Clicking the rendered
 
 Focus loss releases the pointer, clears movement, and suspends rendering; regaining focus resumes rendering but requires a click to recapture. Resizing preserves vertical field of view and updates horizontal framing to the display aspect. Closing releases the render session and application update resources. Expose a small overlay containing capture state, controls, and requested versus displayed tracing dimensions.
 
-User test, using `./game.ps1`:
+User test, using `./game.ps1 -Scene gallery` for the retained gallery:
 
 1. Click the view, fly between and around cubes, look upward/downward, and move diagonally. Motion is controllable and is not limited by the pointer reaching the window edge.
 2. Release movement keys and observe the camera stop. Press Escape and confirm the desktop pointer is usable; click to resume.
@@ -68,7 +68,7 @@ Mapping is relative to the object, not world position: translating, rotating, or
 
 Preserve texture bindings when `MaterialAsset` and `SceneSnapshot` copy materials. Game persistence remains deferred. Until the scene file format supports these bindings, `SceneFiles.save` must reject a textured document before replacing its destination file. Existing untextured save/load remains supported; no save operation may silently strip textures.
 
-User test, using the same launch command:
+User test, using `./game.ps1 -Scene gallery`:
 
 1. Inspect grass tops, dirt sides and bottoms, stone, and wood at close range. Pixel art is recognizable, opaque, and has the intended face orientation.
 2. Fly below the elevated cube and around the rotated/scaled cube. Patterns stay attached to each face without swimming through world coordinates.
@@ -88,7 +88,7 @@ The engine must carry these values through validation, render-session state, imm
 
 User test:
 
-1. Launch the gallery and fly around its raised blocks. A blue sky is visible; blocks cast coherent shadows on other blocks and the ground.
+1. Launch `./game.ps1 -Scene gallery` and fly around its raised blocks. A blue sky is visible; blocks cast coherent shadows on other blocks and the ground.
 2. Release the pointer and switch sun presets. Shadow direction changes, and the newly rendered lighting replaces the previous result without stale blends.
 3. Turn off the sky. The background becomes black and surfaces shielded from direct sun become darker after refinement. Turn it back on and observe fill return.
 4. Move closer to a block without changing lighting. Its surface lighting does not brighten merely because the camera approached it.
@@ -98,6 +98,8 @@ Automated acceptance additionally verifies distance-independent sun illumination
 G3 implementation decision: `DirectionalLight.direction` points from a surface toward the source and is normalized on construction. `Sky(nadir, zenith)` interpolates linear radiance by world-space ray elevation; the horizon is halfway between its endpoint colors. New lighting supports diffuse instances and the existing white diffuse legacy primitives. `WorldSnapshot` rejects any mirror, dielectric, or volume instance when a directional light or nonblack sky is configured. Existing black-sky point-light worlds retain those transport modes. Editable lighting components and persistence remain deferred.
 
 ## G4 Explore the sample landscape
+
+Implementation: the default landscape has 313 blocks over a 12 by 12 footprint, including opaque leaves sharing the original grass-top texture. The game enables existing P4 resolution adaptation by default and exposes a released-pointer toggle. It reports image presentation through the public session API so adaptation receives completed-image timing. The frozen route and headless results are in [the game QA guide](benchmarks/game/README.md); the target passed without object-level acceleration. P7 remains deferred in the performance plan. No engine implementation change was required for G4.
 
 Make a coherent finite landscape the default: start with a roughly 12 by 12 block ground footprint, short stepped terrain, a block-built tree, stone features, and a small wood/stone structure. Spawn above ground looking toward recognizable landmarks. Every block remains an ordinary scene instance using shared unit-cube geometry and materials. Retain the gallery through `./game.ps1 -Scene gallery` so earlier visual checks remain reproducible.
 

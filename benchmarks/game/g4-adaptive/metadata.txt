@@ -1,0 +1,9 @@
+CPU=13th Gen Intel(R) Core(TM) i5-13600KF
+JDK=23.0.1+11-39
+logicalProcessors=20
+blocks=313
+windowReference=960x600 (no native window)
+requested=320x200
+settings=RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=32, temporal=false, temporalRevision=0, interactive=true, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0]
+routeSHA256=a705beafb16265242207dcbc9ab9d53c5e9955ce90131f1546be36ceb01b5254
+metric=game copied-image publication; excludes AWT/monitor/input delivery
