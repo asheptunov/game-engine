@@ -244,6 +244,24 @@ public final class DirectRgbTracer implements AutoCloseable {
 
     private final java.util.concurrent.atomic.AtomicInteger nextTile =
             new java.util.concurrent.atomic.AtomicInteger();
+
+    /** Bounds tested by both hierarchy cursors in the most recent trace (benchmark diagnostic). */
+    long hierarchyBoundsTests() {
+        long tests = 0;
+        for (var worker : workers) {
+            tests += worker.objectTraversal.boundsTests + worker.primitiveTraversal.boundsTests;
+        }
+        return tests;
+    }
+
+    long hierarchyNodeVisits() {
+        long visits = 0;
+        for (var worker : workers) {
+            visits += worker.objectTraversal.nodeVisits + worker.primitiveTraversal.nodeVisits;
+        }
+        return visits;
+    }
+
     private List<Worker> workers = List.of();
     private boolean closed;
     private Worker testWorker;
@@ -664,6 +682,12 @@ public final class DirectRgbTracer implements AutoCloseable {
         private Snapshot snapshot;
         private PreparedObject[] objects, media, initialMedia;
         private final ObjectTraversal objectTraversal = new ObjectTraversal();
+        // Mesh measurements do not justify changing the primitive-level default yet.
+        // The opt-in property permits matched benchmark and correctness investigations.
+        private final ObjectTraversal primitiveTraversal =
+                new ObjectTraversal(
+                        Boolean.getBoolean("engine.bvhPrimitiveNearFirst")
+                                && !Boolean.getBoolean("engine.bvhEscapeReference"));
         private int initialMediumCount;
         private float[] initialDistances;
         private final Hit containmentHit = new Hit();
@@ -748,6 +772,10 @@ public final class DirectRgbTracer implements AutoCloseable {
             shadowRays = 0;
             shadowsOccluded = 0;
             litPixels = 0;
+            objectTraversal.nodeVisits = 0;
+            primitiveTraversal.nodeVisits = 0;
+            objectTraversal.boundsTests = 0;
+            primitiveTraversal.boundsTests = 0;
             primaryTests = 0;
             continuationTests = 0;
             shadowTests = 0;
@@ -1666,36 +1694,23 @@ public final class DirectRgbTracer implements AutoCloseable {
                         && object.primitives.length > 1
                         && !object.overlaps(ox, oy, oz, dx, dy, dz, distance)) continue;
                 var bvh = snapshot.acceleration() ? object.bvh : null;
-                for (int node = 0; node < (bvh == null ? 1 : bvh.nodes.length); ) {
-                    int from = 0, to = object.primitives.length;
-                    if (bvh != null) {
-                        var n = bvh.nodes[node];
-                        if (!n.bounds.overlaps(ox, oy, oz, dx, dy, dz, distance)) {
-                            node = n.escape;
-                            continue;
-                        }
-                        node++;
-                        if (!n.leaf()) continue;
-                        from = n.from;
-                        to = n.to;
-                    } else node++;
-                    for (int i = from; i < to; i++) {
-                        var primitive = object.primitives[bvh == null ? i : bvh.order[i]];
-                        if (primitive == source && primitive.flat != null) continue;
-                        countIntersection(visibility);
-                        float t = primitive.distance(ox, oy, oz, dx, dy, dz);
-                        // Preserve scene-object and primitive order for exact ties,
-                        // independently of either hierarchy traversal order.
-                        if (t < distance
-                                || (t == distance
-                                        && nearest != null
-                                        && precedes(
-                                                objectIndex, primitive, nearestIndex, nearest))) {
-                            distance = t;
-                            nearest = primitive;
-                            nearestObject = object;
-                            nearestIndex = objectIndex;
-                        }
+                primitiveTraversal.reset(bvh, object.primitives.length, ox, oy, oz, dx, dy, dz);
+                int primitiveIndex;
+                while ((primitiveIndex = primitiveTraversal.next(distance)) >= 0) {
+                    var primitive = object.primitives[primitiveIndex];
+                    if (primitive == source && primitive.flat != null) continue;
+                    countIntersection(visibility);
+                    float t = primitive.distance(ox, oy, oz, dx, dy, dz);
+                    // Preserve scene-object and primitive order for exact ties,
+                    // independently of either hierarchy traversal order.
+                    if (t < distance
+                            || (t == distance
+                                    && nearest != null
+                                    && precedes(objectIndex, primitive, nearestIndex, nearest))) {
+                        distance = t;
+                        nearest = primitive;
+                        nearestObject = object;
+                        nearestIndex = objectIndex;
                     }
                 }
             }
@@ -1811,28 +1826,16 @@ public final class DirectRgbTracer implements AutoCloseable {
                         && object.primitives.length > 1
                         && !object.overlaps(ox, oy, oz, dx, dy, dz, maxDistance)) continue;
                 var bvh = snapshot.acceleration() ? object.bvh : null;
-                for (int node = 0; node < (bvh == null ? 1 : bvh.nodes.length); ) {
-                    int from = 0, to = object.primitives.length;
-                    if (bvh != null) {
-                        var n = bvh.nodes[node];
-                        if (!n.bounds.overlaps(ox, oy, oz, dx, dy, dz, maxDistance)) {
-                            node = n.escape;
-                            continue;
-                        }
-                        node++;
-                        if (!n.leaf()) continue;
-                        from = n.from;
-                        to = n.to;
-                    } else node++;
-                    for (int i = from; i < to; i++) {
-                        var primitive = object.primitives[bvh == null ? i : bvh.order[i]];
-                        // Only flat source primitives can be skipped. A sphere can occlude its
-                        // own
-                        // interior rays.
-                        if (primitive == source && primitive.flat != null) continue;
-                        shadowTests++;
-                        if (primitive.distance(ox, oy, oz, dx, dy, dz) < maxDistance) return true;
-                    }
+                primitiveTraversal.reset(bvh, object.primitives.length, ox, oy, oz, dx, dy, dz);
+                int primitiveIndex;
+                while ((primitiveIndex = primitiveTraversal.next(maxDistance)) >= 0) {
+                    var primitive = object.primitives[primitiveIndex];
+                    // Only flat source primitives can be skipped. A sphere can occlude its
+                    // own
+                    // interior rays.
+                    if (primitive == source && primitive.flat != null) continue;
+                    shadowTests++;
+                    if (primitive.distance(ox, oy, oz, dx, dy, dz) < maxDistance) return true;
                 }
             }
             return false;

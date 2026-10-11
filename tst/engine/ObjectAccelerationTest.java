@@ -39,6 +39,39 @@ public final class ObjectAccelerationTest {
     }
 
     @Test
+    void nearFirstVisitsCloseLeafAndPrunesDeferredSibling() {
+        var bounds = new PrimitiveBvh.Bounds[64];
+        for (int i = 0; i < bounds.length; i++) {
+            var bound = new PrimitiveBvh.Bounds();
+            bound.include(new Vec3(i * 2, -1, -1));
+            bound.include(new Vec3(i * 2 + 1, 1, 1));
+            bounds[i] = bound;
+        }
+        var tree = new PrimitiveBvh(bounds);
+        var near = new ObjectTraversal(true);
+        var escape = new ObjectTraversal(false);
+        // From the high-X end, fixed preorder visits the farthest leaf first.
+        near.reset(tree, bounds.length, 130, 0, 0, -1, 0, 0);
+        escape.reset(tree, bounds.length, 130, 0, 0, -1, 0, 0);
+        assertEquals(60, near.next(Float.POSITIVE_INFINITY));
+        assertEquals(0, escape.next(Float.POSITIVE_INFINITY));
+        int candidates = 1;
+        while (near.next(3) >= 0) {
+            candidates++;
+        }
+        assertEquals(4, candidates);
+        // Reset discards every pending sibling from the preceding query.
+        near.reset(tree, bounds.length, 0, 0, 0, 0, 1, 0);
+        candidates = 0;
+        while (near.next(1) >= 0) {
+            candidates++;
+        }
+        assertEquals(4, candidates);
+        near.reset(tree, bounds.length, -1, 0, 0, 0, 1, 0);
+        assertEquals(-1, near.next(Float.POSITIVE_INFINITY));
+    }
+
+    @Test
     void touchingBlocksParallelInsideAndBoundedRaysMatchBrute() {
         var state = state(1);
         for (int z = 0; z < 8; z++) {

@@ -26,7 +26,7 @@ The next renderer requirements and six playable implementation phases are in
 The proposed performance roadmap is in [PerformanceRequirements.md](PerformanceRequirements.md).
 It ranks CPU optimization phases by estimated practical impact, with measurement and
 completion gates, plus separate GPU and native backend evaluations. P0 through P5,
-P5.1, P5.2, P7 and P2.1 are implemented; P6, P8 onward and P11.1 remain proposed.
+P5.1, P5.2, P7, P2.1 and P8 are implemented; P6, P9 onward and P11.1 remain proposed.
 
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
@@ -755,3 +755,11 @@ The tracer caches a top-level bounding volume hierarchy for scenes with at least
 On the October 10 frozen game route, the retained notification plus 16-pixel game tile configuration increased adaptive fresh copied-image throughput from 32.9 to 92.3 per second; p95 snapshot age fell from 36.3 to 19.6 ms. Moving grids were 160×100, 240×150 or 320×200 instead of exclusively 102×64. Fixed 320×200 throughput rose from 16.6 to 65.1 per second, with p95 pickup falling from 29.6 to 6.5 ms. Host variation prevents attributing the entire FPS change to scheduling. Both modes restored full-grid images and refined after stopping. Short CPU probes distinguish productive active work from suspended idle work. A fixed-camera worker/tile sweep and route follow-up justify the 16-pixel game default; the general engine keeps 32-pixel tiles and worker count remains fourteen. See [P2.1 results](benchmarks/p2.1/README.md) for intermediate/final evidence, CPU probes, commands and limits.
 
 `./game-check.ps1` and `./verify.ps1` pass. New coverage checks completion signals outside the state monitor, listener detachment and leased-image stability; existing game tests cover movement, suspend/resume and close. The sun/sky batch-equivalence test now waits for equal accumulated sample counts, so the cooperative batch time limit cannot cause a false failure on a busy host. No readability baseline was expanded. Native-window input, focus and painting acceptance remain pending; software publication measurements exclude monitor scanout.
+
+## Performance P8 — near-first object traversal `[implemented; human GUI QA pending]`
+
+The P7 object hierarchy now visits nearer child bounds first and caches deferred entries in fixed worker-local stacks. Close hits prune farther work while exact equal-distance surface ties retain original object and primitive order. Opaque shadows keep early exit; glass and volume visibility keep ordered boundary queries. Tree construction, sampling, game scheduling and geometry remain unchanged. Primitive BVHs retain escape traversal because the mesh experiment did not justify a new default.
+
+Five alternating matched-work rounds show 3.2% lower landscape median tracing time and 5.4% lower time for the fixed 1,024-block diagnostic, with zero worker tracing allocations. The two cursors reserve 512 bytes of array payload per worker; the capacity depends on the current median/four-leaf builder. Frozen fixed/adaptive route evidence, host-variation limits, node/bounds/primitive counts, reproduction commands and the rejected mesh experiment are in [P8 results](benchmarks/p8/README.md).
+
+`./verify.ps1` and `./game-check.ps1` pass, including reference images, object ties, touching blocks, mesh seams, advanced transport, parallel workers, cancellation and sustained movement. A new cursor test covers near-first selection, distance pruning and scratch reset. The readability baseline only shrank or tightened. Native input/focus/painting acceptance remains pending. Next is P9: compare construction quality and leaf sizes against median splitting, accounting for preparation, memory and repeated tracing costs.

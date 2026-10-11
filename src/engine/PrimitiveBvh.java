@@ -7,7 +7,8 @@ import math.Vec3;
 import java.util.*;
 
 /**
- * Median-split, largest-axis BVH. Preorder escape links permit allocation-free stackless traversal.
+ * Median-split, largest-axis BVH. Child indices support near-first traversal; preorder escape links
+ * retain the stackless reference.
  */
 final class PrimitiveBvh {
     static final class Bounds {
@@ -68,12 +69,49 @@ final class PrimitiveBvh {
             }
             return near <= far;
         }
+
+        /** Forward slab entry in ray units; infinity means no overlap within the limit. */
+        float entryDistance(
+                float ox, float oy, float oz, float dx, float dy, float dz, float distance) {
+            float near =
+                    Math.max(
+                            0,
+                            Math.max(
+                                    axisEntry(ox, dx, minX, maxX),
+                                    Math.max(
+                                            axisEntry(oy, dy, minY, maxY),
+                                            axisEntry(oz, dz, minZ, maxZ))));
+            float far =
+                    Math.min(
+                            distance,
+                            Math.min(
+                                    axisExit(ox, dx, minX, maxX),
+                                    Math.min(
+                                            axisExit(oy, dy, minY, maxY),
+                                            axisExit(oz, dz, minZ, maxZ))));
+            return near <= far && near != Float.POSITIVE_INFINITY ? near : Float.POSITIVE_INFINITY;
+        }
+
+        private static float axisEntry(float origin, float direction, float min, float max) {
+            if (direction == 0) {
+                return origin >= min && origin <= max ? 0 : Float.POSITIVE_INFINITY;
+            }
+            return Math.min((min - origin) / direction, (max - origin) / direction);
+        }
+
+        private static float axisExit(float origin, float direction, float min, float max) {
+            if (direction == 0) {
+                return Float.POSITIVE_INFINITY;
+            }
+            return Math.max((min - origin) / direction, (max - origin) / direction);
+        }
     }
 
     static final class Node {
         final Bounds bounds;
         final int from, to;
         int escape;
+        int right;
 
         Node(Bounds b, int from, int to) {
             this.bounds = b;
@@ -128,6 +166,7 @@ final class PrimitiveBvh {
             Arrays.sort(ids, from, to, Comparator.comparingDouble(i -> bounds[i].center(axis)));
             int mid = (from + to) / 2;
             build(nodes, ids, bounds, from, mid);
+            node.right = nodes.size();
             build(nodes, ids, bounds, mid, to);
         }
         node.escape = nodes.size();

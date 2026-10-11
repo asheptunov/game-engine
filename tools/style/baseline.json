@@ -5714,8 +5714,8 @@
     "path": "src/engine/DirectRgbTracer.java",
     "rule": "CognitiveComplexity",
     "anchor": "Worker: The method 'nearestHit(float, float, float, float, float, float, Hit, float, PreparedPrimitive, PreparedObject, boolean)' has a cognitive complexity of <metric>, current threshold is 15",
-    "detail": "The method 'nearestHit(float, float, float, float, float, float, Hit, float, PreparedPrimitive, PreparedObject, boolean)' has a cognitive complexity of 44, current threshold is 15",
-    "ceiling": 44,
+    "detail": "The method 'nearestHit(float, float, float, float, float, float, Hit, float, PreparedPrimitive, PreparedObject, boolean)' has a cognitive complexity of 20, current threshold is 15",
+    "ceiling": 20,
     "count": 1,
     "line": 1642
   },
@@ -5725,8 +5725,8 @@
     "path": "src/engine/DirectRgbTracer.java",
     "rule": "CognitiveComplexity",
     "anchor": "Worker: The method 'occluded(float, float, float, float, float, float, float, PreparedPrimitive, PreparedObject)' has a cognitive complexity of <metric>, current threshold is 15",
-    "detail": "The method 'occluded(float, float, float, float, float, float, float, PreparedPrimitive, PreparedObject)' has a cognitive complexity of 41, current threshold is 15",
-    "ceiling": 41,
+    "detail": "The method 'occluded(float, float, float, float, float, float, float, PreparedPrimitive, PreparedObject)' has a cognitive complexity of 17, current threshold is 15",
+    "ceiling": 17,
     "count": 1,
     "line": 1791
   },
@@ -6037,17 +6037,6 @@
     "ceiling": 1,
     "count": 1,
     "line": 928
-  },
-  {
-    "id": "aaa8e610a4e758290a934ed0e84fc7d92d0721cd0f9ac931da43d9d148ddc9ec",
-    "tool": "checkstyle",
-    "path": "src/engine/DirectRgbTracer.java",
-    "rule": "MultipleVariableDeclarationsCheck",
-    "anchor": "int from = 0, to = object.primitives.length;",
-    "detail": "Each variable declaration must be in its own statement.",
-    "ceiling": 1,
-    "count": 2,
-    "line": 1669
   },
   {
     "id": "febc4aba63ae96e6bc4eb2f54c7e926dfa205cee22e927c38e4b6c4e0e9887f4",
@@ -6391,17 +6380,6 @@
     "line": 808
   },
   {
-    "id": "fe01960ef24e17b860650d2971cb6a38ce2f6f1668aaf10de25dccda5ac29d14",
-    "tool": "checkstyle",
-    "path": "src/engine/DirectRgbTracer.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "} else node++;",
-    "detail": "'else' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 2,
-    "line": 1680
-  },
-  {
     "id": "8324a616a08a64ffe41af0f24743fafee8984c7363802f492697de684f838239",
     "tool": "checkstyle",
     "path": "src/engine/DirectRgbTracer.java",
@@ -6587,17 +6565,6 @@
     "ceiling": 1,
     "count": 1,
     "line": 920
-  },
-  {
-    "id": "250dee21abe19ca00ab657d405e002c5705ee7ef66ad105fe71256673835c0fd",
-    "tool": "checkstyle",
-    "path": "src/engine/DirectRgbTracer.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (!n.leaf()) continue;",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 2,
-    "line": 1677
   },
   {
     "id": "5bb5d52009b568d43129ee9ed7b615997cf30f1b1a13e094335660933c111eca",

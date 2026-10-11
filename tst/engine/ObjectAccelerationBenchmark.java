@@ -15,7 +15,7 @@ public final class ObjectAccelerationBenchmark {
 
     public static void main(String[] args) {
         System.out.println(
-                "scene,objects,mode,medianMs,p95Ms,buildMedianMs,nodes,primaryTests,continuationTests,shadowTests");
+                "scene,objects,mode,medianMs,p95Ms,buildMedianMs,nodes,primaryTests,continuationTests,shadowTests,boundsTests");
         for (int count : new int[] {1, 4, 8, 16, 32, 64, 128, 313, 512, 1024}) {
             var state = ObjectAccelerationTest.state(64);
             int side = (int) Math.ceil(Math.sqrt(count));
@@ -90,7 +90,7 @@ public final class ObjectAccelerationBenchmark {
             Arrays.sort(times);
             System.out.printf(
                     Locale.ROOT,
-                    "%s,%d,%s,%.6f,%.6f,%.6f,%d,%d,%d,%d%n",
+                    "%s,%d,%s,%.6f,%.6f,%.6f,%d,%d,%d,%d,%d%n",
                     name,
                     state.instances().size(),
                     tree ? "tree" : "flat",
@@ -100,7 +100,8 @@ public final class ObjectAccelerationBenchmark {
                     tree ? nodes : 0,
                     tracer.primaryTests,
                     tracer.continuationTests,
-                    tracer.shadowTests);
+                    tracer.shadowTests,
+                    tracer.hierarchyBoundsTests());
         }
     }
 }
