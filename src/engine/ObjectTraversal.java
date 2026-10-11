@@ -16,8 +16,8 @@ final class ObjectTraversal {
         this.nearFirst = nearFirst;
     }
 
-    // Median splitting an int-sized range has depth at most 31. One deferred sibling
-    // per level fits here, for both object and primitive trees, without per-ray allocation.
+    // Construction caps depth at 30. One deferred sibling
+    // per level plus the current node fits here without per-ray allocation.
     private final int[] pending = new int[32];
     private final float[] entries = new float[32];
     private int size;

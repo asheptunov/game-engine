@@ -302,13 +302,16 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   three units along +Z and selects the copy. `view remove <name>` removes an instance.
   Copy material/geometry are shared; transforms are independent. Total instances cap
   at 128. `view acceleration bvh/brute` restarts samples for deterministic comparison.
-  BVHs are cached per instance (16+ primitives), use median splits/leaves of four and
-  stackless escape traversal. P7 adds a cached top-level hierarchy for 32+ prepared
+  BVHs are cached per instance (16+ primitives), use sixteen-bin surface-area construction with
+  eight-primitive leaves and stackless escape traversal. P9 caps construction depth
+  at thirty and falls back to stable median splits for degenerate partitions.
+  P7 adds a cached four-object-leaf top-level hierarchy for 32+ prepared
   objects in `DirectRgbTracer`, shared immutably across workers with worker-local traversal
-  cursors. Smaller scenes retain a bounded linear scan. Preserve scene-order and original
+  cursors that visit nearer object bounds first (P8). Smaller scenes retain a bounded linear scan. Preserve scene-order and original
   primitive-order ties. Camera moves reuse the tree; instance/material/legacy geometry changes
   rebuild it. `SpatialQuery` remains a separate query service with its existing traversal.
-  Run `engine.ObjectAccelerationTest`; measurements and commands are in `benchmarks/p7/README.md`.
+  Run `engine.ObjectAccelerationTest` and `engine.BvhConstructionTest`; construction costs,
+  memory measurements and comparison controls are in `benchmarks/p9/README.md`.
   Brute mode bypasses all bounds. Camera edits reuse cached geometry. Mesh faces use
   double ray-aligned edge functions to retain tiny faces/shared seams. Original triangle
   IDs survive traversal sorting; glass uses whole-instance media and per-face source

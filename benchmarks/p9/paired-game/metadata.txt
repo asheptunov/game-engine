@@ -1,0 +1,5 @@
+Same JVM, one active session at a time; shared 14-worker pool; sequential 30-second warmup for each policy; three alternating 30-second measured replays per policy.
+Median reference: object leaf=4, primitive leaf=4. SAH: object leaf=4, primitive leaf=8.
+Fixed grid=320x200; window reference=960x600; landscape=313 blocks; depth=2; seed=1; batch=1; tile=16; temporal/adaptive=off.
+CPU=i5-13600KF; logical processors=20; JDK=23.0.1+11-39; no native window.
+Source fingerprints: ../final-source-sha256.txt. Route SHA256=a705beafb16265242207dcbc9ab9d53c5e9955ce90131f1546be36ceb01b5254.

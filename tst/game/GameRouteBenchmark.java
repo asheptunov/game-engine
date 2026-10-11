@@ -71,7 +71,7 @@ public final class GameRouteBenchmark {
         }
     }
 
-    private record Result(
+    record Result(
             int fresh,
             double p95,
             double maximum,
@@ -97,7 +97,7 @@ public final class GameRouteBenchmark {
         }
     }
 
-    private static Result replay(
+    static Result replay(
             GameRenderer renderer,
             GameNavigation navigation,
             CameraRoute route,

@@ -10593,28 +10593,6 @@
     "line": 45
   },
   {
-    "id": "f0f9619e2a7d726305020dcc890f630caba1f1aef4134440011c1d439968871a",
-    "tool": "checkstyle",
-    "path": "src/engine/PrimitiveBvh.java",
-    "rule": "MultipleVariableDeclarationsCheck",
-    "anchor": "float x = b.maxX - b.minX, y = b.maxY - b.minY, z = b.maxZ - b.minZ;",
-    "detail": "Each variable declaration must be in its own statement.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 126
-  },
-  {
-    "id": "b0021965f58e9176508e5c5468bae246f1188d80ad254cdf43eeeb746e5e4b8c",
-    "tool": "checkstyle",
-    "path": "src/engine/PrimitiveBvh.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "for (int i = from; i < to; i++) b.include(bounds[ids[i]]);",
-    "detail": "'for' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 122
-  },
-  {
     "id": "bd7c3965a9890aee4a01c2eca19439a284ca3646bfb7ea75288fb2aeb78208aa",
     "tool": "checkstyle",
     "path": "src/engine/PrimitiveBvh.java",

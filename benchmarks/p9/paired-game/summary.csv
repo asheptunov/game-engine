@@ -1,0 +1,7 @@
+policy,run,freshMoving,p95Millis,maxMillis,restoredSeconds,firstRestoredSpp,finalSpp,passed
+median,1,1342,31.209,34.017,0.043,1,323,true
+sah,1,1966,30.483,32.250,0.020,1,488,true
+sah,2,1966,30.609,36.978,0.025,1,490,true
+median,2,1329,31.183,46.888,0.036,1,323,true
+median,3,1338,31.218,46.344,0.045,1,323,true
+sah,3,1987,30.689,37.611,0.017,1,484,true

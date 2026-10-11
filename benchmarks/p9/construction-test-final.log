@@ -1,0 +1,6 @@
+2026-10-11T10:37:04.616385900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-11T10:37:04.620386100  [INFO] harness.SuiteRunner: ? Suite engine.BvhConstructionTest [PT0.0155309S]
+2026-10-11T10:37:04.621384700  [INFO] harness.SuiteRunner: ? Test engine.BvhConstructionTest#policiesAndLeafSizesAgreeForParallelInsideAndLimitedRays [PT0.0130135S]
+2026-10-11T10:37:04.622386500  [INFO] harness.SuiteRunner: ? Test engine.BvhConstructionTest#coincidentCentroidsFallBackAndRetainEveryIdentity [PT0.0010073S]
+2026-10-11T10:37:04.622386500  [INFO] harness.SuiteRunner: ? Test engine.BvhConstructionTest#skewedRangesRespectDepthCapWithoutLosingEntries [PT0.0015101S]
+2026-10-11T10:37:04.622386500  [INFO] harness.SuiteRunner: ========================

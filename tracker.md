@@ -26,7 +26,7 @@ The next renderer requirements and six playable implementation phases are in
 The proposed performance roadmap is in [PerformanceRequirements.md](PerformanceRequirements.md).
 It ranks CPU optimization phases by estimated practical impact, with measurement and
 completion gates, plus separate GPU and native backend evaluations. P0 through P5,
-P5.1, P5.2, P7, P2.1 and P8 are implemented; P6, P9 onward and P11.1 remain proposed.
+P5.1, P5.2, P7, P2.1, P8 and P9 are implemented; P6, P10 onward and P11.1 remain proposed.
 
 ## M1 — Vec3 ops `[done]` (16/16 tests pass)
 
@@ -763,3 +763,13 @@ The P7 object hierarchy now visits nearer child bounds first and caches deferred
 Five alternating matched-work rounds show 3.2% lower landscape median tracing time and 5.4% lower time for the fixed 1,024-block diagnostic, with zero worker tracing allocations. The two cursors reserve 512 bytes of array payload per worker; the capacity depends on the current median/four-leaf builder. Frozen fixed/adaptive route evidence, host-variation limits, node/bounds/primitive counts, reproduction commands and the rejected mesh experiment are in [P8 results](benchmarks/p8/README.md).
 
 `./verify.ps1` and `./game-check.ps1` pass, including reference images, object ties, touching blocks, mesh seams, advanced transport, parallel workers, cancellation and sustained movement. A new cursor test covers near-first selection, distance pruning and scratch reset. The readability baseline only shrank or tightened. Native input/focus/painting acceptance remains pending. Next is P9: compare construction quality and leaf sizes against median splitting, accounting for preparation, memory and repeated tracing costs.
+
+## Performance P9 — surface-area BVH construction `[implemented; human GUI QA pending]`
+
+`BvhBuilder` now builds cached object and primitive bounding-volume hierarchies using sixteen centroid bins and a surface-area heuristic (SAH), which estimates traversal cost from child box areas and item counts. Defaults are four objects or eight primitives per leaf. Stable median splitting handles degenerate partitions. Construction depth is capped at thirty; an oversized terminal leaf retains all entries and keeps P8’s fixed worker stacks safe. Preparation scratch is discarded after construction. Original geometry identities, bounds padding, transport and sampling remain unchanged.
+
+Pinned single-worker 48×48 measurements reduce landscape median tracing from 2.3377 to 1.5542 ms, with construction increasing from 0.0913 to 0.1884 ms. One measured pass more than repays that extra build cost. Mesh details 4/12/32 improve tracing by 6.2–8.1% and reduce retained hierarchy memory by 35–47%; four-primitive SAH leaves are slightly faster but consume more memory. The synthetic 1,024-block view shows no useful tracing gain. Camera edits reuse prepared trees. Median construction remains available as a benchmark/reference option.
+
+Alternating fixed 320×200 game routes in one JVM deliver 53.5 copied images/s with median trees and 78.9 with SAH. All six replays restore the final camera at full resolution and continue refining. Separate before/after JVM results are mixed: fixed throughput is slightly lower while adaptive throughput improves. Host variation and software-only publication measurements limit the claim; native input, focus, painting and monitor smoothness remain pending. See [P9 results](benchmarks/p9/README.md) for raw route, construction, allocation, memory and profiling evidence, reproduction commands and the leaf-size decision.
+
+`verify.ps1`, `game-check.ps1`, the focused `engine.BvhConstructionTest` and `style-test.ps1` pass. Tests cover coincident centroids, skewed inputs, depth limits, rays starting inside bounds, parallel rays, finite limits, object ties, touching blocks, mesh seams, advanced transport and parallel agreement. Worker tracing allocation remains zero; the readability baseline only shrank. Next is a conditional P10 storage experiment, with P15 analytic box intersections retained as the next alternative; neither gain is assumed from a hot query method alone.

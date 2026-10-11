@@ -1,0 +1,3 @@
+logicalProcessorAffinityMask=1 (logical CPU 0)
+childConsole=False; streams redirected
+revision=f48b71bfd480ee48906bc066a8138dd909b8f66a

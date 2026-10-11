@@ -7,13 +7,32 @@ import math.Vec3;
 import java.util.*;
 
 /**
- * Median-split, largest-axis BVH. Child indices support near-first traversal; preorder escape links
- * retain the stackless reference.
+ * Prepared BVH with median and binned surface-area construction. Child indices support near-first
+ * traversal; preorder escape links retain the stackless reference.
  */
 final class PrimitiveBvh {
     static final class Bounds {
         float minX = Float.POSITIVE_INFINITY, minY = minX, minZ = minX;
         float maxX = Float.NEGATIVE_INFINITY, maxY = maxX, maxZ = maxX;
+
+        void clear() {
+            minX = Float.POSITIVE_INFINITY;
+            minY = Float.POSITIVE_INFINITY;
+            minZ = Float.POSITIVE_INFINITY;
+            maxX = Float.NEGATIVE_INFINITY;
+            maxY = Float.NEGATIVE_INFINITY;
+            maxZ = Float.NEGATIVE_INFINITY;
+        }
+
+        double surfaceArea() {
+            if (minX > maxX || minY > maxY || minZ > maxZ) {
+                return 0;
+            }
+            double x = (double) maxX - minX;
+            double y = (double) maxY - minY;
+            double z = (double) maxZ - minZ;
+            return 2 * (x * y + x * z + y * z);
+        }
 
         void include(Vec3 p) {
             minX = Math.min(minX, p.x());
@@ -126,13 +145,27 @@ final class PrimitiveBvh {
 
     final Node[] nodes;
     final int[] order;
+    final int maximumDepth;
 
     PrimitiveBvh(SceneInstance instance, PreparedGeometry geometry) {
-        this(primitiveBounds(instance, geometry));
+        this(
+                primitiveBounds(instance, geometry),
+                !Boolean.getBoolean("engine.bvhMedianReference"),
+                Integer.getInteger("engine.bvhPrimitiveLeafSize", 8));
     }
 
     /** Same immutable hierarchy layout for world-space object bounds. */
     PrimitiveBvh(Bounds[] bounds) {
+        this(
+                bounds,
+                !Boolean.getBoolean("engine.bvhMedianReference"),
+                Integer.getInteger("engine.bvhObjectLeafSize", 4));
+    }
+
+    PrimitiveBvh(Bounds[] bounds, boolean surfaceArea, int leafSize) {
+        if (leafSize < 1 || leafSize > 16) {
+            throw new IllegalArgumentException("Leaf size must be 1..16");
+        }
         int n = bounds.length;
         if (n == 0) {
             throw new IllegalArgumentException("Hierarchy needs at least one bound");
@@ -142,7 +175,9 @@ final class PrimitiveBvh {
             ids[i] = i;
         }
         var list = new ArrayList<Node>();
-        build(list, ids, bounds, 0, n);
+        var builder = new BvhBuilder(bounds, leafSize, surfaceArea);
+        builder.build(list, ids, 0, n, 0);
+        maximumDepth = builder.maximumDepth;
         nodes = list.toArray(Node[]::new);
         order = Arrays.stream(ids).mapToInt(Integer::intValue).toArray();
     }
@@ -153,23 +188,6 @@ final class PrimitiveBvh {
             bounds[i] = bounds(instance, geometry, i);
         }
         return bounds;
-    }
-
-    private static void build(List<Node> nodes, Integer[] ids, Bounds[] bounds, int from, int to) {
-        var b = new Bounds();
-        for (int i = from; i < to; i++) b.include(bounds[ids[i]]);
-        var node = new Node(b, from, to - from <= 4 ? to : -1);
-        nodes.add(node);
-        if (!node.leaf()) {
-            float x = b.maxX - b.minX, y = b.maxY - b.minY, z = b.maxZ - b.minZ;
-            int axis = x >= y && x >= z ? 0 : y >= z ? 1 : 2;
-            Arrays.sort(ids, from, to, Comparator.comparingDouble(i -> bounds[i].center(axis)));
-            int mid = (from + to) / 2;
-            build(nodes, ids, bounds, from, mid);
-            node.right = nodes.size();
-            build(nodes, ids, bounds, mid, to);
-        }
-        node.escape = nodes.size();
     }
 
     static Bounds bounds(SceneInstance instance, PreparedGeometry geometry, int index) {
