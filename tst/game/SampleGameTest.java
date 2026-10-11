@@ -121,6 +121,8 @@ public final class SampleGameTest {
         navigation.resize(320, 200);
         var renderer = new GameRenderer(navigation, BlockWorld.gallery());
         try {
+            var observed = new java.util.concurrent.atomic.AtomicReference<GameRenderer.Frame>();
+            renderer.observePublications(observed::set);
             var first = awaitFrame(renderer);
             int[] frozen = first.image().getRGB(0, 0, 320, 200, null, 0, 320);
             navigation.capture();
@@ -137,6 +139,13 @@ public final class SampleGameTest {
                 }
             }
             assertTrue(fresh >= 2);
+            renderer.observePublications(null);
+            var metrics = observed.get().metrics();
+            assertTrue(metrics.traceNanos() > 0);
+            assertTrue(metrics.copyNanos() > 0);
+            assertTrue(metrics.pickupNanos() >= 0);
+            assertTrue(metrics.ageNanos() >= metrics.copyNanos() + metrics.pickupNanos());
+            assertTrue(metrics.trace().primaryTests() > 0);
             assertEquals(frozen, first.image().getRGB(0, 0, 320, 200, null, 0, 320));
             navigation.active(false);
             Thread.sleep(150);

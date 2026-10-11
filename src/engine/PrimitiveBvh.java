@@ -90,17 +90,31 @@ final class PrimitiveBvh {
     final int[] order;
 
     PrimitiveBvh(SceneInstance instance, PreparedGeometry geometry) {
-        int n = geometry.primitives().size();
-        var bounds = new Bounds[n];
+        this(primitiveBounds(instance, geometry));
+    }
+
+    /** Same immutable hierarchy layout for world-space object bounds. */
+    PrimitiveBvh(Bounds[] bounds) {
+        int n = bounds.length;
+        if (n == 0) {
+            throw new IllegalArgumentException("Hierarchy needs at least one bound");
+        }
         var ids = new Integer[n];
         for (int i = 0; i < n; i++) {
-            bounds[i] = bounds(instance, geometry, i);
             ids[i] = i;
         }
         var list = new ArrayList<Node>();
         build(list, ids, bounds, 0, n);
         nodes = list.toArray(Node[]::new);
         order = Arrays.stream(ids).mapToInt(Integer::intValue).toArray();
+    }
+
+    private static Bounds[] primitiveBounds(SceneInstance instance, PreparedGeometry geometry) {
+        var bounds = new Bounds[geometry.primitives().size()];
+        for (int i = 0; i < bounds.length; i++) {
+            bounds[i] = bounds(instance, geometry, i);
+        }
+        return bounds;
     }
 
     private static void build(List<Node> nodes, Integer[] ids, Bounds[] bounds, int from, int to) {

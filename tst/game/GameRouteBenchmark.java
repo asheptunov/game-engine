@@ -133,7 +133,10 @@ public final class GameRouteBenchmark {
     private static final class Measurements {
         private final ArrayList<Double> intervals = new ArrayList<>();
         private final StringBuilder rows =
-                new StringBuilder("seconds,width,height,spp,generation,eyeX,eyeY,eyeZ\n");
+                new StringBuilder(
+                        "seconds,width,height,spp,generation,eyeX,eyeY,eyeZ,traceMs,copyMs,ageMs,"
+                                + "pickupMs,traceCpuMs,traceBytes,primaryTests,continuationTests,"
+                                + "shadowTests\n");
         private double lastMoving;
         private double restored = -1;
         private long firstSamples;
@@ -145,10 +148,12 @@ public final class GameRouteBenchmark {
                 return;
             }
             var eye = frame.camera().eye();
+            var metrics = frame.metrics();
+            var trace = metrics.trace();
             rows.append(
                     String.format(
                             Locale.ROOT,
-                            "%.6f,%d,%d,%d,%d,%.6f,%.6f,%.6f%n",
+                            "%.6f,%d,%d,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%d,%d,%d%n",
                             published,
                             frame.image().getWidth(),
                             frame.image().getHeight(),
@@ -156,7 +161,16 @@ public final class GameRouteBenchmark {
                             frame.generation(),
                             eye.x(),
                             eye.y(),
-                            eye.z()));
+                            eye.z(),
+                            metrics.traceNanos() / 1e6,
+                            metrics.copyNanos() / 1e6,
+                            metrics.ageNanos() / 1e6,
+                            metrics.pickupNanos() / 1e6,
+                            trace.cpuNanos() / 1e6,
+                            trace.allocatedBytes(),
+                            trace.primaryTests(),
+                            trace.continuationTests(),
+                            trace.shadowTests()));
             if (published <= 25) {
                 intervals.add((published - lastMoving) * 1000);
                 lastMoving = published;

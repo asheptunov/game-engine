@@ -19,6 +19,8 @@ public final class DirectRgbTracer implements AutoCloseable {
     private List<SceneInstance> cachedInstances = List.of();
     private List<RenderPrimitive> cachedLegacyObjects = List.of();
     private PreparedObject[] objects = new PreparedObject[0];
+    private PrimitiveBvh objectBvh;
+    private final int objectBvhThreshold;
     private PreparedEmitter[] emitters = new PreparedEmitter[0];
     private float[][][] buffer;
     private double[][][] mean;
@@ -126,6 +128,13 @@ public final class DirectRgbTracer implements AutoCloseable {
     }
 
     public DirectRgbTracer(ViewportState state) {
+        // Small optical rooms did not benefit in the P7 equal-work measurements.
+        this(state, 32);
+    }
+
+    /** Package-local threshold override for equal-work hierarchy benchmarks. */
+    DirectRgbTracer(ViewportState state, int objectBvhThreshold) {
+        this.objectBvhThreshold = Math.max(1, objectBvhThreshold);
         this.state = state;
         buffer = new float[3][state.sensorPixelsH()][state.sensorPixelsW()];
     }
@@ -153,6 +162,13 @@ public final class DirectRgbTracer implements AutoCloseable {
             prepared.add(new PreparedObject(instance));
         }
         objects = prepared.toArray(PreparedObject[]::new);
+        objectBvh =
+                objects.length >= objectBvhThreshold
+                        ? new PrimitiveBvh(
+                                java.util.Arrays.stream(objects)
+                                        .map(o -> o.bounds)
+                                        .toArray(PrimitiveBvh.Bounds[]::new))
+                        : null;
         int surfaceId = 1;
         for (var object : objects)
             for (var primitive : object.primitives) primitive.surfaceId = surfaceId++;
@@ -207,6 +223,7 @@ public final class DirectRgbTracer implements AutoCloseable {
 
     private record Snapshot(
             PreparedObject[] objects,
+            PrimitiveBvh objectBvh,
             PreparedEmitter[] emitters,
             PointLight[] lights,
             DirectionalLight[] sunlight,
@@ -219,7 +236,11 @@ public final class DirectRgbTracer implements AutoCloseable {
             long sample,
             boolean acceleration,
             boolean volumeMode,
-            int crossingLimit) {}
+            int crossingLimit) {
+        PrimitiveBvh queryObjectBvh() {
+            return acceleration ? objectBvh : null;
+        }
+    }
 
     private final java.util.concurrent.atomic.AtomicInteger nextTile =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -348,6 +369,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             var snapshot =
                     new Snapshot(
                             objects,
+                            objectBvh,
                             emitters,
                             lights,
                             directionalLights(),
@@ -509,6 +531,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         worker.configure(
                 new Snapshot(
                         objects,
+                        objectBvh,
                         emitters,
                         new PointLight[0],
                         directionalLights(),
@@ -640,6 +663,7 @@ public final class DirectRgbTracer implements AutoCloseable {
     private final class Worker implements java.util.concurrent.Callable<Void> {
         private Snapshot snapshot;
         private PreparedObject[] objects, media, initialMedia;
+        private final ObjectTraversal objectTraversal = new ObjectTraversal();
         private int initialMediumCount;
         private float[] initialDistances;
         private final Hit containmentHit = new Hit();
@@ -1631,7 +1655,12 @@ public final class DirectRgbTracer implements AutoCloseable {
             float distance = limit;
             PreparedPrimitive nearest = null;
             PreparedObject nearestObject = null;
-            for (var object : objects) {
+            int nearestIndex = Integer.MAX_VALUE;
+            objectTraversal.reset(
+                    snapshot.queryObjectBvh(), objects.length, ox, oy, oz, dx, dy, dz);
+            int objectIndex;
+            while ((objectIndex = objectTraversal.next(distance)) >= 0) {
+                var object = objects[objectIndex];
                 if (object == target) continue;
                 if (snapshot.acceleration()
                         && object.primitives.length > 1
@@ -1653,20 +1682,19 @@ public final class DirectRgbTracer implements AutoCloseable {
                     for (int i = from; i < to; i++) {
                         var primitive = object.primitives[bvh == null ? i : bvh.order[i]];
                         if (primitive == source && primitive.flat != null) continue;
-                        if (guiding) guideTests++;
-                        else if (visibility) shadowTests++;
-                        else if (continuation) continuationTests++;
-                        else primaryTests++;
+                        countIntersection(visibility);
                         float t = primitive.distance(ox, oy, oz, dx, dy, dz);
-                        // Preserve original primitive order for exact shared-edge ties, independent
-                        // of BVH order.
+                        // Preserve scene-object and primitive order for exact ties,
+                        // independently of either hierarchy traversal order.
                         if (t < distance
                                 || (t == distance
-                                        && nearestObject == object
-                                        && primitive.primitiveId < nearest.primitiveId)) {
+                                        && nearest != null
+                                        && precedes(
+                                                objectIndex, primitive, nearestIndex, nearest))) {
                             distance = t;
                             nearest = primitive;
                             nearestObject = object;
+                            nearestIndex = objectIndex;
                         }
                     }
                 }
@@ -1681,6 +1709,27 @@ public final class DirectRgbTracer implements AutoCloseable {
             nearest.normal(hit.x, hit.y, hit.z, hit);
             hit.frontFace = hit.nx * dx + hit.ny * dy + hit.nz * dz < 0;
             return true;
+        }
+
+        private void countIntersection(boolean visibility) {
+            if (guiding) {
+                guideTests++;
+            } else if (visibility) {
+                shadowTests++;
+            } else if (continuation) {
+                continuationTests++;
+            } else {
+                primaryTests++;
+            }
+        }
+
+        private static boolean precedes(
+                int objectIndex,
+                PreparedPrimitive primitive,
+                int nearestIndex,
+                PreparedPrimitive nearest) {
+            return objectIndex < nearestIndex
+                    || (objectIndex == nearestIndex && primitive.primitiveId < nearest.primitiveId);
         }
 
         /**
@@ -1750,7 +1799,11 @@ public final class DirectRgbTracer implements AutoCloseable {
                 float maxDistance,
                 PreparedPrimitive source,
                 PreparedObject target) {
-            for (var object : objects) {
+            objectTraversal.reset(
+                    snapshot.queryObjectBvh(), objects.length, ox, oy, oz, dx, dy, dz);
+            int objectIndex;
+            while ((objectIndex = objectTraversal.next(maxDistance)) >= 0) {
+                var object = objects[objectIndex];
                 if (object == target)
                     continue; // Sampled endpoint is not a blocker; all other emitters remain
                 // opaque.
@@ -1773,7 +1826,8 @@ public final class DirectRgbTracer implements AutoCloseable {
                     } else node++;
                     for (int i = from; i < to; i++) {
                         var primitive = object.primitives[bvh == null ? i : bvh.order[i]];
-                        // Only flat source primitives can be skipped. A sphere can occlude its own
+                        // Only flat source primitives can be skipped. A sphere can occlude its
+                        // own
                         // interior rays.
                         if (primitive == source && primitive.flat != null) continue;
                         shadowTests++;

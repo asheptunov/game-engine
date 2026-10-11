@@ -1,0 +1,52 @@
+{
+  "movingPublications": 3125,
+  "freshPerSecond": 41.666666666666664,
+  "grids": {
+    "102x64": 3125
+  },
+  "traceMs": {
+    "mean": 16.487273696,
+    "median": 14.7168,
+    "p95": 28.8253
+  },
+  "copyMs": {
+    "mean": 0.099550368,
+    "median": 0.0821,
+    "p95": 0.1686
+  },
+  "ageMs": {
+    "mean": 24.067247904,
+    "median": 17.8155,
+    "p95": 35.795
+  },
+  "pickupMs": {
+    "mean": 7.425973184,
+    "median": 6.1299,
+    "p95": 16.8341
+  },
+  "traceCpuMs": {
+    "mean": 69.765,
+    "median": 78.125,
+    "p95": 156.25
+  },
+  "traceBytes": {
+    "mean": 5332.20352,
+    "median": 4952.0,
+    "p95": 4976.0
+  },
+  "primaryTests": {
+    "mean": 99071.9808,
+    "median": 81576.0,
+    "p95": 167376.0
+  },
+  "continuationTests": {
+    "mean": 109835.6928,
+    "median": 60600.0,
+    "p95": 399360.0
+  },
+  "shadowTests": {
+    "mean": 18948.0672,
+    "median": 5558.0,
+    "p95": 93513.0
+  }
+}

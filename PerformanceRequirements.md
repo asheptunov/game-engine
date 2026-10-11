@@ -1,10 +1,10 @@
 # Renderer performance specification
 
-Status: P0 through P5, P5.1 and P5.2 implemented. P11.1 and P6 onward remain proposed. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), and [P5 results](benchmarks/p5/README.md).
+Status: P0 through P5, P5.1, P5.2 and P7 implemented. P7 is automatically verified; native-window acceptance remains pending. P2.1, P11.1 and the other phases from P6 onward remain proposed. The October 10 game profiling review set the delivery order below; the subsequent [P7 results](benchmarks/p7/README.md) record its implementation and measurements. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), [P5 results](benchmarks/p5/README.md), and [game profiling](benchmarks/game/PROFILE.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
-The recommended first delivery is measurement, tiled multicore tracing, responsive scheduling, and removal of display-buffer churn. Later phases must earn their place through measurements. Java remains the implementation language for the CPU work; native and GPU backends are separate strategic options.
+The original first deliveries—measurement, tiled multicore tracing, responsive scheduling, and removal of display-buffer churn—are complete. Later phases must earn their place through measurements. Java remains the implementation language for the CPU work; native and GPU backends are separate strategic options.
 
 ## Goals and terminology
 
@@ -19,7 +19,7 @@ The recommended first delivery is measurement, tiled multicore tracing, responsi
 
 Track these dimensions separately. A phase may improve responsiveness without improving throughput, or reduce work by accepting a visible quality tradeoff. Such changes must be labeled and controllable.
 
-## Current evidence and limits
+## Historical room baseline and limits
 
 User observations at approximately 1400 by 900 are about 6 FPS in playground, 1.3 in bounce-room, and 1.7 in glass. These correspond to roughly 10, 46, and 35 times the throughput needed for 60 FPS at the same work per frame. Glass at quarter resolution is reported around 12 FPS. Quarter means one quarter in each dimension, approximately one sixteenth as many sensor pixels.
 
@@ -41,7 +41,7 @@ The host reported an Intel i5-13600KF and 20 logical processors. GPU identity an
 
 ## Priority and dependency rules
 
-The CPU phases below are ranked by estimated practical impact on the current application, with confidence and affected workload stated explicitly. This is an engineering estimate, not a measured global ordering: throughput, responsiveness, and quality cannot be reduced to one reliable speedup number. Dependencies may require a small enabling step first. Re-rank remaining work after each measured result; keep phase identifiers stable.
+The table below retains the original phase identifiers and estimates for the room workloads. It is a catalog, not today's execution order. The game-specific order follows it. Throughput, responsiveness, and quality cannot be reduced to one reliable speedup number. Dependencies may require a small enabling step first. Re-rank remaining work after each measured result; keep phase identifiers stable.
 
 GPU work has the highest potential hardware ceiling but is a separate backend project. It is ranked separately so its potential does not imply that it should precede the much cheaper CPU improvements. Native integration is likewise conditional.
 
@@ -50,6 +50,7 @@ GPU work has the highest potential hardware ceiling but is a separate backend pr
 | P0 | Establish comparable measurements | Enabler; no direct speedup | None |
 | P1 | Tiled multicore tracing | Very high potential trace throughput; high confidence in unused parallelism | P0 |
 | P2 | Responsive rendering and cancellation | Very high interaction benefit; high confidence | P1 tile and worker foundation |
+| P2.1 | Game completion-to-display scheduling | Reduce measured pickup delay at small grids; conditional benefit at full grids | P2; game timing evidence; remeasure after P7 |
 | P3 | Reuse and fuse display buffers | High at low sensor resolution; medium at full resolution; high confidence in avoidable work | P0; coordinate with P2 publication |
 | P4 | Dynamic resolution while moving | High interaction benefit through explicit quality reduction; high confidence | P2 |
 | P5 | Temporal sample reuse | Implemented quality option; lower one-spp noise, substantial overhead and mixed equal-time benefit | P2 and history validation data |
@@ -70,7 +71,25 @@ GPU work has the highest potential hardware ceiling but is a separate backend pr
 | S1 | GPU backend | Highest potential throughput ceiling; feasibility and achieved gain unverified | P0, hardware inventory, backend contract |
 | S2 | Native CPU backend | Uncertain gain; evaluate only against optimized Java | P0 and representative Java baseline |
 
-P0 through P5.2 are implemented. P5.1 reduces temporal overhead; P5.2 offers optional tracing reductions where they pay off at acceptable quality. P7 remains the next direct geometry-throughput option, especially as object count grows; it also accelerates guide queries. P6 is a separate quality experiment. P11.1 has a higher potential ceiling than reducing history overhead alone, but follows per-pixel accounting because it changes which pixels receive fresh paths. Decimal identifiers preserve existing phase numbers; this ordering balances impact, confidence and prerequisites rather than implying a guaranteed speedup ranking.
+P0 through P5.2 are implemented except for the newly proposed P2.1 follow-up. P5.1 reduces temporal overhead; P5.2 offers optional tracing reductions where they pay off at acceptable quality. P6 remains a separate quality experiment. P11.1 follows per-pixel accounting because it changes which pixels receive fresh paths. Decimal identifiers preserve existing phase numbers.
+
+### Current priority: the sample game, October 10, 2026
+
+The representative workload is the 313-block landscape reached by `./game.ps1`: diffuse textured blocks, sun and sky, depth two, one sample per batch, and temporal reconstruction off. The requested grid is 320×200 for a 960×600 window. Adaptive resolution can reduce motion images to 102×64. See [the profiling report](benchmarks/game/PROFILE.md) for CPU samples, per-publication timings, raw evidence, commands, and limitations.
+
+The game passed its original 200 ms p95 freshness threshold by reducing resolution substantially. That milestone remains complete, but passing it no longer justifies deferring throughput work. Fixed-grid freshness and image age must accompany adaptive results. Native-window smoothness remains unverified.
+
+| Order | Work and status | Why this comes next | User-visible completion and evidence |
+| --- | --- | --- | --- |
+| Delivered | P7: object-level acceleration; implemented and automatically verified | The original profile found nearest-hit and shadow queries dominated CPU samples. The tracer now prunes groups of objects for both. | Equal-grid route and scaling results are in [P7](benchmarks/p7/README.md). Adaptive restoration and reference equivalence are checked; native-window acceptance remains pending. |
+| 1 | P2.1: game publication scheduling, with a P1 worker/tile tuning investigation; proposed follow-up | Small-grid tracing exposes the game's periodic pickup delay. A 102×64 grid has only eight 32-pixel tiles for fourteen configured workers. | At unchanged image quality, camera images arrive with less delay and better p95 freshness. Reprofile after P7; retain changes only if end-to-end measurements improve without higher idle CPU or input regressions. |
+| 2 | P8/P9, then P10 as supported by a new profile; conditional | The P7 profile places 27.1% of sampled execution leaves in object traversal. Evaluate P8/P9 first; storage changes remain conditional. | Improve route and larger-world performance, including preparation cost and memory. Do not infer cache stalls from a hot Java method alone. |
+| 3 | P15: analytic box intersections; conditional experiment | Cubes use polygon faces. Face work may become the next bottleneck after object pruning. | Keep only a measured fixed-grid gain with equivalent images, texture orientation, surface identity and shadow behavior. The current profile does not isolate face cost from inlined bounds/loop work. |
+| Deferred | P14, chunk/hidden-face world representations, P6/P11/P12/P13, further temporal work, S1/S2 | Shared acceleration and chunks need a larger-world workload; quality changes and new backends do not address the first measured CPU bottleneck as directly. | Reopen using scaling, quality-at-equal-time, or residual CPU-budget evidence. Chunking is an investigation, not an approved new world architecture. |
+
+P0 measurement work belongs in each delivery: retain the frozen route, source fingerprints, fixed/adaptive comparisons, actual grids, image age, copy/pickup timings, and separate profiled versus unprofiled runs. Add larger block counts before claiming world scalability. Keep the existing 200 ms threshold as a historical regression check, not a smooth-gameplay acceptance target. The original 60-useful-updates-per-second aspiration remains; a new hard gameplay target and minimum acceptable moving resolution require human evaluation and are not settled by this profiling review.
+
+For P7, also measure a short object-bounds/primitive-work diagnostic if needed to choose the hierarchy design. Java Flight Recorder identifies hot query paths, but JIT inlining prevents treating method sample shares as an exact split between object bounds and polygon intersections. Acceleration must preserve touching block faces and deterministic cross-object ties as well as the general engine's glass and volume behavior.
 
 ## Shared completion requirements
 
@@ -157,6 +176,14 @@ Check cancellation and time budgets between tiles. Stop scheduling tiles promptl
 Keep input responsive while a pass is unfinished. A 16.67 ms display budget does not imply a complete fresh sensor sample fits inside it. Report image age and completed work, not just presentation FPS. Bound queued generations and memory; repeated mouse motion must not accumulate a backlog.
 
 Acceptance: rapid camera movement, resolution changes, preset switches, pause/resume, console interaction, and window focus loss cannot mix generations, race buffers, or deadlock. Continuous camera movement must display newly completed previews before input stops; repeated presentation of one old image is not progress. Check previews against their captured camera and stationary convergence against the latest camera. Measure input latency and wasted obsolete work. Aim for p95 input handling within one 60 Hz interval on the baseline host; separately report time to a visible camera update. Long individual tiles must be visible in diagnostics and motivate smaller tiles.
+
+## P2.1 Fresher game images after tracing completes
+
+Proposed after P7 remeasurement. The game owner in `src/game/GameRenderer.java` checks the session and copies a newly completed image on a fixed-delay 16 ms timer. The delay starts after each tick's work. A completed render can wait for the next tick; `GamePanel` paints on its own Swing timer. The measured headless pickup delay covers the first wait, not Swing delivery or monitor scanout.
+
+The outcome is that flying through `./game.ps1` shows completed camera images sooner without reducing resolution, depth or lighting quality. Investigate bounded completion notification or a cadence that accounts for tick work. Keep one session owner, immutable copied images, lease ownership, current-camera snapshot rules and no backlog of camera generations. Do not introduce busy polling or perform tracing on the Swing event thread. In the same investigation, sweep worker counts and tile sizes at fixed 102×64 and 320×200 grids; the current small grid cannot occupy fourteen workers with only eight tiles. This is a hypothesis about scheduling efficiency, not proof that more tiles will help.
+
+Acceptance: compare warmed route repeats before/after at equal settings, report p95 pickup delay, snapshot age, fresh intervals and idle/active CPU, then test continuous look/movement, focus loss, suspend/resume and close in the native window. Retain only measured improvements. Adaptive mode must still restore the requested grid and refine after stopping. If P7 leaves no material scheduling problem, record P2.1 as evaluated/deferred rather than retaining unnecessary complexity.
 
 ## P3 Reuse and fuse display buffers
 
@@ -287,7 +314,7 @@ Next, profile representative raw motion workloads with temporal off and select a
 - P10 targets pointer chasing, memory layout and accumulation traffic; cache/memory limits remain hypotheses until measured.
 - P15 targets box face-test cost; P13 targets long low-contribution paths, with energy/noise validation.
 
-These phases already cover the proposed intersection and memory directions. No additional optimization phase is justified yet. Reuse P0/F3/F4 measurements to choose or re-rank them; add a focused phase only if profiling identifies work outside their scope. Faster ray queries would also reduce temporal guide cost, but raw end-to-end throughput is the immediate acceptance target.
+These phases cover the intersection and memory directions. The October 10 game review separately adds P2.1 for measured application pickup delay. Reuse P0/F3/F4 measurements to choose or re-rank work; add a focused phase only if profiling identifies work outside existing scope. Faster ray queries would also reduce temporal guide cost, but raw end-to-end throughput is the immediate acceptance target.
 
 Add an opt-in interaction policy that spends validated history's noise reduction on a smaller fresh tracing budget. Compare fewer fresh spp at the same sensor grid when the baseline uses more than one spp, then evaluate lower motion grids with P4. At one fresh spp per pixel, uniform sampling cannot go lower without P11.1 or another explicitly designed sparse scheme. Preserve depth, materials and lighting. Account for unsupported pixels and scenes: glass/mirrors still need fresh raw estimates, and volumes currently bypass temporal reuse entirely.
 
@@ -305,7 +332,11 @@ Acceptance: compare low-spp output with converged references for diffuse, rough,
 
 ## P7 Top-level object BVH
 
+Implemented in `DirectRgbTracer`: a median-split hierarchy with leaves of up to four objects, enabled at 32 prepared objects. It shares the existing bounds/tree builder, retains original object indices for ties, and uses one reusable traversal cursor per worker. Camera changes reuse the prepared hierarchy; relevant scene edits rebuild it. Brute mode bypasses both hierarchy levels. The 32-object cutoff avoids measured regressions in small optical rooms. See [P7 evidence and reproduction](benchmarks/p7/README.md). Native-window playthrough remains an acceptance step; the requirements below are retained as the delivery contract.
+
 Build a hierarchy over prepared object bounds to avoid scanning every object for each nearest-hit or visibility query. Retain a small-scene linear path and brute-force reference. Camera changes reuse geometry. Rebuild or refit on relevant instance changes, selecting the simpler correct strategy first.
+
+For the game, deliver this through the existing landscape without changing block geometry, textures, sun/sky, depth, sampling or requested resolution. Include both nearest-hit queries and opaque sun visibility; accelerating only camera rays leaves the measured shadow cost. Test touching blocks and cross-object equal-distance ties explicitly. Evaluate near-first traversal as part of the P7 comparison when useful; retain P8 as the broader follow-up rather than requiring an unmeasured traversal rewrite first.
 
 Acceptance: accelerated and brute queries agree on nearest hits, bounded occlusion, inside/nested media, and volume connections. Preserve stable ties and face identity independently of traversal order. Benchmark both current rooms and increasing instance counts; choose the activation threshold from measurements. Include build cost, not just traversal.
 

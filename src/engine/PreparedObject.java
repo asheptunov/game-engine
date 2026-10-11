@@ -5,7 +5,7 @@ final class PreparedObject {
     final PreparedGeometry geometry;
     final PreparedPrimitive[] primitives;
     final PrimitiveBvh bvh;
-    private final PrimitiveBvh.Bounds bounds;
+    final PrimitiveBvh.Bounds bounds;
 
     PreparedObject(SceneInstance instance) {
         geometry = PreparedGeometry.prepare(instance.geometry());

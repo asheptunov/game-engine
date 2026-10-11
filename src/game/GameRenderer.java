@@ -21,7 +21,16 @@ public final class GameRenderer implements AutoCloseable {
             long generation,
             long samples,
             long publicationNanos,
-            engine.Camera camera) {}
+            engine.Camera camera,
+            Metrics metrics) {}
+
+    /** Benchmark-only timings at copy completion; trace CPU sums all active tracing threads. */
+    public record Metrics(
+            long traceNanos,
+            long copyNanos,
+            long ageNanos,
+            long pickupNanos,
+            profiling.TraceProfile.Stats trace) {}
 
     private final GameNavigation navigation;
     private engine.WorldSnapshot world;
@@ -83,7 +92,18 @@ public final class GameRenderer implements AutoCloseable {
             session.request();
             try (var image = session.acquireImage()) {
                 if (image != null && image.publicationNanos() != converted) {
+                    long copyStart = System.nanoTime();
                     var display = copyImage(image);
+                    long copied = System.nanoTime();
+                    var metrics =
+                            publicationObserver == null
+                                    ? null
+                                    : new Metrics(
+                                            image.traceNanos(),
+                                            copied - copyStart,
+                                            session.progress(image).shownAgeNanos(),
+                                            copyStart - image.finishedNanos(),
+                                            image.traceStats());
                     frame =
                             new Frame(
                                     display,
@@ -91,8 +111,9 @@ public final class GameRenderer implements AutoCloseable {
                                     view.height(),
                                     image.generation(),
                                     image.samples(),
-                                    System.nanoTime(),
-                                    image.camera());
+                                    copied,
+                                    image.camera(),
+                                    metrics);
                     session.presented(image);
                     converted = image.publicationNanos();
                     if (publicationObserver != null) {

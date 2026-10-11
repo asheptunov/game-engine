@@ -1,0 +1,6 @@
+Warmup: Result[fresh=193, p95=217.05679999999816, maximum=235.6839000000015, restored=0.14345189999999874, firstSamples=1, finalSamples=43]
+Replay 1: Result[fresh=194, p95=202.89539999999917, maximum=221.52910000000148, restored=0.14533610000000152, firstSamples=1, finalSamples=45]
+Replay 2: Result[fresh=185, p95=217.43479999999948, maximum=249.02390000000096, restored=0.1380063000000007, firstSamples=1, finalSamples=44]
+Replay 3: Result[fresh=172, p95=216.16219999999942, maximum=1130.6216000000004, restored=0.2435824000000011, firstSamples=1, finalSamples=44]
+Exception in thread "main" java.lang.AssertionError: G4 freshness/restoration target missed; inspect out\p7\before-fixed
+	at game.GameRouteBenchmark.main(GameRouteBenchmark.java:65)

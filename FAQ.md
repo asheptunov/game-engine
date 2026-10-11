@@ -80,7 +80,7 @@ A15: It lets input and display continue while an expensive pass finishes. P4 now
 
 Q16: what is top-level BVH over objects and how is it different from how we're using a BVH now?
 
-A16: Currently, a ray checks each object's bounds in a flat list. For an object with enough primitives, it then uses that object's BVH to find relevant faces. A top-level BVH groups the objects themselves: missing a group box can skip many objects at once. Think of first finding the relevant buildings, then the relevant rooms inside each building. With only a few objects, the extra hierarchy may cost more than a short linear scan.
+A16: A top-level BVH groups objects by their bounds, so a ray missing a group can skip many objects at once. P7 now uses this in the tracer for scenes with 32 or more prepared objects, including the sample game's 313 blocks. Smaller scenes retain the flat object scan. Inside each object, the existing primitive BVH still handles objects with 16 or more intersection primitives, such as triangles. Think of first finding relevant buildings, then relevant rooms inside each building. Camera moves reuse both levels; scene edits rebuild the prepared hierarchy. Brute mode bypasses both levels for comparison. See [P7 measurements](benchmarks/p7/README.md).
 
 Q17: can you explain the Russian roulette technique, specifically how it is applied to path tracing? how do you know if a path is low-contribution? how do you compensate for other paths?
 

@@ -1,0 +1,7 @@
+[0.265s][info][jfr,startup] Recording 1 scheduled to start in 30 s. No limit specified, using maxsize=250MB as default.
+[0.265s][info][jfr,startup] 
+[0.265s][info][jfr,startup] Use jcmd 17776 JFR.dump name=1 to copy recording data to file.
+Warmup: Result[fresh=871, p95=32.15189999999968, maximum=77.1907, restored=0.4053153000000016, firstSamples=1, finalSamples=147]
+Replay 1: Result[fresh=820, p95=32.09829999999947, maximum=34.52260000000251, restored=0.4290325999999993, firstSamples=1, finalSamples=147]
+Replay 2: Result[fresh=817, p95=32.1037000000004, maximum=58.340999999999994, restored=0.42335299999999876, firstSamples=1, finalSamples=147]
+Replay 3: Result[fresh=818, p95=32.10639999999998, maximum=60.182100000000005, restored=0.43222550000000126, firstSamples=1, finalSamples=147]

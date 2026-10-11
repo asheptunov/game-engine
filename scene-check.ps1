@@ -15,6 +15,7 @@ $tests = @(
     "engine.ScenePersistenceTest",
     "engine.SpatialQueryTest",
     "engine.MeshAccelerationTest",
+    "engine.ObjectAccelerationTest",
     "engine.DielectricPathTest",
     "engine.VolumePathTest",
     "engine.ParallelTraceTest"

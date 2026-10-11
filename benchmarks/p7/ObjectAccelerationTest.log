@@ -1,0 +1,6 @@
+2026-10-10T19:15:55.993235200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-10T19:15:55.997745800  [INFO] harness.SuiteRunner: ? Suite engine.ObjectAccelerationTest [PT0.6726699S]
+2026-10-10T19:15:55.999747200  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#seededGlassVolumesEmittersAndTexturedSunSkyAgree [PT0.5109064S]
+2026-10-10T19:15:55.999747200  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#touchingBlocksParallelInsideAndBoundedRaysMatchBrute [PT0.0889116S]
+2026-10-10T19:15:56.000746800  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#crossObjectTiesKeepSceneOrderDespiteSpatialSortingAndEdits [PT0.0728519S]
+2026-10-10T19:15:56.000746800  [INFO] harness.SuiteRunner: ========================
