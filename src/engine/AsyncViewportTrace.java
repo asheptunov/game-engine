@@ -55,6 +55,7 @@ final class AsyncViewportTrace implements AutoCloseable {
     private volatile boolean closed;
     private volatile Image image;
     private volatile Throwable failure;
+    private volatile Runnable imageAvailable;
     private ViewportState.RenderKey key;
     private boolean running, wasPaused;
     private volatile long generation;
@@ -71,6 +72,10 @@ final class AsyncViewportTrace implements AutoCloseable {
     AsyncViewportTrace(ViewportState live, DirectRgbTracer tracer) {
         this.live = live;
         this.tracer = tracer;
+    }
+
+    void onImageAvailable(Runnable listener) {
+        imageAvailable = listener;
     }
 
     /** Called under live state lock from input as well as presentation. */
@@ -253,8 +258,16 @@ final class AsyncViewportTrace implements AutoCloseable {
                             activeGeneration = -1;
                             if (closed) tracer.close();
                         }
+                        signalPublication(published);
                     }
                 });
+    }
+
+    private void signalPublication(boolean published) {
+        var listener = imageAvailable;
+        if (published && !closed && listener != null) {
+            listener.run();
+        }
     }
 
     /**
@@ -354,6 +367,7 @@ final class AsyncViewportTrace implements AutoCloseable {
     public void close() {
         synchronized (live) {
             closed = true;
+            imageAvailable = null;
             epoch++;
             if (!running) tracer.close();
         }

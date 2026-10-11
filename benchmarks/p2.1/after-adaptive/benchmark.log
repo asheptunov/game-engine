@@ -1,0 +1,4 @@
+Warmup: Result[fresh=2208, p95=18.3624, maximum=82.2229, restored=0.37905759999999944, firstSamples=1, finalSamples=295]
+Replay 1: Result[fresh=1964, p95=20.926100000000503, maximum=31.156799999997986, restored=0.40388480000000015, firstSamples=1, finalSamples=257]
+Replay 2: Result[fresh=2169, p95=21.14429999999956, maximum=33.634699999999995, restored=0.3794120999999997, firstSamples=1, finalSamples=261]
+Replay 3: Result[fresh=2279, p95=19.61919999999928, maximum=31.956100000002152, restored=0.03473070000000078, firstSamples=1, finalSamples=350]

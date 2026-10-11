@@ -1,0 +1,5 @@
+phase,seconds,processCpuSeconds,ownerCpuSeconds,machineCpuPercent
+warmup,5.004,50.687500,0.453125,50.649
+moving,10.010,88.484375,0.953125,44.200
+suspended,5.005,0.125000,0.046875,0.125
+resumed,5.005,47.218750,0.265625,47.170

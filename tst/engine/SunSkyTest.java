@@ -256,6 +256,11 @@ public final class SunSkyTest {
         parallel.samplesPerFrame(1);
         try (var a = new DirectRgbTracer(single);
                 var b = new DirectRgbTracer(parallel)) {
+            // The cooperative batch time limit may stop before eight samples on a busy host.
+            // Compare equal accumulated work rather than assuming one call completes the batch.
+            while (single.accumulatedSamples() < 8) {
+                a.trace();
+            }
             var expected = a.trace();
             for (int pass = 0; pass < 8; pass++) {
                 b.trace();

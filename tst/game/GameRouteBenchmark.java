@@ -23,6 +23,9 @@ public final class GameRouteBenchmark {
         navigation.resize(960, 600);
         try (var renderer = new GameRenderer(navigation, blocks)) {
             renderer.adaptive(adaptive);
+            renderer.tracingLayout(
+                    renderer.settings().workers(),
+                    args.length < 3 ? renderer.settings().tileSize() : Integer.parseInt(args[2]));
             Files.writeString(
                     output.resolve("metadata.txt"),
                     "CPU="

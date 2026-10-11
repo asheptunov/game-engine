@@ -9,8 +9,10 @@ import engine.RenderSettings;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** One background owner for the session. Published display images are never modified. */
 public final class GameRenderer implements AutoCloseable {
@@ -39,9 +41,11 @@ public final class GameRenderer implements AutoCloseable {
             RenderSettings.defaults()
                     .withPathDepth(2)
                     .withSampleTarget(0)
+                    .withTileSize(16)
                     .withInteractive(true, 1000. / 60, 0, 0);
     private final RenderSession session;
     private final ScheduledExecutorService executor;
+    private final AtomicBoolean completionQueued = new AtomicBoolean();
     private volatile Frame frame;
     private volatile String error;
     private long lastTick = System.nanoTime();
@@ -68,7 +72,25 @@ public final class GameRenderer implements AutoCloseable {
                             thread.setDaemon(true);
                             return thread;
                         });
+        session.onImageAvailable(this::imageAvailable);
         executor.scheduleWithFixedDelay(this::tick, 0, 16, TimeUnit.MILLISECONDS);
+    }
+
+    /** Coalesce completion signals; all session work stays on the existing game owner. */
+    private void imageAvailable() {
+        if (!completionQueued.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            executor.execute(
+                    () -> {
+                        completionQueued.set(false);
+                        tick();
+                    });
+        } catch (RejectedExecutionException closing) {
+            completionQueued.set(false);
+            // A completion already in flight may arrive after close shuts down the owner.
+        }
     }
 
     private synchronized void tick() {
@@ -166,6 +188,11 @@ public final class GameRenderer implements AutoCloseable {
         return settings;
     }
 
+    /** Benchmark-only layout selection; transport and accumulated samples remain unchanged. */
+    synchronized void tracingLayout(int workers, int tileSize) {
+        settings = settings.withWorkers(workers).withTileSize(tileSize);
+    }
+
     public synchronized long restart() {
         settings = settings.withRestartRevision(settings.restartRevision() + 1);
         session.update(world, navigation.view(), settings);
@@ -208,6 +235,7 @@ public final class GameRenderer implements AutoCloseable {
         if (!closed) {
             closed = true;
             navigation.active(false);
+            session.onImageAvailable(null);
             executor.shutdownNow();
             session.close();
         }

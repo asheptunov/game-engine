@@ -1,6 +1,6 @@
 # Engine API guide
 
-E1–E2 expose the existing CPU renderer without requiring the playground, AWT, console,
+The engine extraction milestones E1–E2 expose the existing CPU renderer without requiring the playground, AWT, console,
 scene registry, input bindings, or dependency-injection container. Public reusable code
 lives in `src/engine/`; the playground remains in `src/scenes/viewport/`.
 
@@ -8,9 +8,9 @@ lives in `src/engine/`; the playground remains in `src/scenes/viewport/`.
 
 - `WorldSnapshot` is an immutable copy of scene instances, legacy primitives, and lights.
   Its nonnegative revision distinguishes edit/undo cycles even when content compares equal.
-  The new session boundary accepts immutable `PointLight` values only; unsupported custom
-  `Light` implementations are rejected before publication. The legacy `Light` interface
-  remains for the reference tracer until a later milestone adds more frozen light values.
+  The session boundary accepts immutable `PointLight` and `DirectionalLight` values;
+  unsupported custom `Light` implementations are rejected. Directional lights and a nonblack
+  `Sky` currently require diffuse instance materials.
 - `RenderView` contains one immutable `Camera` and a 64..1600 pixel sensor grid.
 - `RenderSettings` contains transport and scheduling choices. `restartRevision` explicitly
   restarts raw accumulation; `temporalRevision` explicitly invalidates presentation history.
@@ -55,6 +55,21 @@ no application sources on the command line. It rejects imports from `scenes`, `u
 `rendering`, or `java.awt` in engine sources, then compiles both headless consumers against
 only those output classes. `engine-check.ps1` also compiles all sources/tests, runs the
 focused extraction regressions, inspects harness logs, and runs the consumer.
+
+## Completion notification
+
+`RenderSession.onImageAvailable(Runnable)` optionally signals a completed publication.
+The coordinator calls the listener after releasing the engine state lock and marking the
+job idle. The listener must only enqueue work on the consumer's owner thread and must not
+throw. On that thread, acquire and close an image lease as usual; the signal carries no
+image or ownership and does not promise that the captured camera is the latest camera.
+
+Passing `null` detaches the listener. A callback already in flight may still arrive after
+detach or close, so the consumer must tolerate shutdown. Cancellation does not produce
+a publication signal. Keep an independent input/lifecycle update mechanism; a signal
+does not replace suspension, error checks, or requests for edited input. The sample game
+coalesces notifications into one pending owner task and retains its periodic input tick.
+See [P2.1 measurements](benchmarks/p2.1/README.md).
 
 ## Shared input bindings
 
@@ -121,7 +136,8 @@ The playground uses `RenderEngine.openLegacySession(ViewportState, DirectRgbTrac
 existing commands, autofocus policy, profiler hooks, and blocking benchmarks retain their
 numeric behavior. This is the only transitional adapter. Remove it, `ViewportState`, and the
 playground's direct tracer accessor after a later application migration moves console
-mutation to `SceneDocument`; E3–E4 do not claim that legacy mutation has already moved.
+mutation to `SceneDocument`; the persistent-scene and mesh/query milestones E3–E4 do not
+claim that legacy mutation has already moved.
 
 ## Coordinates and geometry
 
@@ -264,7 +280,7 @@ Compare `RayHit.sceneRevision` with the current snapshot before applying a pick.
 coordinates in 0..1 and `v=0` at the image bottom.
 
 The scene editor has Object, Vertex, Edge and Face selection modes. A mode switch changes only
-EDT-owned selection state: it does not publish a scene revision, dirty the document or create
+selection state owned by Swing's event dispatch thread (EDT): it does not publish a scene revision, dirty the document or create
 history. Vertex and edge selection is x-ray screen-space selection over a deterministic bounded
 candidate set. Vertices use an 8 logical-pixel radius; edges use a 6 logical-pixel segment
 distance. Equal distances break by node UUID and then stable vertex or canonical edge IDs.

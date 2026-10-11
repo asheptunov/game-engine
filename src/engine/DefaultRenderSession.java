@@ -103,6 +103,14 @@ final class DefaultRenderSession implements RenderSession {
     }
 
     @Override
+    public void onImageAvailable(Runnable listener) {
+        synchronized (state) {
+            checkOpen();
+            async.onImageAvailable(listener);
+        }
+    }
+
+    @Override
     public RenderImage acquireImage() {
         synchronized (state) {
             checkOpen();

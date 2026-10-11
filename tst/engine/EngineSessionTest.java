@@ -60,6 +60,40 @@ public class EngineSessionTest {
     }
 
     @Test
+    void completionSignalReleasesStateLockAndLeavesImageLeased() throws Exception {
+        var settings = RenderSettings.defaults().withWorkers(1).withSampleTarget(1);
+        try (var session =
+                (DefaultRenderSession)
+                        RenderEngine.openSession(
+                                world(0, 0), new RenderView(CAMERA, 64, 64), settings)) {
+            var signal = new CountDownLatch(1);
+            var heldLock = new AtomicBoolean(true);
+            var signals = new java.util.concurrent.atomic.AtomicInteger();
+            session.onImageAvailable(
+                    () -> {
+                        heldLock.set(Thread.holdsLock(session.stateForTests()));
+                        signals.incrementAndGet();
+                        signal.countDown();
+                    });
+            session.request();
+            assertTrue(signal.await(10, TimeUnit.SECONDS));
+            assertFalse(heldLock.get());
+            try (var image = session.acquireImage()) {
+                assertTrue(image != null);
+                assertEquals(1L, image.samples());
+                var frozen = copy(image.rawPixels());
+                session.onImageAvailable(null);
+                session.update(world(1, .5f), new RenderView(CAMERA, 64, 64), settings);
+                try (var next = await(session, 1)) {
+                    assertTrue(next.generation() > image.generation());
+                }
+                assertEquals(frozen, copy(image.rawPixels()));
+                assertEquals(1, signals.get());
+            }
+        }
+    }
+
+    @Test
     void immutableInputsAndFailedValidationCannotPartiallyReplaceSession() throws Exception {
         var instances = new ArrayList<>(world(0, 0).instances());
         var copied = new WorldSnapshot(0, instances, List.of(), world(0, 0).lights());
