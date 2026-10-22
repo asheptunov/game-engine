@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build — compile src/ and tst/ to out/cli/
+# build — compile CPU src/ and tst/ to out/cli/; optional GPU: gpu-build.ps1
 #
 # Env vars:
 #   JAVA_HOME  override JDK install dir (default: /mnt/c/Users/andri/.jdks/openjdk-23.0.1)
@@ -19,7 +19,7 @@ mkdir -p "$OUT"
 LOG="$OUT/build.log"
 SOURCES_LIST="$OUT/.sources"
 
-find src tst -name "*.java" > "$SOURCES_LIST"
+find src tst -name "*.java" ! -path "src/gpu/*" > "$SOURCES_LIST"
 NSRC=$(wc -l < "$SOURCES_LIST")
 
 if [[ "$JAVAC" == *.exe ]]; then

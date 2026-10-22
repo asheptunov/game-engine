@@ -106,7 +106,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 && event.getY() < 194
                 && event.getX() >= 24
                 && event.getX() < 228) {
-            renderer.adaptive(!renderer.adaptive());
+            if (renderer.adaptiveSupported()) {
+                renderer.adaptive(!renderer.adaptive());
+            }
             repaint();
             return true;
         }
@@ -193,8 +195,40 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         null);
             }
             drawOverlay(draw, frame);
+            draw.setColor(Color.WHITE);
+            drawBackendStatus(draw);
+            if (frame != null) {
+                draw.drawString(
+                        "Generation "
+                                + frame.generation()
+                                + " | age "
+                                + ((System.nanoTime() - frame.capturedNanos()) / 1_000_000)
+                                + " ms since capture",
+                        14,
+                        getHeight() - 10);
+            }
         } finally {
             draw.dispose();
+        }
+    }
+
+    private void drawBackendStatus(Graphics2D draw) {
+        var lines = new java.util.ArrayList<String>();
+        String line = "";
+        for (String part : renderer.backendStatus().split(" ")) {
+            String candidate = line.isEmpty() ? part : line + " " + part;
+            if (!line.isEmpty() && draw.getFontMetrics().stringWidth(candidate) > getWidth() - 28) {
+                lines.add(line);
+                line = part;
+            } else {
+                line = candidate;
+            }
+        }
+        lines.add(line);
+        int y = getHeight() - 28 - (lines.size() - 1) * 16;
+        for (String text : lines) {
+            draw.drawString(text, 14, y);
+            y += 16;
         }
     }
 
@@ -207,7 +241,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 navigation.captured()
                         ? "Mouse captured | Esc releases pointer"
                         : "Pointer free | Click the view to fly";
-        draw.drawString("Sample game G4 | " + capture, 24, 34);
+        draw.drawString("Sample game | " + capture, 24, 34);
         draw.drawString(
                 "WASD: heading movement | Space/Ctrl: up/down | Mouse: look | R: reset", 24, 56);
         var view = navigation.view();
@@ -260,7 +294,12 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         draw.setColor(new Color(45, 50, 60));
         draw.fillRoundRect(24, 160, 204, 34, 8, 8);
         draw.setColor(Color.WHITE);
-        draw.drawString("Adaptive: " + (renderer.adaptive() ? "on" : "off"), 34, 182);
+        draw.drawString(
+                renderer.adaptiveSupported()
+                        ? "Adaptive: " + (renderer.adaptive() ? "on" : "off")
+                        : "GPU: fixed resolution",
+                34,
+                182);
     }
 
     @Override

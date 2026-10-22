@@ -18,8 +18,9 @@ New-Item -ItemType Directory -Force -Path $classes,(Join-Path $repository "out/c
 
 & (Join-Path $repository "engine-build.ps1") -OutputDirectory (Join-Path $OutputDirectory "boundary")
 
+# CPU regression gate stays usable without optional Vulkan dependencies. GPU has gpu-check.ps1.
 $sources = @(
-    (Get-ChildItem (Join-Path $repository "src") -Recurse -Filter *.java).FullName
+    (Get-ChildItem (Join-Path $repository "src") -Recurse -Filter *.java | Where-Object { $_.FullName -notmatch '[\\/]src[\\/]gpu[\\/]' }).FullName
     (Get-ChildItem (Join-Path $repository "tst") -Recurse -Filter *.java).FullName
 )
 $compileArguments = @("--enable-preview", "--release", "23", "-d", $classes) + $sources

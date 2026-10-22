@@ -23,6 +23,7 @@ public final class GameRenderer implements AutoCloseable {
             long generation,
             long samples,
             long publicationNanos,
+            long capturedNanos,
             engine.Camera camera,
             Metrics metrics) {}
 
@@ -35,6 +36,7 @@ public final class GameRenderer implements AutoCloseable {
             profiling.TraceProfile.Stats trace) {}
 
     private final GameNavigation navigation;
+    private final String backend;
     private engine.WorldSnapshot world;
     private GameLighting lighting = GameLighting.defaults();
     private RenderSettings settings =
@@ -55,7 +57,15 @@ public final class GameRenderer implements AutoCloseable {
     private boolean closed;
 
     public GameRenderer(GameNavigation navigation, BlockWorld blocks) {
+        this(navigation, blocks, "cpu");
+    }
+
+    public GameRenderer(GameNavigation navigation, BlockWorld blocks, String backend) {
         this.navigation = navigation;
+        this.backend = backend;
+        if (backend.equals("gpu") || navigation.fixedResolution()) {
+            settings = settings.withInteractive(false, settings.interactiveMillis(), 0, 0);
+        }
         var prepared = blocks.snapshot();
         world =
                 new engine.WorldSnapshot(
@@ -64,7 +74,7 @@ public final class GameRenderer implements AutoCloseable {
                         prepared.legacyObjects(),
                         java.util.List.of(lighting.sun()),
                         lighting.sky());
-        session = RenderEngine.openSession(world, navigation.view(), settings);
+        session = RenderEngine.openSession(world, navigation.view(), settings, backend);
         executor =
                 Executors.newSingleThreadScheduledExecutor(
                         runnable -> {
@@ -134,6 +144,7 @@ public final class GameRenderer implements AutoCloseable {
                                     image.generation(),
                                     image.samples(),
                                     copied,
+                                    image.publicationNanos(),
                                     image.camera(),
                                     metrics);
                     session.presented(image);
@@ -176,11 +187,22 @@ public final class GameRenderer implements AutoCloseable {
         return lighting;
     }
 
+    public boolean adaptiveSupported() {
+        return backend.equals("cpu");
+    }
+
+    synchronized boolean tracing() {
+        return session.progress(null).running();
+    }
+
     public synchronized boolean adaptive() {
         return settings.interactive();
     }
 
     public synchronized void adaptive(boolean enabled) {
+        if (enabled && backend.equals("gpu")) {
+            throw new IllegalArgumentException("GPU supports fixed grids only");
+        }
         settings = settings.withInteractive(enabled, settings.interactiveMillis(), 0, 0);
     }
 
@@ -216,6 +238,10 @@ public final class GameRenderer implements AutoCloseable {
                             java.util.List.of(value.sun()),
                             value.sky());
         }
+    }
+
+    public String backendStatus() {
+        return error != null ? error : backend.equals("cpu") ? "CPU" : session.status();
     }
 
     public String error() {

@@ -21,6 +21,8 @@ public final class GameNavigation {
     private double pitch = -.14;
     private boolean captured;
     private boolean active = true;
+    private int fixedWidth;
+    private int fixedHeight;
     private int width = 960;
     private int height = 600;
 
@@ -136,6 +138,18 @@ public final class GameNavigation {
         this.height = Math.max(1, height);
     }
 
+    public synchronized void fixedResolution(int width, int height) {
+        if (width < 64 || width > 1600 || height < 64 || height > 1600) {
+            throw new IllegalArgumentException("Fixed grid dimensions must be 64..1600");
+        }
+        fixedWidth = width;
+        fixedHeight = height;
+    }
+
+    public synchronized boolean fixedResolution() {
+        return fixedWidth != 0;
+    }
+
     public synchronized RenderView view() {
         float aspect = (float) width / height;
         var forward =
@@ -153,6 +167,9 @@ public final class GameNavigation {
         var camera = new Camera(position, new Rect(origin, horizontal, vertical)).validated();
         int traceWidth = Math.clamp(Math.round(200 * aspect), 64, 1600);
         int traceHeight = Math.clamp(Math.round(traceWidth / aspect), 64, 1600);
-        return new RenderView(camera, traceWidth, traceHeight);
+        return new RenderView(
+                camera,
+                fixedWidth == 0 ? traceWidth : fixedWidth,
+                fixedHeight == 0 ? traceHeight : fixedHeight);
     }
 }

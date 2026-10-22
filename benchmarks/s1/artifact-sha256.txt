@@ -1,0 +1,11 @@
+49bf625d892cd661f683e8a0bbdd36a81eef62d0ff8e501ee61110f5e47e876c  out\gpu\diffuse.spv
+a8d8edda34718bf70f68d14de1295b5bfc0f477a9607a3a9705d9e2d88538a8c  out\gpu\lib\lwjgl-3.3.6-natives-windows.jar
+b00e2781b74cc829db9d39fb68746b25bb7b94ce61d46293457dbccddabd999c  out\gpu\lib\lwjgl-3.3.6.jar
+c8c5629eac0bb01ea0a145565d54757a9aa8d7fd5ff0436d9069e61c0bfd2662  out\gpu\lib\lwjgl-shaderc-3.3.6-natives-windows.jar
+7bec76dbeef91cd0c899fa37f9f120217b422f8050235e5b36bba41b7be35f71  out\gpu\lib\lwjgl-shaderc-3.3.6.jar
+07501098acdfe784f55f4f5ea2e99e33e89a1d18128ddbcd41571434b5e848e4  out\gpu\lib\lwjgl-vulkan-3.3.6.jar
+2be99cb756597b22dc053773464bf08ea76681fa5fca015865adb737baebd562  tools\gpu\CompileShader.java
+507b43c887e91610e15101d1719e9e9c3b7b7d9eb26b0711db4843f07271805c  tools\gpu\GpuCheck.java
+62f89c2a0daf9fa5b4e5e67b1f7d8fd04d310114116b3fa8cc1dae7c0b6d3ecc  tools\gpu\GpuQuality.java
+7c65516adaa97dcdc20a29c3ae491eb88b9bbcbb0ff5f4c60cd15f6d3d3c0d42  tools\gpu\GpuRouteComparison.java
+c3c35507c8a22d39313c96078ae294bd034b74f603c3f3a329415c04ba32972a  tools\gpu\GpuUiCheck.java
