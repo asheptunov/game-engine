@@ -19,8 +19,9 @@ public final class GpuUiCheck {
             }
             if(renderer.frame()==null) throw new AssertionError("No GPU game image");
             final GamePanel[] holder=new GamePanel[1];
+            try {
             SwingUtilities.invokeAndWait(()->{
-                var panel=new GamePanel(navigation,renderer);holder[0]=panel;panel.setSize(960,600);
+                var panel=new GamePanel(navigation,renderer);holder[0]=panel;panel.setSize(960,600);layout(panel);
                 panel.dispatchEvent(new MouseEvent(panel,MouseEvent.MOUSE_PRESSED,System.currentTimeMillis(),0,30,175,1,false,MouseEvent.BUTTON1));
                 if(renderer.adaptive()) throw new AssertionError("GPU adaptive button changed fixed grid");
                 var before=renderer.lighting();
@@ -28,15 +29,93 @@ public final class GpuUiCheck {
                 if(renderer.lighting().equals(before)) throw new AssertionError("Sun control did not change lighting");
                 panel.renderingActive(false);panel.renderingActive(true);
             });
-            Thread.sleep(300);
+            long initialGeneration=renderer.restart();
+            awaitSamples(renderer, frame -> frame.generation()==initialGeneration && frame.samples() >= 4);
+            SwingUtilities.invokeAndWait(()->clickRefinement(holder[0]));
+            if(renderer.refinement() || navigation.captured()) throw new AssertionError("Refinement toggle did not disable without capture");
+            awaitSamples(renderer, frame -> frame.samples() == 1);
+            long publication=renderer.frame().publicationNanos();
+            Thread.sleep(150);
+            if(renderer.frame().publicationNanos()!=publication) throw new AssertionError("Refinement continued while off");
+            navigation.capture();navigation.look(40,0);navigation.release();
+            awaitSamples(renderer, frame -> frame.publicationNanos()!=publication && frame.samples()==1);
+            if(renderer.frame().image().getWidth()!=960) throw new AssertionError("Refinement changed resolution");
+            SwingUtilities.invokeAndWait(()->clickRefinement(holder[0]));
+            if(!renderer.refinement()) throw new AssertionError("Refinement toggle did not enable");
+            awaitSamples(renderer, frame -> frame.samples() >= 4);
+            SwingUtilities.invokeAndWait(()->{
+                var aperture=(javax.swing.JSpinner)find(holder[0],"Aperture radius (world units)");
+                if(aperture==null || !aperture.isEnabled()) throw new AssertionError("GPU depth of field must be enabled");
+                aperture.setValue(.12);
+                var focus=(javax.swing.JSpinner)find(holder[0],"Focus distance (world units)");focus.setValue(8.0);
+                if(navigation.aperture()!=.12f || navigation.focus()!=8f) throw new AssertionError("GPU optics controls failed");
+                var exposure=(javax.swing.JSpinner)find(holder[0],"Exposure multiplier");
+                exposure.setValue(1.5);
+                if(renderer.exposure()!=1.5f) throw new AssertionError("Exposure control failed");
+                var depth=(javax.swing.JSpinner)find(holder[0],"Path depth");
+                depth.setValue(1.0);
+                if(renderer.settings().pathDepth()!=1) throw new AssertionError("Depth control failed");
+            });
+            long opticsGeneration=renderer.restart();
+            awaitSamples(renderer, frame -> frame.generation()==opticsGeneration && frame.samples() >= 4);
             var image=new BufferedImage(960,600,BufferedImage.TYPE_INT_RGB);
             SwingUtilities.invokeAndWait(()->{
                 var graphics=image.createGraphics();
-                try {holder[0].paint(graphics);} finally {graphics.dispose();holder[0].close();}
+                try {layout(holder[0]);holder[0].paint(graphics);} finally {graphics.dispose();}
             });
             ImageIO.write(image,"png",Path.of("out/gpu/game-panel.png").toFile());
-            System.out.println("PASS offscreen game panel, fixed-grid control, lighting and focus lifecycle");
+            for(int tabIndex=0;tabIndex<4;tabIndex++) {
+                final int selected=tabIndex;
+                SwingUtilities.invokeAndWait(()->{
+                    var tabs=findTabs(holder[0]);tabs.setSelectedIndex(selected);layout(holder[0]);
+                    var draw=image.createGraphics();try {holder[0].paint(draw);} finally {draw.dispose();}
+                });
+                ImageIO.write(image,"png",Path.of("out/gpu/settings-"+tabIndex+".png").toFile());
+            }
+            SwingUtilities.invokeAndWait(holder[0]::close);
+            System.out.println("PASS offscreen game panel, refinement off/motion/on, fixed-grid control, lighting and focus lifecycle");
             System.out.println(renderer.backendStatus());
+            } finally {
+                if(holder[0]!=null) SwingUtilities.invokeAndWait(holder[0]::close);
+            }
         }
+    }
+
+    private static javax.swing.JTabbedPane findTabs(java.awt.Container parent) {
+        for(var child:parent.getComponents()) {
+            if(child instanceof javax.swing.JTabbedPane tabs) return tabs;
+            if(child instanceof java.awt.Container container) {
+                var found=findTabs(container);if(found!=null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void layout(java.awt.Container parent) {
+        parent.doLayout();
+        for(var child:parent.getComponents()) if(child instanceof java.awt.Container container) layout(container);
+    }
+
+    private static java.awt.Component find(java.awt.Container parent,String name) {
+        for(var child:parent.getComponents()) {
+            if(name.equals(child.getName())) return child;
+            if(child instanceof java.awt.Container container) {
+                var found=find(container,name);if(found!=null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static void clickRefinement(GamePanel panel) {
+        panel.dispatchEvent(new MouseEvent(panel,MouseEvent.MOUSE_PRESSED,System.currentTimeMillis(),0,250,175,1,false,MouseEvent.BUTTON1));
+    }
+
+    private static void awaitSamples(GameRenderer renderer,java.util.function.Predicate<GameRenderer.Frame> ready) throws Exception {
+        long deadline=System.nanoTime()+30_000_000_000L;
+        while((renderer.frame()==null || !ready.test(renderer.frame())) && System.nanoTime()<deadline) {
+            if(renderer.error()!=null) throw new AssertionError(renderer.error());
+            Thread.sleep(5);
+        }
+        if(renderer.frame()==null || !ready.test(renderer.frame())) throw new AssertionError("Timed out waiting for refinement state");
     }
 }

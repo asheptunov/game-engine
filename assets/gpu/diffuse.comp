@@ -98,6 +98,22 @@ void main() {
     float v = grid.z == 0 ? 0.5 : randomValue();
     vec3 o = eye.xyz;
     vec3 d = normalize(origin.xyz + edge1.xyz*((float(xy.x)+u)/float(grid.x)) + edge2.xyz*((float(xy.y)+v)/float(grid.y))-o);
+    if (eye.w > 0) {
+        // Independent aperture domain preserves the transport stream, including depth zero.
+        uint64_t transportState = randomState;
+        randomState = mix64(seed ^ 0x4150455254555245UL)
+            ^ mix64(uint64_t(pixel)+0x632be59bd9b4e019UL)
+            ^ mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
+        float radius = eye.w * sqrt(randomValue());
+        float angle = 2*PI*randomValue();
+        randomState = transportState;
+        vec3 right = normalize(edge1.xyz), up = normalize(edge2.xyz);
+        vec3 forward = normalize(cross(edge1.xyz, edge2.xyz));
+        float distance = origin.w / dot(d, forward);
+        vec3 pupil = right*(radius*cos(angle)) + up*(radius*sin(angle));
+        o += pupil;
+        d = normalize(d*distance-pupil);
+    }
     vec3 radiance = vec3(0), weight = vec3(1);
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;

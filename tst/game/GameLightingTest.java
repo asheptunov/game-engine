@@ -79,6 +79,139 @@ public final class GameLightingTest {
     }
 
     @Test
+    void refinementControlReplacesRefinedImageAndResumesAfterMovement() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        try (var renderer = new GameRenderer(navigation, BlockWorld.gallery())) {
+            var panel = new GamePanel[1];
+            try {
+                awaitSamples(renderer, frame -> frame.samples() >= 4);
+                SwingUtilities.invokeAndWait(
+                        () -> {
+                            panel[0] = new GamePanel(navigation, renderer);
+                            clickRefinement(panel[0]);
+                            assertFalse(renderer.refinement());
+                            assertFalse(navigation.captured());
+                        });
+                awaitSamples(renderer, frame -> frame.samples() == 1);
+                long publication = renderer.frame().publicationNanos();
+                Thread.sleep(150);
+                assertEquals(publication, renderer.frame().publicationNanos());
+                navigation.capture();
+                navigation.look(40, 0);
+                navigation.release();
+                awaitSamples(
+                        renderer,
+                        frame -> frame.publicationNanos() != publication && frame.samples() == 1);
+                assertEquals(96, renderer.frame().image().getWidth());
+                SwingUtilities.invokeAndWait(() -> clickRefinement(panel[0]));
+                assertTrue(renderer.refinement());
+                awaitSamples(renderer, frame -> frame.samples() >= 4);
+            } finally {
+                if (panel[0] != null) {
+                    SwingUtilities.invokeAndWait(panel[0]::close);
+                }
+            }
+        }
+    }
+
+    private static void clickRefinement(GamePanel panel) {
+        panel.dispatchEvent(
+                new MouseEvent(
+                        panel,
+                        MouseEvent.MOUSE_PRESSED,
+                        System.currentTimeMillis(),
+                        0,
+                        250,
+                        175,
+                        1,
+                        false,
+                        MouseEvent.BUTTON1));
+    }
+
+    private static void awaitSamples(
+            GameRenderer renderer, java.util.function.Predicate<GameRenderer.Frame> ready)
+            throws InterruptedException {
+        long deadline = System.nanoTime() + 10_000_000_000L;
+        while ((renderer.frame() == null || !ready.test(renderer.frame()))
+                && renderer.error() == null
+                && System.nanoTime() < deadline) {
+            Thread.sleep(5);
+        }
+        assertEquals(null, renderer.error());
+        assertTrue(renderer.frame() != null && ready.test(renderer.frame()));
+    }
+
+    @Test
+    void groupedControlsApplyCameraLightingAndDisplaySettings() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        try (var renderer = new GameRenderer(navigation, BlockWorld.gallery())) {
+            var editor = new GameSettingsPanel[1];
+            SwingUtilities.invokeAndWait(
+                    () -> {
+                        editor[0] = new GameSettingsPanel(navigation, renderer);
+                        setNumber(editor[0], "Sample limit (0 = unlimited)", 8);
+                        setNumber(editor[0], "Vertical FOV (degrees)", 75);
+                        setNumber(editor[0], "Aperture radius (world units)", .1);
+                        setNumber(editor[0], "Focus distance (world units)", 8);
+                        setNumber(editor[0], "Flight speed (units/s)", 6);
+                        setNumber(editor[0], "Mouse sensitivity (radians/pixel)", .005);
+                        setNumber(editor[0], "Sun intensity", 2);
+                        setNumber(editor[0], "Sun R", .5);
+                        setNumber(editor[0], "Sky zenith B", .8);
+                        setNumber(editor[0], "Min width (0 = auto)", 96);
+                        assertEquals(96, renderer.settings().minimumWidth());
+                        setNumber(editor[0], "Min height (0 = auto)", 0);
+                        assertEquals(0, renderer.settings().minimumWidth());
+                        assertEquals(0, renderer.settings().minimumHeight());
+                        editor[0].refresh();
+                    });
+            assertEquals(.1f, navigation.view().camera().aperture());
+            assertEquals(8f, navigation.view().camera().focus());
+            assertTrue(Math.abs(navigation.view().camera().fov() - 75) < .001);
+            assertEquals(6f, navigation.speed());
+            assertEquals(.5f, renderer.lighting().sunColor().x());
+            assertEquals(.8f, renderer.lighting().skyColors().zenith().z());
+            renderer.lighting(renderer.lighting().withPreset(GameLighting.Preset.MORNING));
+            assertEquals(2f, renderer.lighting().intensity());
+            awaitSamples(renderer, frame -> frame.samples() == 8);
+            long previous = renderer.frame().publicationNanos();
+            int[] before = renderer.frame().image().getRGB(0, 0, 96, 64, null, 0, 96);
+            SwingUtilities.invokeAndWait(() -> setNumber(editor[0], "Exposure multiplier", 2));
+            awaitSamples(renderer, frame -> frame.publicationNanos() != previous);
+            assertEquals(8L, renderer.frame().samples());
+            int[] after = renderer.frame().image().getRGB(0, 0, 96, 64, null, 0, 96);
+            assertFalse(java.util.Arrays.equals(before, after));
+            renderer.refinement(false);
+            awaitSamples(renderer, frame -> frame.samples() == 1);
+            renderer.refinement(true);
+            awaitSamples(renderer, frame -> frame.samples() == 8);
+        }
+    }
+
+    private static void setNumber(java.awt.Container parent, String name, double value) {
+        var spinner = (javax.swing.JSpinner) findControl(parent, name);
+        assertTrue(spinner != null && spinner.isEnabled());
+        spinner.setValue(value);
+    }
+
+    private static java.awt.Component findControl(java.awt.Container parent, String name) {
+        for (var child : parent.getComponents()) {
+            if (name.equals(child.getName())) {
+                return child;
+            }
+            if (child instanceof java.awt.Container container) {
+                var found = findControl(container, name);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    @Test
     void writesRefinedSunPresetAndSkyComparisonPreviews() throws Exception {
         var gallery = BlockWorld.gallery().snapshot();
         var view = new GameNavigation().view();

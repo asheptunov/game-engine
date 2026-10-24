@@ -174,6 +174,56 @@ public final class GpuCheck {
         } finally { failed.close(); require(failed.awaitClosed(30),"failed session retires"); }
     }
 
+    private static void depthOfField(WorldSnapshot world, RenderView view) throws Exception {
+        var pinhole=view.camera();
+        var settings=RenderSettings.defaults().withPathDepth(0).withSampleTarget(32);
+        try(var kernel=new GpuKernel()) {
+            float[] actual=new float[view.width()*view.height()*3];
+            kernel.trace(world,view,settings,0,actual);
+            var original=actual.clone();
+            var inactive=new RenderView(pinhole.withFocus(11).withAperture(0),view.width(),view.height());
+            kernel.trace(world,inactive,settings,0,actual);
+            require(java.util.Arrays.equals(original,actual),"zero aperture preserves exact pinhole pixels with inactive focus edits");
+            for(int depth:new int[]{0,2}) {
+                settings=settings.withPathDepth(depth);
+                for(float focus:new float[]{3,9}) {
+                    var lens=new RenderView(pinhole.withFocus(focus).withAperture(.25f),view.width(),view.height());
+                    for(int sample=0;sample<32;sample++) kernel.trace(world,lens,settings,sample,actual);
+                    var reference=cpu(world,lens,settings);
+                    double error=rmse(actual,reference);
+                    System.out.println("DOF depth="+depth+" focus="+focus+" RMSE="+error);
+                    require(error<.003,"finite aperture matches CPU at depth "+depth+" and focus "+focus);
+                    require(rmse(original,actual)>.001,"finite aperture changes the image");
+                    if(depth==2 && focus==9) {
+                        image(actual,view.width(),view.height(),"dof-gpu");
+                        image(reference,view.width(),view.height(),"dof-cpu");
+                    }
+                }
+            }
+        }
+        var lens=new RenderView(pinhole.withFocus(8).withAperture(.2f),view.width(),view.height());
+        settings=settings.withPathDepth(2).withSampleTarget(8);
+        float[] single;
+        var first=new GpuRenderSession(world,lens,settings);
+        try {single=waitImage(first,8);} finally {first.close();require(first.awaitClosed(30),"lens single-sample session retires");}
+        var batch=new GpuRenderSession(world,lens,settings.withSamplesPerBatch(8));
+        try {
+            require(java.util.Arrays.equals(single,waitImage(batch,8)),"lens one/eight-sample batches agree exactly");
+            try(var held=batch.acquireImage()) {
+                float preserved=held.rawPixels().value(0,20,20);
+                var edited=new RenderView(pinhole.withFocus(3).withAperture(.4f),view.width(),view.height());
+                batch.update(world,edited,settings);
+                var changed=waitImage(batch,8);
+                require(rmse(changed,cpu(world,edited,settings))<.003,"focus and aperture edits reset accumulation to the captured optics");
+                require(held.rawPixels().value(0,20,20)==preserved,"lens edits preserve acquired image leases");
+                batch.update(world,lens,settings);
+                require(java.util.Arrays.equals(single,waitImage(batch,8)),"returning to lens settings reproduces the original samples");
+            }
+            batch.update(world,view,settings);
+            require(rmse(waitImage(batch,8),cpu(world,view,settings))<.003,"closing aperture restores CPU-equivalent pinhole output");
+        } finally {batch.close();require(batch.awaitClosed(30),"lens batch session retires");}
+    }
+
     public static void main(String[] args) throws Exception {
         var world=landscape();
         var navigation=new GameNavigation();
@@ -199,6 +249,7 @@ public final class GpuCheck {
             System.out.println("64 spp RMSE="+error+" GPU ms="+kernel.executeNanos/1e6);
             require(error<0.04,"64-spp landscape CPU/GPU radiance RMSE below 0.04");
         }
+        depthOfField(world,view);
         numericGeometry();
         settings=settings.withSampleTarget(2);
         var session=new GpuRenderSession(world,view,settings);

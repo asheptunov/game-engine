@@ -6,7 +6,13 @@ import engine.lights.DirectionalLight;
 import math.Vec3;
 
 /** Diagnostic fixed sun directions; the game has no advancing time-of-day clock. */
-public record GameLighting(Preset preset, boolean skyEnabled) {
+public record GameLighting(
+        Preset preset,
+        boolean skyEnabled,
+        Vec3 direction,
+        Vec3 sunColor,
+        float intensity,
+        Sky skyColors) {
     public enum Preset {
         MORNING(new Vec3(-1, .45f, -.6f)),
         NOON(new Vec3(-.3f, 1, -.4f)),
@@ -23,6 +29,20 @@ public record GameLighting(Preset preset, boolean skyEnabled) {
 
     public GameLighting {
         java.util.Objects.requireNonNull(preset);
+        java.util.Objects.requireNonNull(skyColors);
+        new DirectionalLight(direction, sunColor, intensity);
+    }
+
+    public GameLighting(Preset preset, boolean skyEnabled) {
+        this(preset, skyEnabled, preset.direction, new Vec3(1, .94f, .84f), 3, BLUE);
+    }
+
+    public GameLighting withPreset(Preset value) {
+        return new GameLighting(value, skyEnabled, value.direction, sunColor, intensity, skyColors);
+    }
+
+    public GameLighting withSky(boolean enabled) {
+        return new GameLighting(preset, enabled, direction, sunColor, intensity, skyColors);
     }
 
     public static GameLighting defaults() {
@@ -30,10 +50,10 @@ public record GameLighting(Preset preset, boolean skyEnabled) {
     }
 
     public DirectionalLight sun() {
-        return new DirectionalLight(preset.direction, new Vec3(1, .94f, .84f), 3);
+        return new DirectionalLight(direction, sunColor, intensity);
     }
 
     public Sky sky() {
-        return skyEnabled ? BLUE : Sky.BLACK;
+        return skyEnabled ? skyColors : Sky.BLACK;
     }
 }

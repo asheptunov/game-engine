@@ -418,7 +418,7 @@ Use a scalar fallback and isolate any incubating API/build flags. Acceptance req
 
 ### S1 GPU rendering backend
 
-Updated October 11, 2026. Audience: the developer/player evaluating the sample game and maintainers implementing the renderer. This section is the authoritative S1 specification. Implementation of S1.1 was requested after scope agreement. The first delivery is an explicitly selected GPU version of the sample game; CPU rendering remains the default and correctness reference. Full engine replacement is outside that delivery.
+Updated October 24, 2026. Audience: the developer/player evaluating the sample game and maintainers implementing the renderer. This section is the authoritative S1 specification. Implementation of S1.1 was requested after scope agreement. The first delivery is an explicitly selected GPU version of the sample game; CPU rendering remains the default and correctness reference. Full engine replacement is outside that delivery.
 
 #### Intent and verified evidence
 
@@ -474,7 +474,7 @@ User test: use the same GPU game entry point and fixed-grid controls, follow the
 
 #### Deferred scope, verification and next decisions
 
-Broader engine parity is deferred, not a hidden prerequisite for S1.1. Before calling GPU a general replacement, specify further user-testable slices and cover every existing transport/camera/history feature, including nested media, absorption, Fresnel/IOR weights, rough materials, area-light MIS, volume visibility, aperture cameras and temporal modes. Retain the Java reference throughout. Other GPU vendors/platforms need their own capability and correctness runs; initial acceptance is on the inventoried Windows machine and does not establish cross-vendor support.
+Broader engine parity is deferred, not a hidden prerequisite for S1.1. Before calling GPU a general replacement, specify further user-testable slices and cover every existing transport/camera/history feature, including nested media, absorption, Fresnel/IOR weights, rough materials, area-light MIS, volume visibility, orthographic cameras and temporal modes. The October 24 follow-up adds perspective depth of field and grouped sample-game settings on CPU and GPU; see the [support and verification notes](benchmarks/s1/README.md#october-24-follow-up-settings-panel-and-gpu-depth-of-field). It preserves exact zero-aperture behavior and does not add GPU temporal reuse or adaptive resolution. Retain the Java reference throughout. Other GPU vendors/platforms need their own capability and correctness runs; initial acceptance is on the inventoried Windows machine and does not establish cross-vendor support.
 
 No blocking user decisions remain for the agreed S1.1 scope. Vulkan/LWJGL and double-precision accumulation are implemented; the best kernel organization remains an evidence-led optimization choice. The threshold for further investment is deliberately evidence-led rather than an invented FPS commitment. Direct GPU presentation and full parity require later scope decisions.
 

@@ -27,8 +27,10 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private final GameNavigation navigation;
     private final GameRenderer renderer;
     private final Timer timer;
+    private final GameSettingsPanel settingsPanel;
     private Robot pointer;
     private String pointerError;
+    private int settingsRefreshTicks;
 
     public GamePanel(GameNavigation navigation, GameRenderer renderer) {
         this.navigation = navigation;
@@ -36,6 +38,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         setPreferredSize(new Dimension(960, 600));
         setBackground(Color.BLACK);
         setFocusable(true);
+        setLayout(null);
+        settingsPanel = new GameSettingsPanel(navigation, renderer);
+        add(settingsPanel);
         addKeyListener(
                 new KeyAdapter() {
                     @Override
@@ -80,8 +85,27 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         centerPointer();
                     }
                 });
-        timer = new Timer(16, event -> repaint());
+        timer =
+                new Timer(
+                        16,
+                        event -> {
+                            settingsPanel.setVisible(!navigation.captured());
+                            if (!navigation.captured() && ++settingsRefreshTicks >= 15) {
+                                settingsRefreshTicks = 0;
+                                settingsPanel.refresh();
+                            }
+                            repaint();
+                        });
         timer.start();
+    }
+
+    @Override
+    public void doLayout() {
+        settingsPanel.setBounds(
+                12,
+                214,
+                Math.min(440, Math.max(100, getWidth() - 24)),
+                Math.max(80, getHeight() - 270));
     }
 
     private void capturePointer() {
@@ -104,6 +128,15 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         if (!navigation.captured()
                 && event.getY() >= 160
                 && event.getY() < 194
+                && event.getX() >= 236
+                && event.getX() < 436) {
+            renderer.refinement(!renderer.refinement());
+            repaint();
+            return true;
+        }
+        if (!navigation.captured()
+                && event.getY() >= 160
+                && event.getY() < 194
                 && event.getX() >= 24
                 && event.getX() < 228) {
             if (renderer.adaptiveSupported()) {
@@ -122,9 +155,8 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         var current = renderer.lighting();
         renderer.lighting(
                 button == 3
-                        ? new GameLighting(current.preset(), !current.skyEnabled())
-                        : new GameLighting(
-                                GameLighting.Preset.values()[button], current.skyEnabled()));
+                        ? current.withSky(!current.skyEnabled())
+                        : current.withPreset(GameLighting.Preset.values()[button]));
         repaint();
         return true;
     }
@@ -264,7 +296,11 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         String error = renderer.error() == null ? pointerError : renderer.error();
         draw.drawString(
                 error == null
-                        ? "Free flight: 3 units/s | No collision | Depth 2 | Adaptive: "
+                        ? "Flight: "
+                                + navigation.speed()
+                                + " units/s | Depth "
+                                + renderer.settings().pathDepth()
+                                + " | Adaptive: "
                                 + (renderer.adaptive() ? "on" : "off")
                         : error,
                 24,
@@ -300,6 +336,10 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         : "GPU: fixed resolution",
                 34,
                 182);
+        draw.setColor(renderer.refinement() ? new Color(65, 105, 145) : new Color(45, 50, 60));
+        draw.fillRoundRect(236, 160, 200, 34, 8, 8);
+        draw.setColor(Color.WHITE);
+        draw.drawString("Refinement: " + (renderer.refinement() ? "on" : "off"), 246, 182);
     }
 
     @Override

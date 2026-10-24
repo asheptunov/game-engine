@@ -112,9 +112,8 @@ final class GpuKernel implements AutoCloseable {
     }
 
     static void validate(WorldSnapshot world, RenderView view, RenderSettings settings) {
-        if (view.camera().projection() != Camera.Projection.PERSPECTIVE
-                || view.camera().aperture() != 0) {
-            throw new IllegalArgumentException("GPU supports perspective pinhole cameras only");
+        if (view.camera().projection() != Camera.Projection.PERSPECTIVE) {
+            throw new IllegalArgumentException("GPU supports perspective cameras only");
         }
         if (!settings.acceleration()
                 || settings.pathDepth() > 2
@@ -403,6 +402,8 @@ final class GpuKernel implements AutoCloseable {
         put(1, camera.sensor().origin());
         put(2, camera.sensor().edge1());
         put(3, camera.sensor().edge2());
+        // Unused vec4 lanes carry lens radius and axial focus distance in world units.
+        parameters.mapped.putFloat(12, camera.aperture()).putFloat(28, camera.focus());
         var sun = world.lights().isEmpty() ? null : (DirectionalLight) world.lights().getFirst();
         put(4, sun == null ? new Vec3(0, 1, 0) : sun.direction());
         put(5, sun == null ? Vec3.ZERO : sun.color().scale(sun.strength()));
@@ -443,7 +444,14 @@ final class GpuKernel implements AutoCloseable {
         long value = vectorHash(camera.eye());
         value = mix(value ^ vectorHash(camera.sensor().origin()));
         value = mix(value ^ vectorHash(camera.sensor().edge1()));
-        return seed ^ mix(value ^ vectorHash(camera.sensor().edge2()));
+        value = seed ^ mix(value ^ vectorHash(camera.sensor().edge2()));
+        if (camera.aperture() == 0) {
+            return value;
+        }
+        // Match DirectRgbTracer's effective LENS identity, independent of shortcut label.
+        value = mix(value ^ Camera.Mode.LENS.ordinal());
+        value = mix(value ^ Float.floatToIntBits(camera.focus()));
+        return mix(value ^ Float.floatToIntBits(camera.aperture()));
     }
 
     private void closeImages() {

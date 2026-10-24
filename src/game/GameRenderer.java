@@ -52,6 +52,8 @@ public final class GameRenderer implements AutoCloseable {
     private volatile String error;
     private long lastTick = System.nanoTime();
     private long converted = -1;
+    private float exposure = 1;
+    private long refinementTarget;
     private java.util.function.Consumer<Frame> publicationObserver;
     private boolean suspended;
     private boolean closed;
@@ -125,7 +127,7 @@ public final class GameRenderer implements AutoCloseable {
             try (var image = session.acquireImage()) {
                 if (image != null && image.publicationNanos() != converted) {
                     long copyStart = System.nanoTime();
-                    var display = copyImage(image);
+                    var display = copyImage(image, exposure);
                     long copied = System.nanoTime();
                     var metrics =
                             publicationObserver == null
@@ -164,14 +166,21 @@ public final class GameRenderer implements AutoCloseable {
 
     /** Convert under the lease, flipping the engine's bottom-up rows to AWT's top-down rows. */
     public static BufferedImage copyImage(RenderImage image) {
+        return copyImage(image, 1);
+    }
+
+    private static BufferedImage copyImage(RenderImage image, float exposure) {
         var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         var pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
         var source = image.presentationPixels();
         for (int y = 0; y < image.height(); y++) {
             for (int x = 0; x < image.width(); x++) {
-                int red = Byte.toUnsignedInt(DisplayMapping.encode(source.value(0, x, y), 1));
-                int green = Byte.toUnsignedInt(DisplayMapping.encode(source.value(1, x, y), 1));
-                int blue = Byte.toUnsignedInt(DisplayMapping.encode(source.value(2, x, y), 1));
+                int red =
+                        Byte.toUnsignedInt(DisplayMapping.encode(source.value(0, x, y), exposure));
+                int green =
+                        Byte.toUnsignedInt(DisplayMapping.encode(source.value(1, x, y), exposure));
+                int blue =
+                        Byte.toUnsignedInt(DisplayMapping.encode(source.value(2, x, y), exposure));
                 pixels[(image.height() - 1 - y) * image.width() + x] =
                         (red << 16) | (green << 8) | blue;
             }
@@ -199,11 +208,72 @@ public final class GameRenderer implements AutoCloseable {
         return settings.interactive();
     }
 
+    public synchronized boolean refinement() {
+        return settings.sampleTarget() != 1;
+    }
+
+    public synchronized void refinement(boolean enabled) {
+        if (refinement() == enabled) {
+            return;
+        }
+        settings = settings.withSampleTarget(enabled ? refinementTarget : 1);
+        if (!enabled) {
+            // Discard the refined mean so the next image really contains only sample zero.
+            settings = settings.withRestartRevision(settings.restartRevision() + 1);
+        }
+    }
+
     public synchronized void adaptive(boolean enabled) {
         if (enabled && backend.equals("gpu")) {
             throw new IllegalArgumentException("GPU supports fixed grids only");
         }
         settings = settings.withInteractive(enabled, settings.interactiveMillis(), 0, 0);
+    }
+
+    public synchronized float exposure() {
+        return exposure;
+    }
+
+    public synchronized long refinementTarget() {
+        return refinementTarget;
+    }
+
+    public synchronized void exposure(float value) {
+        if (!Float.isFinite(value) || value <= 0 || value > 100) {
+            throw new IllegalArgumentException(
+                    "Exposure must be greater than zero and at most 100");
+        }
+        if (value != exposure) {
+            exposure = value;
+            converted = -1;
+        }
+    }
+
+    public synchronized void sampleLimit(long value) {
+        if (value != 0 && (value < 2 || value > 1_000_000_000L)) {
+            throw new IllegalArgumentException(
+                    "Sample limit must be 0 (unlimited) or 2..1000000000");
+        }
+        refinementTarget = value;
+        if (refinement()) {
+            settings =
+                    settings.withSampleTarget(value)
+                            .withRestartRevision(settings.restartRevision() + 1);
+        }
+    }
+
+    public synchronized void configure(java.util.function.UnaryOperator<RenderSettings> edit) {
+        var next = edit.apply(settings);
+        if (!adaptiveSupported()
+                && (next.pathDepth() > 2
+                        || next.interactive()
+                        || next.temporal()
+                        || next.temporalBudget()
+                        || !next.acceleration())) {
+            throw new IllegalArgumentException(
+                    "GPU requires depth 0..2, acceleration, fixed resolution and temporal off");
+        }
+        settings = next;
     }
 
     public synchronized RenderSettings settings() {

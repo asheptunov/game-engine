@@ -12,7 +12,11 @@ import java.util.EnumSet;
 
 /** Game-owned flight state. The short monitor protects input and immutable view capture only. */
 public final class GameNavigation {
-    private static final float SPEED = 3;
+    private float speed = 3;
+    private double sensitivity = .003;
+    private float fov = 60;
+    private float aperture;
+    private float focus = 5;
     private static final double PITCH_LIMIT = Math.toRadians(89);
     private static final Vec3 SPAWN = new Vec3(0, 2.4f, -6);
     private final EnumSet<KeyCode> held = EnumSet.noneOf(KeyCode.class);
@@ -97,8 +101,8 @@ public final class GameNavigation {
     /** Positive screen X turns right; positive screen Y looks down. */
     public synchronized void look(int dx, int dy) {
         if (captured) {
-            yaw = Math.IEEEremainder(yaw + dx * .003, Math.PI * 2);
-            pitch = Math.clamp(pitch - dy * .003, -PITCH_LIMIT, PITCH_LIMIT);
+            yaw = Math.IEEEremainder(yaw + dx * sensitivity, Math.PI * 2);
+            pitch = Math.clamp(pitch - dy * sensitivity, -PITCH_LIMIT, PITCH_LIMIT);
         }
     }
 
@@ -116,7 +120,7 @@ public final class GameNavigation {
         if (length == 0) {
             return;
         }
-        double distance = SPEED * Math.clamp(seconds, 0, .25) / length;
+        double distance = speed * Math.clamp(seconds, 0, .25) / length;
         position =
                 position.add(
                         new Vec3(
@@ -131,6 +135,54 @@ public final class GameNavigation {
 
     private int axis(KeyCode positive, KeyCode negative) {
         return (held.contains(positive) ? 1 : 0) - (held.contains(negative) ? 1 : 0);
+    }
+
+    public synchronized float speed() {
+        return speed;
+    }
+
+    public synchronized double sensitivity() {
+        return sensitivity;
+    }
+
+    public synchronized float fov() {
+        return fov;
+    }
+
+    public synchronized float aperture() {
+        return aperture;
+    }
+
+    public synchronized float focus() {
+        return focus;
+    }
+
+    public synchronized void speed(float value) {
+        range(value, .1, 100, "Speed");
+        speed = value;
+    }
+
+    public synchronized void sensitivity(double value) {
+        range(value, .0001, .05, "Sensitivity");
+        sensitivity = value;
+    }
+
+    public synchronized void fov(float value) {
+        range(value, 1, 179, "Field of view");
+        fov = value;
+    }
+
+    public synchronized void optics(float radius, float distance) {
+        range(radius, 0, 10, "Aperture radius");
+        range(distance, .01, 10000, "Focus distance");
+        aperture = radius;
+        focus = distance;
+    }
+
+    private static void range(double value, double low, double high, String label) {
+        if (!Double.isFinite(value) || value < low || value > high) {
+            throw new IllegalArgumentException(label + " must be " + low + ".." + high);
+        }
     }
 
     public synchronized void resize(int width, int height) {
@@ -159,12 +211,16 @@ public final class GameNavigation {
                         (float) (Math.cos(yaw) * Math.cos(pitch)));
         var right = new Vec3((float) Math.cos(yaw), 0, (float) -Math.sin(yaw));
         var up = forward.cross(right);
-        // Sensor one unit ahead, with a fixed 60-degree vertical field of view.
-        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(30)));
+        // Sensor one unit ahead; field of view is vertical.
+        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(fov / 2)));
         var horizontal = right.scale(sensorHeight * aspect);
         var vertical = up.scale(sensorHeight);
         var origin = position.add(forward).sub(horizontal.scale(.5f)).sub(vertical.scale(.5f));
-        var camera = new Camera(position, new Rect(origin, horizontal, vertical)).validated();
+        var camera =
+                new Camera(position, new Rect(origin, horizontal, vertical))
+                        .withFocus(focus)
+                        .withAperture(aperture)
+                        .validated();
         int traceWidth = Math.clamp(Math.round(200 * aspect), 64, 1600);
         int traceHeight = Math.clamp(Math.round(traceWidth / aspect), 64, 1600);
         return new RenderView(

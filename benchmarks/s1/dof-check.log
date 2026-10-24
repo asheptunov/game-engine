@@ -1,0 +1,53 @@
+DEVICE NVIDIA GeForce RTX 3080
+Direct RMSE=1.4335131009598977E-8 GPU ms=0.041376
+PASS depth-zero CPU/GPU radiance RMSE below 0.002
+PASS repeat dispatch exactly reproduces sample zero
+64 spp RMSE=1.882771360382529E-5 GPU ms=0.099136
+PASS 64-spp landscape CPU/GPU radiance RMSE below 0.04
+PASS zero aperture preserves exact pinhole pixels with inactive focus edits
+DOF depth=0 focus=3.0 RMSE=4.761801123077116E-5
+PASS finite aperture matches CPU at depth 0 and focus 3.0
+PASS finite aperture changes the image
+DOF depth=0 focus=9.0 RMSE=2.9718605247767546E-5
+PASS finite aperture matches CPU at depth 0 and focus 9.0
+PASS finite aperture changes the image
+DOF depth=2 focus=3.0 RMSE=6.632266173584373E-5
+PASS finite aperture matches CPU at depth 2 and focus 3.0
+PASS finite aperture changes the image
+DOF depth=2 focus=9.0 RMSE=1.3039814498088517E-5
+PASS finite aperture matches CPU at depth 2 and focus 9.0
+PASS finite aperture changes the image
+PASS lens single-sample session retires
+PASS lens one/eight-sample batches agree exactly
+PASS focus and aperture edits reset accumulation to the captured optics
+PASS lens edits preserve acquired image leases
+PASS returning to lens settings reproduces the original samples
+PASS closing aperture restores CPU-equivalent pinhole output
+PASS lens batch session retires
+PASS touching faces, center seams and transformed boxes match CPU
+PASS material edit retains geometry acceleration
+PASS material edit updates GPU radiance
+PASS inside opaque geometry matches CPU
+PASS equal-distance instances retain original order
+PASS held image unchanged across restart
+PASS pixels reject access after lease close
+PASS resume converges to requested target
+PASS unsupported depth rejected
+PASS single-sample session retires
+PASS one/eight-sample batches match exactly
+PASS resize publishes only the requested grid
+PASS paused session submits no GPU work
+PASS resized session retires
+PASS tiny triangle CPU/GPU comparison
+PASS double means retain constant radiance at the billion-sample limit
+PASS near-surface ray cutoff matches CPU
+PASS near-surface image matches CPU
+PASS sustained camera edits publish coherent previews
+PASS motion settles to exact captured-camera accumulation
+PASS moving session retires
+PASS device failure is retained as an explicit error
+PASS device failure retires native resources
+PASS initialization failure reports reason and explicit CPU recovery
+PASS failed session retires
+PASS GPU owner and native resources retire after close
+GPU checks passed: 45
