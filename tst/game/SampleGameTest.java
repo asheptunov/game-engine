@@ -26,6 +26,114 @@ public final class SampleGameTest {
         SuiteRunner.runThis();
     }
 
+    @Test
+    void controlsAndCloseDoNotWaitForImageConversion() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var finished = new java.util.concurrent.CountDownLatch(1);
+        var leaseReadable = new java.util.concurrent.atomic.AtomicBoolean();
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        var renderer =
+                new GameRenderer(
+                        navigation,
+                        BlockWorld.gallery(),
+                        "cpu",
+                        (image, exposure) -> {
+                            entered.countDown();
+                            boolean interrupted = false;
+                            try {
+                                while (release.getCount() != 0) {
+                                    try {
+                                        release.await();
+                                    } catch (InterruptedException closing) {
+                                        interrupted = true;
+                                    }
+                                }
+                                // Closing must not revoke a conversion's acquired CPU-readable
+                                // image lease.
+                                var copied = GameRenderer.copyImage(image);
+                                leaseReadable.set(true);
+                                return copied;
+                            } finally {
+                                finished.countDown();
+                                if (interrupted) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            }
+                        });
+        try {
+            assertTrue(entered.await(10, java.util.concurrent.TimeUnit.SECONDS));
+            var responsive =
+                    java.util.concurrent.CompletableFuture.runAsync(
+                            () -> {
+                                renderer.settings();
+                                renderer.adaptive();
+                                renderer.lighting();
+                                renderer.exposure(2);
+                                renderer.configure(settings -> settings.withPaused(true));
+                                renderer.close();
+                            });
+            responsive.get(1, java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals(null, renderer.frame());
+            release.countDown();
+            assertTrue(finished.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            assertTrue(renderer.closed());
+            assertTrue(leaseReadable.get());
+            assertEquals(null, renderer.frame());
+            assertEquals(null, renderer.error());
+        } finally {
+            release.countDown();
+            renderer.close();
+        }
+    }
+
+    @Test
+    void editsDuringConversionDiscardObsoleteDisplayWithoutLosingExposureUpdate() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var first = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        try (var renderer =
+                new GameRenderer(
+                        navigation,
+                        BlockWorld.gallery(),
+                        "cpu",
+                        (image, exposure) -> {
+                            if (first.getAndSet(false)) {
+                                entered.countDown();
+                                try {
+                                    release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                                } catch (InterruptedException failure) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            }
+                            // Encode the captured exposure so a stale conversion is observable
+                            // without timing pixels.
+                            var result = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+                            result.setRGB(0, 0, exposure.intValue());
+                            return result;
+                        })) {
+            try {
+                assertTrue(entered.await(10, java.util.concurrent.TimeUnit.SECONDS));
+                var edit =
+                        java.util.concurrent.CompletableFuture.runAsync(() -> renderer.exposure(2));
+                edit.get(1, java.util.concurrent.TimeUnit.SECONDS);
+                release.countDown();
+                long deadline = System.nanoTime() + 5_000_000_000L;
+                while (renderer.frame() == null && System.nanoTime() < deadline) {
+                    Thread.sleep(5);
+                }
+                assertTrue(renderer.frame() != null);
+                assertEquals(2, renderer.frame().image().getRGB(0, 0) & 0xffffff);
+                assertEquals(null, renderer.error());
+            } finally {
+                release.countDown();
+            }
+        }
+    }
+
     private static void key(GameNavigation navigation, KeyCode code, boolean pressed) {
         navigation.key(new KeyInput(code, pressed, Modifiers.NONE));
     }

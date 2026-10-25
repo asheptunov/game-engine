@@ -46,6 +46,7 @@ public final class GameRenderer implements AutoCloseable {
                     .withTileSize(16)
                     .withInteractive(true, 1000. / 60, 0, 0);
     private final RenderSession session;
+    private final java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter;
     private final ScheduledExecutorService executor;
     private final AtomicBoolean completionQueued = new AtomicBoolean();
     private volatile Frame frame;
@@ -63,6 +64,15 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     public GameRenderer(GameNavigation navigation, BlockWorld blocks, String backend) {
+        this(navigation, blocks, backend, GameRenderer::copyImage);
+    }
+
+    GameRenderer(
+            GameNavigation navigation,
+            BlockWorld blocks,
+            String backend,
+            java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter) {
+        this.imageConverter = java.util.Objects.requireNonNull(imageConverter);
         this.navigation = navigation;
         this.backend = backend;
         if (backend.equals("gpu") || navigation.fixedResolution()) {
@@ -105,62 +115,93 @@ public final class GameRenderer implements AutoCloseable {
         }
     }
 
-    private synchronized void tick() {
-        if (closed) {
-            return;
-        }
+    private void tick() {
+        RenderImage acquired = null;
         try {
-            long now = System.nanoTime();
-            navigation.advance((now - lastTick) / 1e9);
-            lastTick = now;
-            if (!navigation.active()) {
-                if (!suspended) {
-                    session.suspend();
-                    suspended = true;
+            engine.RenderView view;
+            engine.WorldSnapshot capturedWorld;
+            RenderSettings capturedSettings;
+            float capturedExposure;
+            synchronized (this) {
+                if (closed) {
+                    return;
                 }
-                return;
-            }
-            suspended = false;
-            var view = navigation.view();
-            session.update(world, view, settings);
-            session.request();
-            try (var image = session.acquireImage()) {
-                if (image != null && image.publicationNanos() != converted) {
-                    long copyStart = System.nanoTime();
-                    var display = copyImage(image, exposure);
-                    long copied = System.nanoTime();
-                    var metrics =
-                            publicationObserver == null
-                                    ? null
-                                    : new Metrics(
-                                            image.traceNanos(),
-                                            copied - copyStart,
-                                            session.progress(image).shownAgeNanos(),
-                                            copyStart - image.finishedNanos(),
-                                            image.traceStats());
-                    frame =
-                            new Frame(
-                                    display,
-                                    view.width(),
-                                    view.height(),
-                                    image.generation(),
-                                    image.samples(),
-                                    copied,
-                                    image.publicationNanos(),
-                                    image.camera(),
-                                    metrics);
-                    session.presented(image);
-                    converted = image.publicationNanos();
-                    if (publicationObserver != null) {
-                        publicationObserver.accept(frame);
+                long now = System.nanoTime();
+                navigation.advance((now - lastTick) / 1e9);
+                lastTick = now;
+                if (!navigation.active()) {
+                    if (!suspended) {
+                        session.suspend();
+                        suspended = true;
                     }
+                    return;
+                }
+                suspended = false;
+                view = navigation.view();
+                capturedWorld = world;
+                capturedSettings = settings;
+                capturedExposure = exposure;
+                session.update(capturedWorld, view, capturedSettings);
+                session.request();
+                acquired = session.acquireImage();
+                if (acquired == null || acquired.publicationNanos() == converted) {
+                    return;
+                }
+            }
+            // Keep the image leased, but never hold the controls/overlay monitor while converting.
+            // Only this executor converts images; input can keep editing immutable settings
+            // meanwhile.
+            long copyStart = System.nanoTime();
+            var display = imageConverter.apply(acquired, capturedExposure);
+            long copied = System.nanoTime();
+            synchronized (this) {
+                if (closed
+                        || suspended
+                        || !navigation.active()
+                        || world != capturedWorld
+                        || settings != capturedSettings
+                        || exposure != capturedExposure) {
+                    return;
+                }
+                var metrics =
+                        publicationObserver == null
+                                ? null
+                                : new Metrics(
+                                        acquired.traceNanos(),
+                                        copied - copyStart,
+                                        session.progress(acquired).shownAgeNanos(),
+                                        copyStart - acquired.finishedNanos(),
+                                        acquired.traceStats());
+                frame =
+                        new Frame(
+                                display,
+                                view.width(),
+                                view.height(),
+                                acquired.generation(),
+                                acquired.samples(),
+                                copied,
+                                acquired.publicationNanos(),
+                                acquired.camera(),
+                                metrics);
+                session.presented(acquired);
+                converted = acquired.publicationNanos();
+                if (publicationObserver != null) {
+                    publicationObserver.accept(frame);
                 }
             }
         } catch (RuntimeException failure) {
-            error = "Rendering failed: " + failure.getMessage();
-            navigation.active(false);
-            session.suspend();
-            suspended = true;
+            synchronized (this) {
+                if (!closed) {
+                    error = "Rendering failed: " + failure.getMessage();
+                    navigation.active(false);
+                    session.suspend();
+                    suspended = true;
+                }
+            }
+        } finally {
+            if (acquired != null) {
+                acquired.close();
+            }
         }
     }
 
