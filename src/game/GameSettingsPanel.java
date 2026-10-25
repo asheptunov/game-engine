@@ -216,6 +216,12 @@ public final class GameSettingsPanel extends JPanel {
                 1,
                 true);
         heading(panel, "Depth of field (aperture 0 = off)");
+        check(
+                panel,
+                "Autofocus (screen center)",
+                navigation::autofocus,
+                navigation::autofocus,
+                true);
         number(
                 panel,
                 "Aperture radius (world units)",
@@ -229,12 +235,12 @@ public final class GameSettingsPanel extends JPanel {
                 panel,
                 "Focus distance (world units)",
                 navigation::focus,
-                value -> navigation.optics(navigation.aperture(), (float) value),
+                value -> navigation.manualFocus((float) value),
                 .01,
                 10000,
                 .25,
                 true);
-        panel.add(new JLabel("Manual focus; larger aperture increases blur."));
+        panel.add(new JLabel("Editing distance selects manual focus. Sky retains focus."));
         heading(panel, "Navigation");
         number(
                 panel,

@@ -24,6 +24,70 @@ public final class GameLightingTest {
     }
 
     @Test
+    void autofocusTracksCenterRetainsSkyAndStopsForManualAndSuspension() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.pose(new math.Vec3(0, 0, -6), 0, 0);
+        navigation.optics(.1f, 2);
+        var world = new BlockWorld(List.of(new BlockWorld.Block(0, 0, 0, BlockWorld.Type.STONE)));
+        try (var autofocus = new GameAutofocus(navigation, world.snapshot())) {
+            navigation.autofocus(true);
+            awaitFocus(navigation, 5.5f);
+            navigation.pose(new math.Vec3(0, 0, -3), 0, 0);
+            awaitFocus(navigation, 2.5f);
+            navigation.pose(new math.Vec3(0, 0, -3), Math.PI, 0);
+            Thread.sleep(200);
+            assertEquals(2.5f, navigation.focus());
+            navigation.manualFocus(7);
+            navigation.pose(new math.Vec3(0, 0, -3), 0, 0);
+            Thread.sleep(200);
+            assertFalse(navigation.autofocus());
+            assertEquals(7f, navigation.focus());
+            navigation.active(false);
+            navigation.autofocus(true);
+            Thread.sleep(200);
+            assertEquals(7f, navigation.focus());
+            navigation.active(true);
+            awaitFocus(navigation, 2.5f);
+        }
+    }
+
+    @Test
+    void autofocusRejectsResultsFromOldModeAndOldView() {
+        var navigation = new GameNavigation();
+        navigation.pose(new math.Vec3(0, 0, -6), 0, 0);
+        navigation.autofocus(true);
+        var world =
+                new BlockWorld(List.of(new BlockWorld.Block(0, 0, 0, BlockWorld.Type.STONE)))
+                        .snapshot();
+        var scene = new engine.CameraFocus.Scene(world.instances(), world.legacyObjects(), 0);
+        var result =
+                new engine.CameraFocus()
+                        .resolve(
+                                engine.FocusTargetSource.CENTER,
+                                navigation.view().camera(),
+                                scene,
+                                navigation.focusRevision(),
+                                System.nanoTime(),
+                                System::nanoTime);
+        assertEquals(null, result.error());
+        navigation.pose(new math.Vec3(0, 0, -6), Math.PI, 0);
+        assertFalse(navigation.acceptFocus(result, result.distance()));
+        navigation.pose(new math.Vec3(0, 0, -6), 0, 0);
+        navigation.autofocus(false);
+        navigation.autofocus(true);
+        assertFalse(navigation.acceptFocus(result, result.distance()));
+        assertEquals(5f, navigation.focus());
+    }
+
+    private static void awaitFocus(GameNavigation navigation, float expected) throws Exception {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (navigation.focus() != expected && System.nanoTime() < deadline) {
+            Thread.sleep(10);
+        }
+        assertEquals(expected, navigation.focus());
+    }
+
+    @Test
     void releasedPointerButtonsChangeLightingAndCameraResetPreservesIt() throws Exception {
         var navigation = new GameNavigation();
         try (var renderer = new GameRenderer(navigation, BlockWorld.gallery())) {

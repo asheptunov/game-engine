@@ -58,6 +58,22 @@ public final class GpuUiCheck {
             });
             long opticsGeneration=renderer.restart();
             awaitSamples(renderer, frame -> frame.generation()==opticsGeneration && frame.samples() >= 4);
+            navigation.pose(new math.Vec3(0, 3, 0), 0, -Math.PI / 4);
+            var focusWorld=BlockWorld.landscape().snapshot();
+            var measurement=new engine.CameraFocus().resolve(engine.FocusTargetSource.CENTER,
+                    navigation.view().camera(),new engine.CameraFocus.Scene(focusWorld.instances(),focusWorld.legacyObjects(),0),
+                    0,System.nanoTime(),System::nanoTime);
+            if(measurement.error()!=null) throw new AssertionError(measurement.error());
+            SwingUtilities.invokeAndWait(()->{
+                var auto=(javax.swing.JCheckBox)find(holder[0],"Autofocus (screen center)");
+                if(auto==null || !auto.isEnabled()) throw new AssertionError("GPU autofocus unavailable");
+                auto.doClick();
+            });
+            awaitSamples(renderer, frame -> frame.camera().focus()==measurement.distance() && frame.samples()>=4);
+            SwingUtilities.invokeAndWait(()->{
+                var focus=(javax.swing.JSpinner)find(holder[0],"Focus distance (world units)");focus.setValue(9.0);
+                if(navigation.autofocus()) throw new AssertionError("Manual distance did not disable autofocus");
+            });
             var image=new BufferedImage(960,600,BufferedImage.TYPE_INT_RGB);
             SwingUtilities.invokeAndWait(()->{
                 var graphics=image.createGraphics();

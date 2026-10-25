@@ -17,6 +17,8 @@ public final class GameNavigation {
     private float fov = 60;
     private float aperture;
     private float focus = 5;
+    private boolean autofocus;
+    private long focusRevision;
     private static final double PITCH_LIMIT = Math.toRadians(89);
     private static final Vec3 SPAWN = new Vec3(0, 2.4f, -6);
     private final EnumSet<KeyCode> held = EnumSet.noneOf(KeyCode.class);
@@ -43,6 +45,9 @@ public final class GameNavigation {
     }
 
     public synchronized void active(boolean value) {
+        if (active != value) {
+            focusRevision++;
+        }
         active = value;
         release();
     }
@@ -75,6 +80,7 @@ public final class GameNavigation {
     }
 
     public synchronized void reset() {
+        focusRevision++;
         position = SPAWN;
         yaw = 0;
         pitch = -.14;
@@ -155,6 +161,51 @@ public final class GameNavigation {
 
     public synchronized float focus() {
         return focus;
+    }
+
+    public synchronized boolean autofocus() {
+        return autofocus;
+    }
+
+    public synchronized void autofocus(boolean value) {
+        autofocus = value;
+        focusRevision++;
+    }
+
+    synchronized long focusRevision() {
+        return focusRevision;
+    }
+
+    public synchronized void manualFocus(float distance) {
+        optics(aperture, distance);
+        autofocus(false);
+    }
+
+    /** Reject stale queries, and hits that moved more than 2% of the image from center. */
+    synchronized boolean acceptFocus(engine.CameraFocus.Measurement result, float distance) {
+        if (!active
+                || !autofocus
+                || result.epoch() != focusRevision
+                || System.nanoTime() - result.captured() > 100_000_000L) {
+            return false;
+        }
+        var camera = view().camera();
+        var delta = result.hit().sub(camera.eye());
+        float axial = delta.dot(camera.forward());
+        if (axial <= 0) {
+            return false;
+        }
+        var offset =
+                delta.scale(camera.planeDistance() / axial)
+                        .sub(camera.forward().scale(camera.planeDistance()));
+        var horizontal = camera.sensor().edge1();
+        var vertical = camera.sensor().edge2();
+        if (Math.abs(offset.dot(horizontal) / horizontal.lengthSq()) > .02
+                || Math.abs(offset.dot(vertical) / vertical.lengthSq()) > .02) {
+            return false;
+        }
+        focus = Math.clamp(distance, .01f, 10000f);
+        return true;
     }
 
     public synchronized void speed(float value) {

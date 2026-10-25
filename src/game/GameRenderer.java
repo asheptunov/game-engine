@@ -46,6 +46,7 @@ public final class GameRenderer implements AutoCloseable {
                     .withTileSize(16)
                     .withInteractive(true, 1000. / 60, 0, 0);
     private final RenderSession session;
+    private final GameAutofocus autofocus;
     private final java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter;
     private final ScheduledExecutorService executor;
     private final AtomicBoolean completionQueued = new AtomicBoolean();
@@ -87,6 +88,7 @@ public final class GameRenderer implements AutoCloseable {
                         java.util.List.of(lighting.sun()),
                         lighting.sky());
         session = RenderEngine.openSession(world, navigation.view(), settings, backend);
+        autofocus = new GameAutofocus(navigation, world);
         executor =
                 Executors.newSingleThreadScheduledExecutor(
                         runnable -> {
@@ -372,6 +374,7 @@ public final class GameRenderer implements AutoCloseable {
         if (!closed) {
             closed = true;
             navigation.active(false);
+            autofocus.close();
             session.onImageAvailable(null);
             executor.shutdownNow();
             session.close();
