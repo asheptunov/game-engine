@@ -1,4 +1,4 @@
-param([switch]$NoBuild, [ValidateSet('landscape', 'gallery')][string]$Scene = 'landscape',
+param([switch]$NoBuild, [ValidateSet('world', 'landscape', 'gallery')][string]$Scene = 'world',
     [ValidateSet('cpu','gpu')][string]$Backend = 'cpu',
     [ValidateRange(0,1600)][int]$Width = 0, [ValidateRange(0,1600)][int]$Height = 0)
 $ErrorActionPreference = "Stop"

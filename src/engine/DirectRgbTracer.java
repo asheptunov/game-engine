@@ -1038,7 +1038,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             for (int depth = 0; depth <= snapshot.depth(); depth++) {
                 continuation = depth != 0;
                 if (!nearestHit(ox, oy, oz, dx, dy, dz, hit)) {
-                    snapshot.sky().sample(dy, lighting);
+                    snapshot.sky().sample(dx, dy, dz, depth == 0, lighting);
                     addLighting(rgb, lighting, red, green, blue);
                     break;
                 }

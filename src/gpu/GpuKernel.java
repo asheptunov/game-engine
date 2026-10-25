@@ -102,7 +102,7 @@ final class GpuKernel implements AutoCloseable {
         this.beforeDispatch = beforeDispatch;
         gpu = new VulkanDevice();
         try {
-            parameters = gpu.buffer(160, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
+            parameters = gpu.buffer(192, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
             createPipeline();
             initializationNanos = System.nanoTime() - started;
         } catch (RuntimeException | Error failure) {
@@ -409,6 +409,10 @@ final class GpuKernel implements AutoCloseable {
         put(5, sun == null ? Vec3.ZERO : sun.color().scale(sun.strength()));
         put(6, world.sky().nadir());
         put(7, world.sky().zenith());
+        var disc = world.sky().disc();
+        put(10, disc == null ? Vec3.ZERO : disc.direction());
+        put(11, disc == null ? Vec3.ZERO : disc.radiance());
+        parameters.mapped.putFloat(172, disc == null ? 2 : disc.cosineRadius());
         long seed = cameraSeed(settings.seed(), camera);
         parameters
                 .mapped

@@ -109,6 +109,26 @@ public final class SunSkyTest {
     }
 
     @Test
+    void visibleDiscHasAngularExtentOcclusionAndNoExtraDiffuseEnergy() {
+        var state = state();
+        var disc = new Sky.Disc(new Vec3(0, 0, 5), new Vec3(8, 6, 3), .75f);
+        state.sky(new Sky(Vec3.ZERO, Vec3.ZERO, disc));
+        assertEquals(new float[] {8, 6, 3}, radiance(state, Vec3.ZERO, new Vec3(0, 0, 1)));
+        assertEquals(
+                new float[] {8, 6, 3}, radiance(state, new Vec3(50, 20, 0), new Vec3(0, 0, 1)));
+        assertEquals(new float[3], radiance(state, Vec3.ZERO, new Vec3(.02f, 0, 1).normalized()));
+        state.instances().add(cube("occluder", new Vec3(0, 0, 4), DIFFUSE));
+        assertEquals(new float[3], radiance(state, Vec3.ZERO, new Vec3(0, 0, 1)));
+        state.pathDepth(1);
+        var without = radiance(state, Vec3.ZERO, new Vec3(0, 0, 1));
+        state.sky(Sky.BLACK);
+        assertEquals(without, radiance(state, Vec3.ZERO, new Vec3(0, 0, 1)));
+        reject(() -> new Sky.Disc(Vec3.ZERO, WHITE, 1));
+        reject(() -> new Sky.Disc(WHITE, WHITE, 0));
+        reject(() -> new Sky.Disc(WHITE, new Vec3(-1, 0, 0), 1));
+    }
+
+    @Test
     void isolatedDiffuseConstantSkyMatchesReflectanceAndGradientConverges() {
         var state = state();
         var reflectance = new Vec3(.25f, .5f, .75f);

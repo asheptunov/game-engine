@@ -5,7 +5,7 @@ import engine.lights.DirectionalLight;
 
 import math.Vec3;
 
-/** Diagnostic fixed sun directions; the game has no advancing time-of-day clock. */
+/** Directional sunlight or moonlight plus the matching visible sky disc. */
 public record GameLighting(
         Preset preset,
         boolean skyEnabled,
@@ -54,6 +54,11 @@ public record GameLighting(
     }
 
     public Sky sky() {
-        return skyEnabled ? skyColors : Sky.BLACK;
+        return skyEnabled
+                ? new Sky(
+                        skyColors.nadir(),
+                        skyColors.zenith(),
+                        new Sky.Disc(direction, sunColor.scale(Math.max(1, intensity * 4)), .75f))
+                : Sky.BLACK;
     }
 }

@@ -10,10 +10,18 @@ import javax.swing.SwingUtilities;
 public final class SampleGameMain {
     private SampleGameMain() {}
 
+    private static engine.WorldSnapshot world(String scene) {
+        return switch (scene) {
+            case "gallery" -> BlockWorld.gallery().snapshot();
+            case "landscape" -> BlockWorld.landscape().snapshot();
+            default -> AdventureWorld.create();
+        };
+    }
+
     public static void main(String[] args) {
-        String scene = args.length == 0 ? "landscape" : args[0];
-        if (!scene.equals("landscape") && !scene.equals("gallery")) {
-            throw new IllegalArgumentException("Scene must be landscape or gallery");
+        String scene = args.length == 0 ? "world" : args[0];
+        if (!scene.equals("world") && !scene.equals("landscape") && !scene.equals("gallery")) {
+            throw new IllegalArgumentException("Scene must be world, landscape or gallery");
         }
         String backend = args.length > 1 ? args[1] : "cpu";
         int width = args.length > 2 ? Integer.parseInt(args[2]) : 0;
@@ -26,13 +34,7 @@ public final class SampleGameMain {
                     }
                     GameRenderer renderer;
                     try {
-                        renderer =
-                                new GameRenderer(
-                                        navigation,
-                                        scene.equals("gallery")
-                                                ? BlockWorld.gallery()
-                                                : BlockWorld.landscape(),
-                                        backend);
+                        renderer = new GameRenderer(navigation, world(scene), backend);
                     } catch (RuntimeException | LinkageError failure) {
                         javax.swing.JOptionPane.showMessageDialog(
                                 null,
@@ -41,8 +43,12 @@ public final class SampleGameMain {
                                 javax.swing.JOptionPane.ERROR_MESSAGE);
                         return;
                     }
+                    if (scene.equals("world")) {
+                        renderer.dayCycle(true);
+                        navigation.speed(8);
+                    }
                     var panel = new GamePanel(navigation, renderer);
-                    var window = new JFrame("Sample game — " + scene + " (G4)");
+                    var window = new JFrame("Sample game — " + scene);
                     window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                     window.setContentPane(panel);
                     window.pack();

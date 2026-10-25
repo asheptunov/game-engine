@@ -266,6 +266,27 @@ public final class GameSettingsPanel extends JPanel {
 
     private JPanel lightControls() {
         var panel = page();
+        heading(panel, "Day / night");
+        check(panel, "Day/night cycle", renderer::dayCycle, renderer::dayCycle, true);
+        number(
+                panel,
+                "Time of day (hours)",
+                renderer::timeOfDay,
+                renderer::timeOfDay,
+                0,
+                24,
+                .25,
+                true);
+        number(
+                panel,
+                "Full day (seconds)",
+                renderer::dayDuration,
+                renderer::dayDuration,
+                30,
+                7200,
+                30,
+                true);
+        panel.add(new JLabel("Manual lighting edits pause the cycle."));
         heading(panel, "Sun presets");
         var presets = new JPanel(new FlowLayout(FlowLayout.LEFT));
         presets.setAlignmentX(LEFT_ALIGNMENT);

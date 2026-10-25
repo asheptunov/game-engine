@@ -224,7 +224,40 @@ public final class GpuCheck {
         } finally {batch.close();require(batch.awaitClosed(30),"lens batch session retires");}
     }
 
+    private static void visibleSkyDiscs() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(640, 400);
+        var source = AdventureWorld.create();
+        var clock = new DayNightCycle();
+        var settings = RenderSettings.defaults().withPathDepth(0).withSampleTarget(1);
+        for (int hour : new int[] {9, 0}) {
+            clock.hour(hour);
+            var light = clock.lighting();
+            var direction = light.sun().direction();
+            navigation.pose(new Vec3(0, 15, -6), Math.atan2(direction.x(), direction.z()), Math.asin(direction.y()));
+            var world = new WorldSnapshot(hour, source.instances(), java.util.List.of(), java.util.List.of(light.sun()), light.sky());
+            float[] expected = cpu(world, navigation.view(), settings);
+            try (var session = new GpuRenderSession(world, navigation.view(), settings)) {
+                float[] actual = waitImage(session, 1);
+                require(rmse(actual, expected) < .0001, "visible celestial disc matches CPU at hour " + hour);
+                int center = (200 * 640 + 320) * 3;
+                require(actual[center] > .4 && actual[center + 2] > .4, "sun/moon visible at image center at hour " + hour);
+                image(actual, 640, 400, "sky-disc-" + hour);
+                var blockedObjects = new java.util.ArrayList<>(source.instances());
+                blockedObjects.add(new SceneInstance("disc occluder", BoxGeometry.UNIT,
+                        new Transform(new Vec3(direction.x()*5, 15+direction.y()*5, -6+direction.z()*5),
+                                Vec3.ZERO, new Vec3(1,1,1)),
+                        new Material("black blocker", Vec3.ZERO)));
+                var blocked = new WorldSnapshot(hour+1, blockedObjects, java.util.List.of(), java.util.List.of(), light.sky());
+                session.update(blocked, navigation.view(), settings);
+                float[] hidden = waitImage(session, 1);
+                require(hidden[center] == 0 && hidden[center+2] == 0, "foreground geometry hides disc at hour " + hour);
+            }
+        }
+    }
+
     public static void main(String[] args) throws Exception {
+        visibleSkyDiscs();
         var world=landscape();
         var navigation=new GameNavigation();
         navigation.fixedResolution(96,64);

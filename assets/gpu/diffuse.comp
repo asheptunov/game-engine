@@ -11,6 +11,7 @@ layout(std430,set=0,binding=4) readonly buffer Parameters {
     vec4 eye, origin, edge1, edge2, sunDirection, sunRadiance, nadir, zenith;
     uvec4 grid; // width, height, depth, seed low
     uvec4 sampling; // seed high, sample index, reserved, reserved
+    vec4 discDirection, discRadiance; // direction.w = cosine of angular radius; 2 disables disc
 };
 layout(std430,set=0,binding=5) buffer Accumulation { dvec4 means[]; };
 layout(std430,set=0,binding=6) writeonly buffer Output { vec4 pixels[]; };
@@ -118,7 +119,10 @@ void main() {
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         if (!nearest(o,d,-1,-1,false,hit)) {
-            radiance += weight*mix(nadir.xyz,zenith.xyz,clamp((d.y+1)*0.5,0,1));
+            vec3 environment = mix(nadir.xyz,zenith.xyz,clamp((d.y+1)*0.5,0,1));
+            // Camera presentation only: direct lighting already accounts for this source.
+            if (depth == 0 && dot(d,discDirection.xyz) >= discDirection.w) environment = discRadiance.xyz;
+            radiance += weight*environment;
             break;
         }
         vec3 n = dot(hit.normal,d)<0 ? hit.normal : -hit.normal;

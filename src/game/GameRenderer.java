@@ -39,6 +39,8 @@ public final class GameRenderer implements AutoCloseable {
     private final String backend;
     private engine.WorldSnapshot world;
     private GameLighting lighting = GameLighting.defaults();
+    private final DayNightCycle cycle = new DayNightCycle();
+    private long lastLightingUpdate;
     private RenderSettings settings =
             RenderSettings.defaults()
                     .withPathDepth(2)
@@ -73,13 +75,25 @@ public final class GameRenderer implements AutoCloseable {
             BlockWorld blocks,
             String backend,
             java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter) {
+        this(navigation, blocks.snapshot(), backend, imageConverter);
+    }
+
+    public GameRenderer(GameNavigation navigation, engine.WorldSnapshot source, String backend) {
+        this(navigation, source, backend, GameRenderer::copyImage);
+    }
+
+    private GameRenderer(
+            GameNavigation navigation,
+            engine.WorldSnapshot source,
+            String backend,
+            java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter) {
         this.imageConverter = java.util.Objects.requireNonNull(imageConverter);
         this.navigation = navigation;
         this.backend = backend;
         if (backend.equals("gpu") || navigation.fixedResolution()) {
             settings = settings.withInteractive(false, settings.interactiveMillis(), 0, 0);
         }
-        var prepared = blocks.snapshot();
+        var prepared = source;
         world =
                 new engine.WorldSnapshot(
                         0,
@@ -128,9 +142,7 @@ public final class GameRenderer implements AutoCloseable {
                 if (closed) {
                     return;
                 }
-                long now = System.nanoTime();
-                navigation.advance((now - lastTick) / 1e9);
-                lastTick = now;
+                advanceClock();
                 if (!navigation.active()) {
                     if (!suspended) {
                         session.suspend();
@@ -187,6 +199,7 @@ public final class GameRenderer implements AutoCloseable {
                                 metrics);
                 session.presented(acquired);
                 converted = acquired.publicationNanos();
+                publishClock(copied);
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }
@@ -204,6 +217,24 @@ public final class GameRenderer implements AutoCloseable {
             if (acquired != null) {
                 acquired.close();
             }
+        }
+    }
+
+    private void advanceClock() {
+        long now = System.nanoTime();
+        double elapsed = (now - lastTick) / 1e9;
+        navigation.advance(elapsed);
+        if (navigation.active() && !suspended) {
+            cycle.advance(elapsed);
+        }
+        lastTick = now;
+    }
+
+    private void publishClock(long copied) {
+        // Change transport after presenting a complete image so slow passes are not starved.
+        if (cycle.running() && copied - lastLightingUpdate >= 250_000_000L) {
+            applyLighting(cycle.lighting());
+            lastLightingUpdate = copied;
         }
     }
 
@@ -341,6 +372,39 @@ public final class GameRenderer implements AutoCloseable {
 
     /** Replace immutable input once per effective edit; reset/undo must not revive old images. */
     public synchronized void lighting(GameLighting value) {
+        cycle.running(false);
+        applyLighting(value);
+    }
+
+    public synchronized double timeOfDay() {
+        return cycle.hour();
+    }
+
+    public synchronized double dayDuration() {
+        return cycle.duration();
+    }
+
+    public synchronized boolean dayCycle() {
+        return cycle.running();
+    }
+
+    public synchronized void dayCycle(boolean value) {
+        cycle.running(value);
+        if (value) {
+            applyLighting(cycle.lighting());
+        }
+    }
+
+    public synchronized void timeOfDay(double value) {
+        cycle.hour(value);
+        applyLighting(cycle.lighting());
+    }
+
+    public synchronized void dayDuration(double value) {
+        cycle.duration(value);
+    }
+
+    private void applyLighting(GameLighting value) {
         if (!lighting.equals(value)) {
             lighting = value;
             world =
