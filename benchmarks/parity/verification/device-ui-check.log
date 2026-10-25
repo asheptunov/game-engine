@@ -1,0 +1,2 @@
+PASS offscreen game panel, refinement off/motion/on, fixed-grid control, lighting and focus lifecycle
+GPU NVIDIA GeForce RTX 3080 | fixed | execute 0.85 ms | transfer 0.73 ms | host 3.16 ms | prepare 0.00 ms | peak 35.3 MiB | primitive counters n/a | init 388.27 ms | max prepare 32.87 ms

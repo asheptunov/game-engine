@@ -136,7 +136,7 @@ public final class GameSettingsPanel extends JPanel {
         var panel = page();
         heading(
                 panel,
-                renderer.adaptiveSupported() ? "CPU renderer" : "GPU renderer (fixed resolution)");
+                renderer.capabilities().id().toUpperCase(java.util.Locale.ROOT) + " renderer");
         check(panel, "Refinement", renderer::refinement, renderer::refinement, true);
         number(
                 panel,
@@ -188,7 +188,7 @@ public final class GameSettingsPanel extends JPanel {
                 () -> renderer.settings().pathDepth(),
                 value -> renderer.configure(s -> s.withPathDepth((int) value)),
                 0,
-                renderer.adaptiveSupported() ? 32 : 2,
+                renderer.capabilities().maximumDepth(),
                 1,
                 true);
         number(
@@ -447,8 +447,8 @@ public final class GameSettingsPanel extends JPanel {
                                                                 ((Number) seed.getValue())
                                                                         .longValue()))));
         heading(panel, "CPU scheduling (unavailable on GPU)");
-        boolean cpu = renderer.adaptiveSupported();
-        check(panel, "Adaptive resolution", renderer::adaptive, renderer::adaptive, cpu);
+        var adaptive = support(engine.RenderCapabilities.Feature.ADAPTIVE_RESOLUTION);
+        check(panel, "Adaptive resolution", renderer::adaptive, renderer::adaptive, adaptive);
         number(
                 panel,
                 "Target frame time (ms)",
@@ -464,7 +464,7 @@ public final class GameSettingsPanel extends JPanel {
                 1,
                 1000,
                 1,
-                cpu);
+                adaptive);
         number(
                 panel,
                 "Min width (0 = auto)",
@@ -482,7 +482,7 @@ public final class GameSettingsPanel extends JPanel {
                 0,
                 1600,
                 16,
-                cpu);
+                adaptive);
         number(
                 panel,
                 "Min height (0 = auto)",
@@ -498,8 +498,9 @@ public final class GameSettingsPanel extends JPanel {
                 0,
                 1600,
                 16,
-                cpu);
-        button(
+                adaptive);
+        var automaticMinimum =
+                button(
                         panel,
                         "Automatic minimum resolution",
                         () ->
@@ -509,8 +510,11 @@ public final class GameSettingsPanel extends JPanel {
                                                         s.interactive(),
                                                         s.interactiveMillis(),
                                                         0,
-                                                        0)))
-                .setEnabled(cpu);
+                                                        0)));
+        automaticMinimum.setEnabled(adaptive.supported());
+        if (!adaptive.supported()) {
+            automaticMinimum.setToolTipText(adaptive.reason());
+        }
         number(
                 panel,
                 "Workers",
@@ -519,7 +523,7 @@ public final class GameSettingsPanel extends JPanel {
                 1,
                 Math.min(32, Runtime.getRuntime().availableProcessors()),
                 1,
-                cpu);
+                support(engine.RenderCapabilities.Feature.WORKER_CONTROL));
         number(
                 panel,
                 "Tile size (pixels)",
@@ -528,20 +532,20 @@ public final class GameSettingsPanel extends JPanel {
                 1,
                 256,
                 1,
-                cpu);
+                support(engine.RenderCapabilities.Feature.TILE_CONTROL));
         check(
                 panel,
                 "Acceleration",
                 () -> renderer.settings().acceleration(),
                 value -> renderer.configure(s -> s.withAcceleration(value)),
-                cpu);
+                support(engine.RenderCapabilities.Feature.OPTIONAL_ACCELERATION));
         heading(panel, "CPU temporal reconstruction");
         check(
                 panel,
                 "Temporal reconstruction",
                 () -> renderer.settings().temporal(),
                 value -> renderer.configure(s -> s.withTemporal(value, s.temporalRevision() + 1)),
-                cpu);
+                support(engine.RenderCapabilities.Feature.TEMPORAL_RECONSTRUCTION));
         panel.add(new JLabel("Finite aperture disables temporal reuse."));
         check(
                 panel,
@@ -552,7 +556,7 @@ public final class GameSettingsPanel extends JPanel {
                                 s ->
                                         s.withTemporalBudget(
                                                 value, s.motionSamples(), s.motionScale())),
-                cpu);
+                support(engine.RenderCapabilities.Feature.TEMPORAL_BUDGET));
         number(
                 panel,
                 "Motion samples",
@@ -565,7 +569,7 @@ public final class GameSettingsPanel extends JPanel {
                 1,
                 8,
                 1,
-                cpu);
+                support(engine.RenderCapabilities.Feature.TEMPORAL_BUDGET));
         number(
                 panel,
                 "Motion resolution scale",
@@ -578,7 +582,7 @@ public final class GameSettingsPanel extends JPanel {
                 .25,
                 1,
                 .05,
-                cpu);
+                support(engine.RenderCapabilities.Feature.TEMPORAL_BUDGET));
         return panel;
     }
 
@@ -593,6 +597,10 @@ public final class GameSettingsPanel extends JPanel {
         panel.add(row);
     }
 
+    private engine.RenderCapabilities.Support support(engine.RenderCapabilities.Feature feature) {
+        return renderer.capabilities().support(feature);
+    }
+
     private void number(
             JPanel panel,
             String label,
@@ -602,13 +610,47 @@ public final class GameSettingsPanel extends JPanel {
             double high,
             double step,
             boolean enabled) {
+        number(
+                panel,
+                label,
+                read,
+                write,
+                low,
+                high,
+                step,
+                new engine.RenderCapabilities.Support(enabled, "Control unavailable"));
+    }
+
+    private void check(
+            JPanel panel,
+            String label,
+            BooleanSupplier read,
+            Consumer<Boolean> write,
+            boolean enabled) {
+        check(
+                panel,
+                label,
+                read,
+                write,
+                new engine.RenderCapabilities.Support(enabled, "Control unavailable"));
+    }
+
+    private void number(
+            JPanel panel,
+            String label,
+            DoubleSupplier read,
+            DoubleConsumer write,
+            double low,
+            double high,
+            double step,
+            engine.RenderCapabilities.Support support) {
         var spinner = new JSpinner(new SpinnerNumberModel(read.getAsDouble(), low, high, step));
         if (step < .001) {
             spinner.setEditor(new JSpinner.NumberEditor(spinner, "0.####"));
         }
-        spinner.setEnabled(enabled);
-        if (!enabled) {
-            spinner.setToolTipText("Not supported by the current GPU backend");
+        spinner.setEnabled(support.supported());
+        if (!support.supported()) {
+            spinner.setToolTipText(support.reason());
         }
         row(panel, label, spinner);
         spinner.addChangeListener(
@@ -633,13 +675,13 @@ public final class GameSettingsPanel extends JPanel {
             String label,
             BooleanSupplier read,
             Consumer<Boolean> write,
-            boolean enabled) {
+            engine.RenderCapabilities.Support support) {
         var box = new JCheckBox(label, read.getAsBoolean());
         box.setAlignmentX(LEFT_ALIGNMENT);
         box.setName(label);
-        box.setEnabled(enabled);
-        if (!enabled) {
-            box.setToolTipText("Not supported by the current GPU backend");
+        box.setEnabled(support.supported());
+        if (!support.supported()) {
+            box.setToolTipText(support.reason());
         }
         box.addActionListener(event -> apply(() -> write.accept(box.isSelected())));
         panel.add(box);

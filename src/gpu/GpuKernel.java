@@ -41,8 +41,6 @@ import static org.lwjgl.vulkan.VK10.vkGetQueryPoolResults;
 import static org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets;
 
 import engine.Camera;
-import engine.Material;
-import engine.PolygonMesh;
 import engine.RenderSettings;
 import engine.RenderView;
 import engine.WorldSnapshot;
@@ -112,38 +110,7 @@ final class GpuKernel implements AutoCloseable {
     }
 
     static void validate(WorldSnapshot world, RenderView view, RenderSettings settings) {
-        if (view.camera().projection() != Camera.Projection.PERSPECTIVE) {
-            throw new IllegalArgumentException("GPU supports perspective cameras only");
-        }
-        if (!settings.acceleration()
-                || settings.pathDepth() > 2
-                || settings.temporal()
-                || settings.temporalBudget()
-                || settings.interactive()) {
-            throw new IllegalArgumentException(
-                    "GPU requires acceleration, depth 0..2, fixed grids and temporal off");
-        }
-        if (world.instances().isEmpty() || !world.legacyObjects().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "GPU needs nonempty polygon instances and no legacy objects");
-        }
-        if (world.lights().size() > 1
-                || world.lights().stream()
-                        .anyMatch(light -> !(light instanceof DirectionalLight))) {
-            throw new IllegalArgumentException(
-                    "GPU supports one directional sun and sky; point/area lights are unsupported");
-        }
-        for (var object : world.instances()) {
-            var m = object.material();
-            if (!(object.geometry() instanceof PolygonMesh)
-                    || m.kind() != Material.Kind.DIFFUSE
-                    || m.roughness() != 0
-                    || m.emissive()
-                    || m.scattering() != 0) {
-                throw new IllegalArgumentException(
-                        "GPU supports opaque diffuse polygon instances: " + object.name());
-            }
-        }
+        engine.RenderCapabilities.GPU.validate(world, view, settings);
     }
 
     private void createPipeline() {

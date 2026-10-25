@@ -48,7 +48,8 @@ public record WorldSnapshot(
                 && instances.stream()
                         .anyMatch(
                                 instance -> instance.material().kind() != Material.Kind.DIFFUSE)) {
-            throw new IllegalArgumentException(
+            throw new RenderCapabilities.UnsupportedInput(
+                    "world.lights/sky with world.instances.material",
                     "Directional lights and sky currently require diffuse materials; mirror,"
                             + " dielectric and volume transport are unsupported");
         }

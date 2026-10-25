@@ -1,0 +1,5 @@
+profile=game-v1
+world=world
+lighting=GameLighting[preset=NOON, skyEnabled=true, direction=Vec3[x=-6.123234E-17, y=1.0, z=0.3], sunColor=Vec3[x=0.45, y=0.6, z=1.0], intensity=0.08, skyColors=Sky[nadir=Vec3[x=0.006, y=0.009, z=0.02], zenith=Vec3[x=0.002, y=0.004, z=0.012], disc=null]]
+view=RenderView[camera=Camera[eye=Vec3[x=0.0, y=2.4, z=-6.0], sensor=Rect[origin=Vec3[x=-0.9237604, y=1.6887555, z=-5.090349], edge1=Vec3[x=1.8475208, y=0.0, z=-0.0], edge2=Vec3[x=0.0, y=1.1434029, z=0.1611305]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=8.0, aperture=0.05, height=0.0, rememberedAperture=0.05], width=128, height=80]
+settings=RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=4, sampleTarget=8, paused=false, acceleration=true, workers=14, tileSize=32, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0]

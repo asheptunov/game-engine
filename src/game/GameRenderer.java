@@ -37,6 +37,7 @@ public final class GameRenderer implements AutoCloseable {
 
     private final GameNavigation navigation;
     private final String backend;
+    private final engine.RenderCapabilities capabilities;
     private engine.WorldSnapshot world;
     private GameLighting lighting = GameLighting.defaults();
     private final DayNightCycle cycle = new DayNightCycle();
@@ -90,7 +91,8 @@ public final class GameRenderer implements AutoCloseable {
         this.imageConverter = java.util.Objects.requireNonNull(imageConverter);
         this.navigation = navigation;
         this.backend = backend;
-        if (backend.equals("gpu") || navigation.fixedResolution()) {
+        capabilities = RenderEngine.capabilities(backend);
+        if (!adaptiveSupported() || navigation.fixedResolution()) {
             settings = settings.withInteractive(false, settings.interactiveMillis(), 0, 0);
         }
         var prepared = source;
@@ -243,7 +245,7 @@ public final class GameRenderer implements AutoCloseable {
         return copyImage(image, 1);
     }
 
-    private static BufferedImage copyImage(RenderImage image, float exposure) {
+    static BufferedImage copyImage(RenderImage image, float exposure) {
         var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         var pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
         var source = image.presentationPixels();
@@ -270,8 +272,14 @@ public final class GameRenderer implements AutoCloseable {
         return lighting;
     }
 
+    public engine.RenderCapabilities capabilities() {
+        return capabilities;
+    }
+
     public boolean adaptiveSupported() {
-        return backend.equals("cpu");
+        return capabilities
+                .support(engine.RenderCapabilities.Feature.ADAPTIVE_RESOLUTION)
+                .supported();
     }
 
     synchronized boolean tracing() {
@@ -298,9 +306,10 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     public synchronized void adaptive(boolean enabled) {
-        if (enabled && backend.equals("gpu")) {
-            throw new IllegalArgumentException("GPU supports fixed grids only");
-        }
+        capabilities.require(
+                engine.RenderCapabilities.Feature.ADAPTIVE_RESOLUTION,
+                enabled,
+                "settings.interactive");
         settings = settings.withInteractive(enabled, settings.interactiveMillis(), 0, 0);
     }
 
@@ -338,15 +347,7 @@ public final class GameRenderer implements AutoCloseable {
 
     public synchronized void configure(java.util.function.UnaryOperator<RenderSettings> edit) {
         var next = edit.apply(settings);
-        if (!adaptiveSupported()
-                && (next.pathDepth() > 2
-                        || next.interactive()
-                        || next.temporal()
-                        || next.temporalBudget()
-                        || !next.acceleration())) {
-            throw new IllegalArgumentException(
-                    "GPU requires depth 0..2, acceleration, fixed resolution and temporal off");
-        }
+        capabilities.validate(world, navigation.view(), next);
         settings = next;
     }
 

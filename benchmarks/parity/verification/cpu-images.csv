@@ -1,0 +1,8 @@
+fixture,backend,width,height,depth,spp,seed,rmse,maxError,rmseLimit,maxLimit
+gallery-depth0-day,cpu,128,80,0,8,1,0.000000000,0.000000000,0.002,0.020
+gallery-depth2-day,cpu,128,80,2,8,1,0.000000000,0.000000000,0.040,0.250
+landscape-depth0-day,cpu,128,80,0,8,1,0.000000000,0.000000000,0.002,0.020
+landscape-depth2-day,cpu,128,80,2,8,1,0.000000000,0.000000000,0.040,0.250
+world-depth0-day,cpu,128,80,0,8,1,0.000000000,0.000000000,0.002,0.020
+world-depth2-day,cpu,128,80,2,8,1,0.000000000,0.000000000,0.040,0.250
+world-depth2-night-lens,cpu,128,80,2,8,1,0.000000000,0.000000000,0.040,0.250

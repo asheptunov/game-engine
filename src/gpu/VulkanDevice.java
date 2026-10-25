@@ -249,7 +249,7 @@ final class VulkanDevice implements AutoCloseable {
             }
         }
         if (physical == null) {
-            throw new IllegalStateException(
+            throw new UnsupportedOperationException(
                     "GPU needs Vulkan ray queries, float64/int64 and 64-bit compute"
                             + " timestamps");
         }
@@ -257,6 +257,9 @@ final class VulkanDevice implements AutoCloseable {
     }
 
     static void check(int result, String operation) {
+        if (result == org.lwjgl.vulkan.VK10.VK_ERROR_INCOMPATIBLE_DRIVER) {
+            throw new UnsupportedOperationException("Vulkan driver unavailable for " + operation);
+        }
         if (result != VK_SUCCESS) {
             throw new IllegalStateException("Vulkan " + operation + " failed: " + result);
         }

@@ -4,6 +4,28 @@ package engine;
 public final class RenderEngine {
     private RenderEngine() {}
 
+    public static RenderCapabilities capabilities(String backend) {
+        return RenderCapabilities.forBackend(backend);
+    }
+
+    /** Explicit potentially expensive probe; never called by a frame tick or capability query. */
+    public static RenderAvailability probe(String backend) {
+        if (capabilities(backend) == RenderCapabilities.CPU) {
+            return new RenderAvailability(RenderAvailability.State.AVAILABLE, "Java CPU renderer");
+        }
+        try {
+            return (RenderAvailability)
+                    Class.forName("gpu.GpuProbe").getMethod("probe").invoke(null);
+        } catch (ClassNotFoundException | NoClassDefFoundError failure) {
+            return new RenderAvailability(
+                    RenderAvailability.State.UNAVAILABLE,
+                    "GPU module/dependencies missing: " + failure);
+        } catch (ReflectiveOperationException | LinkageError failure) {
+            return new RenderAvailability(
+                    RenderAvailability.State.ERROR, "GPU probe failed: " + failure);
+        }
+    }
+
     public static RenderSession openSession(
             WorldSnapshot world, RenderView view, RenderSettings settings) {
         return new DefaultRenderSession(world, view, settings);
@@ -18,6 +40,8 @@ public final class RenderEngine {
         if (!"gpu".equals(backend)) {
             throw new IllegalArgumentException("Backend must be cpu or gpu");
         }
+        // Unsupported input is distinct from module/device availability, even without GPU jars.
+        RenderCapabilities.GPU.validate(world, view, settings);
         try {
             return (RenderSession)
                     Class.forName("gpu.GpuRenderSession")

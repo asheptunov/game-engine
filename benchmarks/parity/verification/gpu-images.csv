@@ -1,0 +1,8 @@
+fixture,backend,width,height,depth,spp,seed,rmse,maxError,rmseLimit,maxLimit
+gallery-depth0-day,gpu,128,80,0,8,1,0.000000015,0.000000060,0.002,0.020
+gallery-depth2-day,gpu,128,80,2,8,1,0.000000012,0.000000060,0.040,0.250
+landscape-depth0-day,gpu,128,80,0,8,1,0.000000013,0.000000060,0.002,0.020
+landscape-depth2-day,gpu,128,80,2,8,1,0.000148336,0.021232799,0.040,0.250
+world-depth0-day,gpu,128,80,0,8,1,0.000000023,0.000000726,0.002,0.020
+world-depth2-day,gpu,128,80,2,8,1,0.000000018,0.000000447,0.040,0.250
+world-depth2-night-lens,gpu,128,80,2,8,1,0.000000000,0.000000015,0.040,0.250

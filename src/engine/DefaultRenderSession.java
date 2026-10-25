@@ -36,7 +36,7 @@ final class DefaultRenderSession implements RenderSession {
         Objects.requireNonNull(nextSettings);
         // Constructors validate most invariants; repeat camera validation before touching the live
         // adapter.
-        nextView.camera().validated();
+        RenderCapabilities.CPU.validate(nextWorld, nextView, nextSettings);
         synchronized (state) {
             checkOpen();
             if (!nextWorld.equals(world)) {

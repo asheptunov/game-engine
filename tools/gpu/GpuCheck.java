@@ -257,6 +257,14 @@ public final class GpuCheck {
     }
 
     public static void main(String[] args) throws Exception {
+        boolean driverUnavailable = false;
+        try { VulkanDevice.check(org.lwjgl.vulkan.VK10.VK_ERROR_INCOMPATIBLE_DRIVER, "probe"); }
+        catch (UnsupportedOperationException expected) { driverUnavailable = true; }
+        require(driverUnavailable, "incompatible Vulkan driver is unavailable hardware, not a conformance failure");
+        boolean resourceFailure = false;
+        try { VulkanDevice.check(org.lwjgl.vulkan.VK10.VK_ERROR_OUT_OF_HOST_MEMORY, "probe"); }
+        catch (IllegalStateException expected) { resourceFailure = true; }
+        require(resourceFailure, "unexpected resource failure remains an error, never a hardware skip");
         visibleSkyDiscs();
         var world=landscape();
         var navigation=new GameNavigation();
