@@ -35,6 +35,28 @@ public final class GameRenderer implements AutoCloseable {
             long pickupNanos,
             profiling.TraceProfile.Stats trace) {}
 
+    @FunctionalInterface
+    interface SessionFactory {
+        RenderSession open(
+                engine.WorldSnapshot world,
+                engine.RenderView view,
+                RenderSettings settings,
+                String backend);
+    }
+
+    record RuntimeHooks(
+            GameDiagnostics diagnostics,
+            java.util.function.Consumer<engine.RenderFailure> fatal,
+            SessionFactory factory) {
+        static RuntimeHooks defaults() {
+            return new RuntimeHooks(
+                    new GameDiagnostics(), failure -> {}, RenderEngine::openSession);
+        }
+    }
+
+    private final RuntimeHooks hooks;
+    private final java.util.concurrent.atomic.AtomicReference<engine.RenderFailure> fatal =
+            new java.util.concurrent.atomic.AtomicReference<>();
     private final GameNavigation navigation;
     private final String backend;
     private final engine.RenderCapabilities capabilities;
@@ -55,6 +77,7 @@ public final class GameRenderer implements AutoCloseable {
     private final AtomicBoolean completionQueued = new AtomicBoolean();
     private volatile Frame frame;
     private volatile String error;
+    private String cachedBackendStatus = "session initialized; no completed image";
     private long lastTick = System.nanoTime();
     private long converted = -1;
     private float exposure = 1;
@@ -88,6 +111,16 @@ public final class GameRenderer implements AutoCloseable {
             engine.WorldSnapshot source,
             String backend,
             java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter) {
+        this(navigation, source, backend, imageConverter, RuntimeHooks.defaults());
+    }
+
+    GameRenderer(
+            GameNavigation navigation,
+            engine.WorldSnapshot source,
+            String backend,
+            java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter,
+            RuntimeHooks hooks) {
+        this.hooks = hooks;
         this.imageConverter = java.util.Objects.requireNonNull(imageConverter);
         this.navigation = navigation;
         this.backend = backend;
@@ -103,7 +136,8 @@ public final class GameRenderer implements AutoCloseable {
                         prepared.legacyObjects(),
                         java.util.List.of(lighting.sun()),
                         lighting.sky());
-        session = RenderEngine.openSession(world, navigation.view(), settings, backend);
+        captureDiagnostics(navigation.view(), null, "session initialization pending");
+        session = hooks.factory().open(world, navigation.view(), settings, backend);
         autofocus = new GameAutofocus(navigation, world);
         executor =
                 Executors.newSingleThreadScheduledExecutor(
@@ -113,6 +147,8 @@ public final class GameRenderer implements AutoCloseable {
                             return thread;
                         });
         session.onImageAvailable(this::imageAvailable);
+        session.onFailure(this::failed);
+        hooks.diagnostics().event("session created: " + backend);
         executor.scheduleWithFixedDelay(this::tick, 0, 16, TimeUnit.MILLISECONDS);
     }
 
@@ -141,10 +177,11 @@ public final class GameRenderer implements AutoCloseable {
             RenderSettings capturedSettings;
             float capturedExposure;
             synchronized (this) {
-                if (closed) {
+                if (closed || fatal.get() != null) {
                     return;
                 }
                 advanceClock();
+                captureDiagnostics(navigation.view(), session.progress(null), cachedBackendStatus);
                 if (!navigation.active()) {
                     if (!suspended) {
                         session.suspend();
@@ -159,6 +196,7 @@ public final class GameRenderer implements AutoCloseable {
                 capturedExposure = exposure;
                 session.update(capturedWorld, view, capturedSettings);
                 session.request();
+                captureDiagnostics(view, session.progress(null), cachedBackendStatus);
                 acquired = session.acquireImage();
                 if (acquired == null || acquired.publicationNanos() == converted) {
                     return;
@@ -180,14 +218,12 @@ public final class GameRenderer implements AutoCloseable {
                     return;
                 }
                 var metrics =
-                        publicationObserver == null
-                                ? null
-                                : new Metrics(
-                                        acquired.traceNanos(),
-                                        copied - copyStart,
-                                        session.progress(acquired).shownAgeNanos(),
-                                        copyStart - acquired.finishedNanos(),
-                                        acquired.traceStats());
+                        new Metrics(
+                                acquired.traceNanos(),
+                                copied - copyStart,
+                                session.progress(acquired).shownAgeNanos(),
+                                copyStart - acquired.finishedNanos(),
+                                acquired.traceStats());
                 frame =
                         new Frame(
                                 display,
@@ -200,26 +236,54 @@ public final class GameRenderer implements AutoCloseable {
                                 acquired.camera(),
                                 metrics);
                 session.presented(acquired);
+                cachedBackendStatus = session.status();
+                captureDiagnostics(view, session.progress(acquired), cachedBackendStatus);
                 converted = acquired.publicationNanos();
                 publishClock(copied);
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }
             }
-        } catch (RuntimeException failure) {
-            synchronized (this) {
-                if (!closed) {
-                    error = "Rendering failed: " + failure.getMessage();
-                    navigation.active(false);
-                    session.suspend();
-                    suspended = true;
-                }
-            }
+        } catch (Throwable failure) {
+            failed(asFailure(backend, "presentation/execution", failure));
         } finally {
             if (acquired != null) {
                 acquired.close();
             }
         }
+    }
+
+    static engine.RenderFailure asFailure(String backend, String phase, Throwable failure) {
+        return failure instanceof engine.RenderFailure reported
+                ? reported
+                : new engine.RenderFailure(backend, phase, failure, java.util.Map.of());
+    }
+
+    private void failed(engine.RenderFailure failure) {
+        if (fatal.compareAndSet(null, failure)) {
+            error = "Rendering failed: " + failure.getMessage();
+            hooks.diagnostics().event("fatal " + failure.phase());
+            hooks.fatal().accept(failure);
+        }
+    }
+
+    private void captureDiagnostics(
+            engine.RenderView view, engine.RenderProgress progress, String status) {
+        hooks.diagnostics()
+                .capture(
+                        new GameDiagnostics.State(
+                                world,
+                                view,
+                                settings,
+                                lighting,
+                                cycle.hour(),
+                                cycle.duration(),
+                                cycle.running(),
+                                exposure,
+                                navigation.active(),
+                                progress,
+                                frame,
+                                status));
     }
 
     private void advanceClock() {
@@ -363,6 +427,7 @@ public final class GameRenderer implements AutoCloseable {
     public synchronized long restart() {
         settings = settings.withRestartRevision(settings.restartRevision() + 1);
         session.update(world, navigation.view(), settings);
+        captureDiagnostics(navigation.view(), session.progress(null), cachedBackendStatus);
         return session.progress(null).requestedGeneration();
     }
 

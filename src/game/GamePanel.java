@@ -342,11 +342,15 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         draw.drawString("Refinement: " + (renderer.refinement() ? "on" : "off"), 246, 182);
     }
 
-    @Override
-    public void close() {
+    void releaseForFailure() {
         timer.stop();
         navigation.release();
         updateCursor();
+    }
+
+    @Override
+    public void close() {
+        releaseForFailure();
         renderer.close();
     }
 }

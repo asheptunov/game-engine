@@ -15,3 +15,9 @@ if ($forbidden.Count) { throw "Game depends on an existing application: $forbidd
 $compileArguments = @("--enable-preview", "--release", "23", "-cp", $classes, "-sourcepath", (Join-Path $output "empty-sourcepath"), "-d", $classes) + $sources
 Invoke-NativeLogged (Join-Path $jdk "javac.exe") $compileArguments (Join-Path $output "game-compile.log") "Independent game compilation failed"
 Write-Output "Game build passed: $classes"
+
+$buildRevision = (git -C $repository rev-parse HEAD)
+$buildSources = Get-ChildItem (Join-Path $repository 'src'),(Join-Path $repository 'assets/gpu') -Recurse -File | Sort-Object FullName | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+$buildSha = [Security.Cryptography.SHA256]::Create()
+try { $buildFingerprint = [BitConverter]::ToString($buildSha.ComputeHash([Text.Encoding]::UTF8.GetBytes(($buildSources -join "`n")))).Replace('-', '') } finally { $buildSha.Dispose() }
+[IO.File]::WriteAllText((Join-Path $classes 'game-build.properties'), "revision=$buildRevision`nsourceSha256=$buildFingerprint`nbuiltUtc=$([DateTime]::UtcNow.ToString('o'))`n")

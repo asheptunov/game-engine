@@ -17,6 +17,16 @@ public interface RenderSession extends AutoCloseable {
      */
     void onImageAvailable(Runnable listener);
 
+    /** First fatal error, or null. Must remain readable without waiting for a worker/device. */
+    RenderFailure failure();
+
+    /**
+     * Replace the fatal notification listener (null detaches). May be called on any thread,
+     * including immediately for an existing failure. Listener must enqueue work and not throw.
+     * Repeated delivery is possible; the first failure remains authoritative.
+     */
+    void onFailure(java.util.function.Consumer<RenderFailure> listener);
+
     RenderImage acquireImage();
 
     void presented(RenderImage image);

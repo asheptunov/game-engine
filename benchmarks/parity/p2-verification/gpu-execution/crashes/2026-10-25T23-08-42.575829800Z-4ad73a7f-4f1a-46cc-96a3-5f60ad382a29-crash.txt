@@ -1,0 +1,77 @@
+run=2026-10-25T23-08-42.575829800Z-4ad73a7f-4f1a-46cc-96a3-5f60ad382a29
+pid=28772
+scene=world
+backend=gpu
+launch=./game.ps1 -Scene world -Backend gpu -Width 128 -Height 80
+build={sourceSha256=0C2E18AD0592B20791F16D468187C8A61498B3538ED9DD98084C881966C07FC0, builtUtc=2026-10-25T23:08:25.1620390Z, revision=fe0916354cc90ecac5a0ec632eadfedc5636a5c1}
+os=Windows 11 10.0 amd64
+jvm=OpenJDK 64-Bit Server VM 23.0.1+11-39
+jvmFatalLog=C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\gpu-execution-05a2616e-7684-4af5-985f-49c68ebbf9f9\hs_err_pid28772.log
+launcherLogs=C:\Users\andri\Documents\RayTracingEngine\out\game\game-stdout.log, C:\Users\andri\Documents\RayTracingEngine\out\game\game-error.log
+sceneCapture=not exported; built-in scene requires matching build, camera and settings below; arbitrary in-memory content cannot be reproduced from this report alone
+
+failureTimestamp=2026-10-25T23:08:43.375747400Z
+phase=execution
+backendContext={resources=GPU initializing; fixed grid; primitive counters unavailable, device=NVIDIA GeForce RTX 3080; vendor=4318; driverVersion=2585198592; apiVersion=4211039, requestedGeneration=1, camera=RenderView[camera=Camera[eye=Vec3[x=0.0, y=2.4, z=-6.0], sensor=Rect[origin=Vec3[x=-0.9237604, y=1.6887555, z=-5.090349], edge1=Vec3[x=1.8475208, y=0.0, z=-0.0], edge2=Vec3[x=0.0, y=1.1434029, z=0.1611305]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=5.0, aperture=0.0, height=0.0, rememberedAperture=0.0], width=128, height=80], initialization=device and pipeline ready, activeGeneration=1, memoryTiming=peakDeviceBytes=2412592; initializationNanos=331372600; executeNanos=0, lastBackendCompletion=unavailable (before first frame)}
+cleanupDeadlineMillis=2000
+hardExitDeadlineMillis=5000
+heapUsedBytes=27762192
+heapMaxBytes=8547991552
+nativeMemory=unavailable except cached backend counters
+lastRequested=RenderView[camera=Camera[eye=Vec3[x=0.0, y=2.4, z=-6.0], sensor=Rect[origin=Vec3[x=-0.9237604, y=1.6887555, z=-5.090349], edge1=Vec3[x=1.8475208, y=0.0, z=-0.0], edge2=Vec3[x=0.0, y=1.1434029, z=0.1611305]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=5.0, aperture=0.0, height=0.0, rememberedAperture=0.0], width=128, height=80]
+settings=RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=16, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0]
+progress=RenderProgress[requestedGeneration=1, activeGeneration=1, shownGeneration=-1, samples=0, shownAgeNanos=0, firstImageNanos=0, cancelledJobs=0, wastedPaths=0, maximumTileNanos=0, running=true]
+lastCompleted=unavailable (before first frame)
+exposure=1.0
+lighting=GameLighting[preset=NOON, skyEnabled=true, direction=Vec3[x=-0.3, y=1.0, z=-0.4], sunColor=Vec3[x=1.0, y=0.94, z=0.84], intensity=3.0, skyColors=Sky[nadir=Vec3[x=0.3, y=0.4, z=0.55], zenith=Vec3[x=0.12, y=0.3, z=0.65], disc=null]]
+clockHour=9.0, dayDurationSeconds=600.0, dayCycle=false, active=true
+worldRevision=0, instanceCount=416, legacyCount=0
+sceneFingerprint=semantic32:e36f2dc5 (diagnostic hash, not a content export or collision-proof identity)
+lights=[DirectionalLight[direction=Vec3[x=-0.26832816, y=0.8944272, z=-0.3577709], color=Vec3[x=1.0, y=0.94, z=0.84], strength=3.0]]
+sky=Sky[nadir=Vec3[x=0.3, y=0.4, z=0.55], zenith=Vec3[x=0.12, y=0.3, z=0.65], disc=Disc[direction=Vec3[x=-0.26832816, y=0.8944272, z=-0.3577709], radiance=Vec3[x=12.0, y=11.28, z=10.08], radiusDegrees=0.75]]
+lastBackendStatus=session initialized; no completed image
+
+recentEvents:
+2026-10-25T23:08:42.669850500Z run context saved; renderer startup pending
+2026-10-25T23:08:42.879843200Z control/world update: revision=0, active=true, exposure=1.0, settings=RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=16, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0], hour=9.0
+2026-10-25T23:08:42.892861600Z session created: gpu
+2026-10-25T23:08:42.894367Z render requested generation=1
+2026-10-25T23:08:43.375747400Z fatal execution
+originalFailure:
+engine.RenderFailure: gpu execution failed: java.lang.IllegalStateException: injected GPU execution failure
+	at gpu.GpuRenderSession.describeFailure(GpuRenderSession.java:293)
+	at gpu.GpuRenderSession.recordFailure(GpuRenderSession.java:269)
+	at gpu.GpuRenderSession.render(GpuRenderSession.java:254)
+	at gpu.GpuRenderSession.lambda$request$1(GpuRenderSession.java:156)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1575)
+Caused by: java.lang.IllegalStateException: injected GPU execution failure
+	at gpu.GpuFaultSession.lambda$open$0(GpuFaultSession.java:14)
+	at gpu.GpuKernel.trace(GpuKernel.java:269)
+	at gpu.GpuRenderSession.traceBatch(GpuRenderSession.java:342)
+	at gpu.GpuRenderSession.render(GpuRenderSession.java:193)
+	... 4 more
+Caused by: java.lang.IllegalStateException: original GPU cause: Vulkan result -4 (device lost)
+	... 8 more
+
+cleanupCompleted=true
+secondaryCleanupErrors=[]
+cleanupCompletionMeaning=host cleanup actions returned; native retirement may still be queued
+failureAfterCleanup:
+engine.RenderFailure: gpu execution failed: java.lang.IllegalStateException: injected GPU execution failure
+	at gpu.GpuRenderSession.describeFailure(GpuRenderSession.java:293)
+	at gpu.GpuRenderSession.recordFailure(GpuRenderSession.java:269)
+	at gpu.GpuRenderSession.render(GpuRenderSession.java:254)
+	at gpu.GpuRenderSession.lambda$request$1(GpuRenderSession.java:156)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1575)
+Caused by: java.lang.IllegalStateException: injected GPU execution failure
+	at gpu.GpuFaultSession.lambda$open$0(GpuFaultSession.java:14)
+	at gpu.GpuKernel.trace(GpuKernel.java:269)
+	at gpu.GpuRenderSession.traceBatch(GpuRenderSession.java:342)
+	at gpu.GpuRenderSession.render(GpuRenderSession.java:193)
+	... 4 more
+Caused by: java.lang.IllegalStateException: original GPU cause: Vulkan result -4 (device lost)
+	... 8 more

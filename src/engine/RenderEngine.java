@@ -28,7 +28,20 @@ public final class RenderEngine {
 
     public static RenderSession openSession(
             WorldSnapshot world, RenderView view, RenderSettings settings) {
-        return new DefaultRenderSession(world, view, settings);
+        RenderCapabilities.CPU.validate(world, view, settings);
+        try {
+            return new DefaultRenderSession(world, view, settings);
+        } catch (RuntimeException | Error failure) {
+            throw new RenderFailure(
+                    "cpu",
+                    "initialization",
+                    failure,
+                    java.util.Map.of(
+                            "initialization",
+                            "CPU session construction incomplete",
+                            "device",
+                            "not applicable (CPU)"));
+        }
     }
 
     /** Explicit backend selection; the default overload never loads GPU/native classes. */
@@ -49,16 +62,25 @@ public final class RenderEngine {
                                     WorldSnapshot.class, RenderView.class, RenderSettings.class)
                             .newInstance(world, view, settings);
         } catch (java.lang.reflect.InvocationTargetException failure) {
-            throw new IllegalArgumentException(
-                    "GPU unavailable: "
-                            + failure.getCause().getMessage()
-                            + "; relaunch ./game.ps1 -Backend cpu",
-                    failure.getCause());
+            throw new RenderFailure(
+                    "gpu",
+                    "initialization",
+                    failure.getCause(),
+                    java.util.Map.of(
+                            "initialization",
+                            "GPU module loaded; session creation failed",
+                            "device",
+                            "unavailable"));
         } catch (ReflectiveOperationException | LinkageError failure) {
-            throw new IllegalStateException(
-                    "GPU module unavailable; run ./setup-gpu.ps1 and ./gpu-build.ps1, or relaunch"
-                            + " ./game.ps1 -Backend cpu",
-                    failure);
+            throw new RenderFailure(
+                    "gpu",
+                    "initialization",
+                    failure,
+                    java.util.Map.of(
+                            "initialization",
+                            "GPU module loading failed",
+                            "device",
+                            "unavailable"));
         }
     }
 

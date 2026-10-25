@@ -51,7 +51,8 @@ public final class GpuRenderSession implements RenderSession {
     private boolean closed;
     private boolean suspended;
     private boolean running;
-    private String failure;
+    private volatile engine.RenderFailure failure;
+    private volatile java.util.function.Consumer<engine.RenderFailure> failureListener;
     private String diagnostics = "GPU initializing; fixed grid; primitive counters unavailable";
     private Runnable listener;
     private Slot latest;
@@ -121,7 +122,7 @@ public final class GpuRenderSession implements RenderSession {
     public synchronized void request() {
         checkOpen();
         if (failure != null) {
-            throw new IllegalStateException(failure + "; relaunch ./game.ps1 -Backend cpu");
+            throw failure;
         }
         suspended = false;
         if (running || settings.paused()) {
@@ -249,14 +250,8 @@ public final class GpuRenderSession implements RenderSession {
                     accumulatedKey = null;
                 }
             }
-        } catch (RuntimeException | LinkageError | OutOfMemoryError error) {
-            synchronized (this) {
-                failure = "GPU rendering failed: " + error.getMessage();
-            }
-            if (kernel != null) {
-                kernel.close();
-                kernel = null;
-            }
+        } catch (Throwable error) {
+            recordFailure(error, capturedKey, capturedGeneration);
         } finally {
             synchronized (this) {
                 destination.writing = false;
@@ -267,6 +262,71 @@ public final class GpuRenderSession implements RenderSession {
         if (signal != null) {
             signal.run();
         }
+    }
+
+    private void recordFailure(Throwable error, Key capturedKey, long capturedGeneration) {
+        if (failure == null) {
+            failure = describeFailure(error, capturedKey, capturedGeneration);
+            var callback = failureListener;
+            if (callback != null) {
+                callback.accept(failure);
+            }
+        }
+        if (kernel != null) {
+            try {
+                kernel.close();
+            } catch (Throwable cleanup) {
+                error.addSuppressed(cleanup);
+            }
+            kernel = null;
+        }
+    }
+
+    private engine.RenderFailure describeFailure(
+            Throwable error, Key capturedKey, long capturedGeneration) {
+        return error instanceof engine.RenderFailure reported
+                ? reported
+                : new engine.RenderFailure(
+                        "gpu",
+                        kernel == null ? "initialization" : "execution",
+                        error,
+                        java.util.Map.of(
+                                "requestedGeneration",
+                                Long.toString(generation),
+                                "activeGeneration",
+                                Long.toString(capturedGeneration),
+                                "camera",
+                                capturedKey.view().toString(),
+                                "device",
+                                kernel == null ? "unavailable" : kernel.gpu.description,
+                                "initialization",
+                                kernel == null
+                                        ? "kernel creation incomplete"
+                                        : "device and pipeline ready",
+                                "resources",
+                                diagnostics,
+                                "lastBackendCompletion",
+                                completedContext(),
+                                "memoryTiming",
+                                kernel == null
+                                        ? "unavailable"
+                                        : "peakDeviceBytes="
+                                                + kernel.gpu.peakBytes
+                                                + "; initializationNanos="
+                                                + kernel.initializationNanos
+                                                + "; executeNanos="
+                                                + kernel.executeNanos));
+    }
+
+    private synchronized String completedContext() {
+        return latest == null
+                ? "unavailable (before first frame)"
+                : "generation="
+                        + latest.generation
+                        + ", samples="
+                        + latest.samples
+                        + ", view="
+                        + latest.view;
     }
 
     private int traceBatch(
@@ -303,6 +363,20 @@ public final class GpuRenderSession implements RenderSession {
     public synchronized void onImageAvailable(Runnable value) {
         checkOpen();
         listener = value;
+    }
+
+    @Override
+    public engine.RenderFailure failure() {
+        return failure;
+    }
+
+    @Override
+    public void onFailure(java.util.function.Consumer<engine.RenderFailure> value) {
+        failureListener = value;
+        var current = failure;
+        if (current != null && value != null) {
+            value.accept(current);
+        }
     }
 
     @Override
@@ -348,7 +422,7 @@ public final class GpuRenderSession implements RenderSession {
 
     @Override
     public synchronized String status() {
-        return failure == null ? diagnostics : failure;
+        return failure == null ? diagnostics : failure.toString();
     }
 
     @Override

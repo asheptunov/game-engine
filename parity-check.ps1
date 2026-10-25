@@ -30,6 +30,8 @@ try {
     $summary.cpu = 'RUNNING'
     $cpuClasses = 'out/game-check/classes'
     Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$cpuClasses,'game.BackendConformance','cpu',$output) (Join-Path $output 'cpu.log') 'CPU conformance failed'
+    & ./game-build.ps1
+    & ./fatal-check.ps1 -Backend cpu -NoBuild
     $summary.cpu = 'PASS'
     if ($SkipGpuReason) {
         $summary.gpu = 'SKIP'
@@ -53,6 +55,7 @@ try {
                 'AVAILABLE' {
                     Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$gpuClasses,'game.BackendConformance','gpu',$output) (Join-Path $output 'gpu.log') 'GPU conformance failed'
                     & ./gpu-check.ps1 -NoBuild
+                    & ./fatal-check.ps1 -Backend gpu -NoBuild
                     $summary.gpu = 'PASS'
                 }
                 default { throw "GPU probe failed (not a hardware skip): $($availability -join ' ')" }

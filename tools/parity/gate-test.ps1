@@ -10,8 +10,8 @@ Set-Content (Join-Path $fixture 'src/fixture.txt') 'Fixture only; no renderer is
 foreach ($name in @('lwjgl-3.3.6.jar','lwjgl-3.3.6-natives-windows.jar','lwjgl-vulkan-3.3.6.jar','lwjgl-shaderc-3.3.6.jar','lwjgl-shaderc-3.3.6-natives-windows.jar')) {
     Set-Content (Join-Path $fixture "out/gpu/lib/$name") 'placeholder for gate classification test'
 }
-foreach ($script in @('verify.ps1','game-check.ps1','gpu-build.ps1','gpu-check.ps1')) {
-    Set-Content (Join-Path $fixture $script) 'param([switch]$NoBuild); Write-Output "fixture stage completed"'
+foreach ($script in @('verify.ps1','game-check.ps1','gpu-build.ps1','gpu-check.ps1','game-build.ps1','fatal-check.ps1')) {
+    Set-Content (Join-Path $fixture $script) 'param([switch]$NoBuild, [string]$Backend); Write-Output "fixture stage completed"'
 }
 @'
 function Invoke-NativeLogged {

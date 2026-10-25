@@ -139,6 +139,9 @@ public final class DirectRgbTracer implements AutoCloseable {
         buffer = new float[3][state.sensorPixelsH()][state.sensorPixelsW()];
     }
 
+    // Package-local worker fault hook for child-process verification; absent in normal sessions.
+    Runnable beforeWorker;
+
     private void prepare() {
         WorldSnapshot.validateEnvironment(state.instances(), state.lights(), state.sky());
         var instances = List.copyOf(state.instances());
@@ -793,6 +796,9 @@ public final class DirectRgbTracer implements AutoCloseable {
 
         @Override
         public Void call() {
+            if (beforeWorker != null) {
+                beforeWorker.run();
+            }
             long cpu = RuntimeMetrics.threadCpu(), bytes = RuntimeMetrics.allocatedBytes();
             try {
                 int tile;

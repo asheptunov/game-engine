@@ -14,8 +14,11 @@ if ($Backend -eq 'gpu') {
     & (Join-Path $repository 'setup-gpu.ps1') -Offline -RuntimeOnly
     $classPath += ';' + (Join-Path $repository 'out/gpu/classes') + ';' + (Join-Path $repository 'out/gpu/lib/*')
 }
+$crashes = Join-Path $output 'crashes'
+New-Item -ItemType Directory -Force $crashes | Out-Null
+$jvmError = Join-Path $crashes 'hs_err_pid%p.log'
 $stderr = Join-Path $output "game-error.log"
-$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList @("--enable-preview", "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
+$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList @("--enable-preview", ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
 Start-Sleep -Milliseconds 750
 if ($process.HasExited) { throw "Sample game exited during startup; inspect $stderr" }
 Write-Output "Sample game started (PID $($process.Id)). Errors: $stderr"

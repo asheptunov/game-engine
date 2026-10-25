@@ -1,6 +1,6 @@
 # CPU/GPU renderer parity requirements
 
-Status: P1 implemented and automatically verified; human playthrough pending. P2 not started.
+Status: P1 and P2 implemented and automatically verified; human playthrough and pointer-release acceptance pending.
 Updated: 2026-10-25
 Audience: Sample-game players, engine consumers, and developers implementing and verifying rendering changes.
 
@@ -152,7 +152,7 @@ small startup/run-context record before initializing the renderer. Full memory d
 | ID | User can now... | Prerequisites | Status / evidence |
 | --- | --- | --- | --- |
 | P1 | Select either backend for the game with truthful support information, and verify matching behavior through one documented check workflow | Existing renderer baseline | Implemented; automated checks passed 2026-10-25. [Evidence and human test](benchmarks/parity/README.md); human acceptance pending |
-| P2 | Diagnose a fatal renderer failure from an exited game and a retained report, without an unexplained frozen window | P1 | Proposed; not implemented or human-accepted |
+| P2 | Diagnose a fatal renderer failure from an exited game and a retained report, without an unexplained frozen window | P1 | Implemented; automated child-process and parity checks passed 2026-10-25. [Evidence and manual check](benchmarks/parity/P2.md); human acceptance pending |
 
 ### P1 — Select and verify equivalent game rendering
 

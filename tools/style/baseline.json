@@ -4389,17 +4389,6 @@
     "line": 124
   },
   {
-    "id": "6566a806e8c22ef01972b45428a41ee1e2301558efcde7f373479dfe3fa388f0",
-    "tool": "checkstyle",
-    "path": "src/engine/AsyncViewportTrace.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (failure != null) throw new IllegalStateException(\"Background trace failed\", failure);",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 106
-  },
-  {
     "id": "fe6bcd26aef086039766dc978a137d41132b3573f0d63811834813f549637802",
     "tool": "checkstyle",
     "path": "src/engine/AsyncViewportTrace.java",

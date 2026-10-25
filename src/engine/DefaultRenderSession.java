@@ -111,6 +111,16 @@ final class DefaultRenderSession implements RenderSession {
     }
 
     @Override
+    public RenderFailure failure() {
+        return async.failure();
+    }
+
+    @Override
+    public void onFailure(java.util.function.Consumer<RenderFailure> listener) {
+        async.onFailure(listener);
+    }
+
+    @Override
     public RenderImage acquireImage() {
         synchronized (state) {
             checkOpen();

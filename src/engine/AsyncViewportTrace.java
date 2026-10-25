@@ -54,7 +54,8 @@ final class AsyncViewportTrace implements AutoCloseable {
     private volatile long epoch;
     private volatile boolean closed;
     private volatile Image image;
-    private volatile Throwable failure;
+    private volatile RenderFailure failure;
+    private volatile java.util.function.Consumer<RenderFailure> failureListener;
     private volatile Runnable imageAvailable;
     private ViewportState.RenderKey key;
     private boolean running, wasPaused;
@@ -72,6 +73,18 @@ final class AsyncViewportTrace implements AutoCloseable {
     AsyncViewportTrace(ViewportState live, DirectRgbTracer tracer) {
         this.live = live;
         this.tracer = tracer;
+    }
+
+    RenderFailure failure() {
+        return failure;
+    }
+
+    void onFailure(java.util.function.Consumer<RenderFailure> listener) {
+        failureListener = listener;
+        var current = failure;
+        if (current != null && listener != null) {
+            listener.accept(current);
+        }
     }
 
     void onImageAvailable(Runnable listener) {
@@ -108,7 +121,9 @@ final class AsyncViewportTrace implements AutoCloseable {
 
     void request() {
         invalidate();
-        if (failure != null) throw new IllegalStateException("Background trace failed", failure);
+        if (failure != null) {
+            throw failure;
+        }
         if (closed || running) return;
         // Change grids only after the active pass has published. Mouse events never cancel it.
         resolution.choose(live, System.nanoTime());
@@ -243,7 +258,7 @@ final class AsyncViewportTrace implements AutoCloseable {
                             published = true;
                         }
                     } catch (Throwable error) {
-                        failure = error;
+                        recordFailure(error, jobGeneration, snapshot.camera());
                     } finally {
                         synchronized (live) {
                             if (!published) {
@@ -261,6 +276,53 @@ final class AsyncViewportTrace implements AutoCloseable {
                         signalPublication(published);
                     }
                 });
+    }
+
+    private void recordFailure(Throwable error, long jobGeneration, Camera camera) {
+        if (failure == null) {
+            failure =
+                    new RenderFailure(
+                            "cpu",
+                            "execution",
+                            error,
+                            java.util.Map.of(
+                                    "requestedGeneration",
+                                    Long.toString(generation),
+                                    "activeGeneration",
+                                    Long.toString(jobGeneration),
+                                    "camera",
+                                    camera.toString(),
+                                    "device",
+                                    "not applicable (CPU)",
+                                    "initialization",
+                                    "CPU session and worker pool ready",
+                                    "lastBackendCompletion",
+                                    completedContext()));
+            var callback = failureListener;
+            if (callback != null) {
+                callback.accept(failure);
+            }
+        }
+    }
+
+    private String completedContext() {
+        var completed = image;
+        return completed == null
+                ? "unavailable (before first frame)"
+                : "generation="
+                        + completed.generation()
+                        + ", samples="
+                        + completed.samples()
+                        + ", width="
+                        + completed.key().width()
+                        + ", height="
+                        + completed.key().height()
+                        + ", depth="
+                        + completed.key().depth()
+                        + ", seed="
+                        + completed.key().seed()
+                        + ", camera="
+                        + completed.camera();
     }
 
     private void signalPublication(boolean published) {

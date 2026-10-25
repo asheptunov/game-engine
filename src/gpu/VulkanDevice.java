@@ -98,6 +98,7 @@ final class VulkanDevice implements AutoCloseable {
     long fence;
     long queries;
     String name;
+    String description = "unavailable";
     float timestampPeriod;
     long allocatedBytes;
     long peakBytes;
@@ -119,6 +120,14 @@ final class VulkanDevice implements AutoCloseable {
             var properties = VkPhysicalDeviceProperties.calloc(stack);
             vkGetPhysicalDeviceProperties(physical, properties);
             name = properties.deviceNameString();
+            description =
+                    name
+                            + "; vendor="
+                            + properties.vendorID()
+                            + "; driverVersion="
+                            + Integer.toUnsignedString(properties.driverVersion())
+                            + "; apiVersion="
+                            + Integer.toUnsignedString(properties.apiVersion());
             timestampPeriod = properties.limits().timestampPeriod();
             var ray =
                     VkPhysicalDeviceRayQueryFeaturesKHR.calloc(stack)
@@ -199,7 +208,19 @@ final class VulkanDevice implements AutoCloseable {
                     "timestamps");
             queries = handle.get(0);
         } catch (RuntimeException | Error failure) {
-            close();
+            failure.addSuppressed(
+                    new IllegalStateException(
+                            "Initialization state: instance="
+                                    + (instance != null)
+                                    + ", physical="
+                                    + (physical != null)
+                                    + ", device="
+                                    + (device != null)
+                                    + ", commandPool="
+                                    + pool
+                                    + "; "
+                                    + description));
+            FailedInitialization.retire(failure, this::close);
             throw failure;
         }
     }

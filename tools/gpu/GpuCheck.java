@@ -169,8 +169,8 @@ public final class GpuCheck {
             long deadline=System.nanoTime()+2_000_000_000L;
             while(!failed.status().contains("failed") && System.nanoTime()<deadline) Thread.sleep(1);
             boolean rejected=false;
-            try { failed.request(); } catch(IllegalStateException error) { rejected=error.getMessage().contains("-Backend cpu"); }
-            require(rejected,"initialization failure reports reason and explicit CPU recovery");
+            try { failed.request(); } catch(IllegalStateException error) { rejected=error instanceof engine.RenderFailure && error.getCause().getMessage().contains("injected initialization failure"); }
+            require(rejected,"initialization failure retains typed causal error");
         } finally { failed.close(); require(failed.awaitClosed(30),"failed session retires"); }
     }
 

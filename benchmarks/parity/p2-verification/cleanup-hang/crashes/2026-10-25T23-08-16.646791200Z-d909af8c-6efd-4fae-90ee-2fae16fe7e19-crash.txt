@@ -1,0 +1,81 @@
+run=2026-10-25T23-08-16.646791200Z-d909af8c-6efd-4fae-90ee-2fae16fe7e19
+pid=31704
+scene=world
+backend=cpu
+launch=./game.ps1 -Scene world -Backend cpu -Width 128 -Height 80
+build={sourceSha256=0C2E18AD0592B20791F16D468187C8A61498B3538ED9DD98084C881966C07FC0, builtUtc=2026-10-25T23:08:12.2260847Z, revision=fe0916354cc90ecac5a0ec632eadfedc5636a5c1}
+os=Windows 11 10.0 amd64
+jvm=OpenJDK 64-Bit Server VM 23.0.1+11-39
+jvmFatalLog=C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\cleanup-hang-8389fba2-3d10-411d-9364-0ae0558e291a\hs_err_pid31704.log
+launcherLogs=C:\Users\andri\Documents\RayTracingEngine\out\game\game-stdout.log, C:\Users\andri\Documents\RayTracingEngine\out\game\game-error.log
+sceneCapture=not exported; built-in scene requires matching build, camera and settings below; arbitrary in-memory content cannot be reproduced from this report alone
+
+failureTimestamp=2026-10-25T23:08:17.004276900Z
+phase=execution
+backendContext={activeGeneration=1, requestedGeneration=1, initialization=CPU session and worker pool ready, camera=Camera[eye=Vec3[x=0.0, y=2.4, z=-6.0], sensor=Rect[origin=Vec3[x=-0.9237604, y=1.6887555, z=-5.090349], edge1=Vec3[x=1.8475208, y=0.0, z=-0.0], edge2=Vec3[x=0.0, y=1.1434029, z=0.1611305]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=5.0, aperture=0.0, height=0.0, rememberedAperture=0.0], device=not applicable (CPU), lastBackendCompletion=unavailable (before first frame)}
+cleanupDeadlineMillis=2000
+hardExitDeadlineMillis=5000
+heapUsedBytes=40439888
+heapMaxBytes=8547991552
+nativeMemory=unavailable except cached backend counters
+lastRequested=RenderView[camera=Camera[eye=Vec3[x=0.0, y=2.4, z=-6.0], sensor=Rect[origin=Vec3[x=-0.9237604, y=1.6887555, z=-5.090349], edge1=Vec3[x=1.8475208, y=0.0, z=-0.0], edge2=Vec3[x=0.0, y=1.1434029, z=0.1611305]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=5.0, aperture=0.0, height=0.0, rememberedAperture=0.0], width=128, height=80]
+settings=RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=16, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0]
+progress=RenderProgress[requestedGeneration=1, activeGeneration=1, shownGeneration=-1, samples=0, shownAgeNanos=-1, firstImageNanos=-1, cancelledJobs=0, wastedPaths=0, maximumTileNanos=0, running=true]
+lastCompleted=unavailable (before first frame)
+exposure=1.0
+lighting=GameLighting[preset=NOON, skyEnabled=true, direction=Vec3[x=-0.3, y=1.0, z=-0.4], sunColor=Vec3[x=1.0, y=0.94, z=0.84], intensity=3.0, skyColors=Sky[nadir=Vec3[x=0.3, y=0.4, z=0.55], zenith=Vec3[x=0.12, y=0.3, z=0.65], disc=null]]
+clockHour=9.0, dayDurationSeconds=600.0, dayCycle=false, active=true
+worldRevision=0, instanceCount=416, legacyCount=0
+sceneFingerprint=semantic32:fedb93c5 (diagnostic hash, not a content export or collision-proof identity)
+lights=[DirectionalLight[direction=Vec3[x=-0.26832816, y=0.8944272, z=-0.3577709], color=Vec3[x=1.0, y=0.94, z=0.84], strength=3.0]]
+sky=Sky[nadir=Vec3[x=0.3, y=0.4, z=0.55], zenith=Vec3[x=0.12, y=0.3, z=0.65], disc=Disc[direction=Vec3[x=-0.26832816, y=0.8944272, z=-0.3577709], radiance=Vec3[x=12.0, y=11.28, z=10.08], radiusDegrees=0.75]]
+lastBackendStatus=session initialized; no completed image
+
+recentEvents:
+2026-10-25T23:08:16.714874400Z run context saved; renderer startup pending
+2026-10-25T23:08:16.893060800Z control/world update: revision=0, active=true, exposure=1.0, settings=RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=16, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0], hour=9.0
+2026-10-25T23:08:16.911106600Z session created: cpu
+2026-10-25T23:08:16.913107500Z render requested generation=1
+2026-10-25T23:08:17.004276900Z fatal execution
+originalFailure:
+engine.RenderFailure: cpu execution failed: java.lang.IllegalStateException: Trace pass failed
+	at engine.AsyncViewportTrace.recordFailure(AsyncViewportTrace.java:288)
+	at engine.AsyncViewportTrace.lambda$request$4(AsyncViewportTrace.java:261)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1575)
+Caused by: java.lang.IllegalStateException: Trace pass failed
+	at engine.DirectRgbTracer.trace(DirectRgbTracer.java:446)
+	at engine.AsyncViewportTrace.lambda$request$4(AsyncViewportTrace.java:182)
+	... 3 more
+Caused by: java.lang.IllegalStateException: injected CPU worker failure
+	at engine.CpuFaultSession.lambda$open$0(CpuFaultSession.java:11)
+	at engine.DirectRgbTracer$Worker.call(DirectRgbTracer.java:800)
+	at engine.DirectRgbTracer$Worker.call(DirectRgbTracer.java:684)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	... 3 more
+Caused by: java.lang.ArithmeticException: original CPU cause
+	... 7 more
+
+cleanupCompleted=false
+secondaryCleanupErrors=[]
+cleanupCompletionMeaning=host cleanup actions returned; native retirement may still be queued
+failureAfterCleanup:
+engine.RenderFailure: cpu execution failed: java.lang.IllegalStateException: Trace pass failed
+	at engine.AsyncViewportTrace.recordFailure(AsyncViewportTrace.java:288)
+	at engine.AsyncViewportTrace.lambda$request$4(AsyncViewportTrace.java:261)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1575)
+Caused by: java.lang.IllegalStateException: Trace pass failed
+	at engine.DirectRgbTracer.trace(DirectRgbTracer.java:446)
+	at engine.AsyncViewportTrace.lambda$request$4(AsyncViewportTrace.java:182)
+	... 3 more
+Caused by: java.lang.IllegalStateException: injected CPU worker failure
+	at engine.CpuFaultSession.lambda$open$0(CpuFaultSession.java:11)
+	at engine.DirectRgbTracer$Worker.call(DirectRgbTracer.java:800)
+	at engine.DirectRgbTracer$Worker.call(DirectRgbTracer.java:684)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	... 3 more
+Caused by: java.lang.ArithmeticException: original CPU cause
+	... 7 more

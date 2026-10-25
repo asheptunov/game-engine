@@ -1,0 +1,12 @@
+run=2026-10-25T23-08-42.575829800Z-4ad73a7f-4f1a-46cc-96a3-5f60ad382a29
+pid=28772
+scene=world
+backend=gpu
+launch=./game.ps1 -Scene world -Backend gpu -Width 128 -Height 80
+build={sourceSha256=0C2E18AD0592B20791F16D468187C8A61498B3538ED9DD98084C881966C07FC0, builtUtc=2026-10-25T23:08:25.1620390Z, revision=fe0916354cc90ecac5a0ec632eadfedc5636a5c1}
+os=Windows 11 10.0 amd64
+jvm=OpenJDK 64-Bit Server VM 23.0.1+11-39
+jvmFatalLog=C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\gpu-execution-05a2616e-7684-4af5-985f-49c68ebbf9f9\hs_err_pid28772.log
+launcherLogs=C:\Users\andri\Documents\RayTracingEngine\out\game\game-stdout.log, C:\Users\andri\Documents\RayTracingEngine\out\game\game-error.log
+sceneCapture=not exported; built-in scene requires matching build, camera and settings below; arbitrary in-memory content cannot be reproduced from this report alone
+initialization=before renderer

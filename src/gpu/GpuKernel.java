@@ -104,8 +104,18 @@ final class GpuKernel implements AutoCloseable {
             createPipeline();
             initializationNanos = System.nanoTime() - started;
         } catch (RuntimeException | Error failure) {
-            close();
-            throw failure;
+            var reported =
+                    new engine.RenderFailure(
+                            "gpu",
+                            "initialization",
+                            failure,
+                            java.util.Map.of(
+                                    "device",
+                                    gpu.description,
+                                    "initialization",
+                                    "device ready; pipeline incomplete"));
+            FailedInitialization.retire(failure, this::close);
+            throw reported;
         }
     }
 
