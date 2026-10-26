@@ -227,7 +227,14 @@ public final class GameLightingTest {
                         setNumber(editor[0], "Vertical FOV (degrees)", 75);
                         setNumber(editor[0], "Aperture radius (world units)", .1);
                         setNumber(editor[0], "Focus distance (world units)", 8);
-                        setNumber(editor[0], "Flight speed (units/s)", 6);
+                        setNumber(editor[0], "Movement speed (units/s)", 6);
+                        var walking =
+                                (javax.swing.JCheckBox)
+                                        findControl(editor[0], "Walk with gravity (off = fly)");
+                        walking.doClick();
+                        assertTrue(navigation.walking());
+                        walking.doClick();
+                        assertTrue(!navigation.walking());
                         setNumber(editor[0], "Mouse sensitivity (radians/pixel)", .005);
                         setNumber(editor[0], "Sun intensity", 2);
                         setNumber(editor[0], "Sun R", .5);

@@ -243,9 +243,15 @@ public final class GameSettingsPanel extends JPanel {
                 true);
         panel.add(new JLabel("Editing distance selects manual focus. Sky retains focus."));
         heading(panel, "Navigation");
+        check(
+                panel,
+                "Walk with gravity (off = fly)",
+                navigation::walking,
+                navigation::walking,
+                true);
         number(
                 panel,
-                "Flight speed (units/s)",
+                "Movement speed (units/s)",
                 navigation::speed,
                 value -> navigation.speed((float) value),
                 .1,

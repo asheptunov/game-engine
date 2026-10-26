@@ -10,9 +10,38 @@ import math.Vec3;
 
 import java.util.EnumSet;
 
-/** Game-owned flight state. The short monitor protects input and immutable view capture only. */
+/** Game-owned input, flight and character state. Physics and view capture share this monitor. */
 public final class GameNavigation {
     private float speed = 3;
+    private engine.CapsuleCollision collision;
+    private final engine.CharacterBody character = new engine.CharacterBody(SPAWN);
+    private boolean walking;
+    private boolean jumpPending;
+    private double physicsRemainder;
+
+    public synchronized boolean walking() {
+        return walking;
+    }
+
+    public synchronized void walking(boolean enabled) {
+        if (enabled && collision == null) {
+            throw new IllegalStateException("No mesh collision world loaded");
+        }
+        walking = enabled;
+        character.teleport(position);
+        held.clear();
+        jumpPending = false;
+        physicsRemainder = 0;
+    }
+
+    public synchronized void collision(engine.CapsuleCollision value) {
+        collision = value;
+    }
+
+    public synchronized boolean grounded() {
+        return walking && character.grounded();
+    }
+
     private double sensitivity = .003;
     private float fov = 60;
     private float aperture;
@@ -42,6 +71,8 @@ public final class GameNavigation {
     public synchronized void release() {
         captured = false;
         held.clear();
+        jumpPending = false;
+        physicsRemainder = 0;
     }
 
     public synchronized void active(boolean value) {
@@ -73,7 +104,10 @@ public final class GameNavigation {
             return;
         }
         if (input.pressed()) {
-            held.add(input.key());
+            boolean fresh = held.add(input.key());
+            if (fresh && walking && input.key() == KeyCode.SPACE) {
+                jumpPending = true;
+            }
         } else {
             held.remove(input.key());
         }
@@ -82,6 +116,9 @@ public final class GameNavigation {
     public synchronized void reset() {
         focusRevision++;
         position = SPAWN;
+        character.teleport(position);
+        jumpPending = false;
+        physicsRemainder = 0;
         yaw = 0;
         pitch = -.14;
         held.clear();
@@ -99,6 +136,9 @@ public final class GameNavigation {
                     "Replay pose must be finite with pitch within 89 degrees");
         }
         this.position = position;
+        character.teleport(position);
+        jumpPending = false;
+        physicsRemainder = 0;
         this.yaw = yaw;
         this.pitch = pitch;
         held.clear();
@@ -115,6 +155,13 @@ public final class GameNavigation {
     /** Seconds of elapsed wall time, capped after a stall to avoid a large teleport. */
     public synchronized void advance(double seconds) {
         if (!active || !captured) {
+            return;
+        }
+        if (!Double.isFinite(seconds) || seconds < 0) {
+            return;
+        }
+        if (walking) {
+            advanceCharacter(seconds);
             return;
         }
         double forward = axis(KeyCode.W, KeyCode.S);
@@ -137,6 +184,26 @@ public final class GameNavigation {
                                 (float)
                                         ((forward * Math.cos(yaw) - right * Math.sin(yaw))
                                                 * distance)));
+    }
+
+    private void advanceCharacter(double seconds) {
+        double forward = axis(KeyCode.W, KeyCode.S);
+        double right = axis(KeyCode.D, KeyCode.A);
+        double length = Math.max(1, Math.sqrt(forward * forward + right * right));
+        float x = (float) ((forward * Math.sin(yaw) + right * Math.cos(yaw)) * speed / length);
+        float z = (float) ((forward * Math.cos(yaw) - right * Math.sin(yaw)) * speed / length);
+        physicsRemainder += Math.min(seconds, .25);
+        while (physicsRemainder + 1e-12 >= engine.CharacterBody.STEP) {
+            character.step(collision, x, z, jumpPending);
+            jumpPending = false;
+            physicsRemainder -= engine.CharacterBody.STEP;
+        }
+        position =
+                character.eye(
+                        (float) Math.clamp(physicsRemainder / engine.CharacterBody.STEP, 0, 1));
+        if (position.y() < -100) {
+            reset();
+        }
     }
 
     private int axis(KeyCode positive, KeyCode negative) {

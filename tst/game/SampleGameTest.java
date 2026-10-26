@@ -64,6 +64,16 @@ public final class SampleGameTest {
                         });
         try {
             assertTrue(entered.await(10, java.util.concurrent.TimeUnit.SECONDS));
+            navigation.walking(true);
+            navigation.capture();
+            float initialEye = navigation.view().camera().eye().y();
+            long movementDeadline = System.nanoTime() + 2_000_000_000L;
+            while (navigation.view().camera().eye().y() > initialEye - .2f
+                    && System.nanoTime() < movementDeadline) {
+                Thread.sleep(5);
+            }
+            assertTrue(navigation.view().camera().eye().y() < initialEye - .2f);
+
             var responsive =
                     java.util.concurrent.CompletableFuture.runAsync(
                             () -> {

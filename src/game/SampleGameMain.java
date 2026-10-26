@@ -74,8 +74,9 @@ public final class SampleGameMain {
         crashes.releasePointer(navigation::release);
         if (scene.equals("world")) {
             renderer.dayCycle(true);
-            navigation.speed(8);
+            navigation.speed(5);
         }
+        navigation.walking(true);
         var panel = new GamePanel(navigation, renderer);
         var window = new JFrame("Sample game — " + scene);
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

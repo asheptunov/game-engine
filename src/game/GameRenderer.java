@@ -84,6 +84,8 @@ public final class GameRenderer implements AutoCloseable {
     private final GameAutofocus autofocus;
     private final java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter;
     private final ScheduledExecutorService executor;
+    private final ScheduledExecutorService simulation;
+    private java.util.List<engine.SceneInstance> collisionInstances;
     private final AtomicBoolean completionQueued = new AtomicBoolean();
     private volatile Frame frame;
     private volatile String error;
@@ -146,6 +148,7 @@ public final class GameRenderer implements AutoCloseable {
                         prepared.legacyObjects(),
                         java.util.List.of(lighting.sun()),
                         lighting.sky());
+        updateCollision(world);
         captureDiagnostics(navigation.view(), null, "session initialization pending");
         session = hooks.factory().open(world, navigation.view(), settings, backend);
         autofocus = new GameAutofocus(navigation, world);
@@ -159,7 +162,46 @@ public final class GameRenderer implements AutoCloseable {
         session.onImageAvailable(this::imageAvailable);
         session.onFailure(this::failed);
         hooks.diagnostics().event("session created: " + backend);
+        simulation =
+                Executors.newSingleThreadScheduledExecutor(
+                        runnable -> {
+                            var thread = new Thread(runnable, "sample-game-physics");
+                            thread.setDaemon(true);
+                            return thread;
+                        });
         executor.scheduleWithFixedDelay(this::tick, 0, 16, TimeUnit.MILLISECONDS);
+        final long[] previousTick = {System.nanoTime()};
+        simulation.scheduleWithFixedDelay(
+                () -> {
+                    try {
+                        long now = System.nanoTime();
+                        navigation.advance((now - previousTick[0]) / 1e9);
+                        previousTick[0] = now;
+                    } catch (Throwable failure) {
+                        navigation.active(false);
+                        failed(asFailure(backend, "physics", failure));
+                    }
+                },
+                0,
+                4,
+                TimeUnit.MILLISECONDS);
+    }
+
+    private void updateCollision(engine.WorldSnapshot value) {
+        if (value.instances().equals(collisionInstances)) {
+            return;
+        }
+        boolean meshes =
+                value.legacyObjects().isEmpty()
+                        && value.instances().stream()
+                                .allMatch(
+                                        instance ->
+                                                instance.geometry() instanceof engine.PolygonMesh);
+        if (!meshes && navigation.walking()) {
+            navigation.walking(false);
+        }
+        navigation.collision(meshes ? new engine.CapsuleCollision(value.instances()) : null);
+        collisionInstances = value.instances();
     }
 
     /** Coalesce completion signals; all session work stays on the existing game owner. */
@@ -299,7 +341,6 @@ public final class GameRenderer implements AutoCloseable {
     private void advanceClock() {
         long now = System.nanoTime();
         double elapsed = (now - lastTick) / 1e9;
-        navigation.advance(elapsed);
         if (navigation.active() && !suspended) {
             cycle.advance(elapsed);
         }
@@ -599,6 +640,7 @@ public final class GameRenderer implements AutoCloseable {
         fogClosed = closed;
         fogShift = shift;
         fogRegions = regions;
+        updateCollision(candidate);
         world = candidate;
     }
 
@@ -688,7 +730,7 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     public synchronized boolean closed() {
-        return closed && session.closed() && executor.isShutdown();
+        return closed && session.closed() && executor.isShutdown() && simulation.isShutdown();
     }
 
     @Override
@@ -698,6 +740,7 @@ public final class GameRenderer implements AutoCloseable {
             navigation.active(false);
             autofocus.close();
             session.onImageAvailable(null);
+            simulation.shutdownNow();
             executor.shutdownNow();
             session.close();
         }
