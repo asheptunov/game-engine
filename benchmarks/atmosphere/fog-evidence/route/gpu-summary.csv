@@ -1,0 +1,5 @@
+backend,run,initMs,medianIntervalMs,p95IntervalMs,p95AgeMs,peakHeapBytes,traceAllocatedBytes,finalSpp
+gpu,0,1448.494,2.862,12.072,14.752,335744520,0,3259
+gpu,1,296.316,2.926,8.268,9.336,352373360,0,3247
+gpu,2,233.263,2.730,12.860,14.359,369188464,0,3417
+gpu,3,208.211,2.654,9.102,10.489,385494552,0,3072

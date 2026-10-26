@@ -75,6 +75,16 @@ public final class AtmosphereLifecycleTest {
             assertTrue(rejected);
             assertTrue(!renderer.atmosphereEnabled());
             assertEquals(original, renderer.atmosphere());
+            double hour = renderer.timeOfDay();
+            rejected = false;
+            try {
+                renderer.fogPreset();
+            } catch (IllegalArgumentException expected) {
+                rejected = true;
+            }
+            assertTrue(rejected);
+            assertTrue(!renderer.fogEnabled());
+            assertEquals(hour, renderer.timeOfDay());
         }
     }
 

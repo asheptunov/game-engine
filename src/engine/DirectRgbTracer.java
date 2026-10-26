@@ -357,7 +357,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                                 Math.min(
                                         state.samplesPerFrame(),
                                         Math.max(0, state.effectiveTarget() - samples));
-        if (!state.temporalEffective() || volumeMode || state.sky().atmosphere() != null) {
+        if (!state.temporalEffective() || volumeMode || state.sky().participatingAir()) {
             guide = null;
             guideKey = null;
             for (var worker : workers) worker.clearCorners();
@@ -365,7 +365,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         boolean needsGuide =
                 state.temporalEffective()
                         && !volumeMode
-                        && state.sky().atmosphere() == null
+                        && !state.sky().participatingAir()
                         && !key.equals(guideKey)
                         && (batch > 0 || samples > 0);
         if (needsGuide && (guide == null || guide.width != width || guide.height != height))
@@ -684,6 +684,29 @@ public final class DirectRgbTracer implements AutoCloseable {
 
     private final class Worker implements java.util.concurrent.Callable<Void> {
         private final float[] pathWeight = new float[3];
+        private final FogTransport.Scratch fogScratch = new FogTransport.Scratch();
+        private final FogTransport.Visibility fogVisibility = this::fogVisible;
+
+        private boolean fogVisible(float x, float y, float z, float dx, float dy, float dz) {
+            shadowRays++;
+            boolean blocked = occluded(x, y, z, dx, dy, dz, Float.POSITIVE_INFINITY, null, null);
+            if (blocked) {
+                shadowsOccluded++;
+            }
+            return !blocked;
+        }
+
+        private void fogSun(float x, float y, float z, float dx, float dy, float dz) {
+            if (snapshot.sky().fog().isEmpty()) {
+                return;
+            }
+            FogTransport.transmission(
+                    snapshot.sky().fog(), fogScratch.ray.set(x, y, z, dx, dy, dz), fogScratch);
+            for (int c = 0; c < 3; c++) {
+                airScratch.sunlight[c] *= fogScratch.sun[c];
+            }
+        }
+
         private final AtmosphereTransport.Scratch airScratch = new AtmosphereTransport.Scratch();
         private Snapshot snapshot;
         private PreparedObject[] objects, media, initialMedia;
@@ -997,7 +1020,20 @@ public final class DirectRgbTracer implements AutoCloseable {
                 float[] rgb) {
             boolean found = nearestHit(ox, oy, oz, dx, dy, dz, hit);
             var air = snapshot.sky().atmosphere();
-            if (air != null) {
+            if (!snapshot.sky().fog().isEmpty()) {
+                FogTransport.segment(
+                        snapshot.sky(),
+                        snapshot.sunlight(),
+                        fogScratch.ray.set(ox, oy, oz, dx, dy, dz),
+                        found ? hit.distance : Float.POSITIVE_INFINITY,
+                        !found && depth == 0,
+                        fogVisibility,
+                        fogScratch);
+                addLighting(rgb, fogScratch.radiance, pathWeight[0], pathWeight[1], pathWeight[2]);
+                for (int c = 0; c < 3; c++) {
+                    pathWeight[c] *= fogScratch.transmission[c];
+                }
+            } else if (air != null) {
                 AtmosphereTransport.segment(
                         air,
                         oy,
@@ -1633,6 +1669,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             if (air != null) {
                 AtmosphereTransport.sunlight(air, hit.y, airScratch);
                 var direction = air.solarDirection();
+                fogSun(hit.x, hit.y, hit.z, direction.x(), direction.y(), direction.z());
                 float cosine = nx * direction.x() + ny * direction.y() + nz * direction.z();
                 if (cosine > 0
                         && (airScratch.sunlight[0]
@@ -1706,6 +1743,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                 if (air != null) {
                     AtmosphereTransport.sourceTransmission(air, hit.y, direction.y(), airScratch);
                 }
+                fogSun(hit.x, hit.y, hit.z, direction.x(), direction.y(), direction.z());
                 rgb[0] +=
                         weight
                                 * reflectance.x()

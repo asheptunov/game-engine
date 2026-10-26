@@ -313,6 +313,52 @@ public final class GameLightingTest {
         }
     }
 
+    @Test
+    void fogControlsPreserveOpticsAndResetOnlyLocalAir() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.active(false);
+        try (var renderer = new GameRenderer(navigation, BlockWorld.gallery())) {
+            renderer.atmospherePreset(false);
+            var atmosphere = renderer.atmosphere();
+            var camera = navigation.view().camera();
+            var settings = renderer.settings();
+            SwingUtilities.invokeAndWait(
+                    () -> {
+                        var editor = new GameSettingsPanel(navigation, renderer);
+                        ((javax.swing.JButton) findControl(editor, "Ruins mist (07:30)")).doClick();
+                        assertTrue(renderer.fogEnabled());
+                        assertEquals(7.5, renderer.timeOfDay());
+                        assertFalse(renderer.dayCycle());
+                        setNumber(editor, "Fog density scale", 2);
+                        assertEquals(2f, renderer.fogRegion(0).density());
+                        setNumber(editor, "Edit region (1 or 2)", 2);
+                        setNumber(editor, "Fog density scale", .5);
+                        assertEquals(.5f, renderer.fogRegion(1).density());
+                        ((javax.swing.JCheckBox) findControl(editor, "Second overlapping region"))
+                                .doClick();
+                        ((javax.swing.JCheckBox) findControl(editor, "Reverse region order"))
+                                .doClick();
+                        ((javax.swing.JCheckBox) findControl(editor, "Close sunlight gap"))
+                                .doClick();
+                        assertTrue(
+                                renderer.fogOverlap()
+                                        && renderer.fogReverse()
+                                        && renderer.fogClosed());
+                        setNumber(editor, "Screen shift Z (world units)", 3);
+                        assertEquals(3f, renderer.fogShift());
+                        ((javax.swing.JButton) findControl(editor, "Reset local fog")).doClick();
+                        assertFalse(renderer.fogEnabled());
+                        assertFalse(renderer.fogOverlap());
+                        assertEquals(RuinsMist.region(0), renderer.fogRegion(0));
+                        assertEquals(7.5, renderer.timeOfDay());
+                        assertEquals(atmosphere, renderer.atmosphere());
+                        assertTrue(renderer.atmosphereEnabled());
+                        assertEquals(camera, navigation.view().camera());
+                        assertEquals(settings, renderer.settings());
+                    });
+        }
+    }
+
     private static void setNumber(java.awt.Container parent, String name, double value) {
         var spinner = (javax.swing.JSpinner) findControl(parent, name);
         assertTrue(spinner != null && spinner.isEnabled());

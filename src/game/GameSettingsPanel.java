@@ -47,6 +47,7 @@ public final class GameSettingsPanel extends JPanel {
         tabs.addTab("Render", scroll(renderControls()));
         tabs.addTab("Camera", scroll(cameraControls()));
         tabs.addTab("Lighting", scroll(lightControls()));
+        tabs.addTab("Fog", scroll(fogControls()));
         tabs.addTab("Advanced", scroll(advancedControls()));
         add(tabs, BorderLayout.CENTER);
         add(message, BorderLayout.SOUTH);
@@ -516,6 +517,165 @@ public final class GameSettingsPanel extends JPanel {
 
     private static float component(Vec3 value, int index) {
         return index == 0 ? value.x() : index == 1 ? value.y() : value.z();
+    }
+
+    private int selectedFog;
+
+    private JPanel fogControls() {
+        var panel = page();
+        heading(panel, "Local air at the ruins");
+        panel.add(
+                new JLabel(
+                        "Ruins mist sets 07:30 and pauses the clock; keeps camera and exposure."));
+        button(panel, "Ruins mist (07:30)", renderer::fogPreset);
+        button(
+                panel,
+                "View ruins (moves camera)",
+                () -> navigation.pose(new Vec3(8, 4, 18), .85, .02));
+        button(panel, "Reset local fog", renderer::fogReset);
+        check(panel, "Local fog enabled", renderer::fogEnabled, renderer::fogEnabled, true);
+        check(panel, "Second overlapping region", renderer::fogOverlap, renderer::fogOverlap, true);
+        check(panel, "Reverse region order", renderer::fogReverse, renderer::fogReverse, true);
+        check(panel, "Close sunlight gap", renderer::fogClosed, renderer::fogClosed, true);
+        number(
+                panel,
+                "Screen shift Z (world units)",
+                renderer::fogShift,
+                renderer::fogShift,
+                -10,
+                10,
+                .5,
+                true);
+        number(
+                panel,
+                "Edit region (1 or 2)",
+                () -> selectedFog + 1,
+                v -> selectedFog = (int) v - 1,
+                1,
+                2,
+                1,
+                true);
+        vector(
+                panel,
+                "Fog center",
+                () -> fog().center(),
+                v -> editFog("center", v, 0),
+                -10000,
+                10000,
+                new String[] {"X", "Y", "Z"});
+        vector(
+                panel,
+                "Fog half extent",
+                () -> fog().halfExtent(),
+                v -> editFog("extent", v, 0),
+                .25,
+                50,
+                new String[] {"X", "Y", "Z"});
+        number(
+                panel,
+                "Fog yaw (degrees)",
+                () -> fog().yawDegrees(),
+                v -> editFog("yaw", null, v),
+                -180,
+                180,
+                5,
+                true);
+        number(
+                panel,
+                "Fog density scale",
+                () -> fog().density(),
+                v -> editFog("density", null, v),
+                0,
+                4,
+                .1,
+                true);
+        number(
+                panel,
+                "Fog height falloff (normalized)",
+                () -> fog().heightFalloff(),
+                v -> editFog("falloff", null, v),
+                0,
+                8,
+                .25,
+                true);
+        number(
+                panel,
+                "Fog scattering direction g",
+                () -> fog().anisotropy(),
+                v -> editFog("g", null, v),
+                -.9,
+                .9,
+                .05,
+                true);
+        number(
+                panel,
+                "Fog spatial variation",
+                () -> fog().variation(),
+                v -> editFog("variation", null, v),
+                0,
+                1,
+                .1,
+                true);
+        number(
+                panel,
+                "Fog pattern frequency",
+                () -> fog().frequency(),
+                v -> editFog("frequency", null, v),
+                0,
+                8,
+                .25,
+                true);
+        number(
+                panel,
+                "Fog edge feather fraction",
+                () -> fog().feather(),
+                v -> editFog("feather", null, v),
+                0,
+                .49,
+                .05,
+                true);
+        vector(
+                panel,
+                "Fog scattering / world unit",
+                () -> fog().scattering(),
+                v -> editFog("scattering", v, 0),
+                0,
+                .2,
+                new String[] {"R", "G", "B"},
+                .005);
+        vector(
+                panel,
+                "Fog absorption / world unit",
+                () -> fog().absorption(),
+                v -> editFog("absorption", v, 0),
+                0,
+                .2,
+                new String[] {"R", "G", "B"},
+                .001);
+        return panel;
+    }
+
+    private engine.FogRegion fog() {
+        return renderer.fogRegion(selectedFog);
+    }
+
+    private void editFog(String field, Vec3 vector, double value) {
+        var r = fog();
+        float v = (float) value;
+        renderer.fogRegion(
+                selectedFog,
+                new engine.FogRegion(
+                        field.equals("center") ? vector : r.center(),
+                        field.equals("extent") ? vector : r.halfExtent(),
+                        field.equals("yaw") ? v : r.yawDegrees(),
+                        field.equals("scattering") ? vector : r.scattering(),
+                        field.equals("absorption") ? vector : r.absorption(),
+                        field.equals("density") ? v : r.density(),
+                        field.equals("falloff") ? v : r.heightFalloff(),
+                        field.equals("g") ? v : r.anisotropy(),
+                        field.equals("variation") ? v : r.variation(),
+                        field.equals("frequency") ? v : r.frequency(),
+                        field.equals("feather") ? v : r.feather()));
     }
 
     private JPanel advancedControls() {

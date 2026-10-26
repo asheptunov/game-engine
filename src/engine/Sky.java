@@ -3,7 +3,20 @@ package engine;
 import math.Vec3;
 
 /** Immutable linear radiance. Interpolate from nadir (-Y) to zenith (+Y); horizon is halfway. */
-public record Sky(Vec3 nadir, Vec3 zenith, Disc disc, Atmosphere atmosphere) {
+public record Sky(
+        Vec3 nadir, Vec3 zenith, Disc disc, Atmosphere atmosphere, java.util.List<FogRegion> fog) {
+    public Sky(Vec3 nadir, Vec3 zenith, Disc disc, Atmosphere atmosphere) {
+        this(nadir, zenith, disc, atmosphere, java.util.List.of());
+    }
+
+    public Sky withFog(java.util.List<FogRegion> regions) {
+        return new Sky(nadir, zenith, disc, atmosphere, regions);
+    }
+
+    public boolean participatingAir() {
+        return atmosphere != null || !fog.isEmpty();
+    }
+
     public static final Sky BLACK = new Sky(Vec3.ZERO, Vec3.ZERO);
 
     /**
@@ -31,7 +44,7 @@ public record Sky(Vec3 nadir, Vec3 zenith, Disc disc, Atmosphere atmosphere) {
     }
 
     public Sky withAtmosphere(Atmosphere value) {
-        return new Sky(nadir, zenith, disc, value);
+        return new Sky(nadir, zenith, disc, value, fog);
     }
 
     public Sky(Vec3 nadir, Vec3 zenith) {
@@ -39,6 +52,15 @@ public record Sky(Vec3 nadir, Vec3 zenith, Disc disc, Atmosphere atmosphere) {
     }
 
     public Sky {
+        if (fog.size() > FogTransport.MAX_REGIONS) {
+            throw new IllegalArgumentException("At most eight fog regions are supported");
+        }
+        // Canonical order also gives bitwise stable sums when callers reorder overlapping regions.
+        fog =
+                fog.stream()
+                        .filter(FogRegion::active)
+                        .sorted(java.util.Comparator.comparing(FogRegion::toString))
+                        .toList();
         if (nadir == null || zenith == null) {
             throw new IllegalArgumentException("Sky colors are required");
         }

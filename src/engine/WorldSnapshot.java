@@ -40,16 +40,22 @@ public record WorldSnapshot(
             throw new IllegalArgumentException(
                     "Render sessions support immutable point and directional lights only");
         }
+        if (!sky.fog().isEmpty() && !legacyObjects.isEmpty()) {
+            throw new RenderCapabilities.UnsupportedInput(
+                    "world.legacyObjects with local fog",
+                    "Local fog requires opaque diffuse scene instances, not legacy material"
+                            + " boundaries");
+        }
         validateEnvironment(instances, lights, sky);
     }
 
     static void validateEnvironment(List<SceneInstance> instances, List<Light> lights, Sky sky) {
-        if (sky.atmosphere() != null
+        if (sky.participatingAir()
                 && (lights.stream().anyMatch(PointLight.class::isInstance)
                         || instances.stream()
                                 .anyMatch(instance -> instance.material().emissive()))) {
             throw new RenderCapabilities.UnsupportedInput(
-                    "world.sky.atmosphere with local emitters",
+                    "world.sky participating air with local emitters",
                     "Atmosphere currently supports distant directional lighting and nonemissive"
                             + " diffuse scenery");
         }

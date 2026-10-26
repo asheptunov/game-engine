@@ -1,0 +1,11 @@
+{
+  "homogeneousAbsolute": 0.000002,
+  "variableDensityTransmissionAbsolute": 0.003,
+  "variableDensityRadianceAbsolute": 0.0002,
+  "referenceRadianceConvergenceAbsolute": 0.00001,
+  "cpuGpuLinearRmse": 0.004,
+  "cpuGpuMaximumChannel": 0.05,
+  "viewStepsPerBoundaryInterval": 24,
+  "sunStepsPerRegion": 24,
+  "referenceSteps": [192, 384]
+}

@@ -64,6 +64,14 @@ public final class GameRenderer implements AutoCloseable {
     private GameLighting lighting = GameLighting.defaults();
     private final DayNightCycle cycle = new DayNightCycle();
     private long lastLightingUpdate;
+    private boolean fogEnabled;
+    private boolean fogOverlap;
+    private boolean fogReverse;
+    private boolean fogDemo;
+    private boolean fogClosed;
+    private float fogShift;
+    private java.util.List<engine.FogRegion> fogRegions =
+            java.util.List.of(RuinsMist.region(0), RuinsMist.region(1));
     private boolean atmosphereEnabled;
     private engine.Atmosphere.Parameters atmosphere = engine.Atmosphere.Parameters.clearAir();
     private RenderSettings settings =
@@ -484,6 +492,130 @@ public final class GameRenderer implements AutoCloseable {
         cycle.duration(value);
     }
 
+    public synchronized boolean fogEnabled() {
+        return fogEnabled;
+    }
+
+    public synchronized boolean fogOverlap() {
+        return fogOverlap;
+    }
+
+    public synchronized boolean fogReverse() {
+        return fogReverse;
+    }
+
+    public synchronized boolean fogClosed() {
+        return fogClosed;
+    }
+
+    public synchronized float fogShift() {
+        return fogShift;
+    }
+
+    public synchronized engine.FogRegion fogRegion(int index) {
+        return fogRegions.get(index);
+    }
+
+    public synchronized void fogEnabled(boolean value) {
+        changeFog(value, fogOverlap, fogReverse, fogDemo, fogClosed, fogShift, fogRegions);
+    }
+
+    public synchronized void fogOverlap(boolean value) {
+        changeFog(fogEnabled, value, fogReverse, fogDemo, fogClosed, fogShift, fogRegions);
+    }
+
+    public synchronized void fogReverse(boolean value) {
+        changeFog(fogEnabled, fogOverlap, value, fogDemo, fogClosed, fogShift, fogRegions);
+    }
+
+    public synchronized void fogClosed(boolean value) {
+        changeFog(fogEnabled, fogOverlap, fogReverse, true, value, fogShift, fogRegions);
+    }
+
+    public synchronized void fogShift(double value) {
+        if (!Double.isFinite(value) || Math.abs(value) > 10) {
+            throw new IllegalArgumentException("Fog screen shift must be -10..10 world units");
+        }
+        changeFog(fogEnabled, fogOverlap, fogReverse, true, fogClosed, (float) value, fogRegions);
+    }
+
+    public synchronized void fogRegion(int index, engine.FogRegion value) {
+        var regions = new java.util.ArrayList<>(fogRegions);
+        regions.set(index, java.util.Objects.requireNonNull(value));
+        changeFog(
+                fogEnabled,
+                fogOverlap,
+                fogReverse,
+                fogDemo,
+                fogClosed,
+                fogShift,
+                java.util.List.copyOf(regions));
+    }
+
+    public synchronized void fogReset() {
+        changeFog(
+                false,
+                false,
+                false,
+                false,
+                false,
+                0,
+                java.util.List.of(RuinsMist.region(0), RuinsMist.region(1)));
+    }
+
+    public synchronized void fogPreset() {
+        changeFog(
+                true,
+                false,
+                false,
+                true,
+                false,
+                0,
+                java.util.List.of(RuinsMist.region(0), RuinsMist.region(1)));
+        cycle.running(false);
+        timeOfDay(7.5);
+    }
+
+    private void changeFog(
+            boolean enabled,
+            boolean overlap,
+            boolean reverse,
+            boolean demo,
+            boolean closed,
+            float shift,
+            java.util.List<engine.FogRegion> regions) {
+        var active = activeFog(enabled, overlap, reverse, regions);
+        var candidate =
+                new engine.WorldSnapshot(
+                        world.revision() + 1,
+                        RuinsMist.scenery(world.instances(), demo, closed, shift),
+                        world.legacyObjects(),
+                        world.lights(),
+                        world.sky().withFog(active));
+        fogEnabled = enabled;
+        fogOverlap = overlap;
+        fogReverse = reverse;
+        fogDemo = demo;
+        fogClosed = closed;
+        fogShift = shift;
+        fogRegions = regions;
+        world = candidate;
+    }
+
+    private static java.util.List<engine.FogRegion> activeFog(
+            boolean enabled,
+            boolean overlap,
+            boolean reverse,
+            java.util.List<engine.FogRegion> regions) {
+        if (!enabled) {
+            return java.util.List.of();
+        }
+        if (!overlap) {
+            return java.util.List.of(regions.getFirst());
+        }
+        return reverse ? java.util.List.of(regions.get(1), regions.getFirst()) : regions;
+    }
+
     public synchronized boolean atmosphereEnabled() {
         return atmosphereEnabled;
     }
@@ -533,7 +665,8 @@ public final class GameRenderer implements AutoCloseable {
     private engine.WorldSnapshot lightingWorld(
             GameLighting value, boolean enabled, engine.Atmosphere.Parameters parameters) {
         var effective = enabled ? cycle.atmosphericLighting(parameters) : value;
-        var sky = effective.sky();
+        var sky =
+                effective.sky().withFog(activeFog(fogEnabled, fogOverlap, fogReverse, fogRegions));
         var lights = java.util.List.<engine.lights.Light>of(effective.sun());
         if (world.sky().equals(sky) && world.lights().equals(lights)) {
             return world;

@@ -1,6 +1,6 @@
 # Atmosphere, haze and local volumetric scattering requirements
 
-Status: A1 implemented with automatic verification; native human acceptance is pending. A2 is not implemented.
+Status: A1 and A2 implemented with automatic verification; native human acceptance is pending.
 Updated: 2026-10-25
 Audience: Sample-game players and developers building and evaluating outdoor lighting and fog.
 
@@ -12,7 +12,12 @@ must also be able to explore low-lying mist and local fog with visible shafts of
 trees and ruins. These effects must respond coherently to the existing day/night clock and to
 editable atmospheric properties.
 
-Prerequisite: [RendererParityRequirements.md](RendererParityRequirements.md) is complete.
+Prerequisite: P1 and P2 of [RendererParityRequirements.md](RendererParityRequirements.md),
+updated 2026-10-25, were implemented and automatically verified by commit `2109caf`.
+[P1 evidence](benchmarks/parity/README.md) covers the shared inputs, capability validation and
+CPU/GPU comparison gate; [P2 evidence](benchmarks/parity/P2.md) covers fatal reports and bounded
+shutdown without automatic fallback. Their native human acceptance remains pending; the
+implementation and automated contracts are the prerequisite used here.
 This document assumes its renderer contracts, common-feature policy, verification and failure
 handling are already in place. It does not add parity milestones or re-specify backend management.
 
@@ -164,7 +169,7 @@ resume and shutdown behavior.
 | ID | User can now... | Prerequisites | Status / evidence |
 | --- | --- | --- | --- |
 | A1 | Explore a world lit by a scattering atmosphere through golden hour, twilight and altitude-dependent haze | Completed parity specification | Implemented; numerical, surface, lifecycle and CPU/GPU checks plus measured scenes in [A1 evidence](benchmarks/atmosphere/README.md). Native human acceptance pending |
-| A2 | Explore editable local mist with spatial density variation and sun shafts through scenery | A1 | Proposed; not implemented or human-accepted |
+| A2 | Explore editable local mist with spatial density variation and sun shafts through scenery | A1 | Implemented; numerical, ruins imagery, lifecycle and CPU/GPU evidence in [A2 fog evidence](benchmarks/atmosphere/FOG.md). Native human acceptance pending |
 
 ### A1 — Explore physically motivated golden hour and atmospheric haze
 
@@ -190,6 +195,15 @@ optical depth with path length in a uniform test medium. Check the solar disc's 
 surface shadows. Sweep time across both horizons to catch discontinuities and wrong moon/solar
 state. Compare near/far and low/high camera views. Include surface-lighting checks, not just sky
 screenshots, and retain legacy images with effects disabled.
+
+The implemented A1 numerical criterion uses 512 view steps and 384 sun steps as its reference,
+with a separate 256-by-192 calculation to check convergence. Each reference radiance channel
+must change by no more than `0.0005 + 0.01 * reference` when resolution increases. Production
+radiance error must be at most `0.015 + 0.05 * reference` per channel, and transmittance absolute
+error at most 0.015. The solar disc is tested separately from angular sky comparisons.
+These limits were established before optimization and are retained in
+[thresholds.json](benchmarks/atmosphere/thresholds.json); the numerical comparison grid and
+measured results are in [A1 evidence](benchmarks/atmosphere/README.md).
 
 **Boundaries:** Local fog banks and tree-shaped atmospheric shafts are delivered in A2. Global
 haze in A1 does not claim to include local-geometry volumetric shadows. The A1 demo must not depend
@@ -238,7 +252,7 @@ an implementation task, not permission to omit the required physical limiting-ca
 Keep the milestone table authoritative. Save reference settings, images, metrics, exact commands
 and test coverage under `benchmarks/atmosphere/` when implemented. The existing repository gate
 and relevant rendering/game checks remain required. Distinguish automatically verified behavior
-from human acceptance. A1 implementation and automated evidence are recorded above; human acceptance is not claimed.
+from human acceptance. A1 and A2 implementation and automated evidence are recorded above; human acceptance is not claimed.
 
 No blocking product questions remain. Numerical integration, lookup-table layout, cache sizes and
 supported UI ranges are bounded engineering choices to validate against these outcomes. If the

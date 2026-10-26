@@ -1,0 +1,6 @@
+2026-10-25T21:11:32.959029800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T21:11:32.962030000  [INFO] harness.SuiteRunner: ? Suite game.AtmosphereLifecycleTest [PT0.7482843S]
+2026-10-25T21:11:32.963029800  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#unsupportedSceneCombinationRejectsWithoutChangingAirControls [PT0.005509S]
+2026-10-25T21:11:32.963029800  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#settingsResetKeepsOpticsTimeExposureAndCameraResetKeepsAir [PT0.2611772S]
+2026-10-25T21:11:32.963029800  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#inFlightEditsRetainLeasesAndCannotPublishStaleAirAsCurrent [PT0.4815981S]
+2026-10-25T21:11:32.964029700  [INFO] harness.SuiteRunner: ========================

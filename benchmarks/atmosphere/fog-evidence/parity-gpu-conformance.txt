@@ -1,0 +1,1 @@
+PASS: capabilities, atomic validation, completion, immutable leases, invalidation, batch equivalence, pause/suspend/resume/close, controls and fixtures

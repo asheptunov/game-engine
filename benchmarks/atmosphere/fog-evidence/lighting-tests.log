@@ -1,0 +1,11 @@
+2026-10-25T21:11:14.301605800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T21:11:14.308606100  [INFO] harness.SuiteRunner: ? Suite game.GameLightingTest [PT5.7463804S]
+2026-10-25T21:11:14.310606700  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#sunPresetButtonsSelectSameClockTimesWithEitherSky [PT0.4780735S]
+2026-10-25T21:11:14.310606700  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#writesRefinedSunPresetAndSkyComparisonPreviews [PT0.6118133S]
+2026-10-25T21:11:14.310606700  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#fogControlsPreserveOpticsAndResetOnlyLocalAir [PT0.3830804S]
+2026-10-25T21:11:14.311606000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#releasedPointerButtonsChangeLightingAndCameraResetPreservesIt [PT0.0420844S]
+2026-10-25T21:11:14.311606000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#autofocusRejectsResultsFromOldModeAndOldView [PT0.0070077S]
+2026-10-25T21:11:14.312606100  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#refinementControlReplacesRefinedImageAndResumesAfterMovement [PT0.3006337S]
+2026-10-25T21:11:14.312606100  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#autofocusTracksCenterRetainsSkyAndStopsForManualAndSuspension [PT3.2158714S]
+2026-10-25T21:11:14.312606100  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#groupedControlsApplyCameraLightingAndDisplaySettings [PT0.707816S]
+2026-10-25T21:11:14.314111200  [INFO] harness.SuiteRunner: ========================

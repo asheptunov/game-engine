@@ -16,6 +16,8 @@ layout(std430,set=0,binding=4) readonly buffer Parameters {
     vec4 airHeights; // molecular/aerosol scale heights km, anisotropy
     vec4 airMolecular, airAerosol, airAbsorption, solarDirection, solarIrradiance;
     vec2 airColumns[18432];
+    vec4 fogMeta;
+    vec4 fogData[48]; // six vec4s per region, maximum eight
 };
 layout(std430,set=0,binding=5) buffer Accumulation { dvec4 means[]; };
 layout(std430,set=0,binding=6) writeonly buffer Output { vec4 pixels[]; };
@@ -134,15 +136,15 @@ vec3 airSun(float y) {
     float visible=(acos(-x)+x*sqrt(1-x*x))/PI;
     return solarDiscTransmission(y)*visible;
 }
-void airSegment(float y, vec3 d, float distance, bool disc, out vec3 light, out vec3 transmission) {
+void airSegment(float y, vec3 d, float distance, bool disc, int steps, out vec3 light, out vec3 transmission) {
     float h=airAltitude(y), ground=airBoundary(h,d.y,true);
     float length=min(min(airBoundary(h,d.y,false),ground),distance*airMapping.x*.001);
     float cosine=dot(d,solarDirection.xyz), g=airHeights.z;
     float rayleigh=3*(1+cosine*cosine)/(16*PI);
     float aerosolPhase=(1-g*g)/(4*PI*pow(1+g*g-2*g*cosine,1.5));
     light=vec3(0); transmission=vec3(1);
-    for (int i=0;i<32;i++) {
-        float a=length*float(i*i)/1024, b=length*float((i+1)*(i+1))/1024;
+    for (int i=0;i<steps;i++) {
+        float a=length*float(i*i)/float(steps*steps), b=length*float((i+1)*(i+1))/float(steps*steps);
         float t=(a+b)*.5, step=b-a;
         float localH=max(0,airHeight(h,d.y,t));
         float solarMu=((airMapping.z+h)*solarDirection.y+t*cosine)/(airMapping.z+localH);
@@ -167,6 +169,101 @@ void airSegment(float y, vec3 d, float distance, bool disc, out vec3 light, out 
     }
     if (disc && ground==1e30 && cosine>=cos(radians(.266)))
         light += solarDiscTransmission(y)/(PI*pow(sin(radians(.266)),2));
+}
+vec3 fogLocal(int r,vec3 p) {
+    int b=r*6; p-=fogData[b].xyz;
+    float c=fogData[b+1].w, s=fogData[b+2].w;
+    return vec3(c*p.x-s*p.z,p.y,s*p.x+c*p.z)/fogData[b+1].xyz;
+}
+float fogDensity(int r,vec3 p) {
+    int b=r*6; vec3 q=fogLocal(r,p);
+    float edge=1, m=max(max(abs(q.x),abs(q.y)),abs(q.z));
+    if(m>=1) return 0;
+    if(fogData[b+5].y>0) { float t=clamp((1-m)/fogData[b+5].y,0,1); edge=t*t*(3-2*t); }
+    vec3 wave=sin(q*fogData[b+5].x*PI+vec3(.7,1.3,2.1));
+    float noise=.5+.5*wave.x*wave.y*wave.z;
+    return fogData[b].w*edge*exp(-fogData[b+4].y*(q.y+1)*.5)
+        *(1-fogData[b+4].z+fogData[b+4].z*noise);
+}
+bool fogInterval(int r,vec3 o,vec3 d,float limit,out vec2 bounds) {
+    int b=r*6; vec3 q=fogLocal(r,o);
+    float c=fogData[b+1].w,s=fogData[b+2].w;
+    vec3 v=vec3(c*d.x-s*d.z,d.y,s*d.x+c*d.z)/fogData[b+1].xyz;
+    bounds=vec2(0,limit);
+    for(int j=0;j<3;j++) {
+        if(abs(v[j])<1e-12) { if(abs(q[j])>=1) return false; }
+        else { float a=(-1-q[j])/v[j],z=(1-q[j])/v[j];
+            bounds.x=max(bounds.x,min(a,z)); bounds.y=min(bounds.y,max(a,z)); }
+    }
+    return bounds.y>bounds.x;
+}
+vec3 fogTransmission(vec3 o,vec3 d) {
+    vec3 transmission=vec3(1);
+    for(int r=0;r<int(fogMeta.x);r++) {
+        vec2 bounds;
+        if(!fogInterval(r,o,d,1e30,bounds)) continue;
+        float step=(bounds.y-bounds.x)/24, column=0;
+        for(int j=0;j<24;j++) column+=fogDensity(r,o+d*(bounds.x+(float(j)+.5)*step))*step;
+        transmission*=exp(-column*(fogData[r*6+2].xyz+fogData[r*6+3].xyz));
+    }
+    return transmission;
+}
+vec3 fogIntegral(vec3 k,float step) {
+    vec3 tau=k*step;
+    return mix((1-exp(-tau))/max(k,vec3(1e-20)),step*(1-tau*.5+tau*tau/6),lessThan(tau,vec3(.001)));
+}
+vec3 fogScatter(vec3 p,vec3 view,vec3 direction,vec3 irradiance) {
+    if(all(equal(irradiance,vec3(0)))) return vec3(0);
+    Hit obstruction;
+    if(nearest(p,direction,-1,-1,true,obstruction)) return vec3(0);
+    vec3 incident=irradiance*fogTransmission(p,direction), result=vec3(0);
+    float cosine=dot(view,direction);
+    for(int r=0;r<int(fogMeta.x);r++) {
+        float g=fogData[r*6+4].x;
+        float phase=(1-g*g)/(4*PI*pow(1+g*g-2*g*cosine,1.5));
+        result+=fogDensity(r,p)*fogData[r*6+2].xyz*phase*incident;
+    }
+    return result;
+}
+void airPart(vec3 p,vec3 d,float distance,bool disc,inout vec3 light,inout vec3 trans) {
+    if(airMapping.x<=0) return;
+    vec3 a,t; airSegment(p.y,d,distance,disc,32,a,t);
+    light+=trans*a; trans*=t;
+}
+void fogSegment(vec3 o,vec3 d,float distance,bool disc,out vec3 light,out vec3 trans) {
+    light=vec3(0); trans=vec3(1);
+    float ends[16]; int count=0;
+    for(int r=0;r<int(fogMeta.x);r++) {
+        vec2 bounds;
+        if(fogInterval(r,o,d,distance,bounds)) { ends[count++]=bounds.x; ends[count++]=bounds.y; }
+    }
+    for(int i=1;i<count;i++) { float v=ends[i]; int j=i-1;
+        while(j>=0 && ends[j]>v) { ends[j+1]=ends[j]; j--; } ends[j+1]=v; }
+    float previous=0;
+    for(int i=0;i<count;i++) {
+        float end=ends[i]; if(end<=previous) continue;
+        vec3 mid=o+d*((previous+end)*.5); bool local=false;
+        for(int r=0;r<int(fogMeta.x);r++) if(max(max(abs(fogLocal(r,mid).x),abs(fogLocal(r,mid).y)),abs(fogLocal(r,mid).z))<1) local=true;
+        if(!local) airPart(o+d*previous,d,end-previous,false,light,trans);
+        else {
+            float step=(end-previous)/24;
+            for(int j=0;j<24;j++) {
+                vec3 p=o+d*(previous+(float(j)+.5)*step), k=vec3(0), source=vec3(0);
+                if(airMapping.x>0) {
+                    vec3 a,t; airSegment(p.y-d.y*step*.5,d,step,false,1,a,t);
+                    k=-log(max(t,vec3(1e-30)))/step; source=a/fogIntegral(k,step);
+                }
+                for(int r=0;r<int(fogMeta.x);r++) k+=fogDensity(r,p)*(fogData[r*6+2].xyz+fogData[r*6+3].xyz);
+                if(airMapping.x>0) source+=fogScatter(p,d,solarDirection.xyz,airSun(p.y));
+                vec3 incident=sunRadiance.xyz;
+                if(airMapping.x>0) { vec2 optical; incident*=airOptical(airAltitude(p.y),sunDirection.y,optical)?exp(-airExtinction(optical)):vec3(0); }
+                source+=fogScatter(p,d,sunDirection.xyz,incident);
+                light+=trans*source*fogIntegral(k,step); trans*=exp(-k*step);
+            }
+        }
+        previous=end;
+    }
+    airPart(o+d*previous,d,distance-previous,disc,light,trans);
 }
 void main() {
     uvec2 xy = gl_GlobalInvocationID.xy;
@@ -198,9 +295,13 @@ void main() {
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
-        if (airMapping.x>0) {
+        if (fogMeta.x>0) {
             vec3 light, transmission;
-            airSegment(o.y,d,found ? hit.t : 1e30,!found && depth==0,light,transmission);
+            fogSegment(o,d,found ? hit.t : 1e30,!found && depth==0,light,transmission);
+            radiance+=weight*light; weight*=transmission;
+        } else if (airMapping.x>0) {
+            vec3 light, transmission;
+            airSegment(o.y,d,found ? hit.t : 1e30,!found && depth==0,32,light,transmission);
             radiance += weight*light;
             weight *= transmission;
         }
@@ -223,7 +324,7 @@ void main() {
                     vec2 optical;
                     direct *= airOptical(airAltitude(p.y),sunDirection.y,optical) ? exp(-airExtinction(optical)) : vec3(0);
                 }
-                radiance += weight*color*direct*(cosine/PI);
+                radiance += weight*color*direct*fogTransmission(p,sunDirection.xyz)*(cosine/PI);
             }
         }
         if (airMapping.x>0) {
@@ -232,7 +333,7 @@ void main() {
             if (solarCosine>0 && any(greaterThan(sunlight,vec3(0)))) {
                 Hit obstruction;
                 if (!nearest(p+n*BIAS,solarDirection.xyz,hit.instanceIndex,hit.face,true,obstruction))
-                    radiance += weight*color*sunlight*(solarCosine/PI);
+                    radiance += weight*color*sunlight*fogTransmission(p,solarDirection.xyz)*(solarCosine/PI);
             }
         }
         if (depth == grid.z) break;

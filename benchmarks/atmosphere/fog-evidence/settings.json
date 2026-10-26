@@ -1,0 +1,44 @@
+{
+  "result": "PASS",
+  "baseRevision": "875ca8716f84d5a2e6841cb7d7cab42af4dd18e4",
+  "finalParitySourceSha256": "9F1E731AEB2E57F8B09286709855C6A3810D6129C557178A6FDB8814EB7ED5C5",
+  "imageSettings": {
+    "width": 480,
+    "height": 300,
+    "depth": 2,
+    "seed": 1,
+    "exposure": 1,
+    "samples": [
+      1,
+      4
+    ],
+    "cameraPosition": [
+      8,
+      4,
+      18
+    ],
+    "yawRadians": 0.85,
+    "pitchRadians": 0.02,
+    "hours": [
+      7.5,
+      12,
+      17.8,
+      18.2
+    ],
+    "gap": [
+      "open",
+      "closed"
+    ],
+    "atmosphere": "clearAir",
+    "fog": "RuinsMist.region(0)"
+  },
+  "measuredRoute": "Four 32-second runs per backend; run 0 warmup, 24 seconds motion and two continuous horizon sweeps, eight seconds stationary.",
+  "verification": [
+    "game.FogNumerics",
+    "game.FogScenes cpu and gpu full",
+    "game.FogBenchmark cpu and gpu",
+    "./parity-check.ps1"
+  ],
+  "reproduction": "./fog-check.ps1 -Measurements; ./parity-check.ps1",
+  "note": "Full image and route measurements preceded final UI/test/validation cleanup; final parity gate validates the final source fingerprint. No native human acceptance claimed."
+}

@@ -124,8 +124,7 @@ public final class AtmosphereScenes {
         }
     }
 
-    private static double[] compareOrSave(String backend, Path raw, float[] values)
-            throws Exception {
+    static double[] compareOrSave(String backend, Path raw, float[] values) throws Exception {
         if (backend.equals("cpu")) {
             try (var file = new DataOutputStream(Files.newOutputStream(raw))) {
                 for (float value : values) {

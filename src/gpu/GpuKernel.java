@@ -103,7 +103,7 @@ final class GpuKernel implements AutoCloseable {
         try {
             parameters =
                     gpu.buffer(
-                            304 + engine.AtmosphereTable.FLOATS * 4,
+                            304 + engine.AtmosphereTable.FLOATS * 4 + 16 + 8 * 96,
                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                             true);
             createPipeline();
@@ -396,6 +396,7 @@ final class GpuKernel implements AutoCloseable {
         put(11, disc == null ? Vec3.ZERO : disc.radiance());
         parameters.mapped.putFloat(172, disc == null ? 2 : disc.cosineRadius());
         writeAtmosphere(world.sky().atmosphere());
+        writeFog(world.sky().fog());
         long seed = cameraSeed(settings.seed(), camera);
         parameters
                 .mapped
@@ -405,6 +406,26 @@ final class GpuKernel implements AutoCloseable {
                 .putInt(140, (int) seed)
                 .putInt(144, (int) (seed >>> 32))
                 .putInt(148, Math.toIntExact(sample));
+    }
+
+    private void writeFog(java.util.List<engine.FogRegion> regions) {
+        int base = 19 + engine.AtmosphereTable.FLOATS / 4;
+        parameters.mapped.putFloat(base * 16, regions.size());
+        for (int index = 0; index < regions.size(); index++) {
+            var r = regions.get(index);
+            int b = base + 1 + index * 6;
+            put(b, r.center());
+            parameters.mapped.putFloat(b * 16 + 12, r.density());
+            put(b + 1, r.halfExtent());
+            parameters.mapped.putFloat(
+                    (b + 1) * 16 + 12, (float) Math.cos(Math.toRadians(r.yawDegrees())));
+            put(b + 2, r.scattering());
+            parameters.mapped.putFloat(
+                    (b + 2) * 16 + 12, (float) Math.sin(Math.toRadians(r.yawDegrees())));
+            put(b + 3, r.absorption());
+            put(b + 4, new Vec3(r.anisotropy(), r.heightFalloff(), r.variation()));
+            put(b + 5, new Vec3(r.frequency(), r.feather(), 0));
+        }
     }
 
     private void writeAtmosphere(engine.Atmosphere air) {

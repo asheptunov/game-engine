@@ -1,0 +1,8 @@
+2026-10-25T21:05:18.972777600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T21:05:18.978789600  [INFO] harness.SuiteRunner: ? Suite game.FogNumerics [PT0.0795953S]
+2026-10-25T21:05:18.980790500  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#overlappingPhaseFunctionsAreSummedAndBoundaryExitIsContinuous [PT0.0510638S]
+2026-10-25T21:05:18.980790500  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#homogeneousBeerAndSingleScatteringBrightness [PT0.0015009S]
+2026-10-25T21:05:18.981790900  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#zeroDensityIdentityFiniteValidationAndTransforms [PT0.0081766S]
+2026-10-25T21:05:18.981790900  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#overlapsAddCoefficientsAndKeepIndividualPhaseFunctions [PT0.0028371S]
+2026-10-25T21:05:18.981790900  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#spatialDensityConvergesAgainstRefinedIntegration [PT0.0160169S]
+2026-10-25T21:05:18.984291300  [INFO] harness.SuiteRunner: ========================

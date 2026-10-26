@@ -186,14 +186,14 @@ public class ViewportState {
     }
 
     public boolean temporalEffective() {
-        return temporal && camera.temporalSupported() && sky.atmosphere() == null;
+        return temporal && camera.temporalSupported() && !sky.participatingAir();
     }
 
     public String temporalStatus() {
         return !temporal
                 ? "temporal=off (raw)"
-                : sky.atmosphere() != null
-                        ? "temporal=on (inactive: atmosphere; raw)"
+                : sky.participatingAir()
+                        ? "temporal=on (inactive: atmosphere/fog; raw)"
                         : !camera.temporalSupported()
                                 ? "temporal=on (inactive: finite aperture; raw)"
                                 : instances.stream().anyMatch(o -> o.material().scattering() > 0)
