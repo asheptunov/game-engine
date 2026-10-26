@@ -17,7 +17,13 @@ import java.util.regex.Pattern;
 public final class FogCacheBenchmark {
     private FogCacheBenchmark() {}
 
-    private record Case(String backend, int width, int daySeconds, double startHour, int frames) {}
+    private record Case(
+            String backend,
+            int width,
+            int daySeconds,
+            double startHour,
+            int frames,
+            int fogDownsample) {}
 
     public static void main(String[] args) throws Exception {
         var capture = GameCapture.load(Path.of(args[0]));
@@ -25,14 +31,18 @@ public final class FogCacheBenchmark {
         String[] widths = (args.length > 2 ? args[2] : "418,836,1600").split(",");
         double startHour = args.length > 3 ? Double.parseDouble(args[3]) : 7;
         int frames = args.length > 4 ? Integer.parseInt(args[4]) : 20;
+        int divisor = args.length > 5 ? Integer.parseInt(args[5]) : 1;
         System.out.println(
-                "reference,backend,round,width,height,daySeconds,startHour,gpuMedianMs,gpuP95Ms,fogBuildMedianMs,transferMedianMs,traceMedianMs,copyMedianMs,totalMedianMs,totalP95Ms");
+                "reference,backend,round,width,height,daySeconds,startHour,gpuMedianMs,gpuP95Ms,fogBuildMedianMs,transferMedianMs,traceMedianMs,copyMedianMs,totalMedianMs,totalP95Ms,fogDownsample");
         for (int round = 0; round < 2; round++) {
             for (int index = 0; index < widths.length; index++) {
                 int width =
                         Integer.parseInt(widths[round == 0 ? index : widths.length - 1 - index]);
                 for (int duration : new int[] {0, 600, 30}) {
-                    measure(capture, new Case(backend, width, duration, startHour, frames), round);
+                    measure(
+                            capture,
+                            new Case(backend, width, duration, startHour, frames, divisor),
+                            round);
                 }
             }
         }
@@ -70,7 +80,8 @@ public final class FogCacheBenchmark {
                         .withSamplesPerBatch(1)
                         .withPaused(false)
                         .withInteractive(false, 16.67, 0, 0)
-                        .withTemporal(false, 0);
+                        .withTemporal(false, 0)
+                        .withFogDownsample(config.fogDownsample());
         var signal = new Semaphore(0);
         double[][] measurements = new double[6][config.frames()];
         try (var session =
@@ -122,7 +133,7 @@ public final class FogCacheBenchmark {
         int p95 = (int) Math.ceil(config.frames() * .95) - 1;
         System.out.printf(
                 Locale.ROOT,
-                "%b,%s,%d,%d,%d,%d,%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f%n",
+                "%b,%s,%d,%d,%d,%d,%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d%n",
                 Boolean.getBoolean("engine.fogSunReference"),
                 config.backend(),
                 round,
@@ -137,6 +148,7 @@ public final class FogCacheBenchmark {
                 values[3][median],
                 values[4][median],
                 values[5][median],
-                values[5][p95]);
+                values[5][p95],
+                config.fogDownsample());
     }
 }

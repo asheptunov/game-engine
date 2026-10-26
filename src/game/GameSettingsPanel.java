@@ -541,6 +541,25 @@ public final class GameSettingsPanel extends JPanel {
 
     private JPanel fogControls() {
         var panel = page();
+        heading(panel, "Fog rendering quality (experimental)");
+        var quality = new javax.swing.JComboBox<>(new String[] {"Full", "Half", "Quarter"});
+        quality.setName("fogResolution");
+        quality.addActionListener(
+                event -> {
+                    if (!refreshing) {
+                        int divisor = 1 << quality.getSelectedIndex();
+                        renderer.configure(settings -> settings.withFogDownsample(divisor));
+                    }
+                });
+        refreshers.add(
+                () ->
+                        quality.setSelectedIndex(
+                                Integer.numberOfTrailingZeros(
+                                        renderer.settings().fogDownsample())));
+        panel.add(quality);
+        panel.add(new JLabel("GPU fog only; geometry stays sharp."));
+        panel.add(new JLabel("CPU, lens and unsupported fog use Full."));
+        panel.add(new JLabel("Half / Quarter may soften shafts; compare with Full."));
         heading(panel, "Local air at the ruins");
         panel.add(
                 new JLabel(

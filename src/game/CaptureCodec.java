@@ -114,6 +114,10 @@ final class CaptureCodec {
         if (!clazz.isRecord()) {
             return scalar(value, clazz);
         }
+        // Version-one captures predating the optional GPU quality control use the reference path.
+        if (clazz == engine.RenderSettings.class) {
+            p.putIfAbsent(key + ".fogDownsample", "1");
+        }
         var components = clazz.getRecordComponents();
         var types = new Class<?>[components.length];
         var values = new Object[components.length];

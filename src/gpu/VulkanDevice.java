@@ -202,7 +202,7 @@ final class VulkanDevice implements AutoCloseable {
                             VkQueryPoolCreateInfo.calloc(stack)
                                     .sType$Default()
                                     .queryType(VK_QUERY_TYPE_TIMESTAMP)
-                                    .queryCount(4),
+                                    .queryCount(5),
                             null,
                             handle),
                     "timestamps");

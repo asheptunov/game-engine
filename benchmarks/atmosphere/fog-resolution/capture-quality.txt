@@ -1,0 +1,3 @@
+capture divisor=1 linearRMSE=0.0 maximum=0.0 outside=0 reused=0
+capture divisor=2 linearRMSE=2.3013325249843304E-4 maximum=0.01235651969909668 outside=0 reused=261181
+capture divisor=4 linearRMSE=2.968143469462458E-4 maximum=0.015768691897392273 outside=0 reused=177782

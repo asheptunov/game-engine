@@ -10,7 +10,7 @@ layout(std430,set=0,binding=3) readonly buffer Textures { vec4 texels[]; };
 layout(std430,set=0,binding=4) readonly buffer Parameters {
     vec4 eye, origin, edge1, edge2, sunDirection, sunRadiance, nadir, zenith;
     uvec4 grid; // width, height, depth, seed low
-    uvec4 sampling; // seed high, sample index, reserved, reserved
+    uvec4 sampling; // seed high, sample index, primary fog divisor, primary fog columns
     vec4 discDirection, discRadiance; // direction.w = cosine of angular radius; 2 disables disc
     vec4 airMapping; // metres/unit, ground Y, radius km, extent km; x=0 disables
     vec4 airHeights; // molecular/aerosol scale heights km, anisotropy
@@ -21,9 +21,11 @@ layout(std430,set=0,binding=4) readonly buffer Parameters {
     vec4 fogLower, fogExtent; // lower.w: table dimension, zero disables
 };
 layout(std430,set=0,binding=5) buffer Accumulation { dvec4 means[]; };
-layout(std430,set=0,binding=6) writeonly buffer Output { vec4 pixels[]; };
+layout(std430,set=0,binding=6) buffer Output { vec4 pixels[]; };
 layout(std430,set=0,binding=7) buffer FogSun { vec4 fogSunValues[]; };
-layout(push_constant) uniform Dispatch { int buildFog; };
+layout(std430,set=0,binding=8) buffer PrimaryFog { vec4 primaryFog[]; };
+layout(std430,set=0,binding=9) buffer FogGuides { vec4 fogGuides[]; };
+layout(constant_id=0) const int dispatchMode=0; // full, sun table, coarse fog, reconstructed
 const float BIAS = 0.001;
 const float PI = 3.14159265358979323846;
 uint64_t randomState;
@@ -297,10 +299,82 @@ void fogSegment(vec3 o,vec3 d,float distance,bool disc,out vec3 light,out vec3 t
     }
     airPart(o+d*previous,d,distance-previous,disc,light,trans);
 }
+// Coarse fog is integrated only along pinhole primary rays to opaque surfaces.
+// Geometry shading and all continuation rays remain at the requested resolution.
+vec3 primaryDirection(vec2 coordinate) {
+    return normalize(origin.xyz + edge1.xyz*(coordinate.x/float(grid.x))
+        + edge2.xyz*(coordinate.y/float(grid.y)) - eye.xyz);
+}
+vec2 fogCoordinate(ivec2 cell) {
+    return min((vec2(cell)+.5)*float(sampling.z),vec2(grid.xy)-.5);
+}
+void buildPrimaryFog() {
+    uvec2 cell=gl_GlobalInvocationID.xy;
+    uint rows=(grid.y+sampling.z-1)/sampling.z;
+    if(cell.x>=sampling.w || cell.y>=rows) return;
+    uint index=(cell.y*sampling.w+cell.x)*3;
+    vec3 d=primaryDirection(fogCoordinate(ivec2(cell)));
+    Hit hit;
+    bool found=nearest(eye.xyz,d,-1,-1,false,hit);
+    vec3 light=vec3(0),transmission=vec3(1);
+    // Exclude the solar disc; its exact full-resolution rays use direct integration.
+    fogSegment(eye.xyz,d,found?hit.t:1e30,false,light,transmission);
+    primaryFog[index]=vec4(light,found?hit.t:0);
+    primaryFog[index+1]=vec4(transmission,found?float(hit.instanceIndex+1):0);
+    primaryFog[index+2]=vec4(found?hit.normal:vec3(0),0);
+}
+bool reconstructedFog(vec2 coordinate,vec3 d,bool found,Hit hit,out vec3 light,out vec3 transmission) {
+    if(!found && airMapping.x>0 && dot(d,solarDirection.xyz)>=cos(radians(.3))) return false;
+    vec2 cell=coordinate/float(sampling.z)-.5;
+    ivec2 base=ivec2(floor(cell)); vec2 f=fract(cell);
+    ivec2 limit=ivec2(sampling.w,(grid.y+sampling.z-1)/sampling.z)-1;
+    vec3 p=eye.xyz+d*hit.t;
+    light=vec3(0);transmission=vec3(0);float total=0;
+    vec3 minimumLight=vec3(1e30),maximumLight=vec3(0);
+    for(int y=0;y<2;y++) for(int x=0;x<2;x++) {
+        ivec2 neighbor=clamp(base+ivec2(x,y),ivec2(0),limit);
+        int index=(neighbor.y*int(sampling.w)+neighbor.x)*3;
+        vec4 a=primaryFog[index],t=primaryFog[index+1];
+        vec3 normal=primaryFog[index+2].xyz;
+        vec3 other=eye.xyz+primaryDirection(fogCoordinate(neighbor))*a.w;
+        // Reject across silhouettes, separate objects, depth jumps and different planes.
+        if(int(t.w)!=(found?hit.instanceIndex+1:0)) continue;
+        if(found && (dot(normal,hit.normal)<.9995
+            || abs(a.w-hit.t)>max(.03,hit.t*.02)
+            || abs(dot(normal,p-other))>max(.005,hit.t*.001))) continue;
+        if(!found && d.y*primaryDirection(fogCoordinate(neighbor)).y<0) continue;
+        float weight=(x==0?1-f.x:f.x)*(y==0?1-f.y:f.y);
+        minimumLight=min(minimumLight,a.xyz);maximumLight=max(maximumLight,a.xyz);
+        light+=weight*a.xyz;transmission+=weight*t.xyz;total+=weight;
+    }
+    // Keep direct integration near unresolved depth/shadow edges.
+    if(total<.999 || any(greaterThan(maximumLight-minimumLight,vec3(.005)+minimumLight*.02))) return false;
+    light/=total;transmission/=total;
+    return true;
+}
+// Composite separately so reconstruction/fallback does not inflate the path shader's live state.
+void resolvePrimaryFog(uvec2 xy) {
+    uint pixel=xy.y*grid.x+xy.x;
+    uint64_t seed=(uint64_t(sampling.x)<<32)|uint64_t(grid.w);
+    randomState=mix64(seed)^mix64(uint64_t(pixel)+0x632be59bd9b4e019UL)^mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
+    float u=grid.z==0?.5:randomValue(),v=grid.z==0?.5:randomValue();
+    vec3 d=primaryDirection(vec2(xy)+vec2(u,v));
+    vec4 guide=fogGuides[pixel*2];
+    Hit hit;hit.t=guide.w;hit.normal=guide.xyz;hit.instanceIndex=int(fogGuides[pixel*2+1].x);
+    bool found=hit.instanceIndex>=0;
+    vec3 light,transmission;
+    bool reused=reconstructedFog(vec2(xy)+vec2(u,v),d,found,hit,light,transmission);
+    if(!reused) fogSegment(eye.xyz,d,found?hit.t:1e30,!found,light,transmission);
+    vec3 radiance=light+transmission*pixels[pixel].xyz;
+    dvec3 mean=sampling.y==0?dvec3(radiance):means[pixel].xyz+(dvec3(radiance)-means[pixel].xyz)/double(sampling.y+1);
+    means[pixel]=dvec4(mean,0);pixels[pixel]=vec4(vec3(mean),reused?1:0);
+}
 void main() {
-    if(buildFog!=0) { buildFogSun(); return; }
+    if(dispatchMode==1) { buildFogSun(); return; }
+    if(dispatchMode==2) { buildPrimaryFog(); return; }
     uvec2 xy = gl_GlobalInvocationID.xy;
     if (xy.x >= grid.x || xy.y >= grid.y) return;
+    if(dispatchMode==4) { resolvePrimaryFog(xy); return; }
     uint pixel = xy.y*grid.x+xy.x;
     uint64_t seed = (uint64_t(sampling.x)<<32) | uint64_t(grid.w);
     randomState = mix64(seed) ^ mix64(uint64_t(pixel)+0x632be59bd9b4e019UL) ^ mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
@@ -328,11 +402,15 @@ void main() {
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
-        if (fogMeta.x>0) {
+        if(dispatchMode==3 && depth==0) {
+            fogGuides[pixel*2]=vec4(found?hit.normal:vec3(0),found?hit.t:0);
+            fogGuides[pixel*2+1]=vec4(float(hit.instanceIndex),0,0,0);
+        }
+        if (fogMeta.x>0 && !(dispatchMode==3 && depth==0)) {
             vec3 light, transmission;
             fogSegment(o,d,found ? hit.t : 1e30,!found && depth==0,light,transmission);
             radiance+=weight*light; weight*=transmission;
-        } else if (airMapping.x>0) {
+        } else if (airMapping.x>0 && !(dispatchMode==3 && depth==0)) {
             vec3 light, transmission;
             airSegment(o.y,d,found ? hit.t : 1e30,!found && depth==0,32,light,transmission);
             radiance += weight*light;
@@ -375,7 +453,8 @@ void main() {
         o = p+n*BIAS;
         d = cosineDirection(n);
     }
+    if(dispatchMode==3) { pixels[pixel]=vec4(radiance,0); return; }
     dvec3 mean = sampling.y == 0 ? dvec3(radiance) : means[pixel].xyz+(dvec3(radiance)-means[pixel].xyz)/double(sampling.y+1);
     means[pixel] = dvec4(mean,0);
-    pixels[pixel] = vec4(vec3(mean),1);
+    pixels[pixel] = vec4(vec3(mean),0);
 }

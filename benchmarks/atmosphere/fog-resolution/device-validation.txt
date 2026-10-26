@@ -1,0 +1,21 @@
+depth=0 hour=7.0 divisor=2 rmse=3.69612395159889E-4 max=0.00963371992111206 outside=0 reused=7761
+depth=0 hour=7.0 divisor=4 rmse=2.955004090127483E-4 max=0.010434657335281372 outside=0 reused=3081
+depth=0 hour=7.08 divisor=2 rmse=3.7105168803262123E-4 max=0.009720668196678162 outside=0 reused=7481
+depth=0 hour=7.08 divisor=4 rmse=3.5886899764580704E-4 max=0.012013852596282959 outside=0 reused=2913
+depth=0 hour=12.0 divisor=2 rmse=1.1162196014168498E-4 max=0.002238154411315918 outside=0 reused=13003
+depth=0 hour=12.0 divisor=4 rmse=1.3162033246565008E-4 max=0.0019043684005737305 outside=0 reused=9341
+depth=0 hour=17.8 divisor=2 rmse=2.2969289220225443E-5 max=4.0423497557640076E-4 outside=0 reused=13003
+depth=0 hour=17.8 divisor=4 rmse=3.0169142192167067E-5 max=5.623847246170044E-4 outside=0 reused=9405
+depth=2 hour=7.0 divisor=2 rmse=3.6911645743660407E-4 max=0.010349303483963013 outside=0 reused=7819
+depth=2 hour=7.0 divisor=4 rmse=2.986376620333186E-4 max=0.0107603520154953 outside=0 reused=3079
+depth=2 hour=7.08 divisor=2 rmse=3.631456977191175E-4 max=0.008107434958219528 outside=0 reused=7543
+depth=2 hour=7.08 divisor=4 rmse=3.596163781712673E-4 max=0.011491835117340088 outside=0 reused=2914
+depth=2 hour=12.0 divisor=2 rmse=1.1000890647704652E-4 max=0.001779213547706604 outside=0 reused=13166
+depth=2 hour=12.0 divisor=4 rmse=1.3122897787303935E-4 max=0.0019562095403671265 outside=0 reused=9335
+depth=2 hour=17.8 divisor=2 rmse=2.284378388610427E-5 max=4.8177503049373627E-4 outside=0 reused=13166
+depth=2 hour=17.8 divisor=4 rmse=3.080271493337239E-5 max=6.216764450073242E-4 outside=0 reused=9399
+closed sunlight gap divisor=2 rmse=2.4448449405741564E-4 max=0.008214697241783142 outside=0 reused=11607
+closed sunlight gap divisor=4 rmse=1.589172902201272E-4 max=0.010463520884513855 outside=0 reused=6156
+camera movement divisor=2 rmse=3.8448998141045747E-4 max=0.010243415832519531 outside=0 reused=7997
+camera movement divisor=4 rmse=2.5999709870221083E-4 max=0.005895569920539856 outside=0 reused=3103
+PASS fog quality, odd dimensions, current lighting, exact fallback and session toggles

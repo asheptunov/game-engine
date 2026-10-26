@@ -44,6 +44,14 @@ public final class GpuUiCheck {
             if(!renderer.refinement()) throw new AssertionError("Refinement toggle did not enable");
             awaitSamples(renderer, frame -> frame.samples() >= 4);
             SwingUtilities.invokeAndWait(()->{
+                var fog=(javax.swing.JComboBox<?>)find(holder[0],"fogResolution");
+                if(fog==null) throw new AssertionError("Missing fog resolution control");
+                fog.setSelectedIndex(2);
+                if(renderer.settings().fogDownsample()!=4) throw new AssertionError("Quarter fog control failed");
+                fog.setSelectedIndex(1);
+                if(renderer.settings().fogDownsample()!=2) throw new AssertionError("Half fog control failed");
+                fog.setSelectedIndex(0);
+                if(renderer.settings().fogDownsample()!=1) throw new AssertionError("Full fog control failed");
                 var aperture=(javax.swing.JSpinner)find(holder[0],"Aperture radius (world units)");
                 if(aperture==null || !aperture.isEnabled()) throw new AssertionError("GPU depth of field must be enabled");
                 aperture.setValue(.12);

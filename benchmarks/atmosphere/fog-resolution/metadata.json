@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-26",
+  "parentCommit": "2c3e026a1455c5f8939ad780a7342872c94d473b",
+  "gpu": "NVIDIA GeForce RTX 3080",
+  "driverVersion": 2585198592,
+  "runtime": "OpenJDK 23.0.1, Windows",
+  "capture": "2026-10-26T14-08-21.947078900Z-e2ee8470-e5a0-4d6e-b5de-09235006b9c0",
+  "captureIncluded": false,
+  "sha256": {
+    "assets/gpu/diffuse.comp": "e504cc9071d46e3eaa736b65abee1d510cf4ecf02c5d888290443bacc1da814d",
+    "src/gpu/GpuKernel.java": "7cc6f78ef990eee5f5314e9170f798c95a879bcd8fda8fe9e14e42eae1f44db3",
+    "src/gpu/GpuRenderSession.java": "02f0b8789fa666421a3b3751f1384359c2fd363641835b53a30058d59f9da14a",
+    "src/gpu/VulkanDevice.java": "3bc8a1806987d15b272e82bcd546cfb17996ac91346cea3482dccf7c67818154",
+    "src/engine/RenderSettings.java": "c9f8b46af80ddca87c62734a421842e7fb42db66fc92a7f9c281455f8fb5a8c4",
+    "tst/game/FogCacheBenchmark.java": "a8cf5672a656447d3c10b869a89714b413ae30666bfca1c2fdef9898f08dfebd"
+  },
+  "imageSamples": 16,
+  "imageMetrics": {
+    "2": {
+      "encodedRgbRmse": 0.2230466333257656,
+      "encodedMax": 4.0,
+      "encodedP99": 1.0
+    },
+    "4": {
+      "encodedRgbRmse": 0.2536201211836681,
+      "encodedMax": 5.0,
+      "encodedP99": 1.0
+    }
+  }
+}

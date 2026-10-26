@@ -17,7 +17,13 @@ import java.util.concurrent.TimeUnit;
 
 /** Three bounded host slots and one GPU owner; no Vulkan calls occur on input/display threads. */
 public final class GpuRenderSession implements RenderSession {
-    private record Key(WorldSnapshot world, RenderView view, int depth, long seed, long restart) {}
+    private record Key(
+            WorldSnapshot world,
+            RenderView view,
+            int depth,
+            long seed,
+            long restart,
+            int fogDownsample) {}
 
     private static final class Slot {
         float[] pixels;
@@ -84,7 +90,8 @@ public final class GpuRenderSession implements RenderSession {
                         nextView,
                         nextSettings.pathDepth(),
                         nextSettings.seed(),
-                        nextSettings.restartRevision());
+                        nextSettings.restartRevision(),
+                        nextSettings.fogDownsample());
         synchronized (this) {
             checkOpen();
             if (!nextKey.equals(key)) {
@@ -96,7 +103,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextView.height() == view.height()
                                 && nextSettings.pathDepth() == settings.pathDepth()
                                 && nextSettings.seed() == settings.seed()
-                                && nextSettings.restartRevision() == settings.restartRevision();
+                                && nextSettings.restartRevision() == settings.restartRevision()
+                                && nextSettings.fogDownsample() == settings.fogDownsample();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -237,7 +245,8 @@ public final class GpuRenderSession implements RenderSession {
                                     "GPU %s | fixed | execute %.2f ms | transfer %.2f ms | host"
                                         + " %.2f ms | prepare %.2f ms | peak %.1f MiB | primitive"
                                         + " counters n/a | init %.2f ms | max prepare %.2f ms | fog"
-                                        + " build %.2f ms | fog builds %d",
+                                        + " build %.2f ms | fog builds %d | fog grid 1/%d requested"
+                                        + " 1/%d | fog primary %.2f ms | fog reused %d",
                                     kernel.gpu.name,
                                     kernel.executeNanos / 1e6,
                                     kernel.transferNanos / 1e6,
@@ -247,7 +256,11 @@ public final class GpuRenderSession implements RenderSession {
                                     kernel.initializationNanos / 1e6,
                                     kernel.maximumPrepareNanos / 1e6,
                                     kernel.fogBuildNanos / 1e6,
-                                    kernel.fogBuilds);
+                                    kernel.fogBuilds,
+                                    kernel.fogDownsample,
+                                    capturedSettings.fogDownsample(),
+                                    kernel.fogPrimaryNanos / 1e6,
+                                    kernel.fogReusedPixels);
                 } else {
                     cancelled++;
                     accumulatedKey = null;

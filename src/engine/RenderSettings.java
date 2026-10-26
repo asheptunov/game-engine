@@ -19,8 +19,12 @@ public record RenderSettings(
         int minimumHeight,
         boolean temporalBudget,
         int motionSamples,
-        double motionScale) {
+        double motionScale,
+        int fogDownsample) {
     public RenderSettings {
+        if (fogDownsample != 1 && fogDownsample != 2 && fogDownsample != 4) {
+            throw new IllegalArgumentException("Fog downsample must be 1, 2 or 4");
+        }
         if (pathDepth < 0 || pathDepth > 32)
             throw new IllegalArgumentException("Depth must be 0..32");
         if (restartRevision < 0
@@ -73,6 +77,7 @@ public record RenderSettings(
                 0,
                 false,
                 1,
+                1,
                 1);
     }
 
@@ -95,7 +100,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withSeed(long value) {
@@ -117,7 +123,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withRestartRevision(long value) {
@@ -139,7 +146,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withSamplesPerBatch(int value) {
@@ -161,7 +169,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withSampleTarget(long value) {
@@ -183,7 +192,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withPaused(boolean value) {
@@ -205,7 +215,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withWorkers(int value) {
@@ -227,7 +238,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withTileSize(int value) {
@@ -249,7 +261,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withAcceleration(boolean value) {
@@ -271,7 +284,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withTemporal(boolean value, long revision) {
@@ -293,7 +307,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withInteractive(
@@ -316,7 +331,8 @@ public record RenderSettings(
                 minimumHeight,
                 temporalBudget,
                 motionSamples,
-                motionScale);
+                motionScale,
+                fogDownsample);
     }
 
     public RenderSettings withTemporalBudget(boolean value, int samples, double scale) {
@@ -338,6 +354,31 @@ public record RenderSettings(
                 minimumHeight,
                 value,
                 samples,
-                scale);
+                scale,
+                fogDownsample);
+    }
+
+    /** GPU primary-ray fog quality; CPU and unsupported views retain direct integration. */
+    public RenderSettings withFogDownsample(int value) {
+        return new RenderSettings(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                value);
     }
 }

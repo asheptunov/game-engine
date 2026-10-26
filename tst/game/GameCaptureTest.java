@@ -37,6 +37,42 @@ public final class GameCaptureTest {
     }
 
     @Test
+    void fogQualitySettingsSurviveEditsAndOlderCapturesUseFull() throws Exception {
+        var settings =
+                engine.RenderSettings.defaults()
+                        .withFogDownsample(4)
+                        .withPathDepth(2)
+                        .withSeed(3)
+                        .withRestartRevision(4)
+                        .withSampleTarget(5)
+                        .withSamplesPerBatch(2)
+                        .withPaused(false)
+                        .withAcceleration(true)
+                        .withWorkers(1)
+                        .withTileSize(16)
+                        .withTemporal(false, 2)
+                        .withInteractive(false, 20, 64, 64)
+                        .withTemporalBudget(false, 2, .5);
+        assertEquals(4, settings.fogDownsample());
+        Path file = root().resolve("settings.properties");
+        CaptureCodec.save(file, settings);
+        assertEquals(settings, CaptureCodec.load(file, engine.RenderSettings.class));
+        var old = Files.readString(file).replace("data.fogDownsample=4", "");
+        Files.writeString(file, old);
+        assertEquals(
+                settings.withFogDownsample(1),
+                CaptureCodec.load(file, engine.RenderSettings.class));
+        Files.writeString(file, old + "\ndata.fogDownsample=3\n");
+        boolean rejected = false;
+        try {
+            CaptureCodec.load(file, engine.RenderSettings.class);
+        } catch (java.io.IOException expected) {
+            rejected = true;
+        }
+        assertTrue(rejected);
+    }
+
+    @Test
     void selfContainedSnapshotKeepsDisplayedAndCurrentStatesSeparate() throws Exception {
         var navigation = new GameNavigation();
         navigation.fixedResolution(96, 64);
@@ -50,6 +86,7 @@ public final class GameCaptureTest {
             navigation.pose(new Vec3(1, 3, -5), .2, -.1);
             renderer.atmospherePreset(true);
             renderer.fogPreset();
+            renderer.configure(settings -> settings.withFogDownsample(4));
             renderer.exposure(1.5f);
             var expectedNavigation = navigation.snapshot();
             var expectedControls = renderer.captureControls();
