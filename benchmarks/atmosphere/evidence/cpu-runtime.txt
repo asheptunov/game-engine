@@ -1,0 +1,5 @@
+Windows 11
+23.0.1+11-39
+cpus=20
+maxHeap=8547991552
+RenderAvailability[state=AVAILABLE, detail=Java CPU renderer]

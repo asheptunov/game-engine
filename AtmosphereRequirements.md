@@ -1,6 +1,6 @@
 # Atmosphere, haze and local volumetric scattering requirements
 
-Status: Ready for the first milestone once renderer parity is complete; implementation has not started.
+Status: A1 implemented with automatic verification; native human acceptance is pending. A2 is not implemented.
 Updated: 2026-10-25
 Audience: Sample-game players and developers building and evaluating outdoor lighting and fog.
 
@@ -163,7 +163,7 @@ resume and shutdown behavior.
 
 | ID | User can now... | Prerequisites | Status / evidence |
 | --- | --- | --- | --- |
-| A1 | Explore a world lit by a scattering atmosphere through golden hour, twilight and altitude-dependent haze | Completed parity specification | Proposed; not implemented or human-accepted |
+| A1 | Explore a world lit by a scattering atmosphere through golden hour, twilight and altitude-dependent haze | Completed parity specification | Implemented; numerical, surface, lifecycle and CPU/GPU checks plus measured scenes in [A1 evidence](benchmarks/atmosphere/README.md). Native human acceptance pending |
 | A2 | Explore editable local mist with spatial density variation and sun shafts through scenery | A1 | Proposed; not implemented or human-accepted |
 
 ### A1 — Explore physically motivated golden hour and atmospheric haze
@@ -238,7 +238,7 @@ an implementation task, not permission to omit the required physical limiting-ca
 Keep the milestone table authoritative. Save reference settings, images, metrics, exact commands
 and test coverage under `benchmarks/atmosphere/` when implemented. The existing repository gate
 and relevant rendering/game checks remain required. Distinguish automatically verified behavior
-from human acceptance; no implementation or human acceptance is claimed by this specification.
+from human acceptance. A1 implementation and automated evidence are recorded above; human acceptance is not claimed.
 
 No blocking product questions remain. Numerical integration, lookup-table layout, cache sizes and
 supported UI ranges are bounded engineering choices to validate against these outcomes. If the

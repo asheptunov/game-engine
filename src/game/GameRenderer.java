@@ -64,6 +64,8 @@ public final class GameRenderer implements AutoCloseable {
     private GameLighting lighting = GameLighting.defaults();
     private final DayNightCycle cycle = new DayNightCycle();
     private long lastLightingUpdate;
+    private boolean atmosphereEnabled;
+    private engine.Atmosphere.Parameters atmosphere = engine.Atmosphere.Parameters.clearAir();
     private RenderSettings settings =
             RenderSettings.defaults()
                     .withPathDepth(2)
@@ -446,6 +448,18 @@ public final class GameRenderer implements AutoCloseable {
         return cycle.hour();
     }
 
+    /** Presets select the same clock time regardless of the sky rendering mode. */
+    public synchronized void lightingPreset(GameLighting.Preset preset) {
+        java.util.Objects.requireNonNull(preset);
+        cycle.running(false);
+        timeOfDay(
+                switch (preset) {
+                    case MORNING -> 7;
+                    case NOON -> 12;
+                    case EVENING -> 17;
+                });
+    }
+
     public synchronized double dayDuration() {
         return cycle.duration();
     }
@@ -470,17 +484,62 @@ public final class GameRenderer implements AutoCloseable {
         cycle.duration(value);
     }
 
-    private void applyLighting(GameLighting value) {
-        if (!lighting.equals(value)) {
-            lighting = value;
-            world =
-                    new engine.WorldSnapshot(
-                            world.revision() + 1,
-                            world.instances(),
-                            world.legacyObjects(),
-                            java.util.List.of(value.sun()),
-                            value.sky());
+    public synchronized boolean atmosphereEnabled() {
+        return atmosphereEnabled;
+    }
+
+    public synchronized engine.Atmosphere.Parameters atmosphere() {
+        return atmosphere;
+    }
+
+    public synchronized void atmosphereEnabled(boolean enabled) {
+        if (atmosphereEnabled == enabled) {
+            return;
         }
+        changeAtmosphere(enabled, atmosphere);
+    }
+
+    public synchronized void atmosphere(engine.Atmosphere.Parameters parameters) {
+        java.util.Objects.requireNonNull(parameters);
+        if (atmosphere.equals(parameters)) {
+            return;
+        }
+        changeAtmosphere(atmosphereEnabled, parameters);
+    }
+
+    public synchronized void atmospherePreset(boolean hazy) {
+        var parameters =
+                hazy
+                        ? engine.Atmosphere.Parameters.hazyMorning()
+                        : engine.Atmosphere.Parameters.clearAir();
+        // Presets alter only optical inputs, retaining time, optics, exposure and scene edits.
+        changeAtmosphere(true, parameters);
+    }
+
+    private void changeAtmosphere(boolean enabled, engine.Atmosphere.Parameters parameters) {
+        var replacement = lightingWorld(lighting, enabled, parameters);
+        // Validate the entire combination before committing either controls or world state.
+        atmosphere = parameters;
+        atmosphereEnabled = enabled;
+        world = replacement;
+    }
+
+    private void applyLighting(GameLighting value) {
+        var replacement = lightingWorld(value, atmosphereEnabled, atmosphere);
+        lighting = value;
+        world = replacement;
+    }
+
+    private engine.WorldSnapshot lightingWorld(
+            GameLighting value, boolean enabled, engine.Atmosphere.Parameters parameters) {
+        var effective = enabled ? cycle.atmosphericLighting(parameters) : value;
+        var sky = effective.sky();
+        var lights = java.util.List.<engine.lights.Light>of(effective.sun());
+        if (world.sky().equals(sky) && world.lights().equals(lights)) {
+            return world;
+        }
+        return new engine.WorldSnapshot(
+                world.revision() + 1, world.instances(), world.legacyObjects(), lights, sky);
     }
 
     public String backendStatus() {

@@ -44,6 +44,15 @@ public record WorldSnapshot(
     }
 
     static void validateEnvironment(List<SceneInstance> instances, List<Light> lights, Sky sky) {
+        if (sky.atmosphere() != null
+                && (lights.stream().anyMatch(PointLight.class::isInstance)
+                        || instances.stream()
+                                .anyMatch(instance -> instance.material().emissive()))) {
+            throw new RenderCapabilities.UnsupportedInput(
+                    "world.sky.atmosphere with local emitters",
+                    "Atmosphere currently supports distant directional lighting and nonemissive"
+                            + " diffuse scenery");
+        }
         if ((!sky.equals(Sky.BLACK) || lights.stream().anyMatch(DirectionalLight.class::isInstance))
                 && instances.stream()
                         .anyMatch(

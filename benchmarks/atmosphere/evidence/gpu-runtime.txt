@@ -1,0 +1,5 @@
+Windows 11
+23.0.1+11-39
+cpus=20
+maxHeap=8547991552
+RenderAvailability[state=AVAILABLE, detail=NVIDIA GeForce RTX 3080; vendor=4318; driverVersion=2585198592; apiVersion=4211039]

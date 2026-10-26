@@ -153,10 +153,11 @@ public final class GamePanel extends JPanel implements AutoCloseable {
             return false;
         }
         var current = renderer.lighting();
-        renderer.lighting(
-                button == 3
-                        ? current.withSky(!current.skyEnabled())
-                        : current.withPreset(GameLighting.Preset.values()[button]));
+        if (button == 3) {
+            renderer.lighting(current.withSky(!current.skyEnabled()));
+        } else {
+            renderer.lightingPreset(GameLighting.Preset.values()[button]);
+        }
         repaint();
         return true;
     }

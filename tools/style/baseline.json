@@ -5962,17 +5962,6 @@
     "line": 1594
   },
   {
-    "id": "24b20893e0bd65f3750a1ac436f1e9d3b9059774601f10a8bde27ebd002629e4",
-    "tool": "checkstyle",
-    "path": "src/engine/DirectRgbTracer.java",
-    "rule": "MultipleVariableDeclarationsCheck",
-    "anchor": "float red = 1, green = 1, blue = 1;",
-    "detail": "Each variable declaration must be in its own statement.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 1004
-  },
-  {
     "id": "a35553d324a050176c15e1335549ca4f08a7166d6ce5d24a1c0d54e4a718687d",
     "tool": "checkstyle",
     "path": "src/engine/DirectRgbTracer.java",
@@ -6664,17 +6653,6 @@
     "ceiling": 1,
     "count": 2,
     "line": 1228
-  },
-  {
-    "id": "e14d8e4767aeb947f37c20ebd8cc409b390e3d7170827db4f1d3ba7d6c1da1a3",
-    "tool": "checkstyle",
-    "path": "src/engine/DirectRgbTracer.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (depth == snapshot.depth() || red + green + blue == 0) break;",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 1043
   },
   {
     "id": "d40e91068eeec1106ad6c3ec8be4793a7bf8fd03430dc5cd5946173a0f234724",

@@ -20,6 +20,7 @@ public enum RenderCapabilities {
         DIRECTIONAL_LIGHT,
         SKY,
         SKY_DISC,
+        ATMOSPHERE,
         DEPTH_OF_FIELD,
         ADAPTIVE_RESOLUTION,
         TEMPORAL_RECONSTRUCTION,
@@ -103,6 +104,7 @@ public enum RenderCapabilities {
                                     DIRECTIONAL_LIGHT,
                                     SKY,
                                     SKY_DISC,
+                                    ATMOSPHERE,
                                     DEPTH_OF_FIELD ->
                             null;
                     case ADAPTIVE_RESOLUTION -> "GPU requires fixed resolution";

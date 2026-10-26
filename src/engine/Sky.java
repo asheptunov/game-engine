@@ -3,7 +3,7 @@ package engine;
 import math.Vec3;
 
 /** Immutable linear radiance. Interpolate from nadir (-Y) to zenith (+Y); horizon is halfway. */
-public record Sky(Vec3 nadir, Vec3 zenith, Disc disc) {
+public record Sky(Vec3 nadir, Vec3 zenith, Disc disc, Atmosphere atmosphere) {
     public static final Sky BLACK = new Sky(Vec3.ZERO, Vec3.ZERO);
 
     /**
@@ -24,6 +24,14 @@ public record Sky(Vec3 nadir, Vec3 zenith, Disc disc) {
         public float cosineRadius() {
             return (float) Math.cos(Math.toRadians(radiusDegrees));
         }
+    }
+
+    public Sky(Vec3 nadir, Vec3 zenith, Disc disc) {
+        this(nadir, zenith, disc, null);
+    }
+
+    public Sky withAtmosphere(Atmosphere value) {
+        return new Sky(nadir, zenith, disc, value);
     }
 
     public Sky(Vec3 nadir, Vec3 zenith) {

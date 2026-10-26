@@ -12,6 +12,10 @@ layout(std430,set=0,binding=4) readonly buffer Parameters {
     uvec4 grid; // width, height, depth, seed low
     uvec4 sampling; // seed high, sample index, reserved, reserved
     vec4 discDirection, discRadiance; // direction.w = cosine of angular radius; 2 disables disc
+    vec4 airMapping; // metres/unit, ground Y, radius km, extent km; x=0 disables
+    vec4 airHeights; // molecular/aerosol scale heights km, anisotropy
+    vec4 airMolecular, airAerosol, airAbsorption, solarDirection, solarIrradiance;
+    vec2 airColumns[18432];
 };
 layout(std430,set=0,binding=5) buffer Accumulation { dvec4 means[]; };
 layout(std430,set=0,binding=6) writeonly buffer Output { vec4 pixels[]; };
@@ -89,6 +93,81 @@ vec3 cosineDirection(vec3 n) {
     vec3 tangent = abs(n.z) < 0.999 ? normalize(vec3(-n.y,n.x,0)) : normalize(vec3(0,-n.z,n.y));
     return tangent*(r*cos(phi)) + cross(n,tangent)*(r*sin(phi)) + n*sqrt(1-u);
 }
+
+float airHeight(float h, float mu, float t) {
+    float delta = h*(2*airMapping.z+h)+t*(2*(airMapping.z+h)*mu+t);
+    return delta/(sqrt(airMapping.z*airMapping.z+delta)+airMapping.z);
+}
+float airBoundary(float h, float mu, bool ground) {
+    float r = airMapping.z+h;
+    float c = ground ? h*(2*airMapping.z+h) : (h-airMapping.w)*(2*airMapping.z+h+airMapping.w);
+    float discriminant = r*r*mu*mu-c;
+    if (ground) return mu<0 && discriminant>=0 ? max(0,-r*mu-sqrt(discriminant)) : 1e30;
+    return max(0,-r*mu+sqrt(max(0,discriminant)));
+}
+float airAltitude(float y) { return clamp((y-airMapping.y)*airMapping.x*.001,0,airMapping.w); }
+vec3 airExtinction(vec2 density) {
+    return (airMolecular.xyz+airAbsorption.xyz)*density.x+airAerosol.xyz*density.y;
+}
+bool airOptical(float h, float mu, out vec2 result) {
+    float horizon=-sqrt(h*(2*airMapping.z+h))/(airMapping.z+h);
+    if (mu<horizon || (h==0 && mu<0)) return false;
+    float y=sqrt(clamp(h/airMapping.w,0,1))*95;
+    float x=sqrt(clamp((mu-horizon)/(1-horizon),0,1))*191;
+    int ix=min(int(x),190), iy=min(int(y),94);
+    float u=x-ix, v=y-iy;
+    int a=iy*192+ix;
+    result=mix(mix(airColumns[a],airColumns[a+1],u),mix(airColumns[a+192],airColumns[a+193],u),v);
+    return true;
+}
+vec3 solarDiscTransmission(float y) {
+    float h=airAltitude(y);
+    float horizon=-sqrt(h*(2*airMapping.z+h))/(airMapping.z+h);
+    vec2 optical;
+    airOptical(h,max(solarDirection.y,horizon+1e-7),optical);
+    return solarIrradiance.xyz*exp(-airExtinction(optical));
+}
+vec3 airSun(float y) {
+    float h=airAltitude(y);
+    float horizon=-sqrt(h*(2*airMapping.z+h))/(airMapping.z+h);
+    float x=clamp((asin(solarDirection.y)-asin(horizon))/radians(.266),-1,1);
+    float visible=(acos(-x)+x*sqrt(1-x*x))/PI;
+    return solarDiscTransmission(y)*visible;
+}
+void airSegment(float y, vec3 d, float distance, bool disc, out vec3 light, out vec3 transmission) {
+    float h=airAltitude(y), ground=airBoundary(h,d.y,true);
+    float length=min(min(airBoundary(h,d.y,false),ground),distance*airMapping.x*.001);
+    float cosine=dot(d,solarDirection.xyz), g=airHeights.z;
+    float rayleigh=3*(1+cosine*cosine)/(16*PI);
+    float aerosolPhase=(1-g*g)/(4*PI*pow(1+g*g-2*g*cosine,1.5));
+    light=vec3(0); transmission=vec3(1);
+    for (int i=0;i<32;i++) {
+        float a=length*float(i*i)/1024, b=length*float((i+1)*(i+1))/1024;
+        float t=(a+b)*.5, step=b-a;
+        float localH=max(0,airHeight(h,d.y,t));
+        float solarMu=((airMapping.z+h)*solarDirection.y+t*cosine)/(airMapping.z+localH);
+        vec2 density=exp(-localH/airHeights.xy), optical, secondary;
+        bool lit=airOptical(localH,solarMu,optical);
+        bool upperLit=airOptical(min(airMapping.w,localH+airHeights.x),solarMu,secondary);
+        vec3 molecular=airMolecular.xyz*density.x, aerosol=airAerosol.xyz*density.y;
+        vec3 extinction=airExtinction(density);
+        vec3 source=(lit ? exp(-airExtinction(optical)) : vec3(0))*(molecular*rayleigh+aerosol*aerosolPhase);
+        if (upperLit) {
+            vec3 tau=airExtinction(density*airHeights.xy);
+            vec3 albedo=(molecular+aerosol)/max(extinction,vec3(1e-20));
+            source += (molecular+aerosol)*exp(-airExtinction(secondary))*(1-exp(-tau))*exp(-tau*.5)
+                *albedo/(4*PI*(1-.5*albedo));
+        }
+        vec3 trans=exp(-extinction*step);
+        // Stable small optical-depth integral, avoiding cancellation in near-surface segments.
+        vec3 tau=extinction*step;
+        vec3 integral=mix((1-trans)/max(extinction,vec3(1e-20)),step*(1-tau*.5+tau*tau/6),lessThan(tau,vec3(.001)));
+        light += transmission*solarIrradiance.xyz*source*integral;
+        transmission *= trans;
+    }
+    if (disc && ground==1e30 && cosine>=cos(radians(.266)))
+        light += solarDiscTransmission(y)/(PI*pow(sin(radians(.266)),2));
+}
 void main() {
     uvec2 xy = gl_GlobalInvocationID.xy;
     if (xy.x >= grid.x || xy.y >= grid.y) return;
@@ -118,7 +197,14 @@ void main() {
     vec3 radiance = vec3(0), weight = vec3(1);
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
-        if (!nearest(o,d,-1,-1,false,hit)) {
+        bool found=nearest(o,d,-1,-1,false,hit);
+        if (airMapping.x>0) {
+            vec3 light, transmission;
+            airSegment(o.y,d,found ? hit.t : 1e30,!found && depth==0,light,transmission);
+            radiance += weight*light;
+            weight *= transmission;
+        }
+        if (!found) {
             vec3 environment = mix(nadir.xyz,zenith.xyz,clamp((d.y+1)*0.5,0,1));
             // Camera presentation only: direct lighting already accounts for this source.
             if (depth == 0 && dot(d,discDirection.xyz) >= discDirection.w) environment = discRadiance.xyz;
@@ -131,8 +217,23 @@ void main() {
         float cosine = dot(n,sunDirection.xyz);
         if (cosine>0 && any(greaterThan(sunRadiance.xyz,vec3(0)))) {
             Hit obstruction;
-            if (!nearest(p+n*BIAS,sunDirection.xyz,hit.instanceIndex,hit.face,true,obstruction))
-                radiance += weight*color*sunRadiance.xyz*(cosine/PI);
+            if (!nearest(p+n*BIAS,sunDirection.xyz,hit.instanceIndex,hit.face,true,obstruction)) {
+                vec3 direct=sunRadiance.xyz;
+                if (airMapping.x>0) {
+                    vec2 optical;
+                    direct *= airOptical(airAltitude(p.y),sunDirection.y,optical) ? exp(-airExtinction(optical)) : vec3(0);
+                }
+                radiance += weight*color*direct*(cosine/PI);
+            }
+        }
+        if (airMapping.x>0) {
+            float solarCosine=dot(n,solarDirection.xyz);
+            vec3 sunlight=airSun(p.y);
+            if (solarCosine>0 && any(greaterThan(sunlight,vec3(0)))) {
+                Hit obstruction;
+                if (!nearest(p+n*BIAS,solarDirection.xyz,hit.instanceIndex,hit.face,true,obstruction))
+                    radiance += weight*color*sunlight*(solarCosine/PI);
+            }
         }
         if (depth == grid.z) break;
         weight *= color;

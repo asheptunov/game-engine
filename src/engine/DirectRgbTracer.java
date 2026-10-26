@@ -357,7 +357,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                                 Math.min(
                                         state.samplesPerFrame(),
                                         Math.max(0, state.effectiveTarget() - samples));
-        if (!state.temporalEffective() || volumeMode) {
+        if (!state.temporalEffective() || volumeMode || state.sky().atmosphere() != null) {
             guide = null;
             guideKey = null;
             for (var worker : workers) worker.clearCorners();
@@ -365,6 +365,7 @@ public final class DirectRgbTracer implements AutoCloseable {
         boolean needsGuide =
                 state.temporalEffective()
                         && !volumeMode
+                        && state.sky().atmosphere() == null
                         && !key.equals(guideKey)
                         && (batch > 0 || samples > 0);
         if (needsGuide && (guide == null || guide.width != width || guide.height != height))
@@ -682,6 +683,8 @@ public final class DirectRgbTracer implements AutoCloseable {
     }
 
     private final class Worker implements java.util.concurrent.Callable<Void> {
+        private final float[] pathWeight = new float[3];
+        private final AtmosphereTransport.Scratch airScratch = new AtmosphereTransport.Scratch();
         private Snapshot snapshot;
         private PreparedObject[] objects, media, initialMedia;
         private final ObjectTraversal objectTraversal = new ObjectTraversal();
@@ -983,6 +986,35 @@ public final class DirectRgbTracer implements AutoCloseable {
             guide.nz[i] = front ? nz : -nz;
         }
 
+        private boolean nearestWithAtmosphere(
+                float ox,
+                float oy,
+                float oz,
+                float dx,
+                float dy,
+                float dz,
+                int depth,
+                float[] rgb) {
+            boolean found = nearestHit(ox, oy, oz, dx, dy, dz, hit);
+            var air = snapshot.sky().atmosphere();
+            if (air != null) {
+                AtmosphereTransport.segment(
+                        air,
+                        oy,
+                        dx,
+                        dy,
+                        dz,
+                        found ? hit.distance : Float.POSITIVE_INFINITY,
+                        !found && depth == 0,
+                        airScratch);
+                addLighting(rgb, airScratch.radiance, pathWeight[0], pathWeight[1], pathWeight[2]);
+                for (int c = 0; c < 3; c++) {
+                    pathWeight[c] *= airScratch.transmission[c];
+                }
+            }
+            return found;
+        }
+
         private void path(
                 float ox,
                 float oy,
@@ -1036,16 +1068,16 @@ public final class DirectRgbTracer implements AutoCloseable {
                 int mediumCount,
                 PreparedObject[] media) {
             rgb[0] = rgb[1] = rgb[2] = 0;
-            float red = 1, green = 1, blue = 1;
+            java.util.Arrays.fill(pathWeight, 1);
             float previousPdf = 0, previousX = 0, previousY = 0, previousZ = 0;
             boolean previousDelta = true;
             boolean volumeNee = false;
             System.arraycopy(initialMedia, 0, media, 0, mediumCount);
             for (int depth = 0; depth <= snapshot.depth(); depth++) {
                 continuation = depth != 0;
-                if (!nearestHit(ox, oy, oz, dx, dy, dz, hit)) {
+                if (!nearestWithAtmosphere(ox, oy, oz, dx, dy, dz, depth, rgb)) {
                     snapshot.sky().sample(dx, dy, dz, depth == 0, lighting);
-                    addLighting(rgb, lighting, red, green, blue);
+                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
                     break;
                 }
                 if (depth == 0) {
@@ -1066,16 +1098,19 @@ public final class DirectRgbTracer implements AutoCloseable {
                 }
                 if (medium != null) {
                     absorptionSegments++;
-                    red *= (float) Math.exp(-medium.absorption().x() * travel);
-                    green *= (float) Math.exp(-medium.absorption().y() * travel);
-                    blue *= (float) Math.exp(-medium.absorption().z() * travel);
+                    pathWeight[0] *= (float) Math.exp(-medium.absorption().x() * travel);
+                    pathWeight[1] *= (float) Math.exp(-medium.absorption().y() * travel);
+                    pathWeight[2] *= (float) Math.exp(-medium.absorption().z() * travel);
                 }
                 if (volumeEvent) {
                     volumeEvents++;
                     float x = ox + dx * travel, y = oy + dy * travel, z = oz + dz * travel;
                     volumeLight(x, y, z, dx, dy, dz, medium, lights, lighting, sampler);
-                    addLighting(rgb, lighting, red, green, blue);
-                    if (depth == snapshot.depth() || red + green + blue == 0) break;
+                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
+                    if (depth == snapshot.depth()
+                            || pathWeight[0] + pathWeight[1] + pathWeight[2] == 0) {
+                        break;
+                    }
                     Volume.sample(
                             dx,
                             dy,
@@ -1117,9 +1152,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                                                         hit.y, hit.z));
                                 break;
                             }
-                    rgb[0] += red * material.emission().x() * weight;
-                    rgb[1] += green * material.emission().y() * weight;
-                    rgb[2] += blue * material.emission().z() * weight;
+                    rgb[0] += pathWeight[0] * material.emission().x() * weight;
+                    rgb[1] += pathWeight[1] * material.emission().y() * weight;
+                    rgb[2] += pathWeight[2] * material.emission().z() * weight;
                 }
                 float incident = medium == null ? 1 : medium.ior();
                 float exit =
@@ -1131,7 +1166,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                 if (material.kind() == Material.Kind.DIFFUSE) {
                     light(hit, lights, lighting, medium);
                     sunlight(hit, lighting);
-                    addLighting(rgb, lighting, red, green, blue);
+                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
                 } else if (!material.delta(incident, exit)) {
                     roughPointLight(
                             hit,
@@ -1146,7 +1181,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                             incident,
                             exit,
                             evaluation);
-                    addLighting(rgb, lighting, red, green, blue);
+                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
                 }
                 if (!material.delta(incident, exit) && emitters.length > 0) {
                     areaLight(
@@ -1163,10 +1198,10 @@ public final class DirectRgbTracer implements AutoCloseable {
                             sampler,
                             evaluation,
                             depth < snapshot.depth());
-                    addLighting(rgb, lighting, red, green, blue);
+                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
                 }
                 // Evaluate direct lighting at the final vertex before stopping continuation.
-                if (!canContinue(depth, material, red, green, blue)) {
+                if (!canContinue(depth, material, pathWeight[0], pathWeight[1], pathWeight[2])) {
                     break;
                 }
                 float sign = hit.frontFace ? 1 : -1;
@@ -1222,9 +1257,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                 previousX = hit.x;
                 previousY = hit.y;
                 previousZ = hit.z;
-                red *= scattering.red;
-                green *= scattering.green;
-                blue *= scattering.blue;
+                pathWeight[0] *= scattering.red;
+                pathWeight[1] *= scattering.green;
+                pathWeight[2] *= scattering.blue;
                 dx = scattering.dx;
                 dy = scattering.dy;
                 dz = scattering.dz;
@@ -1592,12 +1627,59 @@ public final class DirectRgbTracer implements AutoCloseable {
         }
 
         /** Strength is irradiance on a perpendicular surface, with no inverse-square falloff. */
+        private void atmosphericSunlight(Hit hit, float[] rgb, float nx, float ny, float nz) {
+            var reflectance = hit.primitive.material.color();
+            var air = snapshot.sky().atmosphere();
+            if (air != null) {
+                AtmosphereTransport.sunlight(air, hit.y, airScratch);
+                var direction = air.solarDirection();
+                float cosine = nx * direction.x() + ny * direction.y() + nz * direction.z();
+                if (cosine > 0
+                        && (airScratch.sunlight[0]
+                                        + airScratch.sunlight[1]
+                                        + airScratch.sunlight[2])
+                                > 0) {
+                    shadowRays++;
+                    if (!occluded(
+                            hit.x + nx * BIAS,
+                            hit.y + ny * BIAS,
+                            hit.z + nz * BIAS,
+                            direction.x(),
+                            direction.y(),
+                            direction.z(),
+                            Float.POSITIVE_INFINITY,
+                            hit.primitive,
+                            null)) {
+                        float weight = cosine / (float) Math.PI;
+                        rgb[0] +=
+                                weight
+                                        * reflectance.x()
+                                        * textureReflectance[0]
+                                        * airScratch.sunlight[0];
+                        rgb[1] +=
+                                weight
+                                        * reflectance.y()
+                                        * textureReflectance[1]
+                                        * airScratch.sunlight[1];
+                        rgb[2] +=
+                                weight
+                                        * reflectance.z()
+                                        * textureReflectance[2]
+                                        * airScratch.sunlight[2];
+                    } else {
+                        shadowsOccluded++;
+                    }
+                }
+            }
+        }
+
         private void sunlight(Hit hit, float[] rgb) {
             float sign = hit.frontFace ? 1 : -1;
             float nx = hit.nx * sign;
             float ny = hit.ny * sign;
             float nz = hit.nz * sign;
             var reflectance = hit.primitive.material.color();
+            atmosphericSunlight(hit, rgb, nx, ny, nz);
             for (var sun : snapshot.sunlight()) {
                 var direction = sun.direction();
                 float cosine = nx * direction.x() + ny * direction.y() + nz * direction.z();
@@ -1619,9 +1701,29 @@ public final class DirectRgbTracer implements AutoCloseable {
                     continue;
                 }
                 float weight = cosine * sun.strength() / (float) Math.PI;
-                rgb[0] += weight * reflectance.x() * textureReflectance[0] * sun.color().x();
-                rgb[1] += weight * reflectance.y() * textureReflectance[1] * sun.color().y();
-                rgb[2] += weight * reflectance.z() * textureReflectance[2] * sun.color().z();
+                var air = snapshot.sky().atmosphere();
+                java.util.Arrays.fill(airScratch.sunlight, 1);
+                if (air != null) {
+                    AtmosphereTransport.sourceTransmission(air, hit.y, direction.y(), airScratch);
+                }
+                rgb[0] +=
+                        weight
+                                * reflectance.x()
+                                * textureReflectance[0]
+                                * sun.color().x()
+                                * airScratch.sunlight[0];
+                rgb[1] +=
+                        weight
+                                * reflectance.y()
+                                * textureReflectance[1]
+                                * sun.color().y()
+                                * airScratch.sunlight[1];
+                rgb[2] +=
+                        weight
+                                * reflectance.z()
+                                * textureReflectance[2]
+                                * sun.color().z()
+                                * airScratch.sunlight[2];
             }
         }
 

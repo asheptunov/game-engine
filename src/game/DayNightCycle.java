@@ -46,6 +46,11 @@ public final class DayNightCycle {
         }
     }
 
+    public Vec3 solarDirection() {
+        double angle = (hour - 6) * Math.PI / 12;
+        return new Vec3((float) Math.cos(angle), (float) Math.sin(angle), .3f);
+    }
+
     public GameLighting lighting() {
         double angle = (hour - 6) * Math.PI / 12;
         float altitude = (float) Math.sin(angle);
@@ -73,6 +78,26 @@ public final class DayNightCycle {
                 color,
                 altitude >= 0 ? sun * 3 : Math.abs(altitude) * .08f,
                 sky);
+    }
+
+    /** The signed solar direction survives night; the explicit directional light is moonlight. */
+    public GameLighting atmosphericLighting(engine.Atmosphere.Parameters parameters) {
+        var solar = solarDirection();
+        var air = new engine.Atmosphere(parameters, solar, new Vec3(3, 3, 3));
+        float night = Math.clamp(-air.solarDirection().y() / .2f, 0, 1);
+        var moon = air.solarDirection().scale(-1);
+        var moonColor = new Vec3(.45f, .6f, 1);
+        float moonStrength = Math.max(0, moon.y()) * .08f;
+        var sky =
+                new Sky(
+                        new Vec3(.006f, .009f, .02f).scale(night),
+                        new Vec3(.002f, .004f, .012f).scale(night),
+                        moon.y() > 0
+                                ? new Sky.Disc(
+                                        moon, moonColor.scale(Math.max(1, moonStrength * 4)), .75f)
+                                : null,
+                        air);
+        return new GameLighting(GameLighting.Preset.NOON, true, moon, moonColor, moonStrength, sky);
     }
 
     private static Vec3 blend(Vec3 from, Vec3 to, float amount) {

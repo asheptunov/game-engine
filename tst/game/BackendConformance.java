@@ -32,6 +32,7 @@ public final class BackendConformance {
         lifecycle(backend);
         controls(backend);
         ParityImages.run(backend, output);
+        AtmosphereScenes.conformance(backend, output);
         Files.writeString(
                 output.resolve(backend + "-conformance.txt"),
                 "PASS: capabilities, atomic validation, completion, immutable leases, invalidation,"

@@ -98,20 +98,28 @@ public final class GameLightingTest {
                             panel[0] = new GamePanel(navigation, renderer);
                             panel[0].setSize(960, 600);
                             click(panel[0], 30);
-                            assertEquals(GameLighting.Preset.MORNING, renderer.lighting().preset());
+                            assertEquals(7.0, renderer.timeOfDay());
                             assertFalse(navigation.captured());
                             click(panel[0], 240);
-                            assertEquals(GameLighting.Preset.EVENING, renderer.lighting().preset());
+                            assertEquals(17.0, renderer.timeOfDay());
                             click(panel[0], 345);
                             assertFalse(renderer.lighting().skyEnabled());
+                            var lighting = renderer.lighting();
                             navigation.reset();
-                            assertEquals(
-                                    new GameLighting(GameLighting.Preset.EVENING, false),
-                                    renderer.lighting());
+                            assertEquals(lighting, renderer.lighting());
                             click(panel[0], 140);
-                            assertEquals(GameLighting.Preset.NOON, renderer.lighting().preset());
-                            click(panel[0], 345);
+                            assertEquals(12.0, renderer.timeOfDay());
                             assertTrue(renderer.lighting().skyEnabled());
+                            renderer.atmosphereEnabled(true);
+                            renderer.dayCycle(true);
+                            click(panel[0], 30);
+                            assertEquals(7.0, renderer.timeOfDay());
+                            assertFalse(renderer.dayCycle());
+                            click(panel[0], 140);
+                            assertEquals(12.0, renderer.timeOfDay());
+                            click(panel[0], 240);
+                            assertEquals(17.0, renderer.timeOfDay());
+                            renderer.atmosphereEnabled(false);
                         });
                 long deadline = System.nanoTime() + 10_000_000_000L;
                 while ((renderer.frame() == null || renderer.frame().samples() < 4)
@@ -251,6 +259,57 @@ public final class GameLightingTest {
             awaitSamples(renderer, frame -> frame.samples() == 1);
             renderer.refinement(true);
             awaitSamples(renderer, frame -> frame.samples() == 8);
+        }
+    }
+
+    @Test
+    void sunPresetButtonsSelectSameClockTimesWithEitherSky() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.active(false);
+        try (var renderer = new GameRenderer(navigation, BlockWorld.gallery())) {
+            SwingUtilities.invokeAndWait(
+                    () -> {
+                        var editor = new GameSettingsPanel(navigation, renderer);
+                        renderer.atmospherePreset(true);
+                        var atmosphere = renderer.atmosphere();
+                        var camera = navigation.view().camera();
+                        int[] hours = {7, 12, 17};
+                        int index = 0;
+                        for (var preset : GameLighting.Preset.values()) {
+                            renderer.dayCycle(true);
+                            ((javax.swing.JButton) findControl(editor, preset.name())).doClick();
+                            assertEquals((double) hours[index++], renderer.timeOfDay());
+                            assertFalse(renderer.dayCycle());
+                            assertTrue(renderer.atmosphereEnabled());
+                            assertEquals(atmosphere, renderer.atmosphere());
+                            assertEquals(camera, navigation.view().camera());
+                            var clock =
+                                    (javax.swing.JSpinner)
+                                            findControl(editor, "Time of day (hours)");
+                            assertEquals(
+                                    renderer.timeOfDay(),
+                                    ((Number) clock.getValue()).doubleValue());
+                        }
+                        renderer.atmosphereEnabled(false);
+                        index = 0;
+                        for (var preset : GameLighting.Preset.values()) {
+                            renderer.dayCycle(true);
+                            var expected = new DayNightCycle();
+                            expected.hour(hours[index++]);
+                            ((javax.swing.JButton) findControl(editor, preset.name())).doClick();
+                            assertEquals(expected.lighting(), renderer.lighting());
+                            assertEquals(expected.hour(), renderer.timeOfDay());
+                            assertFalse(renderer.dayCycle());
+                            assertEquals(atmosphere, renderer.atmosphere());
+                            assertEquals(camera, navigation.view().camera());
+                            var clock =
+                                    (javax.swing.JSpinner)
+                                            findControl(editor, "Time of day (hours)");
+                            assertEquals(
+                                    renderer.timeOfDay(),
+                                    ((Number) clock.getValue()).doubleValue());
+                        }
+                    });
         }
     }
 

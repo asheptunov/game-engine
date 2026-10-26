@@ -287,16 +287,16 @@ public final class GameSettingsPanel extends JPanel {
                 30,
                 true);
         panel.add(new JLabel("Manual lighting edits pause the cycle."));
+        atmosphereControls(panel);
         heading(panel, "Sun presets");
         var presets = new JPanel(new FlowLayout(FlowLayout.LEFT));
         presets.setAlignmentX(LEFT_ALIGNMENT);
         for (var preset : GameLighting.Preset.values()) {
-            button(
-                    presets,
-                    preset.name(),
-                    () -> renderer.lighting(renderer.lighting().withPreset(preset)));
+            button(presets, preset.name(), () -> renderer.lightingPreset(preset));
         }
         panel.add(presets);
+        panel.add(new JLabel("07:00 / 12:00 / 17:00; pauses the cycle."));
+        panel.add(new JLabel("Legacy sun/sky controls below apply when atmosphere is off."));
         check(
                 panel,
                 "Sky enabled",
@@ -365,6 +365,86 @@ public final class GameSettingsPanel extends JPanel {
         return panel;
     }
 
+    private void atmosphereControls(JPanel panel) {
+        heading(panel, "Scattering atmosphere (solar direction follows clock)");
+        check(
+                panel,
+                "Atmosphere enabled",
+                renderer::atmosphereEnabled,
+                renderer::atmosphereEnabled,
+                true);
+        button(panel, "Clear air / reset atmosphere", () -> renderer.atmospherePreset(false));
+        button(panel, "Hazy morning air (keeps time)", () -> renderer.atmospherePreset(true));
+        number(
+                panel,
+                "Molecular density scale",
+                () -> renderer.atmosphere().molecularScattering().x() / .0058f,
+                value ->
+                        editAtmosphere(
+                                (float) value,
+                                aerosolScale(),
+                                renderer.atmosphere().aerosolHeightKm(),
+                                renderer.atmosphere().absorption()),
+                0,
+                4,
+                .1,
+                true);
+        number(
+                panel,
+                "Aerosol density scale",
+                this::aerosolScale,
+                value ->
+                        editAtmosphere(
+                                molecularScale(),
+                                (float) value,
+                                renderer.atmosphere().aerosolHeightKm(),
+                                renderer.atmosphere().absorption()),
+                0,
+                10,
+                .25,
+                true);
+        number(
+                panel,
+                "Aerosol scale height (km)",
+                () -> renderer.atmosphere().aerosolHeightKm(),
+                value ->
+                        editAtmosphere(
+                                molecularScale(),
+                                aerosolScale(),
+                                (float) value,
+                                renderer.atmosphere().absorption()),
+                .1,
+                5,
+                .05,
+                true);
+        vector(
+                panel,
+                "Absorption (1/km at ground)",
+                () -> renderer.atmosphere().absorption(),
+                value ->
+                        editAtmosphere(
+                                molecularScale(),
+                                aerosolScale(),
+                                renderer.atmosphere().aerosolHeightKm(),
+                                value),
+                0,
+                .2,
+                new String[] {"R", "G", "B"},
+                .0001);
+    }
+
+    private float molecularScale() {
+        return renderer.atmosphere().molecularScattering().x() / .0058f;
+    }
+
+    private float aerosolScale() {
+        return renderer.atmosphere().aerosolScattering().x() / .004f;
+    }
+
+    private void editAtmosphere(float molecular, float aerosol, float height, Vec3 absorption) {
+        renderer.atmosphere(renderer.atmosphere().edited(molecular, aerosol, height, absorption));
+    }
+
     private void skyColor(JPanel panel, boolean top) {
         vector(
                 panel,
@@ -401,6 +481,18 @@ public final class GameSettingsPanel extends JPanel {
             double low,
             double high,
             String[] axes) {
+        vector(panel, label, read, write, low, high, axes, .05);
+    }
+
+    private void vector(
+            JPanel panel,
+            String label,
+            Supplier<Vec3> read,
+            Consumer<Vec3> write,
+            double low,
+            double high,
+            String[] axes,
+            double step) {
         for (int index = 0; index < 3; index++) {
             final int channel = index;
             number(
@@ -417,7 +509,7 @@ public final class GameSettingsPanel extends JPanel {
                     },
                     low,
                     high,
-                    .05,
+                    step,
                     true);
         }
     }

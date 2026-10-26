@@ -1,0 +1,323 @@
+Style passed: 1987 tracked existing finding groups; reports in out/style.
+Engine-only build passed: C:\Users\andri\Documents\RayTracingEngine\out\scene-check\base\boundary\classes
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: C:\Users\andri\Documents\RayTracingEngine\src\scenes\textureeditor\ColorPicker.java uses preview features of Java SE 23.
+Note: Recompile with -Xlint:preview for details.
+2026-10-25T18:53:48.918861800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:48.922861500  [INFO] harness.SuiteRunner: ? Suite engine.EngineSessionTest [PT0.2618451S]
+2026-10-25T18:53:48.924364500  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#fixedUpdatesRunDuringPendingTraceAndFinalPublicationMatchesFreshSession [PT0.1679343S]
+2026-10-25T18:53:48.924364500  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#completionSignalReleasesStateLockAndLeavesImageLeased [PT0.0035101S]
+2026-10-25T18:53:48.924364500  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#immutableInputsAndFailedValidationCannotPartiallyReplaceSession [PT0.0030092S]
+2026-10-25T18:53:48.924364500  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#settingsApplyTemporalRevisionAndResetInteractiveMinimum [PT0.0140107S]
+2026-10-25T18:53:48.924364500  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#temporalHistoryBelongsToEachSession [PT0.0225261S]
+2026-10-25T18:53:48.925868000  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#semanticRepublicationRetainsSamplesButNewRevisionInvalidates [PT0.0230458S]
+2026-10-25T18:53:48.925868000  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#twoSessionsKeepResolutionAccumulationAndLeasesIndependentWhileSharingWorld [PT0.019297S]
+2026-10-25T18:53:48.925868000  [INFO] harness.SuiteRunner: ? Test engine.EngineSessionTest#progressReportsExactActiveGenerationAcrossRapidCameraRequests [PT0.0085119S]
+2026-10-25T18:53:48.926872600  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:49.452781400  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:49.455792000  [INFO] harness.SuiteRunner: ? Suite engine.MaterialPlaygroundTest [PT0.3429331S]
+2026-10-25T18:53:49.457796600  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#shadowsBoundedAndSphereMustShadowItsInterior [PT0.0009985S]
+2026-10-25T18:53:49.457796600  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#rgbLambertianInverseSquareAndFixedExposure [PT0.001503S]
+2026-10-25T18:53:49.457796600  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#playgroundDeterministicPreview [PT0.2040897S]
+2026-10-25T18:53:49.457796600  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#rectangularResolutionMatchesReferenceAndRestartsSampling [PT0.028034S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#trianglesWithinSameBoxMustShadowEachOther [PT0S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#transformedSphereKeepsDistanceNormalAndExitIdentity [PT0.0025122S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#resolutionPresetsAndMultipliersUseFixedWindowReferenceAndRejectInvalidEdits [PT0.0706774S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#liveCommandsValidateAndRefreshCachedScene [PT0.0070037S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#preparedHitsMatchIndependentTransformedReference [PT0.0216094S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#explicitResolutionEditsRebuildSensorStorage [PT0.0050018S]
+2026-10-25T18:53:49.458796500  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#boxIsClosedAndOutwardWithNonuniformScale [PT0.0015034S]
+2026-10-25T18:53:49.459795600  [INFO] harness.SuiteRunner: ? Test engine.MaterialPlaygroundTest#sphereOutsideInsideTangentMissAndUnnormalizedRay [PT0S]
+2026-10-25T18:53:49.460797000  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:49.842805900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:49.846819100  [INFO] harness.SuiteRunner: ? Suite engine.CameraSamplingTest [PT0.2329795S]
+2026-10-25T18:53:49.847818900  [INFO] harness.SuiteRunner: ? Test engine.CameraSamplingTest#capturedCameraScramblesSampleZeroWithoutTimeOrScheduling [PT0.0010003S]
+2026-10-25T18:53:49.847818900  [INFO] harness.SuiteRunner: ? Test engine.CameraSamplingTest#pointLightDepthZeroRemainsSeedIndependentPixelCenterDiagnostic [PT0.0040018S]
+2026-10-25T18:53:49.848818900  [INFO] harness.SuiteRunner: ? Test engine.CameraSamplingTest#movingViewsReproduceAcrossWorkersBatchesAndDifferentVisitOrders [PT0.2279774S]
+2026-10-25T18:53:49.848818900  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:50.449790300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:50.452792200  [INFO] harness.SuiteRunner: ? Suite engine.CameraLifecycleTest [PT0.4690444S]
+2026-10-25T18:53:50.455800000  [INFO] harness.SuiteRunner: ? Test engine.CameraLifecycleTest#adaptiveGridPreservesOpticsAndFiniteApertureRestoresTemporalBudgetGrid [PT0.0280329S]
+2026-10-25T18:53:50.455800000  [INFO] harness.SuiteRunner: ? Test engine.CameraLifecycleTest#modeApertureTransitionsNeverReviveOldHistoryAndKeepRequestedSettings [PT0.0600827S]
+2026-10-25T18:53:50.455800000  [INFO] harness.SuiteRunner: ? Test engine.CameraLifecycleTest#sustainedNewCameraMotionPublishesExactCapturedPreviewsAndSettles [PT0.3809288S]
+2026-10-25T18:53:50.456804500  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:52.054232300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:52.057742000  [INFO] harness.SuiteRunner: ? Suite engine.FocusLifecycleTest [PT1.4489S]
+2026-10-25T18:53:52.059741800  [INFO] harness.SuiteRunner: ? Test engine.FocusLifecycleTest#slowQueriesBoundedLatestSourceCloseAndStrictOneShot [PT0.0528856S]
+2026-10-25T18:53:52.059741800  [INFO] harness.SuiteRunner: ? Test engine.FocusLifecycleTest#cadenceSuspendResumeAndZeroAperturePreservesAccumulationHistory [PT0.0510292S]
+2026-10-25T18:53:52.059741800  [INFO] harness.SuiteRunner: ? Test engine.FocusLifecycleTest#finiteAutofocusCapturedPreviewsSettleRestoreGridAndConverge [PT1.3439853S]
+2026-10-25T18:53:52.059741800  [INFO] harness.SuiteRunner: ? Test engine.FocusLifecycleTest#staleSceneSourceProjectionAndFocusWritesDoNotSelfInvalidate [PT0.0009999S]
+2026-10-25T18:53:52.060742000  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:54.185796700  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:54.188804600  [INFO] harness.SuiteRunner: ? Suite engine.ResponsiveTraceTest [PT1.9838323S]
+2026-10-25T18:53:54.189804000  [INFO] harness.SuiteRunner: ? Test engine.ResponsiveTraceTest#publicationPoolReusesStorageAndCannotOverwriteALeasedImage [PT0.0589516S]
+2026-10-25T18:53:54.189804000  [INFO] harness.SuiteRunner: ? Test engine.ResponsiveTraceTest#cancellationPreservesCommittedMeanAndSampleStream [PT0.1758208S]
+2026-10-25T18:53:54.189804000  [INFO] harness.SuiteRunner: ? Test engine.ResponsiveTraceTest#sustainedCameraMotionPublishesCompletePreviewsWithoutBorrowingSamples [PT1.5628382S]
+2026-10-25T18:53:54.189804000  [INFO] harness.SuiteRunner: ? Test engine.ResponsiveTraceTest#hardEditsAndPauseCannotPublishObsoleteOrMutableImages [PT0.1382042S]
+2026-10-25T18:53:54.189804000  [INFO] harness.SuiteRunner: ? Test engine.ResponsiveTraceTest#suspendAndCloseDrainWithoutPublishingOldWork [PT0.0480175S]
+2026-10-25T18:53:54.190803900  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:55.124358300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:55.127872400  [INFO] harness.SuiteRunner: ? Suite engine.TemporalReconstructionTest [PT0.7805449S]
+2026-10-25T18:53:55.129875700  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#sharedCornersReduceQueriesAndRemainIndependentOfTilesAndWorkers [PT0.0130189S]
+2026-10-25T18:53:55.129875700  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#cornerCacheRejectsSilhouettesAndSeamsAcrossTileBoundaries [PT0.0568639S]
+2026-10-25T18:53:55.129875700  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#rejectsDisocclusionDepthNormalEdgesCutsEditsAndExpiredHistory [PT0.0105256S]
+2026-10-25T18:53:55.129875700  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#oldRadianceFadesGraduallyAcrossTheFormerResetBoundary [PT0.1011337S]
+2026-10-25T18:53:55.130876300  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#guidesNeverChangeRawStreamsAndGuardThinSurfacesAndMedia [PT0.3259805S]
+2026-10-25T18:53:55.130876300  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#reprojectsReducesNoiseAndDoesNotCountStationaryHistoryTwice [PT0.0065046S]
+2026-10-25T18:53:55.130876300  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#asyncTogglePauseLeaseAndSceneEditsPreserveRawOutput [PT0.0593091S]
+2026-10-25T18:53:55.131876100  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#parallelReconstructionMatchesScalarAndCancellationDiscardsPartialHistory [PT0.1110893S]
+2026-10-25T18:53:55.131876100  [INFO] harness.SuiteRunner: ? Test engine.TemporalReconstructionTest#sustainedForwardBackwardMotionKeepsStableHistoryAndBoundedStorage [PT0.0961193S]
+2026-10-25T18:53:55.132876500  [INFO] harness.SuiteRunner: ========================
+Wrote C:\Users\andri\Documents\RayTracingEngine\out\scene-check\base\headless-engine.png at 4 spp
+Engine checks passed: C:\Users\andri\Documents\RayTracingEngine\out\scene-check\base
+2026-10-25T18:53:55.719189900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:55.722190200  [INFO] harness.SuiteRunner: ? Suite engine.SceneDocumentTest [PT0.1583407S]
+2026-10-25T18:53:55.724189200  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#historyIsOptionalBoundedFreshAndInvalidatedByDirectEdits [PT0.0614174S]
+2026-10-25T18:53:55.724189200  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#duplicateSeparatesAliasedAssetsForEveryGeometryNode [PT0.0170174S]
+2026-10-25T18:53:55.724189200  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#duplicateAcceptsMaximumLengthLabels [PT0.0009995S]
+2026-10-25T18:53:55.724189200  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#hierarchyRejectsShearAndDepthWithoutPartialPublication [PT0.063601S]
+2026-10-25T18:53:55.724189200  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#failedNestedAndThrowingCallbacksNeverPublish [PT0.0030079S]
+2026-10-25T18:53:55.725692100  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#transactionsDuplicateSubtreesWithIndependentAssetsAtomically [PT0.0122975S]
+2026-10-25T18:53:55.725692100  [INFO] harness.SuiteRunner: ? Test engine.SceneDocumentTest#transformCompositionMatchesSequentialPointsAndVectorsAtGimbalPoles [PT0S]
+2026-10-25T18:53:55.726204500  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:57.102739400  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:57.106249400  [INFO] harness.SuiteRunner: ? Suite engine.ScenePersistenceTest [PT1.2404489S]
+2026-10-25T18:53:57.108253100  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#invalidEditableVersionsReferencesCountersAndBoundariesAreRejected [PT0.018524S]
+2026-10-25T18:53:57.108253100  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#freshJvmLoadProducesMatchingSeededRender [PT0.3888376S]
+2026-10-25T18:53:57.108253100  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#analyticParametersAndChosenApproximationRoundTripAsCanonicalV4 [PT0.3564693S]
+2026-10-25T18:53:57.108253100  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#canonicalV4RoundTripPreservesTopologyCountersAndDerivedFaceMapping [PT0.0997529S]
+2026-10-25T18:53:57.109253500  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#nestedLeafInvalidValuesAndDeepXmlAreFormatErrors [PT0.01502S]
+2026-10-25T18:53:57.109253500  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#invalidAndHostileFilesDoNotReplaceActiveDocument [PT0.0160272S]
+2026-10-25T18:53:57.109253500  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#warpedPolygonRoundTripsOnlyUnderV4SurfaceSemantics [PT0.0230532S]
+2026-10-25T18:53:57.109253500  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#obliqueNearCollinearLegacyFacesRetainTheirPlanarAcceptance [PT0.1182384S]
+2026-10-25T18:53:57.109253500  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#strictRoundTripPreservesIdentityGraphSharingLightsAndCameras [PT0.0401162S]
+2026-10-25T18:53:57.110254100  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#elementLimitAndUnknownVersionAreRejected [PT0.0656794S]
+2026-10-25T18:53:57.110254100  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#legacyRepeatedFacesReconstructAndV3RejectsLegacyGeometryTags [PT0.0373759S]
+2026-10-25T18:53:57.110756900  [INFO] harness.SuiteRunner: ? Test engine.ScenePersistenceTest#failedSavePreservesPreviousValidBytes [PT0.0613548S]
+2026-10-25T18:53:57.110756900  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:53:57.397868900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:57.401868500  [INFO] harness.SuiteRunner: ? Suite engine.SpatialQueryTest [PT0.1067507S]
+2026-10-25T18:53:57.402868100  [INFO] harness.SuiteRunner: ? Test engine.SpatialQueryTest#transformedNormalsScreenPickingAndStaleRevisionsAreExplicit [PT0.0070104S]
+2026-10-25T18:53:57.402868100  [INFO] harness.SuiteRunner: ? Test engine.SpatialQueryTest#openMeshCannotBecomeDielectricOrVolumeBoundary [PT0.081722S]
+2026-10-25T18:53:57.404371400  [INFO] harness.SuiteRunner: ? Test engine.SpatialQueryTest#openMeshesUseRobustDistancesIdentityAndDeterministicTies [PT0.0170183S]
+2026-10-25T18:53:57.404371400  [INFO] harness.SuiteRunner: ? Test engine.SpatialQueryTest#explicitlyValidatedClosedMeshCanBeDielectric [PT0.001S]
+2026-10-25T18:53:57.404371400  [INFO] harness.SuiteRunner: ========================
+Mesh intersection tests: BVH 11619; brute 1617600
+Mesh image tests: BVH 249852; brute 31563730
+2026-10-25T18:53:59.800782300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:53:59.804285400  [INFO] harness.SuiteRunner: ? Suite engine.MeshAccelerationTest [PT2.2298883S]
+2026-10-25T18:53:59.805789000  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#indexedBoundaryIsClosedOutwardAndImmutable [PT0.1523147S]
+2026-10-25T18:53:59.805789000  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#seededImagesAgreeAndPreviewShowsMeshMaterials [PT1.553939S]
+2026-10-25T18:53:59.806793900  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#bvhMatchesBruteAndIndependentTrianglesIncludingInsideAndSharedEdges [PT0.1242355S]
+2026-10-25T18:53:59.806793900  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#boundedVisibilityMatchesBruteAndOtherTrianglesOfSameObjectBlock [PT0.0190243S]
+2026-10-25T18:53:59.806793900  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#glassMeshEntriesExitsAndInsideCameraKeepOneMedium [PT0.0040028S]
+2026-10-25T18:53:59.807793000  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#editsReuseIndexedGeometryUpdateBoundsAndInvalidateOnlyWhenNeeded [PT0.102825S]
+2026-10-25T18:53:59.807793000  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#finestDetailSmallFacesAndSeamsRemainHittable [PT0.1107187S]
+2026-10-25T18:53:59.807793000  [INFO] harness.SuiteRunner: ? Test engine.MeshAccelerationTest#nestedMeshMediaAndCentralSeamsPreserveAbsorptionAndIor [PT0.1628283S]
+2026-10-25T18:53:59.809793600  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:00.643025200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:00.649086500  [INFO] harness.SuiteRunner: ? Suite engine.ObjectAccelerationTest [PT0.6742988S]
+2026-10-25T18:54:00.651086300  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#nearFirstVisitsCloseLeafAndPrunesDeferredSibling [PT0.0055025S]
+2026-10-25T18:54:00.651086300  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#seededGlassVolumesEmittersAndTexturedSunSkyAgree [PT0.5759235S]
+2026-10-25T18:54:00.652086400  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#touchingBlocksParallelInsideAndBoundedRaysMatchBrute [PT0.0908716S]
+2026-10-25T18:54:00.652086400  [INFO] harness.SuiteRunner: ? Test engine.ObjectAccelerationTest#crossObjectTiesKeepSceneOrderDespiteSpatialSortingAndEdits [PT0.0020012S]
+2026-10-25T18:54:00.654087500  [INFO] harness.SuiteRunner: ========================
+Glass squared error: 1 spp 1384.221145; 64 spp 22.864615
+2026-10-25T18:54:02.972279300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:02.975779600  [INFO] harness.SuiteRunner: ? Suite engine.DielectricPathTest [PT2.1748801S]
+2026-10-25T18:54:02.976783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#nestedMediaReplaceRatherThanAddAbsorptionAndRestoreOuterIor [PT0.0015046S]
+2026-10-25T18:54:02.976783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#controlsPreserveParametersInvalidateAndRejectOpenGlassAtomically [PT0.1177777S]
+2026-10-25T18:54:02.976783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#internalReflectionPreservesMediumAndTerminatesAtDepthLimit [PT0S]
+2026-10-25T18:54:02.976783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#glassVisibilityDoesNotInventStraightThroughCaustics [PT0S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#distanceAbsorptionAndCameraInsideSphere [PT0.0010049S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#seededGlassConvergesAndBatchSizesAgree [PT0.6185002S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#glassPreviewConvergesAndIorChangesImage [PT1.3556338S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#glassRequiresTwoContinuationsAndDoesNotUseBaseTint [PT0.0650786S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#fresnelSnellAndTotalInternalReflection [PT0.0053638S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#transformedBoxAndEllipsoidExitTheirOwnBoundary [PT0.0100165S]
+2026-10-25T18:54:02.977783500  [INFO] harness.SuiteRunner: ? Test engine.DielectricPathTest#directLightSegmentInsideMediumAlsoAbsorbs [PT0S]
+2026-10-25T18:54:02.978783600  [INFO] harness.SuiteRunner: ========================
+Volume single scatter: numeric 0.01747663 sampled 0.01746364
+Volume white enclosure: 0.998569
+2026-10-25T18:54:06.776794700  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:06.780792800  [INFO] harness.SuiteRunner: ? Suite engine.VolumePathTest [PT3.6462465S]
+2026-10-25T18:54:06.781793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#visibilityIntegratesNestedExtinctionAndBlocksRefractiveOrOpaqueObjects [PT0.0523189S]
+2026-10-25T18:54:06.781793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#seededBatchesConvergeAndPreview [PT3.0329269S]
+2026-10-25T18:54:06.781793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#zeroScatteringKeepsBeerAndNoSampledEvents [PT0.0010041S]
+2026-10-25T18:54:06.782793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#uniformEmissionEnclosureConservesEnergyWithoutCountingEmitterTwice [PT0.3489811S]
+2026-10-25T18:54:06.782793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#exponentialAndPhaseStatistics [PT0.0230163S]
+2026-10-25T18:54:06.782793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#surfaceLightCrossesCloudWithFullExtinction [PT0.0010001S]
+2026-10-25T18:54:06.782793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#singleScatteringMatchesIndependentIntegralAndFinalVertexLighting [PT0.1599702S]
+2026-10-25T18:54:06.782793200  [INFO] harness.SuiteRunner: ? Test engine.VolumePathTest#controlsAreAtomicAndInvalidateSamples [PT0.0270289S]
+2026-10-25T18:54:06.784296200  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:07.758812800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:07.762814800  [INFO] harness.SuiteRunner: ? Suite engine.ParallelTraceTest [PT0.8114951S]
+2026-10-25T18:54:07.764317900  [INFO] harness.SuiteRunner: ? Test engine.ParallelTraceTest#tileAndWorkerSchedulingPreserveEveryTransportPreset [PT0.5735388S]
+2026-10-25T18:54:07.764317900  [INFO] harness.SuiteRunner: ? Test engine.ParallelTraceTest#settingsAndLifecycleKeepCompletePasses [PT0.2199361S]
+2026-10-25T18:54:07.764317900  [INFO] harness.SuiteRunner: ? Test engine.ParallelTraceTest#tracingCommandsValidateAndRetainAccumulation [PT0.0080098S]
+2026-10-25T18:54:07.764317900  [INFO] harness.SuiteRunner: ? Test engine.ParallelTraceTest#interruptedCoordinatorDrainsWorkersBeforeRestart [PT0.0100104S]
+2026-10-25T18:54:07.765821500  [INFO] harness.SuiteRunner: ========================
+Saved C:\Users\andri\Documents\RayTracingEngine\out\scene-check\document-demo.scene.xml, rendered C:\Users\andri\Documents\RayTracingEngine\out\scene-check\document-demo.png, picked node=96821846-43b7-42ce-9b60-a65e9291afc8 face=500
+SKIP (pre-existing, out of B scope): Caps-on synthetic-console path documented by the implementation handoff.
+Scene E3/E4 checks passed: C:\Users\andri\Documents\RayTracingEngine\out\scene-check
+Verification passed. Coverage: readability gate and selected scene/engine suites; run additional tests relevant to your change.
+Engine-only build passed: C:\Users\andri\Documents\RayTracingEngine\out\game-check\classes
+Game build passed: C:\Users\andri\Documents\RayTracingEngine\out\game-check\classes
+2026-10-25T18:54:17.065104300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:17.067611600  [INFO] harness.SuiteRunner: ? Suite game.SampleGameTest [PT3.3471497S]
+2026-10-25T18:54:17.068611500  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#flightUsesElapsedTimeNormalizedHeadingAndPhysicalRelease [PT0.001506S]
+2026-10-25T18:54:17.068611500  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#gallerySharesUnitGeometryAndWritesRepresentativePreviews [PT0.8881342S]
+2026-10-25T18:54:17.069610800  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#missingAndTransparentAssetsNameTheirPaths [PT0.0035085S]
+2026-10-25T18:54:17.069610800  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#pitchFramingResetEscapeAndFocusTransitions [PT0S]
+2026-10-25T18:54:17.069610800  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#controlsAndCloseDoNotWaitForImageConversion [PT0.011018S]
+2026-10-25T18:54:17.069610800  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#editsDuringConversionDiscardObsoleteDisplayWithoutLosingExposureUpdate [PT0.0175248S]
+2026-10-25T18:54:17.069610800  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#liveMovementPublishesSuspendsResumesAndCloses [PT2.4254582S]
+2026-10-25T18:54:17.070611400  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:17.545720900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:17.548724600  [INFO] harness.SuiteRunner: ? Suite engine.CubeTextureTest [PT0.2092621S]
+2026-10-25T18:54:17.550724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#materialCopiesRetainBindingsAndUnsupportedKindsGeometryAndSaveReject [PT0.1331815S]
+2026-10-25T18:54:17.550724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#ownsPixelsConvertsSrgbAndClampsNearestTexel [PT0S]
+2026-10-25T18:54:17.551724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#allFaceOrientationsAndEdgeNormalsChooseExpectedTexels [PT0S]
+2026-10-25T18:54:17.551724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#textureEditsInvalidateSamplesEvenWhenReturningToAnEarlierBinding [PT0.042042S]
+2026-10-25T18:54:17.551724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#diffuseContinuationAndAreaLightingUseTextureReflectance [PT0.0050038S]
+2026-10-25T18:54:17.551724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#textureModulatesDirectLightAndStaysAttachedUnderTrs [PT0.001S]
+2026-10-25T18:54:17.551724700  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#terminalAreaLightingUsesTextureWithoutAContinuation [PT0.0280348S]
+2026-10-25T18:54:17.552725400  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:17.892765600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:17.898778100  [INFO] harness.SuiteRunner: ? Suite engine.SunSkyTest [PT0.1940462S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#sunDirectionPointsTowardSourceAndIlluminationIsDistanceIndependent [PT0.0020041S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#visibleDiscHasAngularExtentOcclusionAndNoExtraDiffuseEnergy [PT0.0010014S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#lightingEditsInvalidateIdentityAndUndoNeverRevivesPublications [PT0.0405421S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#seededSunSkyImagesAgreeAcrossWorkersAndBatchBoundaries [PT0.0984455S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#sunShadowsReachDistantOccludersAndPointLightsStillContribute [PT0.0240272S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#isolatedDiffuseConstantSkyMatchesReflectanceAndGradientConverges [PT0.0215177S]
+2026-10-25T18:54:17.900779300  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#skyGradientUsesWorldDirectionAndLegacyWorldDefaultsToBlack [PT0.0010012S]
+2026-10-25T18:54:17.901778200  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#invalidLightsSkyAndAdvancedTransportRejectAtWorldBoundary [PT0.005507S]
+2026-10-25T18:54:17.902779400  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:22.831658400  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:22.835178600  [INFO] harness.SuiteRunner: ? Suite game.GameLightingTest [PT4.7739465S]
+2026-10-25T18:54:22.836179000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#writesRefinedSunPresetAndSkyComparisonPreviews [PT0.6688194S]
+2026-10-25T18:54:22.836179000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#releasedPointerButtonsChangeLightingAndCameraResetPreservesIt [PT0.0422706S]
+2026-10-25T18:54:22.836179000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#autofocusRejectsResultsFromOldModeAndOldView [PT0.0114022S]
+2026-10-25T18:54:22.836179000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#refinementControlReplacesRefinedImageAndResumesAfterMovement [PT0.2626097S]
+2026-10-25T18:54:22.836179000  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#autofocusTracksCenterRetainsSkyAndStopsForManualAndSuspension [PT3.1605741S]
+2026-10-25T18:54:22.837647600  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#groupedControlsApplyCameraLightingAndDisplaySettings [PT0.6282705S]
+2026-10-25T18:54:22.837647600  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:34.152717600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:34.155727900  [INFO] harness.SuiteRunner: ? Suite game.GameLandscapeTest [PT10.0518772S]
+2026-10-25T18:54:34.156733000  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#worldIsDeterministicUniqueAndSharesAssets [PT0.0150313S]
+2026-10-25T18:54:34.156733000  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#routeUsesElapsedTimeUnwrappedAnglesAndExactHold [PT0.054111S]
+2026-10-25T18:54:34.156733000  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#seededLandscapeMatchesBruteAndWritesPreview [PT6.5078004S]
+2026-10-25T18:54:34.156733000  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#fullLandscapePreviewsRecoverRefineAndToggleWithoutCapture [PT3.4749345S]
+2026-10-25T18:54:34.156733000  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:38.623549200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:38.627059600  [INFO] harness.SuiteRunner: ? Suite game.AdventureWorldTest [PT3.2082118S]
+2026-10-25T18:54:38.628065000  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#rendersDayAndNightPreviews [PT1.7713597S]
+2026-10-25T18:54:38.629062600  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#cyclePublishesAndSuspendsWithoutStarvingImages [PT1.2095044S]
+2026-10-25T18:54:38.629062600  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#clockWrapsPausesAndProducesDayAndNight [PT0.0040001S]
+2026-10-25T18:54:38.629062600  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#deterministicMeshWorldHasUniqueNamesAndBroadTerrain [PT0.2233476S]
+2026-10-25T18:54:38.629062600  [INFO] harness.SuiteRunner: ========================
+2026-10-25T18:54:39.062853900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:39.066863800  [INFO] harness.SuiteRunner: ? Suite engine.AtmospherePathTest [PT0.2620059S]
+2026-10-25T18:54:39.068868000  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#indirectSkyIlluminationCountsSkyOnceWithoutSolarDiscEnergy [PT0.2519967S]
+2026-10-25T18:54:39.068868000  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#editsDisableRestoreLegacyAndDisableTemporalPresentation [PT0.0015035S]
+2026-10-25T18:54:39.068868000  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#surfaceCompositionAndGeometryShadowMatchIndependentReference [PT0.0085057S]
+2026-10-25T18:54:39.069868100  [INFO] harness.SuiteRunner: ========================
+PASS atmosphere numerics: max absolute radiance error=0.006930649280548096, reference change=1.0728836059570312E-4
+2026-10-25T18:54:41.528527200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:41.531527000  [INFO] harness.SuiteRunner: ? Suite game.AtmosphereLifecycleTest [PT0.9497464S]
+2026-10-25T18:54:41.532527100  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#unsupportedSceneCombinationRejectsWithoutChangingAirControls [PT0.0010003S]
+2026-10-25T18:54:41.532527100  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#settingsResetKeepsOpticsTimeExposureAndCameraResetKeepsAir [PT0.2894627S]
+2026-10-25T18:54:41.532527100  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#inFlightEditsRetainLeasesAndCannotPublishStaleAirAsCurrent [PT0.6592834S]
+2026-10-25T18:54:41.534030800  [INFO] harness.SuiteRunner: ========================
+Game checks passed; native pointer/window QA remains manual.
+cpu,17.80,false,64,64,1,101.690,50.565,0.00000000,0.00000000
+PASS cpu shared conformance
+Engine-only build passed: C:\Users\andri\Documents\RayTracingEngine\out\game\classes
+Game build passed: C:\Users\andri\Documents\RayTracingEngine\out\game\classes
+PASS fatal child cpu-before (548 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\cpu-before-1511bf0e-bf16-48eb-a125-d11da61b72e4
+PASS fatal child cpu-after (660 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\cpu-after-4d24b4df-b68b-4d55-9643-c09698586057
+PASS fatal child missing-module (377 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\missing-module-441a7733-3b15-4d74-b92a-9d54a9b15bec
+PASS fatal child report-write (481 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\report-write-fbaa56b5-533e-4989-8ab2-68712cc0c812
+PASS fatal child repeated (501 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\repeated-3cc1ad2a-a5a3-4a89-8d23-c42356e99b44
+PASS fatal child worker-hang (523 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\worker-hang-bb975380-b17f-4baa-b36f-08e184839958
+PASS fatal child cleanup-hang (2537 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\cleanup-hang-b6ead347-32fb-4b43-a803-a0e05d6f5c21
+PASS fatal child cleanup-error (537 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\cleanup-error-09492dce-60d2-46b7-ae32-4c5fa703733b
+PASS fatal child validation (525 ms, exit 0): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\validation-2e210c7f-209e-4334-a2f9-6cb87394cbd2
+PASS fatal child cpu-library (369 ms, exit 0): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\cpu-library-bfef1e81-b3ed-45f6-a35d-d5a69c6affe6
+Pinned GPU dependencies verified (LWJGL 3.3.6, Windows x64).
+Engine-only build passed: C:\Users\andri\Documents\RayTracingEngine\out\game\classes
+Game build passed: C:\Users\andri\Documents\RayTracingEngine\out\game\classes
+GPU build passed.
+RenderAvailability[state=AVAILABLE, detail=NVIDIA GeForce RTX 3080; vendor=4318; driverVersion=2585198592; apiVersion=4211039]
+gpu,17.80,false,64,64,1,202.688,71.329,0.00000004,0.00000035
+PASS gpu shared conformance
+PASS incompatible Vulkan driver is unavailable hardware, not a conformance failure
+PASS unexpected resource failure remains an error, never a hardware skip
+PASS visible celestial disc matches CPU at hour 9
+PASS sun/moon visible at image center at hour 9
+PASS foreground geometry hides disc at hour 9
+PASS visible celestial disc matches CPU at hour 0
+PASS sun/moon visible at image center at hour 0
+PASS foreground geometry hides disc at hour 0
+DEVICE NVIDIA GeForce RTX 3080
+Direct RMSE=1.4335131009598977E-8 GPU ms=0.038944
+PASS depth-zero CPU/GPU radiance RMSE below 0.002
+PASS repeat dispatch exactly reproduces sample zero
+64 spp RMSE=1.882771360382529E-5 GPU ms=0.09936
+PASS 64-spp landscape CPU/GPU radiance RMSE below 0.04
+PASS zero aperture preserves exact pinhole pixels with inactive focus edits
+DOF depth=0 focus=3.0 RMSE=4.761801123077116E-5
+PASS finite aperture matches CPU at depth 0 and focus 3.0
+PASS finite aperture changes the image
+DOF depth=0 focus=9.0 RMSE=2.9718605247767546E-5
+PASS finite aperture matches CPU at depth 0 and focus 9.0
+PASS finite aperture changes the image
+DOF depth=2 focus=3.0 RMSE=6.632266173584373E-5
+PASS finite aperture matches CPU at depth 2 and focus 3.0
+PASS finite aperture changes the image
+DOF depth=2 focus=9.0 RMSE=1.3039814498088517E-5
+PASS finite aperture matches CPU at depth 2 and focus 9.0
+PASS finite aperture changes the image
+PASS lens single-sample session retires
+PASS lens one/eight-sample batches agree exactly
+PASS focus and aperture edits reset accumulation to the captured optics
+PASS lens edits preserve acquired image leases
+PASS returning to lens settings reproduces the original samples
+PASS closing aperture restores CPU-equivalent pinhole output
+PASS lens batch session retires
+PASS touching faces, center seams and transformed boxes match CPU
+PASS material edit retains geometry acceleration
+PASS material edit updates GPU radiance
+PASS inside opaque geometry matches CPU
+PASS equal-distance instances retain original order
+PASS held image unchanged across restart
+PASS pixels reject access after lease close
+PASS resume converges to requested target
+PASS unsupported depth rejected
+PASS single-sample session retires
+PASS one/eight-sample batches match exactly
+PASS resize publishes only the requested grid
+PASS paused session submits no GPU work
+PASS resized session retires
+PASS tiny triangle CPU/GPU comparison
+PASS double means retain constant radiance at the billion-sample limit
+PASS near-surface ray cutoff matches CPU
+PASS near-surface image matches CPU
+PASS sustained camera edits publish coherent previews
+PASS motion settles to exact captured-camera accumulation
+PASS moving session retires
+PASS device failure is retained as an explicit error
+PASS device failure retires native resources
+PASS initialization failure retains typed causal error
+PASS failed session retires
+PASS GPU owner and native resources retire after close
+GPU checks passed: 53
+PASS offscreen game panel, refinement off/motion/on, fixed-grid control, lighting and focus lifecycle
+GPU NVIDIA GeForce RTX 3080 | fixed | execute 0.98 ms | transfer 0.64 ms | host 3.54 ms | prepare 0.00 ms | peak 35.4 MiB | primitive counters n/a | init 356.42 ms | max prepare 26.51 ms
+PASS fatal child gpu-init (452 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\gpu-init-85c70625-9f4c-4081-b381-8c328cb132d8
+PASS fatal child gpu-execution (946 ms, exit 1): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\gpu-execution-df298284-4c23-434a-9a4d-807fab04865e
+PASS fatal child gpu-library (826 ms, exit 0): C:\Users\andri\Documents\RayTracingEngine\out\fatal-check\gpu-library-b2ec4dd6-f585-40e7-ae09-f32b2713ee26
+Parity PASS: repository=PASS, game=PASS, CPU=PASS, GPU=PASS. 
+Evidence: C:\Users\andri\Documents\RayTracingEngine\out\parity\summary.json

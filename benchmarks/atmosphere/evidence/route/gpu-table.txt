@@ -1,0 +1,4 @@
+lookupPayloadBytes=147456
+preparationMs=75.4889
+viewSteps=32
+lookup=96x192

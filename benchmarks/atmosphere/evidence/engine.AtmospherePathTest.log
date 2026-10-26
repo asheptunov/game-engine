@@ -1,0 +1,6 @@
+2026-10-25T18:54:39.062853900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-25T18:54:39.066863800  [INFO] harness.SuiteRunner: ? Suite engine.AtmospherePathTest [PT0.2620059S]
+2026-10-25T18:54:39.068868000  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#indirectSkyIlluminationCountsSkyOnceWithoutSolarDiscEnergy [PT0.2519967S]
+2026-10-25T18:54:39.068868000  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#editsDisableRestoreLegacyAndDisableTemporalPresentation [PT0.0015035S]
+2026-10-25T18:54:39.068868000  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#surfaceCompositionAndGeometryShadowMatchIndependentReference [PT0.0085057S]
+2026-10-25T18:54:39.069868100  [INFO] harness.SuiteRunner: ========================

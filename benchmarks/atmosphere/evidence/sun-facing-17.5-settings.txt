@@ -1,0 +1,6 @@
+backend=gpu
+exposure=1
+hour=17.5
+RenderView[camera=Camera[eye=Vec3[x=0.0, y=3.0, z=-6.0], sensor=Rect[origin=Vec3[x=-1.2560955, y=2.4836526, z=-6.5850434], edge1=Vec3[x=0.5350794, y=0.0, z=1.7683392], edge2=Vec3[x=0.06627294, y=1.1526227, z=-0.02005344]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=5.0, aperture=0.0, height=0.0, rememberedAperture=0.0], width=480, height=300]
+RenderSettings[pathDepth=2, seed=1, restartRevision=0, samplesPerBatch=4, sampleTarget=64, paused=false, acceleration=true, workers=14, tileSize=32, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=16.666666666666668, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0]
+Sky[nadir=Vec3[x=0.0, y=0.0, z=0.0], zenith=Vec3[x=0.0, y=0.0, z=0.0], disc=null, atmosphere=Atmosphere[parameters=Parameters[metersPerUnit=20.0, groundY=-2.0, radiusKm=6371.0, heightKm=80.0, molecularHeightKm=8.0, aerosolHeightKm=1.2, molecularScattering=Vec3[x=0.0058, y=0.0135, z=0.0331], aerosolScattering=Vec3[x=0.004, y=0.004, z=0.004], absorption=Vec3[x=3.0E-4, y=6.0E-4, z=1.0E-4], anisotropy=0.76], solarDirection=Vec3[x=-0.9496319, y=0.12502141, z=0.28734788], solarIrradiance=Vec3[x=3.0, y=3.0, z=3.0]]]

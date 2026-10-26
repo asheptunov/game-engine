@@ -80,6 +80,7 @@ final class GpuKernel implements AutoCloseable {
     private long descriptorPool;
     private long descriptorSet;
     private VulkanDevice.Buffer parameters;
+    private engine.AtmosphereTable uploadedAtmosphere;
     private VulkanDevice.Buffer mean;
     private VulkanDevice.Buffer output;
     private VulkanDevice.Buffer readback;
@@ -100,7 +101,11 @@ final class GpuKernel implements AutoCloseable {
         this.beforeDispatch = beforeDispatch;
         gpu = new VulkanDevice();
         try {
-            parameters = gpu.buffer(192, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true);
+            parameters =
+                    gpu.buffer(
+                            304 + engine.AtmosphereTable.FLOATS * 4,
+                            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                            true);
             createPipeline();
             initializationNanos = System.nanoTime() - started;
         } catch (RuntimeException | Error failure) {
@@ -390,6 +395,7 @@ final class GpuKernel implements AutoCloseable {
         put(10, disc == null ? Vec3.ZERO : disc.direction());
         put(11, disc == null ? Vec3.ZERO : disc.radiance());
         parameters.mapped.putFloat(172, disc == null ? 2 : disc.cosineRadius());
+        writeAtmosphere(world.sky().atmosphere());
         long seed = cameraSeed(settings.seed(), camera);
         parameters
                 .mapped
@@ -399,6 +405,31 @@ final class GpuKernel implements AutoCloseable {
                 .putInt(140, (int) seed)
                 .putInt(144, (int) (seed >>> 32))
                 .putInt(148, Math.toIntExact(sample));
+    }
+
+    private void writeAtmosphere(engine.Atmosphere air) {
+        parameters.mapped.putFloat(192, 0);
+        if (air != null) {
+            var p = air.parameters();
+            put(12, new Vec3(p.metersPerUnit(), p.groundY(), p.radiusKm()));
+            parameters.mapped.putFloat(204, p.heightKm());
+            put(13, new Vec3(p.molecularHeightKm(), p.aerosolHeightKm(), p.anisotropy()));
+            put(14, p.molecularScattering());
+            put(15, p.aerosolScattering());
+            put(16, p.absorption());
+            put(17, air.solarDirection());
+            put(18, air.solarIrradiance());
+            var table =
+                    uploadedAtmosphere != null && uploadedAtmosphere.matches(p)
+                            ? uploadedAtmosphere
+                            : engine.AtmosphereTable.get(p);
+            if (uploadedAtmosphere != table) {
+                for (int index = 0; index < engine.AtmosphereTable.FLOATS; index++) {
+                    parameters.mapped.putFloat(304 + index * 4, table.column(index));
+                }
+                uploadedAtmosphere = table;
+            }
+        }
     }
 
     private void put(int index, Vec3 v) {

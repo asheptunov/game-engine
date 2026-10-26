@@ -1,0 +1,10 @@
+{
+  "skyAbsoluteError": 0.015,
+  "skyRelativeError": 0.05,
+  "transmittanceAbsoluteError": 0.015,
+  "referenceRelativeConvergence": 0.01,
+  "cpuGpuRmse": 0.004,
+  "cpuGpuMaxError": 0.05,
+  "note": "Declared for first numerical slice before performance optimization. Radiance bound = absolute + relative * reference. Solar disc excluded from angular quadrature comparison and checked separately.",
+  "referenceAbsoluteConvergence": 0.0005
+}

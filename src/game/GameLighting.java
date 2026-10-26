@@ -54,6 +54,9 @@ public record GameLighting(
     }
 
     public Sky sky() {
+        if (skyColors.atmosphere() != null) {
+            return skyColors;
+        }
         return skyEnabled
                 ? new Sky(
                         skyColors.nadir(),
