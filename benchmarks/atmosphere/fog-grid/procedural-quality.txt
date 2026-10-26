@@ -1,0 +1,43 @@
+depth=0 hour=7.0 divisor=1 rmse=8.818243272177317E-5 max=9.826421737670898E-4 outside=0 reused=0
+depth=0 hour=7.0 divisor=2 rmse=3.7792535042889433E-4 max=0.009630799293518066 outside=0 reused=7761
+depth=0 hour=7.0 divisor=4 rmse=2.835871892727772E-4 max=0.007710639387369156 outside=0 reused=3017
+depth=0 hour=7.08 divisor=1 rmse=9.240931730422965E-5 max=9.87619161605835E-4 outside=0 reused=0
+depth=0 hour=7.08 divisor=2 rmse=3.827411841900633E-4 max=0.009715214371681213 outside=0 reused=7493
+depth=0 hour=7.08 divisor=4 rmse=3.6106726658372706E-4 max=0.011570870876312256 outside=0 reused=2897
+depth=0 hour=12.0 divisor=1 rmse=2.2654094963918104E-5 max=5.409270524978638E-4 outside=0 reused=0
+depth=0 hour=12.0 divisor=2 rmse=1.1434313846622846E-4 max=0.0021955519914627075 outside=0 reused=13003
+depth=0 hour=12.0 divisor=4 rmse=1.3425268201411913E-4 max=0.0018587112426757812 outside=0 reused=9341
+depth=0 hour=17.8 divisor=1 rmse=4.327360066186015E-6 max=7.933378219604492E-5 outside=0 reused=0
+depth=0 hour=17.8 divisor=2 rmse=2.3528788818095898E-5 max=4.0655583143234253E-4 outside=0 reused=13003
+depth=0 hour=17.8 divisor=4 rmse=3.056277363510508E-5 max=5.967170000076294E-4 outside=0 reused=9405
+depth=2 hour=7.0 divisor=1 rmse=8.850859227748103E-5 max=0.0017283931374549866 outside=0 reused=0
+depth=2 hour=7.0 divisor=2 rmse=3.774168499103696E-4 max=0.010148495435714722 outside=0 reused=7819
+depth=2 hour=7.0 divisor=4 rmse=2.896564547975328E-4 max=0.007139239460229874 outside=0 reused=3015
+depth=2 hour=7.08 divisor=1 rmse=9.299915809893169E-5 max=0.0019403249025344849 outside=0 reused=0
+depth=2 hour=7.08 divisor=2 rmse=3.7520806128887006E-4 max=0.008019905537366867 outside=0 reused=7555
+depth=2 hour=7.08 divisor=4 rmse=3.625482419552162E-4 max=0.011047422885894775 outside=0 reused=2898
+depth=2 hour=12.0 divisor=1 rmse=6.617452526314268E-5 max=0.002002805471420288 outside=0 reused=0
+depth=2 hour=12.0 divisor=2 rmse=1.2916847019948678E-4 max=0.0020056068897247314 outside=0 reused=13166
+depth=2 hour=12.0 divisor=4 rmse=1.478411810429285E-4 max=0.0020027756690979004 outside=0 reused=9335
+depth=2 hour=17.8 divisor=1 rmse=8.084024986183437E-6 max=6.51966780424118E-4 outside=0 reused=0
+depth=2 hour=17.8 divisor=2 rmse=2.44280794793575E-5 max=6.51966780424118E-4 outside=0 reused=13166
+depth=2 hour=17.8 divisor=4 rmse=3.198935586770448E-5 max=6.784349679946899E-4 outside=0 reused=9399
+closed sunlight gap divisor=1 rmse=4.7080943120085416E-5 max=8.382499217987061E-4 outside=0 reused=0
+closed sunlight gap divisor=2 rmse=2.4939469087533443E-4 max=0.008145347237586975 outside=0 reused=11619
+closed sunlight gap divisor=4 rmse=1.6682596389757827E-4 max=0.010540351271629333 outside=0 reused=6156
+camera movement divisor=1 rmse=8.976871296728905E-5 max=9.52601432800293E-4 outside=0 reused=0
+camera movement divisor=2 rmse=3.961255922208559E-4 max=0.010451197624206543 outside=0 reused=8013
+camera movement divisor=4 rmse=2.763704925733948E-4 max=0.005880892276763916 outside=0 reused=3103
+aperture divisor=1 rmse=8.850251863669571E-5 max=9.591579437255859E-4 outside=0 reused=0
+aperture divisor=2 rmse=8.850251863669571E-5 max=9.591579437255859E-4 outside=0 reused=0
+aperture divisor=4 rmse=8.850251863669571E-5 max=9.591579437255859E-4 outside=0 reused=0
+hazy air divisor=1 rmse=8.592478101884949E-5 max=0.0016029030084609985 outside=0 reused=0
+hazy air divisor=2 rmse=3.7030056940261827E-4 max=0.010691612958908081 outside=0 reused=7735
+hazy air divisor=4 rmse=2.890785624570029E-4 max=0.010324448347091675 outside=0 reused=2871
+rotated colored fog divisor=1 rmse=1.4370543579580327E-4 max=0.0027615725994110107 outside=0 reused=0
+rotated colored fog divisor=2 rmse=4.086095989220799E-4 max=0.006906032562255859 outside=0 reused=9372
+rotated colored fog divisor=4 rmse=2.745556813228495E-4 max=0.0037192031741142273 outside=0 reused=3540
+additional directional light divisor=1 rmse=8.770722969721378E-5 max=9.840130805969238E-4 outside=0 reused=0
+additional directional light divisor=2 rmse=3.781143074114012E-4 max=0.009628966450691223 outside=0 reused=7769
+additional directional light divisor=4 rmse=2.873345309458202E-4 max=0.007708098739385605 outside=0 reused=3033
+PASS fog quality, odd dimensions, current lighting, exact fallback and session toggles

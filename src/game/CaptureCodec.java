@@ -117,6 +117,7 @@ final class CaptureCodec {
         // Version-one captures predating the optional GPU quality control use the reference path.
         if (clazz == engine.RenderSettings.class) {
             p.putIfAbsent(key + ".fogDownsample", "1");
+            p.putIfAbsent(key + ".fogLightingGrid", "false");
         }
         var components = clazz.getRecordComponents();
         var types = new Class<?>[components.length];

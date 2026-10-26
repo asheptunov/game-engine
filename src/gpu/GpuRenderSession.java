@@ -23,7 +23,8 @@ public final class GpuRenderSession implements RenderSession {
             int depth,
             long seed,
             long restart,
-            int fogDownsample) {}
+            int fogDownsample,
+            boolean fogLightingGrid) {}
 
     private static final class Slot {
         float[] pixels;
@@ -91,7 +92,8 @@ public final class GpuRenderSession implements RenderSession {
                         nextSettings.pathDepth(),
                         nextSettings.seed(),
                         nextSettings.restartRevision(),
-                        nextSettings.fogDownsample());
+                        nextSettings.fogDownsample(),
+                        nextSettings.fogLightingGrid());
         synchronized (this) {
             checkOpen();
             if (!nextKey.equals(key)) {
@@ -104,7 +106,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextSettings.pathDepth() == settings.pathDepth()
                                 && nextSettings.seed() == settings.seed()
                                 && nextSettings.restartRevision() == settings.restartRevision()
-                                && nextSettings.fogDownsample() == settings.fogDownsample();
+                                && nextSettings.fogDownsample() == settings.fogDownsample()
+                                && nextSettings.fogLightingGrid() == settings.fogLightingGrid();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -246,7 +249,8 @@ public final class GpuRenderSession implements RenderSession {
                                         + " %.2f ms | prepare %.2f ms | peak %.1f MiB | primitive"
                                         + " counters n/a | init %.2f ms | max prepare %.2f ms | fog"
                                         + " build %.2f ms | fog builds %d | fog grid 1/%d requested"
-                                        + " 1/%d | fog primary %.2f ms | fog reused %d",
+                                        + " 1/%d | fog primary %.2f ms | fog reused %d | lighting"
+                                        + " grid %b requested %b | grid build %.2f ms",
                                     kernel.gpu.name,
                                     kernel.executeNanos / 1e6,
                                     kernel.transferNanos / 1e6,
@@ -260,7 +264,10 @@ public final class GpuRenderSession implements RenderSession {
                                     kernel.fogDownsample,
                                     capturedSettings.fogDownsample(),
                                     kernel.fogPrimaryNanos / 1e6,
-                                    kernel.fogReusedPixels);
+                                    kernel.fogReusedPixels,
+                                    kernel.lightingGrid,
+                                    capturedSettings.fogLightingGrid(),
+                                    kernel.lightingBuildNanos / 1e6);
                 } else {
                     cancelled++;
                     accumulatedKey = null;

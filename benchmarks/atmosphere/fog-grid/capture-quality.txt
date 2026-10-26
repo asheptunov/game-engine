@@ -1,0 +1,4 @@
+capture mode=0 linearRMSE=0.0 maximum=0.0 outside=0 buildMs=0.0
+capture mode=1 linearRMSE=8.162018684567779E-5 maximum=9.736120700836182E-4 outside=0 buildMs=0.023648
+capture mode=2 linearRMSE=2.4530194924654884E-4 maximum=0.012410596013069153 outside=0 buildMs=0.02368
+capture mode=4 linearRMSE=3.0804026240451954E-4 maximum=0.01601634919643402 outside=0 buildMs=0.023904

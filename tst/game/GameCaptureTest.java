@@ -41,6 +41,7 @@ public final class GameCaptureTest {
         var settings =
                 engine.RenderSettings.defaults()
                         .withFogDownsample(4)
+                        .withFogLightingGrid(true)
                         .withPathDepth(2)
                         .withSeed(3)
                         .withRestartRevision(4)
@@ -54,13 +55,17 @@ public final class GameCaptureTest {
                         .withInteractive(false, 20, 64, 64)
                         .withTemporalBudget(false, 2, .5);
         assertEquals(4, settings.fogDownsample());
+        assertTrue(settings.fogLightingGrid());
         Path file = root().resolve("settings.properties");
         CaptureCodec.save(file, settings);
         assertEquals(settings, CaptureCodec.load(file, engine.RenderSettings.class));
-        var old = Files.readString(file).replace("data.fogDownsample=4", "");
+        var old =
+                Files.readString(file)
+                        .replace("data.fogDownsample=4", "")
+                        .replace("data.fogLightingGrid=true", "");
         Files.writeString(file, old);
         assertEquals(
-                settings.withFogDownsample(1),
+                settings.withFogDownsample(1).withFogLightingGrid(false),
                 CaptureCodec.load(file, engine.RenderSettings.class));
         Files.writeString(file, old + "\ndata.fogDownsample=3\n");
         boolean rejected = false;
@@ -86,7 +91,7 @@ public final class GameCaptureTest {
             navigation.pose(new Vec3(1, 3, -5), .2, -.1);
             renderer.atmospherePreset(true);
             renderer.fogPreset();
-            renderer.configure(settings -> settings.withFogDownsample(4));
+            renderer.configure(settings -> settings.withFogDownsample(4).withFogLightingGrid(true));
             renderer.exposure(1.5f);
             var expectedNavigation = navigation.snapshot();
             var expectedControls = renderer.captureControls();

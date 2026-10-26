@@ -44,6 +44,12 @@ public final class GpuUiCheck {
             if(!renderer.refinement()) throw new AssertionError("Refinement toggle did not enable");
             awaitSamples(renderer, frame -> frame.samples() >= 4);
             SwingUtilities.invokeAndWait(()->{
+                var lightingGrid=(javax.swing.JCheckBox)find(holder[0],"Shared 3D fog lighting (experimental)");
+                if(lightingGrid==null) throw new AssertionError("Missing lighting grid control");
+                lightingGrid.doClick();
+                if(!renderer.settings().fogLightingGrid()) throw new AssertionError("Grid control did not enable");
+                lightingGrid.doClick();
+                if(renderer.settings().fogLightingGrid()) throw new AssertionError("Grid control did not disable");
                 var fog=(javax.swing.JComboBox<?>)find(holder[0],"fogResolution");
                 if(fog==null) throw new AssertionError("Missing fog resolution control");
                 fog.setSelectedIndex(2);

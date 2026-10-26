@@ -560,6 +560,14 @@ public final class GameSettingsPanel extends JPanel {
         panel.add(new JLabel("GPU fog only; geometry stays sharp."));
         panel.add(new JLabel("CPU, lens and unsupported fog use Full."));
         panel.add(new JLabel("Half / Quarter may soften shafts; compare with Full."));
+        check(
+                panel,
+                "Shared 3D fog lighting (experimental)",
+                () -> renderer.settings().fogLightingGrid(),
+                enabled -> renderer.configure(settings -> settings.withFogLightingGrid(enabled)),
+                true);
+        panel.add(new JLabel("GPU: shares lighting across primary and bounced rays."));
+        panel.add(new JLabel("Keeps exact shadows; unsupported air uses direct lighting."));
         heading(panel, "Local air at the ruins");
         panel.add(
                 new JLabel(

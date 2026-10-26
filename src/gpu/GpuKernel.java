@@ -83,6 +83,8 @@ final class GpuKernel implements AutoCloseable {
     private long fogPrimaryPipeline;
     private long fogReconstructPipeline;
     private long fogResolvePipeline;
+    private long lightingBuildPipeline;
+    private final long[] lightingPipelines = new long[5];
     private long descriptorPool;
     private long descriptorSet;
     private VulkanDevice.Buffer parameters;
@@ -91,6 +93,9 @@ final class GpuKernel implements AutoCloseable {
     private engine.FogSunTable.Layout fogLayout;
     private VulkanDevice.Buffer fogPrimary;
     private VulkanDevice.Buffer fogGuides;
+    private FogLightingTexture lightingTexture;
+    boolean lightingGrid;
+    long lightingBuildNanos;
     int fogDownsample = 1;
     long fogPrimaryNanos;
     int fogReusedPixels;
@@ -150,15 +155,25 @@ final class GpuKernel implements AutoCloseable {
 
     private void createPipeline() {
         try (var stack = MemoryStack.stackPush()) {
-            var bindings = VkDescriptorSetLayoutBinding.calloc(10, stack);
-            for (int i = 0; i < 10; i++) {
+            var bindings = VkDescriptorSetLayoutBinding.calloc(12, stack);
+            for (int i = 0; i < 12; i++) {
                 bindings.get(i)
                         .binding(i)
                         .descriptorCount(1)
                         .descriptorType(
                                 i == 0
                                         ? VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR
-                                        : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                                        : i == 10
+                                                ? org.lwjgl
+                                                        .vulkan
+                                                        .VK10
+                                                        .VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+                                                : i == 11
+                                                        ? org.lwjgl
+                                                                .vulkan
+                                                                .VK10
+                                                                .VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+                                                        : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         .stageFlags(VK_SHADER_STAGE_COMPUTE_BIT);
             }
             var handle = stack.longs(0);
@@ -210,12 +225,22 @@ final class GpuKernel implements AutoCloseable {
                 fogPrimaryPipeline = createVariant(shader, 2, stack);
                 fogReconstructPipeline = createVariant(shader, 3, stack);
                 fogResolvePipeline = createVariant(shader, 4, stack);
+                lightingBuildPipeline = createVariant(shader, 5, stack);
+                for (int mode : new int[] {0, 2, 3, 4}) {
+                    lightingPipelines[mode] = createVariant(shader, mode, stack, true);
+                }
             } finally {
                 vkDestroyShaderModule(gpu.device, shader, null);
             }
-            var sizes = VkDescriptorPoolSize.calloc(2, stack);
+            var sizes = VkDescriptorPoolSize.calloc(4, stack);
             sizes.get(0).type(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR).descriptorCount(1);
             sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(9);
+            sizes.get(2)
+                    .type(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .descriptorCount(1);
+            sizes.get(3)
+                    .type(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .descriptorCount(1);
             VulkanDevice.check(
                     vkCreateDescriptorPool(
                             gpu.device,
@@ -241,8 +266,14 @@ final class GpuKernel implements AutoCloseable {
     }
 
     private long createVariant(long shader, int mode, MemoryStack stack) {
-        var constant = VkSpecializationMapEntry.calloc(1, stack).constantID(0).offset(0).size(4);
-        var data = stack.malloc(4).putInt(0, mode);
+        return createVariant(shader, mode, stack, false);
+    }
+
+    private long createVariant(long shader, int mode, MemoryStack stack, boolean gridLighting) {
+        var constant = VkSpecializationMapEntry.calloc(2, stack);
+        constant.get(0).constantID(0).offset(0).size(4);
+        constant.get(1).constantID(1).offset(4).size(4);
+        var data = stack.malloc(8).putInt(0, mode).putInt(4, gridLighting ? 1 : 0);
         var specialization = VkSpecializationInfo.calloc(stack).pMapEntries(constant).pData(data);
         var create = VkComputePipelineCreateInfo.calloc(1, stack);
         create.get(0)
@@ -272,6 +303,11 @@ final class GpuKernel implements AutoCloseable {
         changed |= prepareImages(view);
         var nextFogLayout = engine.FogSunTable.layout(world.sky());
         changed |= preparePrimaryFog(view, settings, nextFogLayout);
+        changed |=
+                prepareLightingGrid(
+                        settings.fogLightingGrid()
+                                && engine.FogLightingGrid.eligible(
+                                        world.sky().atmosphere(), nextFogLayout));
         if (changed) {
             bind();
         }
@@ -283,7 +319,8 @@ final class GpuKernel implements AutoCloseable {
         writeFogLayout();
         beforeDispatch.run();
         gpu.begin();
-        vkCmdResetQueryPool(gpu.command, gpu.queries, 0, 5);
+        lightingTexture.prepare();
+        vkCmdResetQueryPool(gpu.command, gpu.queries, 0, 6);
         gpu.barrier(
                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 VK_ACCESS_SHADER_WRITE_BIT,
@@ -301,12 +338,16 @@ final class GpuKernel implements AutoCloseable {
                     null);
             buildFogTable(rebuildFog);
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 3);
+            buildLightingGrid();
+            vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 5);
             buildPrimaryFog();
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 4);
             vkCmdBindPipeline(
                     gpu.command,
                     VK_PIPELINE_BIND_POINT_COMPUTE,
-                    fogDownsample == 1 ? pipeline : fogReconstructPipeline);
+                    fogDownsample == 1
+                            ? lightingVariant(pipeline, 0)
+                            : lightingVariant(fogReconstructPipeline, 3));
             vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
             resolvePrimaryFog();
             gpu.barrier(
@@ -324,13 +365,13 @@ final class GpuKernel implements AutoCloseable {
                     VK_ACCESS_HOST_READ_BIT);
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, gpu.queries, 2);
             gpu.submit();
-            var times = stack.mallocLong(5);
+            var times = stack.mallocLong(6);
             VulkanDevice.check(
                     vkGetQueryPoolResults(
                             gpu.device,
                             gpu.queries,
                             0,
-                            5,
+                            6,
                             times,
                             8,
                             VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT),
@@ -418,6 +459,36 @@ final class GpuKernel implements AutoCloseable {
         return changed;
     }
 
+    private boolean prepareLightingGrid(boolean enabled) {
+        lightingGrid = enabled;
+        int resolution = enabled ? engine.FogSunTable.SIZE : 1;
+        if (lightingTexture != null && lightingTexture.resolution == resolution) {
+            return false;
+        }
+        if (lightingTexture != null) {
+            lightingTexture.close();
+        }
+        lightingTexture = new FogLightingTexture(gpu, resolution);
+        return true;
+    }
+
+    private long lightingVariant(long reference, int mode) {
+        return lightingGrid ? lightingPipelines[mode] : reference;
+    }
+
+    private void buildLightingGrid() {
+        if (!lightingGrid) {
+            return;
+        }
+        vkCmdBindPipeline(gpu.command, VK_PIPELINE_BIND_POINT_COMPUTE, lightingBuildPipeline);
+        vkCmdDispatch(gpu.command, (engine.FogSunTable.CELLS + 63) / 64, 1, 1);
+        gpu.barrier(
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_ACCESS_SHADER_WRITE_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_ACCESS_SHADER_READ_BIT);
+    }
+
     private void recordTimings(boolean rebuildFog, java.nio.LongBuffer times) {
         fogBuildNanos =
                 rebuildFog ? (long) ((times.get(3) - times.get(0)) * gpu.timestampPeriod) : 0;
@@ -427,7 +498,9 @@ final class GpuKernel implements AutoCloseable {
         fogPrimaryNanos =
                 fogDownsample == 1
                         ? 0
-                        : (long) ((times.get(4) - times.get(3)) * gpu.timestampPeriod);
+                        : (long) ((times.get(4) - times.get(5)) * gpu.timestampPeriod);
+        lightingBuildNanos =
+                lightingGrid ? (long) ((times.get(5) - times.get(3)) * gpu.timestampPeriod) : 0;
         executeNanos = (long) ((times.get(1) - times.get(0)) * gpu.timestampPeriod);
         transferNanos = (long) ((times.get(2) - times.get(1)) * gpu.timestampPeriod);
     }
@@ -441,7 +514,10 @@ final class GpuKernel implements AutoCloseable {
                 VK_ACCESS_SHADER_WRITE_BIT,
                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-        vkCmdBindPipeline(gpu.command, VK_PIPELINE_BIND_POINT_COMPUTE, fogResolvePipeline);
+        vkCmdBindPipeline(
+                gpu.command,
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+                lightingVariant(fogResolvePipeline, 4));
         vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
     }
 
@@ -449,7 +525,10 @@ final class GpuKernel implements AutoCloseable {
         if (fogDownsample == 1) {
             return;
         }
-        vkCmdBindPipeline(gpu.command, VK_PIPELINE_BIND_POINT_COMPUTE, fogPrimaryPipeline);
+        vkCmdBindPipeline(
+                gpu.command,
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+                lightingVariant(fogPrimaryPipeline, 2));
         int columns = (width + fogDownsample - 1) / fogDownsample;
         int rows = (height + fogDownsample - 1) / fogDownsample;
         vkCmdDispatch(gpu.command, (columns + 7) / 8, (rows + 7) / 8, 1);
@@ -488,7 +567,7 @@ final class GpuKernel implements AutoCloseable {
 
     private void bind() {
         try (var stack = MemoryStack.stackPush()) {
-            var writes = VkWriteDescriptorSet.calloc(10, stack);
+            var writes = VkWriteDescriptorSet.calloc(12, stack);
             var acceleration =
                     VkWriteDescriptorSetAccelerationStructureKHR.calloc(stack)
                             .sType$Default()
@@ -526,6 +605,29 @@ final class GpuKernel implements AutoCloseable {
                         .descriptorCount(1)
                         .pBufferInfo(info);
             }
+            var sampled =
+                    org.lwjgl.vulkan.VkDescriptorImageInfo.calloc(1, stack)
+                            .sampler(lightingTexture.sampler)
+                            .imageView(lightingTexture.view)
+                            .imageLayout(org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_GENERAL);
+            var storage =
+                    org.lwjgl.vulkan.VkDescriptorImageInfo.calloc(1, stack)
+                            .imageView(lightingTexture.view)
+                            .imageLayout(org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_GENERAL);
+            writes.get(10)
+                    .sType$Default()
+                    .dstSet(descriptorSet)
+                    .dstBinding(10)
+                    .descriptorCount(1)
+                    .descriptorType(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .pImageInfo(sampled);
+            writes.get(11)
+                    .sType$Default()
+                    .dstSet(descriptorSet)
+                    .dstBinding(11)
+                    .descriptorCount(1)
+                    .descriptorType(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .pImageInfo(storage);
             vkUpdateDescriptorSets(gpu.device, writes, null);
         }
     }
@@ -568,6 +670,7 @@ final class GpuKernel implements AutoCloseable {
         put(base, fogLayout == null ? Vec3.ZERO : fogLayout.lower());
         parameters.mapped.putFloat(base * 16 + 12, fogLayout == null ? 0 : engine.FogSunTable.SIZE);
         put(base + 1, fogLayout == null ? new Vec3(1, 1, 1) : fogLayout.extent());
+        parameters.mapped.putFloat((base + 1) * 16 + 12, lightingGrid ? 1 : 0);
     }
 
     private void writeFog(java.util.List<engine.FogRegion> regions) {
@@ -682,6 +785,10 @@ final class GpuKernel implements AutoCloseable {
             destroyPipeline(fogPrimaryPipeline);
             destroyPipeline(fogReconstructPipeline);
             destroyPipeline(fogResolvePipeline);
+            destroyPipeline(lightingBuildPipeline);
+            for (long variant : lightingPipelines) {
+                destroyPipeline(variant);
+            }
             if (pipelineLayout != 0) {
                 vkDestroyPipelineLayout(gpu.device, pipelineLayout, null);
             }

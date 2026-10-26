@@ -23,17 +23,19 @@ public final class FogCacheBenchmark {
             int daySeconds,
             double startHour,
             int frames,
-            int fogDownsample) {}
+            int fogDownsample,
+            boolean lightingGrid) {}
 
     public static void main(String[] args) throws Exception {
         var capture = GameCapture.load(Path.of(args[0]));
-        String backend = args.length > 1 ? args[1] : "gpu";
-        String[] widths = (args.length > 2 ? args[2] : "418,836,1600").split(",");
-        double startHour = args.length > 3 ? Double.parseDouble(args[3]) : 7;
-        int frames = args.length > 4 ? Integer.parseInt(args[4]) : 20;
-        int divisor = args.length > 5 ? Integer.parseInt(args[5]) : 1;
+        String backend = argument(args, 1, "gpu");
+        String[] widths = argument(args, 2, "418,836,1600").split(",");
+        double startHour = Double.parseDouble(argument(args, 3, "7"));
+        int frames = Integer.parseInt(argument(args, 4, "20"));
+        int divisor = Integer.parseInt(argument(args, 5, "1"));
+        boolean lightingGrid = Boolean.parseBoolean(argument(args, 6, "false"));
         System.out.println(
-                "reference,backend,round,width,height,daySeconds,startHour,gpuMedianMs,gpuP95Ms,fogBuildMedianMs,transferMedianMs,traceMedianMs,copyMedianMs,totalMedianMs,totalP95Ms,fogDownsample");
+                "reference,backend,round,width,height,daySeconds,startHour,gpuMedianMs,gpuP95Ms,fogBuildMedianMs,transferMedianMs,traceMedianMs,copyMedianMs,totalMedianMs,totalP95Ms,fogDownsample,lightingGrid,gridBuildMedianMs");
         for (int round = 0; round < 2; round++) {
             for (int index = 0; index < widths.length; index++) {
                 int width =
@@ -41,11 +43,22 @@ public final class FogCacheBenchmark {
                 for (int duration : new int[] {0, 600, 30}) {
                     measure(
                             capture,
-                            new Case(backend, width, duration, startHour, frames, divisor),
+                            new Case(
+                                    backend,
+                                    width,
+                                    duration,
+                                    startHour,
+                                    frames,
+                                    divisor,
+                                    lightingGrid),
                             round);
                 }
             }
         }
+    }
+
+    private static String argument(String[] args, int index, String fallback) {
+        return args.length > index ? args[index] : fallback;
     }
 
     private static WorldSnapshot world(GameCapture.Loaded capture, Case config, int pass) {
@@ -81,9 +94,10 @@ public final class FogCacheBenchmark {
                         .withPaused(false)
                         .withInteractive(false, 16.67, 0, 0)
                         .withTemporal(false, 0)
-                        .withFogDownsample(config.fogDownsample());
+                        .withFogDownsample(config.fogDownsample())
+                        .withFogLightingGrid(config.lightingGrid());
         var signal = new Semaphore(0);
-        double[][] measurements = new double[6][config.frames()];
+        double[][] measurements = new double[7][config.frames()];
         try (var session =
                 RenderEngine.openSession(
                         world(capture, config, 0), view, settings, config.backend())) {
@@ -121,6 +135,7 @@ public final class FogCacheBenchmark {
                 values[3][index] = image.traceNanos() / 1e6;
                 values[4][index] = (finished - copyStart) / 1e6;
                 values[5][index] = (finished - start) / 1e6;
+                values[6][index] = status(text, "grid build");
             }
         }
     }
@@ -133,7 +148,7 @@ public final class FogCacheBenchmark {
         int p95 = (int) Math.ceil(config.frames() * .95) - 1;
         System.out.printf(
                 Locale.ROOT,
-                "%b,%s,%d,%d,%d,%d,%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d%n",
+                "%b,%s,%d,%d,%d,%d,%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%b,%.3f%n",
                 Boolean.getBoolean("engine.fogSunReference"),
                 config.backend(),
                 round,
@@ -149,6 +164,8 @@ public final class FogCacheBenchmark {
                 values[4][median],
                 values[5][median],
                 values[5][p95],
-                config.fogDownsample());
+                config.fogDownsample(),
+                config.lightingGrid(),
+                values[6][median]);
     }
 }
