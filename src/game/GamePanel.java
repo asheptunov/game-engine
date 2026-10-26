@@ -29,6 +29,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private final Timer timer;
     private final GameSettingsPanel settingsPanel;
     private Robot pointer;
+    private final java.util.Set<Integer> captureKeys = new java.util.HashSet<>();
     private String pointerError;
     private int settingsRefreshTicks;
 
@@ -39,6 +40,8 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         setBackground(Color.BLACK);
         setFocusable(true);
         setLayout(null);
+        bindCapture(KeyEvent.VK_F8, false);
+        bindCapture(KeyEvent.VK_F9, true);
         settingsPanel = new GameSettingsPanel(navigation, renderer);
         add(settingsPanel);
         addKeyListener(
@@ -51,6 +54,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
                     @Override
                     public void keyReleased(KeyEvent event) {
+                        captureKeys.remove(event.getKeyCode());
                         navigation.key(AwtInputAdapter.key(event));
                     }
                 });
@@ -97,6 +101,35 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                             repaint();
                         });
         timer.start();
+    }
+
+    private void bindCapture(int key, boolean history) {
+        String press = "capture-" + key;
+        String release = press + "-release";
+        getInputMap(WHEN_IN_FOCUSED_WINDOW)
+                .put(javax.swing.KeyStroke.getKeyStroke(key, 0, false), press);
+        getInputMap(WHEN_IN_FOCUSED_WINDOW)
+                .put(javax.swing.KeyStroke.getKeyStroke(key, 0, true), release);
+        getActionMap()
+                .put(
+                        press,
+                        new javax.swing.AbstractAction() {
+                            @Override
+                            public void actionPerformed(java.awt.event.ActionEvent event) {
+                                if (captureKeys.add(key)) {
+                                    renderer.captureBundle(history);
+                                }
+                            }
+                        });
+        getActionMap()
+                .put(
+                        release,
+                        new javax.swing.AbstractAction() {
+                            @Override
+                            public void actionPerformed(java.awt.event.ActionEvent event) {
+                                captureKeys.remove(key);
+                            }
+                        });
     }
 
     @Override
@@ -200,6 +233,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
     public void renderingActive(boolean active) {
         navigation.active(active);
+        captureKeys.clear();
         updateCursor();
         repaint();
     }
@@ -227,9 +261,11 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         height,
                         null);
             }
+            renderer.displayed(frame);
             drawOverlay(draw, frame);
             draw.setColor(Color.WHITE);
             drawBackendStatus(draw);
+            draw.drawString(renderer.captureStatus(), 14, getHeight() - 60);
             if (frame != null) {
                 draw.drawString(
                         "Generation "

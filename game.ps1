@@ -1,6 +1,6 @@
 param([switch]$NoBuild, [ValidateSet('world', 'landscape', 'gallery')][string]$Scene = 'world',
     [ValidateSet('cpu','gpu')][string]$Backend = 'cpu',
-    [ValidateRange(0,1600)][int]$Width = 0, [ValidateRange(0,1600)][int]$Height = 0)
+    [ValidateRange(0,1600)][int]$Width = 0, [ValidateRange(0,1600)][int]$Height = 0, [string]$Capture = "")
 $ErrorActionPreference = "Stop"
 $repository = $PSScriptRoot
 $output = Join-Path $repository "out/game"
@@ -18,7 +18,8 @@ $crashes = Join-Path $output 'crashes'
 New-Item -ItemType Directory -Force $crashes | Out-Null
 $jvmError = Join-Path $crashes 'hs_err_pid%p.log'
 $stderr = Join-Path $output "game-error.log"
-$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList @("--enable-preview", ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
+$captureArgument = if ($Capture) { @('"' + (Resolve-Path -LiteralPath $Capture).Path + '"') } else { @() }
+$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList (@("--enable-preview", ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) + $captureArgument) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
 Start-Sleep -Milliseconds 750
 if ($process.HasExited) { throw "Sample game exited during startup; inspect $stderr" }
 Write-Output "Sample game started (PID $($process.Id)). Errors: $stderr"

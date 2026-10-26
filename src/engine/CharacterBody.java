@@ -15,6 +15,30 @@ public final class CharacterBody {
     private Vec3 velocity = Vec3.ZERO;
     private boolean grounded;
 
+    public record State(Vec3 feet, Vec3 previous, Vec3 velocity, boolean grounded) {
+        public State {
+            for (var vector : new Vec3[] {feet, previous, velocity}) {
+                if (vector == null
+                        || !Float.isFinite(vector.x())
+                        || !Float.isFinite(vector.y())
+                        || !Float.isFinite(vector.z())) {
+                    throw new IllegalArgumentException("Character state must be finite");
+                }
+            }
+        }
+    }
+
+    public State snapshot() {
+        return new State(feet, previous, velocity, grounded);
+    }
+
+    public void restore(State state) {
+        feet = state.feet();
+        previous = state.previous();
+        velocity = state.velocity();
+        grounded = state.grounded();
+    }
+
     public CharacterBody(Vec3 eye) {
         teleport(eye);
     }

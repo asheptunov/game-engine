@@ -40,8 +40,23 @@ public final class SampleGameMain {
                         height,
                         java.nio.file.Path.of("out/game/crashes"),
                         diagnostics);
+        GameCapture.Loaded capture;
+        try {
+            capture = args.length > 4 ? GameCapture.load(java.nio.file.Path.of(args[4])) : null;
+        } catch (java.io.IOException failure) {
+            throw new IllegalArgumentException("Cannot load capture", failure);
+        }
         SwingUtilities.invokeLater(
-                () -> showGame(scene, backend, width, height, diagnostics, crashes, factory));
+                () ->
+                        showGame(
+                                scene,
+                                backend,
+                                width,
+                                height,
+                                diagnostics,
+                                crashes,
+                                factory,
+                                capture));
     }
 
     private static void showGame(
@@ -51,7 +66,8 @@ public final class SampleGameMain {
             int height,
             GameDiagnostics diagnostics,
             GameCrashHandler crashes,
-            GameRenderer.SessionFactory factory) {
+            GameRenderer.SessionFactory factory,
+            GameCapture.Loaded capture) {
 
         var navigation = new GameNavigation();
         if (width != 0) {
@@ -62,7 +78,9 @@ public final class SampleGameMain {
             renderer =
                     new GameRenderer(
                             navigation,
-                            world(scene),
+                            capture == null
+                                    ? world(scene)
+                                    : capture.world(capture.manifest().current().world()),
                             backend,
                             GameRenderer::copyImage,
                             new GameRenderer.RuntimeHooks(diagnostics, crashes::fatal, factory));
@@ -77,7 +95,14 @@ public final class SampleGameMain {
             navigation.speed(5);
         }
         navigation.walking(true);
+        if (capture != null) {
+            renderer.restoreCapture(capture);
+        }
         var panel = new GamePanel(navigation, renderer);
+        if (capture != null) {
+            var saved = capture.manifest().current().navigation();
+            panel.setPreferredSize(new java.awt.Dimension(saved.width(), saved.height()));
+        }
         var window = new JFrame("Sample game — " + scene);
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         window.setContentPane(panel);

@@ -25,7 +25,11 @@ public final class GameRenderer implements AutoCloseable {
             long publicationNanos,
             long capturedNanos,
             engine.Camera camera,
-            Metrics metrics) {}
+            Metrics metrics,
+            FrameContext context) {}
+
+    public record FrameContext(
+            engine.WorldSnapshot world, RenderSettings settings, float exposure) {}
 
     /** Benchmark-only timings at copy completion; trace CPU sums all active tracing threads. */
     public record Metrics(
@@ -52,6 +56,149 @@ public final class GameRenderer implements AutoCloseable {
             return new RuntimeHooks(
                     new GameDiagnostics(), failure -> {}, RenderEngine::openSession);
         }
+    }
+
+    private final GameRecording recording = new GameRecording();
+    private final java.util.LinkedHashMap<Long, FrameContext> frameContexts =
+            new java.util.LinkedHashMap<>();
+    private final AtomicBoolean exporting = new AtomicBoolean();
+    private volatile String captureStatus = "F8: snapshot | F9: last 30 seconds";
+    private volatile Frame displayedFrame;
+    private final java.util.concurrent.ExecutorService captureWriter =
+            Executors.newSingleThreadExecutor(
+                    runnable -> {
+                        var thread = new Thread(runnable, "game-capture-writer");
+                        thread.setDaemon(true);
+                        return thread;
+                    });
+
+    public String captureStatus() {
+        return captureStatus;
+    }
+
+    void displayed(Frame value) {
+        displayedFrame = value;
+    }
+
+    public java.util.concurrent.CompletableFuture<java.nio.file.Path> captureBundle(
+            boolean history) {
+        return captureBundle(history, java.nio.file.Path.of("out/game/captures"));
+    }
+
+    java.util.concurrent.CompletableFuture<java.nio.file.Path> captureBundle(
+            boolean history, java.nio.file.Path root) {
+        if (!exporting.compareAndSet(false, true)) {
+            return java.util.concurrent.CompletableFuture.failedFuture(
+                    new IllegalStateException("Capture already saving"));
+        }
+        GameCapture.Pending pending;
+        synchronized (this) {
+            synchronized (navigation) {
+                long now = System.nanoTime();
+                pending =
+                        new GameCapture.Pending(
+                                world,
+                                captureControls(),
+                                navigation.snapshot(),
+                                displayedFrame,
+                                recording.freeze(now, history),
+                                backend,
+                                cachedBackendStatus,
+                                now,
+                                history);
+            }
+        }
+        captureStatus = "Saving " + (history ? "30-second history" : "snapshot") + "...";
+        var result = new java.util.concurrent.CompletableFuture<java.nio.file.Path>();
+        try {
+            captureWriter.execute(
+                    () -> {
+                        try {
+                            var path = GameCapture.write(root, pending);
+                            captureStatus = "Saved capture: " + path;
+                            System.out.println(captureStatus);
+                            exporting.set(false);
+                            result.complete(path);
+                        } catch (Throwable failure) {
+                            captureStatus = "Capture failed: " + failure.getMessage();
+                            exporting.set(false);
+                            result.completeExceptionally(failure);
+                        }
+                    });
+        } catch (RejectedExecutionException closing) {
+            exporting.set(false);
+            result.completeExceptionally(closing);
+        }
+        return result;
+    }
+
+    synchronized GameCapture.Controls captureControls() {
+        return new GameCapture.Controls(
+                settings,
+                lighting,
+                exposure,
+                cycle.hour(),
+                cycle.duration(),
+                cycle.running(),
+                refinementTarget,
+                atmosphereEnabled,
+                atmosphere,
+                fogEnabled,
+                fogOverlap,
+                fogReverse,
+                fogDemo,
+                fogClosed,
+                fogShift,
+                fogRegions);
+    }
+
+    private void recordControls() {
+        recordControls(true);
+    }
+
+    private void recordControls(boolean force) {
+        recording.observe(
+                new GameRecording.Observation(
+                        System.nanoTime(), world, captureControls(), navigation.snapshot()),
+                force);
+    }
+
+    private void rememberFrameContext() {
+        frameContexts.putIfAbsent(
+                session.progress(null).requestedGeneration(),
+                new FrameContext(world, settings, exposure));
+        while (frameContexts.size() > 512) {
+            frameContexts.remove(frameContexts.keySet().iterator().next());
+        }
+    }
+
+    /** Restore physical state and controls, then leave playback paused for human inspection. */
+    public synchronized void restoreCapture(GameCapture.Loaded capture) {
+        var state = capture.manifest().current();
+        var controls = state.controls();
+        world = capture.world(state.world());
+        settings = controls.settings().withPaused(false);
+        lighting = controls.lighting();
+        exposure = controls.exposure();
+        cycle.hour(controls.hour());
+        cycle.duration(controls.duration());
+        cycle.running(false);
+        refinementTarget = controls.refinementTarget();
+        atmosphereEnabled = controls.atmosphereEnabled();
+        atmosphere = controls.atmosphere();
+        fogEnabled = controls.fogEnabled();
+        fogOverlap = controls.fogOverlap();
+        fogReverse = controls.fogReverse();
+        fogDemo = controls.fogDemo();
+        fogClosed = controls.fogClosed();
+        fogShift = controls.fogShift();
+        fogRegions = controls.fogRegions();
+        updateCollision(world);
+        navigation.restore(state.navigation());
+        navigation.release();
+        navigation.autofocus(false);
+        lastTick = System.nanoTime();
+        recordControls();
     }
 
     private final RuntimeHooks hooks;
@@ -135,6 +282,7 @@ public final class GameRenderer implements AutoCloseable {
         this.hooks = hooks;
         this.imageConverter = java.util.Objects.requireNonNull(imageConverter);
         this.navigation = navigation;
+        navigation.recording(recording);
         this.backend = backend;
         capabilities = RenderEngine.capabilities(backend);
         if (!adaptiveSupported() || navigation.fixedResolution()) {
@@ -202,6 +350,7 @@ public final class GameRenderer implements AutoCloseable {
         }
         navigation.collision(meshes ? new engine.CapsuleCollision(value.instances()) : null);
         collisionInstances = value.instances();
+        navigation.collisionSource(collisionInstances);
     }
 
     /** Coalesce completion signals; all session work stays on the existing game owner. */
@@ -248,6 +397,7 @@ public final class GameRenderer implements AutoCloseable {
                 capturedExposure = exposure;
                 session.update(capturedWorld, view, capturedSettings);
                 session.request();
+                rememberFrameContext();
                 captureDiagnostics(view, session.progress(null), cachedBackendStatus);
                 acquired = session.acquireImage();
                 if (acquired == null || acquired.publicationNanos() == converted) {
@@ -286,7 +436,9 @@ public final class GameRenderer implements AutoCloseable {
                                 copied,
                                 acquired.publicationNanos(),
                                 acquired.camera(),
-                                metrics);
+                                metrics,
+                                contextFor(acquired.generation(), capturedExposure));
+                recording.picture(frame);
                 session.presented(acquired);
                 cachedBackendStatus = session.status();
                 captureDiagnostics(view, session.progress(acquired), cachedBackendStatus);
@@ -305,6 +457,13 @@ public final class GameRenderer implements AutoCloseable {
         }
     }
 
+    private FrameContext contextFor(long generation, float capturedExposure) {
+        var context = frameContexts.get(generation);
+        return context == null
+                ? null
+                : new FrameContext(context.world(), context.settings(), capturedExposure);
+    }
+
     static engine.RenderFailure asFailure(String backend, String phase, Throwable failure) {
         return failure instanceof engine.RenderFailure reported
                 ? reported
@@ -321,6 +480,7 @@ public final class GameRenderer implements AutoCloseable {
 
     private void captureDiagnostics(
             engine.RenderView view, engine.RenderProgress progress, String status) {
+        recordControls(false);
         hooks.diagnostics()
                 .capture(
                         new GameDiagnostics.State(
@@ -418,6 +578,7 @@ public final class GameRenderer implements AutoCloseable {
             // Discard the refined mean so the next image really contains only sample zero.
             settings = settings.withRestartRevision(settings.restartRevision() + 1);
         }
+        recordControls();
     }
 
     public synchronized void adaptive(boolean enabled) {
@@ -426,6 +587,7 @@ public final class GameRenderer implements AutoCloseable {
                 enabled,
                 "settings.interactive");
         settings = settings.withInteractive(enabled, settings.interactiveMillis(), 0, 0);
+        recordControls();
     }
 
     public synchronized float exposure() {
@@ -445,6 +607,7 @@ public final class GameRenderer implements AutoCloseable {
             exposure = value;
             converted = -1;
         }
+        recordControls();
     }
 
     public synchronized void sampleLimit(long value) {
@@ -458,12 +621,14 @@ public final class GameRenderer implements AutoCloseable {
                     settings.withSampleTarget(value)
                             .withRestartRevision(settings.restartRevision() + 1);
         }
+        recordControls();
     }
 
     public synchronized void configure(java.util.function.UnaryOperator<RenderSettings> edit) {
         var next = edit.apply(settings);
         capabilities.validate(world, navigation.view(), next);
         settings = next;
+        recordControls();
     }
 
     public synchronized RenderSettings settings() {
@@ -491,6 +656,7 @@ public final class GameRenderer implements AutoCloseable {
     public synchronized void lighting(GameLighting value) {
         cycle.running(false);
         applyLighting(value);
+        recordControls();
     }
 
     public synchronized double timeOfDay() {
@@ -507,6 +673,7 @@ public final class GameRenderer implements AutoCloseable {
                     case NOON -> 12;
                     case EVENING -> 17;
                 });
+        recordControls();
     }
 
     public synchronized double dayDuration() {
@@ -522,15 +689,18 @@ public final class GameRenderer implements AutoCloseable {
         if (value) {
             applyLighting(cycle.lighting());
         }
+        recordControls();
     }
 
     public synchronized void timeOfDay(double value) {
         cycle.hour(value);
         applyLighting(cycle.lighting());
+        recordControls();
     }
 
     public synchronized void dayDuration(double value) {
         cycle.duration(value);
+        recordControls();
     }
 
     public synchronized boolean fogEnabled() {
@@ -559,18 +729,22 @@ public final class GameRenderer implements AutoCloseable {
 
     public synchronized void fogEnabled(boolean value) {
         changeFog(value, fogOverlap, fogReverse, fogDemo, fogClosed, fogShift, fogRegions);
+        recordControls();
     }
 
     public synchronized void fogOverlap(boolean value) {
         changeFog(fogEnabled, value, fogReverse, fogDemo, fogClosed, fogShift, fogRegions);
+        recordControls();
     }
 
     public synchronized void fogReverse(boolean value) {
         changeFog(fogEnabled, fogOverlap, value, fogDemo, fogClosed, fogShift, fogRegions);
+        recordControls();
     }
 
     public synchronized void fogClosed(boolean value) {
         changeFog(fogEnabled, fogOverlap, fogReverse, true, value, fogShift, fogRegions);
+        recordControls();
     }
 
     public synchronized void fogShift(double value) {
@@ -578,6 +752,7 @@ public final class GameRenderer implements AutoCloseable {
             throw new IllegalArgumentException("Fog screen shift must be -10..10 world units");
         }
         changeFog(fogEnabled, fogOverlap, fogReverse, true, fogClosed, (float) value, fogRegions);
+        recordControls();
     }
 
     public synchronized void fogRegion(int index, engine.FogRegion value) {
@@ -591,6 +766,7 @@ public final class GameRenderer implements AutoCloseable {
                 fogClosed,
                 fogShift,
                 java.util.List.copyOf(regions));
+        recordControls();
     }
 
     public synchronized void fogReset() {
@@ -602,6 +778,7 @@ public final class GameRenderer implements AutoCloseable {
                 false,
                 0,
                 java.util.List.of(RuinsMist.region(0), RuinsMist.region(1)));
+        recordControls();
     }
 
     public synchronized void fogPreset() {
@@ -615,6 +792,7 @@ public final class GameRenderer implements AutoCloseable {
                 java.util.List.of(RuinsMist.region(0), RuinsMist.region(1)));
         cycle.running(false);
         timeOfDay(7.5);
+        recordControls();
     }
 
     private void changeFog(
@@ -671,6 +849,7 @@ public final class GameRenderer implements AutoCloseable {
             return;
         }
         changeAtmosphere(enabled, atmosphere);
+        recordControls();
     }
 
     public synchronized void atmosphere(engine.Atmosphere.Parameters parameters) {
@@ -679,6 +858,7 @@ public final class GameRenderer implements AutoCloseable {
             return;
         }
         changeAtmosphere(atmosphereEnabled, parameters);
+        recordControls();
     }
 
     public synchronized void atmospherePreset(boolean hazy) {
@@ -688,6 +868,7 @@ public final class GameRenderer implements AutoCloseable {
                         : engine.Atmosphere.Parameters.clearAir();
         // Presets alter only optical inputs, retaining time, optics, exposure and scene edits.
         changeAtmosphere(true, parameters);
+        recordControls();
     }
 
     private void changeAtmosphere(boolean enabled, engine.Atmosphere.Parameters parameters) {
@@ -740,6 +921,8 @@ public final class GameRenderer implements AutoCloseable {
             navigation.active(false);
             autofocus.close();
             session.onImageAvailable(null);
+            navigation.recording(null);
+            captureWriter.shutdown();
             simulation.shutdownNow();
             executor.shutdownNow();
             session.close();

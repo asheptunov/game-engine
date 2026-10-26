@@ -254,7 +254,13 @@ public final class GameLightingTest {
             assertEquals(.8f, renderer.lighting().skyColors().zenith().z());
             renderer.lighting(renderer.lighting().withPreset(GameLighting.Preset.MORNING));
             assertEquals(2f, renderer.lighting().intensity());
-            awaitSamples(renderer, frame -> frame.samples() == 8);
+            var expectedLights = java.util.List.of(renderer.lighting().sun());
+            awaitSamples(
+                    renderer,
+                    frame ->
+                            frame.samples() == 8
+                                    && frame.context() != null
+                                    && frame.context().world().lights().equals(expectedLights));
             long previous = renderer.frame().publicationNanos();
             int[] before = renderer.frame().image().getRGB(0, 0, 96, 64, null, 0, 96);
             SwingUtilities.invokeAndWait(() -> setNumber(editor[0], "Exposure multiplier", 2));

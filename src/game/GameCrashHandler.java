@@ -254,7 +254,7 @@ final class GameCrashHandler {
         }
     }
 
-    private static String buildIdentity() {
+    static String buildIdentity() {
         try (var stream = GameCrashHandler.class.getResourceAsStream("/game-build.properties")) {
             if (stream == null) {
                 return "unavailable (build did not embed identity)";

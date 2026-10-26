@@ -19,6 +19,116 @@ public final class GameNavigation {
     private boolean jumpPending;
     private double physicsRemainder;
 
+    private GameRecording recording;
+    private java.util.List<engine.SceneInstance> collisionSource = java.util.List.of();
+
+    public record State(
+            Vec3 position,
+            double yaw,
+            double pitch,
+            float speed,
+            double sensitivity,
+            float fov,
+            float aperture,
+            float focus,
+            boolean autofocus,
+            long focusRevision,
+            boolean walking,
+            boolean jumpPending,
+            double physicsRemainder,
+            engine.CharacterBody.State body,
+            boolean captured,
+            boolean active,
+            int width,
+            int height,
+            int fixedWidth,
+            int fixedHeight,
+            java.util.List<KeyCode> held) {
+        public State {
+            held = java.util.List.copyOf(held);
+            java.util.Objects.requireNonNull(body);
+            range(position.x(), -Float.MAX_VALUE, Float.MAX_VALUE, "Position X");
+            range(position.y(), -Float.MAX_VALUE, Float.MAX_VALUE, "Position Y");
+            range(position.z(), -Float.MAX_VALUE, Float.MAX_VALUE, "Position Z");
+            range(yaw, -Double.MAX_VALUE, Double.MAX_VALUE, "Yaw");
+            range(pitch, -PITCH_LIMIT, PITCH_LIMIT, "Pitch");
+            range(speed, .1, 100, "Speed");
+            range(sensitivity, .0001, .05, "Sensitivity");
+            range(fov, 1, 179, "Field of view");
+            range(aperture, 0, 10, "Aperture");
+            range(focus, .01, 10000, "Focus");
+            range(physicsRemainder, -1e-8, .25, "Physics remainder");
+            range(width, 1, 16384, "Window width");
+            range(height, 1, 16384, "Window height");
+            if (fixedWidth != 0 || fixedHeight != 0) {
+                range(fixedWidth, 64, 1600, "Grid width");
+                range(fixedHeight, 64, 1600, "Grid height");
+            }
+        }
+    }
+
+    public synchronized State snapshot() {
+        return new State(
+                position,
+                yaw,
+                pitch,
+                speed,
+                sensitivity,
+                fov,
+                aperture,
+                focus,
+                autofocus,
+                focusRevision,
+                walking,
+                jumpPending,
+                physicsRemainder,
+                character.snapshot(),
+                captured,
+                active,
+                width,
+                height,
+                fixedWidth,
+                fixedHeight,
+                java.util.List.copyOf(held));
+    }
+
+    public synchronized void restore(State state) {
+        if (state.walking() && collision == null) {
+            throw new IllegalStateException("Walking snapshot needs collision geometry");
+        }
+        position = state.position();
+        yaw = state.yaw();
+        pitch = state.pitch();
+        speed = state.speed();
+        sensitivity = state.sensitivity();
+        fov = state.fov();
+        aperture = state.aperture();
+        focus = state.focus();
+        autofocus = state.autofocus();
+        focusRevision = state.focusRevision();
+        walking = state.walking();
+        jumpPending = state.jumpPending();
+        physicsRemainder = state.physicsRemainder();
+        character.restore(state.body());
+        captured = state.captured();
+        active = state.active();
+        width = state.width();
+        height = state.height();
+        fixedWidth = state.fixedWidth();
+        fixedHeight = state.fixedHeight();
+        held.clear();
+        held.addAll(state.held());
+        view().camera().validated();
+    }
+
+    synchronized void recording(GameRecording value) {
+        recording = value;
+    }
+
+    synchronized void collisionSource(java.util.List<engine.SceneInstance> value) {
+        collisionSource = value;
+    }
+
     public synchronized boolean walking() {
         return walking;
     }
@@ -154,6 +264,19 @@ public final class GameNavigation {
 
     /** Seconds of elapsed wall time, capped after a stall to avoid a large teleport. */
     public synchronized void advance(double seconds) {
+        if (recording == null) {
+            advanceMotion(seconds);
+            return;
+        }
+        var before = snapshot();
+        advanceMotion(seconds);
+        var after = snapshot();
+        if (!before.equals(after)) {
+            recording.motion(System.nanoTime(), seconds, before, after, collisionSource);
+        }
+    }
+
+    private void advanceMotion(double seconds) {
         if (!active || !captured) {
             return;
         }

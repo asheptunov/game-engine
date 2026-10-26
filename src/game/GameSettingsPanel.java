@@ -49,6 +49,7 @@ public final class GameSettingsPanel extends JPanel {
         tabs.addTab("Lighting", scroll(lightControls()));
         tabs.addTab("Fog", scroll(fogControls()));
         tabs.addTab("Advanced", scroll(advancedControls()));
+        tabs.addTab("Capture", scroll(captureControls()));
         add(tabs, BorderLayout.CENTER);
         add(message, BorderLayout.SOUTH);
         theme(this);
@@ -93,6 +94,17 @@ public final class GameSettingsPanel extends JPanel {
                             java.awt.Rectangle text,
                             boolean selected) {}
                 });
+    }
+
+    private JPanel captureControls() {
+        var panel = page();
+        heading(panel, "Diagnostic captures");
+        panel.add(new JLabel("F8: current snapshot. F9: preceding 30 seconds."));
+        panel.add(new JLabel("Saved under out/game/captures; share the whole folder."));
+        button(panel, "Save snapshot (F8)", () -> renderer.captureBundle(false));
+        button(panel, "Save recent history (F9)", () -> renderer.captureBundle(true));
+        panel.add(new JLabel("Includes scene, textures, controls, physics and rendered images."));
+        return panel;
     }
 
     private static void theme(java.awt.Component component) {
