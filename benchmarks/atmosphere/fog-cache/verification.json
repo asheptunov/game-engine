@@ -1,0 +1,13 @@
+{
+  "revision": "0174f7520d4cec0557602dc57f6e629c861e010b",
+  "startedUtc": "2026-10-26T15:51:27.3228995Z",
+  "sourceSha256": "E89D22E3B8E9CED93E977FDB6F3E185339C3305D5D51850027B5D02FC82A63C8",
+  "repository": "PASS",
+  "game": "PASS",
+  "cpu": "PASS",
+  "gpu": "PASS",
+  "result": "PASS",
+  "reason": "",
+  "evidence": "C:\\Users\\andri\\Documents\\RayTracingEngine\\out\\parity",
+  "finishedUtc": "2026-10-26T15:53:24.7113086Z"
+}

@@ -1,0 +1,10 @@
+Fog table build hour=7.0 ms=192.6778
+Fog table build hour=12.0 ms=172.8912
+Fog cache maximum transmittance error=0.0019172430038452148
+2026-10-26T10:52:37.738915400  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-26T10:52:37.741914900  [INFO] harness.SuiteRunner: ? Suite game.FogSunTableTest [PT0.7194656S]
+2026-10-26T10:52:37.742915100  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#interpolationMatchesReferenceAcrossMovingSunAndOverlaps [PT0.46079S]
+2026-10-26T10:52:37.743914700  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#keyTracksFogAndDirectionButNotCameraOrRadiance [PT0.0203836S]
+2026-10-26T10:52:37.743914700  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#unresolvedAndSharpMediaKeepReferenceTransport [PT0.0175004S]
+2026-10-26T10:52:37.743914700  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#rotatedColoredMediaStayWithinInterpolationTolerance [PT0.2207916S]
+2026-10-26T10:52:37.744915900  [INFO] harness.SuiteRunner: ========================

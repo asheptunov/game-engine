@@ -24,6 +24,7 @@ import static org.lwjgl.vulkan.VK10.vkCmdBindDescriptorSets;
 import static org.lwjgl.vulkan.VK10.vkCmdBindPipeline;
 import static org.lwjgl.vulkan.VK10.vkCmdCopyBuffer;
 import static org.lwjgl.vulkan.VK10.vkCmdDispatch;
+import static org.lwjgl.vulkan.VK10.vkCmdPushConstants;
 import static org.lwjgl.vulkan.VK10.vkCmdResetQueryPool;
 import static org.lwjgl.vulkan.VK10.vkCmdWriteTimestamp;
 import static org.lwjgl.vulkan.VK10.vkCreateComputePipelines;
@@ -59,6 +60,7 @@ import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
 import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
+import org.lwjgl.vulkan.VkPushConstantRange;
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo;
 import org.lwjgl.vulkan.VkWriteDescriptorSet;
 import org.lwjgl.vulkan.VkWriteDescriptorSetAccelerationStructureKHR;
@@ -81,12 +83,16 @@ final class GpuKernel implements AutoCloseable {
     private long descriptorSet;
     private VulkanDevice.Buffer parameters;
     private engine.AtmosphereTable uploadedAtmosphere;
+    private VulkanDevice.Buffer fogSun;
+    private engine.FogSunTable.Layout fogLayout;
     private VulkanDevice.Buffer mean;
     private VulkanDevice.Buffer output;
     private VulkanDevice.Buffer readback;
     private int width;
     private int height;
     long executeNanos;
+    long fogBuildNanos;
+    long fogBuilds;
     long transferNanos;
     long hostNanos;
     long prepareNanos;
@@ -103,9 +109,14 @@ final class GpuKernel implements AutoCloseable {
         try {
             parameters =
                     gpu.buffer(
-                            304 + engine.AtmosphereTable.FLOATS * 4 + 16 + 8 * 96,
+                            304 + engine.AtmosphereTable.FLOATS * 4 + 16 + 8 * 96 + 32,
                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                             true);
+            fogSun =
+                    gpu.buffer(
+                            (long) engine.FogSunTable.CELLS * 16,
+                            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                            false);
             createPipeline();
             initializationNanos = System.nanoTime() - started;
         } catch (RuntimeException | Error failure) {
@@ -130,8 +141,8 @@ final class GpuKernel implements AutoCloseable {
 
     private void createPipeline() {
         try (var stack = MemoryStack.stackPush()) {
-            var bindings = VkDescriptorSetLayoutBinding.calloc(7, stack);
-            for (int i = 0; i < 7; i++) {
+            var bindings = VkDescriptorSetLayoutBinding.calloc(8, stack);
+            for (int i = 0; i < 8; i++) {
                 bindings.get(i)
                         .binding(i)
                         .descriptorCount(1)
@@ -157,7 +168,12 @@ final class GpuKernel implements AutoCloseable {
                             gpu.device,
                             VkPipelineLayoutCreateInfo.calloc(stack)
                                     .sType$Default()
-                                    .pSetLayouts(stack.longs(descriptorLayout)),
+                                    .pSetLayouts(stack.longs(descriptorLayout))
+                                    .pPushConstantRanges(
+                                            VkPushConstantRange.calloc(1, stack)
+                                                    .stageFlags(VK_SHADER_STAGE_COMPUTE_BIT)
+                                                    .offset(0)
+                                                    .size(4)),
                             null,
                             handle),
                     "pipeline layout");
@@ -203,7 +219,7 @@ final class GpuKernel implements AutoCloseable {
             }
             var sizes = VkDescriptorPoolSize.calloc(2, stack);
             sizes.get(0).type(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR).descriptorCount(1);
-            sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(6);
+            sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(7);
             VulkanDevice.check(
                     vkCreateDescriptorPool(
                             gpu.device,
@@ -271,9 +287,13 @@ final class GpuKernel implements AutoCloseable {
         prepareNanos = System.nanoTime() - start;
         maximumPrepareNanos = Math.max(maximumPrepareNanos, prepareNanos);
         writeParameters(world, view, settings, sample);
+        var nextFogLayout = engine.FogSunTable.layout(world.sky());
+        boolean rebuildFog = nextFogLayout != null && !nextFogLayout.equals(fogLayout);
+        fogLayout = nextFogLayout;
+        writeFogLayout();
         beforeDispatch.run();
         gpu.begin();
-        vkCmdResetQueryPool(gpu.command, gpu.queries, 0, 3);
+        vkCmdResetQueryPool(gpu.command, gpu.queries, 0, 4);
         gpu.barrier(
                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 VK_ACCESS_SHADER_WRITE_BIT,
@@ -289,6 +309,10 @@ final class GpuKernel implements AutoCloseable {
                     0,
                     stack.longs(descriptorSet),
                     null);
+            buildFogTable(rebuildFog, stack);
+            vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 3);
+            vkCmdPushConstants(
+                    gpu.command, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, stack.ints(0));
             vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
             gpu.barrier(
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -305,19 +329,18 @@ final class GpuKernel implements AutoCloseable {
                     VK_ACCESS_HOST_READ_BIT);
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, gpu.queries, 2);
             gpu.submit();
-            var times = stack.mallocLong(3);
+            var times = stack.mallocLong(4);
             VulkanDevice.check(
                     vkGetQueryPoolResults(
                             gpu.device,
                             gpu.queries,
                             0,
-                            3,
+                            4,
                             times,
                             8,
                             VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT),
                     "read timestamps");
-            executeNanos = (long) ((times.get(1) - times.get(0)) * gpu.timestampPeriod);
-            transferNanos = (long) ((times.get(2) - times.get(1)) * gpu.timestampPeriod);
+            recordTimings(rebuildFog, times);
         }
         for (int i = 0; i < width * height; i++) {
             pixels[i * 3] = readback.mapped.getFloat(i * 16);
@@ -325,6 +348,29 @@ final class GpuKernel implements AutoCloseable {
             pixels[i * 3 + 2] = readback.mapped.getFloat(i * 16 + 8);
         }
         hostNanos = System.nanoTime() - start;
+    }
+
+    private void recordTimings(boolean rebuildFog, java.nio.LongBuffer times) {
+        fogBuildNanos =
+                rebuildFog ? (long) ((times.get(3) - times.get(0)) * gpu.timestampPeriod) : 0;
+        if (rebuildFog) {
+            fogBuilds++;
+        }
+        executeNanos = (long) ((times.get(1) - times.get(0)) * gpu.timestampPeriod);
+        transferNanos = (long) ((times.get(2) - times.get(1)) * gpu.timestampPeriod);
+    }
+
+    private void buildFogTable(boolean rebuildFog, MemoryStack stack) {
+        if (rebuildFog) {
+            vkCmdPushConstants(
+                    gpu.command, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, stack.ints(1));
+            vkCmdDispatch(gpu.command, (engine.FogSunTable.CELLS + 63) / 64, 1, 1);
+            gpu.barrier(
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_ACCESS_SHADER_WRITE_BIT,
+                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    VK_ACCESS_SHADER_READ_BIT);
+        }
     }
 
     private static boolean sameGeometry(WorldSnapshot before, WorldSnapshot after) {
@@ -343,7 +389,7 @@ final class GpuKernel implements AutoCloseable {
 
     private void bind() {
         try (var stack = MemoryStack.stackPush()) {
-            var writes = VkWriteDescriptorSet.calloc(7, stack);
+            var writes = VkWriteDescriptorSet.calloc(8, stack);
             var acceleration =
                     VkWriteDescriptorSetAccelerationStructureKHR.calloc(stack)
                             .sType$Default()
@@ -357,7 +403,13 @@ final class GpuKernel implements AutoCloseable {
                     .pNext(acceleration.address());
             var buffers =
                     new VulkanDevice.Buffer[] {
-                        scene.triangles, scene.instances, scene.textures, parameters, mean, output
+                        scene.triangles,
+                        scene.instances,
+                        scene.textures,
+                        parameters,
+                        mean,
+                        output,
+                        fogSun
                     };
             for (int i = 0; i < buffers.length; i++) {
                 var info =
@@ -406,6 +458,13 @@ final class GpuKernel implements AutoCloseable {
                 .putInt(140, (int) seed)
                 .putInt(144, (int) (seed >>> 32))
                 .putInt(148, Math.toIntExact(sample));
+    }
+
+    private void writeFogLayout() {
+        int base = 19 + engine.AtmosphereTable.FLOATS / 4 + 1 + 48;
+        put(base, fogLayout == null ? Vec3.ZERO : fogLayout.lower());
+        parameters.mapped.putFloat(base * 16 + 12, fogLayout == null ? 0 : engine.FogSunTable.SIZE);
+        put(base + 1, fogLayout == null ? new Vec3(1, 1, 1) : fogLayout.extent());
     }
 
     private void writeFog(java.util.List<engine.FogRegion> regions) {

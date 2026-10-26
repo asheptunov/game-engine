@@ -236,7 +236,8 @@ public final class GpuRenderSession implements RenderSession {
                                     java.util.Locale.ROOT,
                                     "GPU %s | fixed | execute %.2f ms | transfer %.2f ms | host"
                                         + " %.2f ms | prepare %.2f ms | peak %.1f MiB | primitive"
-                                        + " counters n/a | init %.2f ms | max prepare %.2f ms",
+                                        + " counters n/a | init %.2f ms | max prepare %.2f ms | fog"
+                                        + " build %.2f ms | fog builds %d",
                                     kernel.gpu.name,
                                     kernel.executeNanos / 1e6,
                                     kernel.transferNanos / 1e6,
@@ -244,7 +245,9 @@ public final class GpuRenderSession implements RenderSession {
                                     kernel.prepareNanos / 1e6,
                                     kernel.gpu.peakBytes / 1048576.0,
                                     kernel.initializationNanos / 1e6,
-                                    kernel.maximumPrepareNanos / 1e6);
+                                    kernel.maximumPrepareNanos / 1e6,
+                                    kernel.fogBuildNanos / 1e6,
+                                    kernel.fogBuilds);
                 } else {
                     cancelled++;
                     accumulatedKey = null;

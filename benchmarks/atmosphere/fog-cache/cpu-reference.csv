@@ -1,0 +1,7 @@
+reference,backend,round,width,height,daySeconds,startHour,gpuMedianMs,gpuP95Ms,fogBuildMedianMs,transferMedianMs,traceMedianMs,copyMedianMs,totalMedianMs,totalP95Ms
+true,cpu,0,160,77,0,7.00,NaN,NaN,NaN,NaN,316.760,0.146,317.271,319.149
+true,cpu,0,160,77,600,7.00,NaN,NaN,NaN,NaN,321.085,0.139,321.596,326.272
+true,cpu,0,160,77,30,7.00,NaN,NaN,NaN,NaN,330.496,0.142,330.997,346.391
+true,cpu,1,160,77,0,7.00,NaN,NaN,NaN,NaN,374.451,0.138,375.070,387.328
+true,cpu,1,160,77,600,7.00,NaN,NaN,NaN,NaN,326.242,0.135,326.715,370.586
+true,cpu,1,160,77,30,7.00,NaN,NaN,NaN,NaN,339.101,0.138,339.569,393.189

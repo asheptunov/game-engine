@@ -18,9 +18,12 @@ layout(std430,set=0,binding=4) readonly buffer Parameters {
     vec2 airColumns[18432];
     vec4 fogMeta;
     vec4 fogData[48]; // six vec4s per region, maximum eight
+    vec4 fogLower, fogExtent; // lower.w: table dimension, zero disables
 };
 layout(std430,set=0,binding=5) buffer Accumulation { dvec4 means[]; };
 layout(std430,set=0,binding=6) writeonly buffer Output { vec4 pixels[]; };
+layout(std430,set=0,binding=7) buffer FogSun { vec4 fogSunValues[]; };
+layout(push_constant) uniform Dispatch { int buildFog; };
 const float BIAS = 0.001;
 const float PI = 3.14159265358979323846;
 uint64_t randomState;
@@ -197,7 +200,7 @@ bool fogInterval(int r,vec3 o,vec3 d,float limit,out vec2 bounds) {
     }
     return bounds.y>bounds.x;
 }
-vec3 fogTransmission(vec3 o,vec3 d) {
+vec3 fogTransmissionReference(vec3 o,vec3 d) {
     vec3 transmission=vec3(1);
     for(int r=0;r<int(fogMeta.x);r++) {
         vec2 bounds;
@@ -207,6 +210,35 @@ vec3 fogTransmission(vec3 o,vec3 d) {
         transmission*=exp(-column*(fogData[r*6+2].xyz+fogData[r*6+3].xyz));
     }
     return transmission;
+}
+// Same world-space trilinear interpolation as FogSunTable. Outside points use quadrature.
+vec3 fogTransmission(vec3 o,vec3 d) {
+    int n=int(fogLower.w);
+    vec3 q=(o-fogLower.xyz)/fogExtent.xyz;
+    if(n==0 || any(notEqual(d,solarDirection.xyz)) || any(lessThan(q,vec3(0))) || any(greaterThan(q,vec3(1))))
+        return fogTransmissionReference(o,d);
+    for(int r=0;r<int(fogMeta.x);r++) {
+        vec3 local=abs(fogLocal(r,o)); float edge=1-fogData[r*6+5].y;
+        float c=fogData[r*6+1].w, s=fogData[r*6+2].w;
+        vec3 direction=abs(vec3(c*d.x-s*d.z,d.y,s*d.x+c*d.z));
+        if(any(bvec3(direction.x<.3 && local.x>edge && local.x<1.1,
+                     direction.y<.3 && local.y>edge && local.y<1.1,
+                     direction.z<.3 && local.z>edge && local.z<1.1)))
+            return fogTransmissionReference(o,d);
+    }
+    vec3 cell=q*float(n-1); ivec3 a=min(ivec3(cell),ivec3(n-2)); vec3 f=cell-vec3(a), value=vec3(0);
+    for(int z=0;z<2;z++) for(int y=0;y<2;y++) for(int x=0;x<2;x++) {
+        int index=((a.z+z)*n+a.y+y)*n+a.x+x;
+        value+=fogSunValues[index].xyz*(x==0?1-f.x:f.x)*(y==0?1-f.y:f.y)*(z==0?1-f.z:f.z);
+    }
+    return value;
+}
+void buildFogSun() {
+    int n=int(fogLower.w), index=int(gl_WorkGroupID.x)*64+int(gl_LocalInvocationIndex);
+    if(index>=n*n*n) return;
+    ivec3 node=ivec3(index%n,(index/n)%n,index/(n*n));
+    vec3 p=fogLower.xyz+fogExtent.xyz*vec3(node)/float(n-1);
+    fogSunValues[index]=vec4(fogTransmissionReference(p,solarDirection.xyz),0);
 }
 vec3 fogIntegral(vec3 k,float step) {
     vec3 tau=k*step;
@@ -266,6 +298,7 @@ void fogSegment(vec3 o,vec3 d,float distance,bool disc,out vec3 light,out vec3 t
     airPart(o+d*previous,d,distance-previous,disc,light,trans);
 }
 void main() {
+    if(buildFog!=0) { buildFogSun(); return; }
     uvec2 xy = gl_GlobalInvocationID.xy;
     if (xy.x >= grid.x || xy.y >= grid.y) return;
     uint pixel = xy.y*grid.x+xy.x;
