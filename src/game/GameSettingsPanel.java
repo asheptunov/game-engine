@@ -544,6 +544,8 @@ public final class GameSettingsPanel extends JPanel {
         heading(panel, "Fog rendering quality (experimental)");
         var quality = new javax.swing.JComboBox<>(new String[] {"Full", "Half", "Quarter"});
         quality.setName("fogResolution");
+        quality.setMaximumSize(
+                new java.awt.Dimension(Integer.MAX_VALUE, quality.getPreferredSize().height));
         quality.addActionListener(
                 event -> {
                     if (!refreshing) {
@@ -568,6 +570,13 @@ public final class GameSettingsPanel extends JPanel {
                 true);
         panel.add(new JLabel("GPU: shares lighting across primary and bounced rays."));
         panel.add(new JLabel("Keeps exact shadows; unsupported air uses direct lighting."));
+        check(
+                panel,
+                "Jitter fog samples (experimental)",
+                () -> renderer.settings().fogJitter(),
+                enabled -> renderer.configure(settings -> settings.withFogJitter(enabled)),
+                true);
+        panel.add(new JLabel("GPU: trades fog bands for noise; refinement averages it."));
         heading(panel, "Local air at the ruins");
         panel.add(
                 new JLabel(

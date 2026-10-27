@@ -24,7 +24,8 @@ public final class GpuRenderSession implements RenderSession {
             long seed,
             long restart,
             int fogDownsample,
-            boolean fogLightingGrid) {}
+            boolean fogLightingGrid,
+            boolean fogJitter) {}
 
     private static final class Slot {
         float[] pixels;
@@ -93,7 +94,8 @@ public final class GpuRenderSession implements RenderSession {
                         nextSettings.seed(),
                         nextSettings.restartRevision(),
                         nextSettings.fogDownsample(),
-                        nextSettings.fogLightingGrid());
+                        nextSettings.fogLightingGrid(),
+                        nextSettings.fogJitter());
         synchronized (this) {
             checkOpen();
             if (!nextKey.equals(key)) {
@@ -107,7 +109,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextSettings.seed() == settings.seed()
                                 && nextSettings.restartRevision() == settings.restartRevision()
                                 && nextSettings.fogDownsample() == settings.fogDownsample()
-                                && nextSettings.fogLightingGrid() == settings.fogLightingGrid();
+                                && nextSettings.fogLightingGrid() == settings.fogLightingGrid()
+                                && nextSettings.fogJitter() == settings.fogJitter();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -250,7 +253,8 @@ public final class GpuRenderSession implements RenderSession {
                                         + " counters n/a | init %.2f ms | max prepare %.2f ms | fog"
                                         + " build %.2f ms | fog builds %d | fog grid 1/%d requested"
                                         + " 1/%d | fog primary %.2f ms | fog reused %d | lighting"
-                                        + " grid %b requested %b | grid build %.2f ms",
+                                        + " grid %b requested %b | grid build %.2f ms | fog jitter"
+                                        + " %b",
                                     kernel.gpu.name,
                                     kernel.executeNanos / 1e6,
                                     kernel.transferNanos / 1e6,
@@ -267,7 +271,8 @@ public final class GpuRenderSession implements RenderSession {
                                     kernel.fogReusedPixels,
                                     kernel.lightingGrid,
                                     capturedSettings.fogLightingGrid(),
-                                    kernel.lightingBuildNanos / 1e6);
+                                    kernel.lightingBuildNanos / 1e6,
+                                    capturedSettings.fogJitter());
                 } else {
                     cancelled++;
                     accumulatedKey = null;

@@ -42,6 +42,7 @@ public final class GameCaptureTest {
                 engine.RenderSettings.defaults()
                         .withFogDownsample(4)
                         .withFogLightingGrid(true)
+                        .withFogJitter(true)
                         .withPathDepth(2)
                         .withSeed(3)
                         .withRestartRevision(4)
@@ -56,16 +57,18 @@ public final class GameCaptureTest {
                         .withTemporalBudget(false, 2, .5);
         assertEquals(4, settings.fogDownsample());
         assertTrue(settings.fogLightingGrid());
+        assertTrue(settings.fogJitter());
         Path file = root().resolve("settings.properties");
         CaptureCodec.save(file, settings);
         assertEquals(settings, CaptureCodec.load(file, engine.RenderSettings.class));
         var old =
                 Files.readString(file)
                         .replace("data.fogDownsample=4", "")
-                        .replace("data.fogLightingGrid=true", "");
+                        .replace("data.fogLightingGrid=true", "")
+                        .replace("data.fogJitter=true", "");
         Files.writeString(file, old);
         assertEquals(
-                settings.withFogDownsample(1).withFogLightingGrid(false),
+                settings.withFogDownsample(1).withFogLightingGrid(false).withFogJitter(false),
                 CaptureCodec.load(file, engine.RenderSettings.class));
         Files.writeString(file, old + "\ndata.fogDownsample=3\n");
         boolean rejected = false;
@@ -91,7 +94,11 @@ public final class GameCaptureTest {
             navigation.pose(new Vec3(1, 3, -5), .2, -.1);
             renderer.atmospherePreset(true);
             renderer.fogPreset();
-            renderer.configure(settings -> settings.withFogDownsample(4).withFogLightingGrid(true));
+            renderer.configure(
+                    settings ->
+                            settings.withFogDownsample(4)
+                                    .withFogLightingGrid(true)
+                                    .withFogJitter(true));
             renderer.exposure(1.5f);
             var expectedNavigation = navigation.snapshot();
             var expectedControls = renderer.captureControls();

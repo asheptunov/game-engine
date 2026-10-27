@@ -327,10 +327,30 @@ void airPart(vec3 p,vec3 d,float distance,bool disc,inout vec3 light,inout vec3 
     vec3 a,t; airSegment(p.y,d,distance,disc,32,a,t);
     light+=trans*a; trans*=t;
 }
+// Independent domain: fog samples never consume surface/aperture random numbers.
+// Hash each stratum separately; captured seed, ray and sample index reproduce every visit.
+uint fogHash(uint value) {
+    value ^= value >> 16; value *= 0x7feb352du;
+    value ^= value >> 15; value *= 0x846ca68bu;
+    return value ^ (value >> 16);
+}
+float fogOffset(uint key, int interval, int stratum) {
+    return (float(fogHash(key ^ uint(interval)*0x9e3779b9u ^ uint(stratum)*0x85ebca6bu) >> 8)+.5)/16777216.;
+}
 void fogSegment(vec3 o,vec3 d,float distance,bool disc,out vec3 light,out vec3 trans) {
     light=vec3(0); trans=vec3(1);
     bool gridSample=useLightingGrid && !(disc && dot(d,solarDirection.xyz)>=cos(radians(.3)));
     vec4 phases=gridSample?lightingPhases(d):vec4(0);
+    // Keep the very bright solar disc's transmission deterministic, as in the grid path.
+    bool jittered=fogMeta.y>0 && !(disc && airMapping.x>0 && dot(d,solarDirection.xyz)>=cos(radians(.3)));
+    uint jitterKey=0;
+    if(jittered) {
+        jitterKey=fogHash(grid.w ^ sampling.x ^ 0x464f4721u);
+        jitterKey=fogHash(jitterKey ^ floatBitsToUint(o.x) ^ floatBitsToUint(d.x));
+        jitterKey=fogHash(jitterKey ^ floatBitsToUint(o.y) ^ floatBitsToUint(d.y));
+        jitterKey=fogHash(jitterKey ^ floatBitsToUint(o.z) ^ floatBitsToUint(d.z));
+        jitterKey=fogHash(jitterKey ^ sampling.y);
+    }
     float ends[16]; int count=0;
     for(int r=0;r<int(fogMeta.x);r++) {
         vec2 bounds;
@@ -347,7 +367,8 @@ void fogSegment(vec3 o,vec3 d,float distance,bool disc,out vec3 light,out vec3 t
         else {
             float step=(end-previous)/24;
             for(int j=0;j<24;j++) {
-                vec3 p=o+d*(previous+(float(j)+.5)*step), k=vec3(0), source=vec3(0);
+                float offset=jittered?fogOffset(jitterKey,i,j):.5;
+                vec3 p=o+d*(previous+(float(j)+offset)*step), k=vec3(0), source=vec3(0);
                 bool cached=gridSample && sampleLightingGrid(p,phases,k,source);
                 if(!cached) {
                 k=vec3(0);source=vec3(0);

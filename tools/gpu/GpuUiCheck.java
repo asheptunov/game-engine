@@ -50,8 +50,19 @@ public final class GpuUiCheck {
                 if(!renderer.settings().fogLightingGrid()) throw new AssertionError("Grid control did not enable");
                 lightingGrid.doClick();
                 if(renderer.settings().fogLightingGrid()) throw new AssertionError("Grid control did not disable");
+                var jitter=(javax.swing.JCheckBox)find(holder[0],"Jitter fog samples (experimental)");
+                if(jitter==null) throw new AssertionError("Missing jitter control");
+                jitter.doClick();if(!renderer.settings().fogJitter()) throw new AssertionError("Jitter did not enable");
+                jitter.doClick();if(renderer.settings().fogJitter()) throw new AssertionError("Jitter did not disable");
                 var fog=(javax.swing.JComboBox<?>)find(holder[0],"fogResolution");
                 if(fog==null) throw new AssertionError("Missing fog resolution control");
+                var fogPage=(java.awt.Container)fog.getParent();
+                var oldSize=fogPage.getSize();
+                for(int height:new int[]{600,1080,2160}) {
+                    fogPage.setSize(900,height);layout(fogPage);
+                    if(fog.getHeight()>fog.getPreferredSize().height) throw new AssertionError("Fog dropdown stretched vertically");
+                }
+                fogPage.setSize(oldSize);layout(fogPage);
                 fog.setSelectedIndex(2);
                 if(renderer.settings().fogDownsample()!=4) throw new AssertionError("Quarter fog control failed");
                 fog.setSelectedIndex(1);

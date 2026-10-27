@@ -118,6 +118,7 @@ final class CaptureCodec {
         if (clazz == engine.RenderSettings.class) {
             p.putIfAbsent(key + ".fogDownsample", "1");
             p.putIfAbsent(key + ".fogLightingGrid", "false");
+            p.putIfAbsent(key + ".fogJitter", "false");
         }
         var components = clazz.getRecordComponents();
         var types = new Class<?>[components.length];

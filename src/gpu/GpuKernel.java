@@ -317,6 +317,8 @@ final class GpuKernel implements AutoCloseable {
         boolean rebuildFog = nextFogLayout != null && !nextFogLayout.equals(fogLayout);
         fogLayout = nextFogLayout;
         writeFogLayout();
+        parameters.mapped.putFloat(
+                (19 + engine.AtmosphereTable.FLOATS / 4) * 16 + 4, settings.fogJitter() ? 1 : 0);
         beforeDispatch.run();
         gpu.begin();
         lightingTexture.prepare();
