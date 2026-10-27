@@ -26,6 +26,7 @@ import javax.swing.Timer;
 public final class GamePanel extends JPanel implements AutoCloseable {
     private final GameNavigation navigation;
     private final GameRenderer renderer;
+    private final RifleView rifle = new RifleView();
     private final Timer timer;
     private final GameSettingsPanel settingsPanel;
     private Robot pointer;
@@ -319,6 +320,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
             }
             renderer.displayed(frame);
             if (renderer.shooter() != null && navigation.captured()) {
+                drawCombat(draw, frame);
                 ShooterOverlay.draw(
                         draw, getWidth(), getHeight(), navigation, renderer.shooter().status());
             }
@@ -358,6 +360,48 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         for (String text : lines) {
             draw.drawString(text, 14, y);
             y += 16;
+        }
+    }
+
+    private void drawCombat(Graphics2D draw, GameRenderer.Frame frame) {
+        if (frame != null) {
+            drawTracers(draw, frame);
+        }
+        if (!navigation.scoped()) {
+            int height = Math.min(getHeight(), 300);
+            int width = Math.clamp(Math.round(height * (float) getWidth() / getHeight()), 64, 1600);
+            var image =
+                    rifle.request(
+                            width,
+                            Math.max(64, height),
+                            renderer.shooter().status().cooldown(),
+                            navigation.view().camera(),
+                            renderer.lighting(),
+                            renderer.exposure());
+            if (image != null) {
+                draw.drawImage(image, 0, 0, getWidth(), getHeight(), null);
+            }
+        }
+        if (rifle.error() != null) {
+            draw.setColor(Color.RED);
+            draw.drawString(rifle.error(), 24, 210);
+        }
+    }
+
+    private void drawTracers(Graphics2D draw, GameRenderer.Frame frame) {
+        double scale =
+                Math.min(
+                        (double) getWidth() / frame.image().getWidth(),
+                        (double) getHeight() / frame.image().getHeight());
+        int width = (int) Math.round(frame.image().getWidth() * scale);
+        int height = (int) Math.round(frame.image().getHeight() * scale);
+        var layer = (Graphics2D) draw.create();
+        try {
+            layer.translate((getWidth() - width) / 2, (getHeight() - height) / 2);
+            layer.clipRect(0, 0, width, height);
+            TracerOverlay.draw(layer, width, height, frame.camera(), renderer.shooter());
+        } finally {
+            layer.dispose();
         }
     }
 
@@ -447,6 +491,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     @Override
     public void close() {
         releaseForFailure();
+        rifle.close();
         renderer.close();
     }
 }

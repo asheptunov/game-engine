@@ -21,7 +21,6 @@ public final class ShooterGame {
     private static final Material UNIFORM =
             new Material("Patrol uniform", new Vec3(.45f, .16f, .09f));
     private static final Material SKIN = new Material("Patrol head", new Vec3(.65f, .45f, .3f));
-    private static final Material STEEL = new Material("Weapon steel", new Vec3(.06f, .07f, .08f));
 
     public enum Region {
         HEAD(100),
@@ -36,6 +35,35 @@ public final class ShooterGame {
     }
 
     public record Target(int id, Vec3 feet, int health) {}
+
+    /** A short section of an actual swept flight path. Expiry uses active simulation seconds. */
+    public record Tracer(Vec3 from, Vec3 to, boolean player, double expires) {}
+
+    private final java.util.ArrayDeque<Tracer> tracers = new java.util.ArrayDeque<>();
+
+    public synchronized List<Tracer> tracers() {
+        return List.copyOf(tracers);
+    }
+
+    public synchronized double simulationTime() {
+        return time;
+    }
+
+    boolean tracerVisible(Vec3 eye, Vec3 point) {
+        var delta = point.sub(eye);
+        float length = delta.length();
+        return length < .002f || blocked(eye, delta, length) >= length - .02f;
+    }
+
+    private void trail(Bullet bullet, Vec3 end) {
+        if (end.sub(bullet.position).lengthSq() < 1e-8f) {
+            return;
+        }
+        tracers.addLast(new Tracer(bullet.position, end, bullet.player, time + .12));
+        while (tracers.size() > 256) {
+            tracers.removeFirst();
+        }
+    }
 
     public record Status(
             int health,
@@ -132,6 +160,7 @@ public final class ShooterGame {
         reloading = false;
         hit = "";
         bullets.clear();
+        tracers.clear();
         enemies.clear();
         for (int id = 0; id < 5; id++) {
             float x = (id % 2 == 0 ? -1 : 1) * (2 + id);
@@ -152,7 +181,26 @@ public final class ShooterGame {
         }
         rounds--;
         cooldown = 1.25;
-        bullets.add(new Bullet(camera.eye(), camera.forward().scale(MUZZLE_SPEED), true));
+        // Fire from the visible barrel and zero the bore at 25 metres along the crosshair ray.
+        var right = camera.sensor().edge1().normalized();
+        var up = camera.sensor().edge2().normalized();
+        var muzzle =
+                camera.eye()
+                        .add(right.scale(.12f))
+                        .add(up.scale(-.23f))
+                        .add(camera.forward().scale(1.5f));
+        var toMuzzle = muzzle.sub(camera.eye());
+        float obstruction = blocked(camera.eye(), toMuzzle, toMuzzle.length());
+        var closeHit = enemyImpact(camera.eye(), toMuzzle, obstruction);
+        if (closeHit != null) {
+            damageEnemy(closeHit, 0);
+            return true;
+        }
+        if (obstruction < toMuzzle.length()) {
+            return true;
+        }
+        var aim = camera.eye().add(camera.forward().scale(25));
+        bullets.add(new Bullet(muzzle, aim.sub(muzzle).normalized().scale(MUZZLE_SPEED), true));
         return true;
     }
 
@@ -199,7 +247,7 @@ public final class ShooterGame {
 
     /** Fixed substeps and swept segments prevent fast projectiles skipping thin cover. */
     public synchronized void advance(double seconds, Camera camera, boolean active) {
-        if (!active || health == 0 || !Double.isFinite(seconds) || seconds < 0) {
+        if (!active || !Double.isFinite(seconds) || seconds < 0) {
             return;
         }
         remainder += Math.min(.25, seconds);
@@ -211,6 +259,13 @@ public final class ShooterGame {
 
     private void step(Camera camera) {
         time += STEP;
+        while (!tracers.isEmpty() && tracers.getFirst().expires <= time) {
+            tracers.removeFirst();
+        }
+        if (health == 0) {
+            bullets.clear();
+            return;
+        }
         cooldown = Math.max(0, cooldown - STEP);
         hitTime = Math.max(0, hitTime - STEP);
         hurtTime = Math.max(0, hurtTime - STEP);
@@ -273,6 +328,7 @@ public final class ShooterGame {
         if (bullet.player) {
             var impact = enemyImpact(bullet.position, delta, nearest);
             if (impact != null) {
+                trail(bullet, bullet.position.add(delta.scale(impact.distance / distance)));
                 damageEnemy(impact, bullet.distance);
                 return true;
             }
@@ -285,11 +341,13 @@ public final class ShooterGame {
                                     new Vec3(.28f, .85f, .28f))
                             * distance;
             if (along < nearest) {
+                trail(bullet, bullet.position.add(delta.scale(along / distance)));
                 health = Math.max(0, health - 12);
                 hurtTime = .5;
                 return true;
             }
         }
+        trail(bullet, bullet.position.add(delta.scale(nearest / distance)));
         bullet.position = bullet.position.add(delta);
         bullet.velocity =
                 bullet.velocity
@@ -394,12 +452,14 @@ public final class ShooterGame {
                                 part.half,
                                 part.region == Region.HEAD ? SKIN : UNIFORM));
             }
-            result.add(
-                    box(
-                            "patrol/" + enemy.id + "/rifle",
-                            enemy.feet.add(new Vec3(.22f, 1.23f, -.35f)),
-                            new Vec3(.06f, .07f, .48f),
-                            STEEL));
+            result.addAll(
+                    RifleMesh.instances(
+                            "patrol/" + enemy.id + "/rifle/",
+                            new Transform(
+                                    enemy.feet.add(new Vec3(.22f, 1.23f, -.15f)),
+                                    new Vec3(0, 180, 0),
+                                    new Vec3(1, 1, 1)),
+                            0));
         }
         return List.copyOf(result);
     }

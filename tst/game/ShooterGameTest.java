@@ -196,4 +196,92 @@ public final class ShooterGameTest {
                     image, "png", java.nio.file.Path.of("out/game/shooter-scope.png").toFile());
         }
     }
+
+    @Test
+    void tracersFollowFlightStopAtCoverFadeAndReset() throws Exception {
+        var wall = box("cover", new Vec3(0, 3, 8), new Vec3(20, 5, .01f));
+        var game = new ShooterGame(List.of(floor(), wall));
+        var camera = camera(0, 3);
+        game.fire(camera);
+        assertTrue(game.tracers().isEmpty());
+        game.advance(.025, camera, true);
+        var first = game.tracers().getFirst();
+        assertTrue(first.player());
+        assertTrue(first.from().z() > 1 && first.to().z() > first.from().z());
+        assertTrue(first.to().sub(first.from()).length() < 1.51f);
+        game.advance(.075, camera, true);
+        assertTrue(game.tracers().stream().allMatch(t -> t.to().z() <= 8.001));
+        assertTrue(game.tracers().getLast().to().z() > 7.98);
+        var beforePause = game.tracers();
+        game.advance(.25, camera, false);
+        assertEquals(beforePause, game.tracers());
+        assertFalse(game.tracerVisible(camera.eye(), new Vec3(0, 3, 10)));
+        var image =
+                new java.awt.image.BufferedImage(
+                        960, 600, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var draw = image.createGraphics();
+        try {
+            TracerOverlay.draw(draw, 960, 600, camera, game);
+        } finally {
+            draw.dispose();
+        }
+        long pixels =
+                java.util.Arrays.stream(image.getRGB(0, 0, 960, 600, null, 0, 960))
+                        .filter(rgb -> rgb != 0)
+                        .count();
+        assertTrue(pixels > 5);
+        javax.imageio.ImageIO.write(
+                image, "png", java.nio.file.Path.of("out/game/tracer-preview.png").toFile());
+        game.advance(.25, camera, true);
+        assertTrue(game.tracers().isEmpty());
+        game.reset();
+        assertTrue(game.tracers().isEmpty());
+    }
+
+    @Test
+    void tracerPathCurvesUnderGravityAndEnemyShotsAreDistinct() {
+        var game = new ShooterGame(List.of(floor()));
+        var camera = camera(50, 30);
+        game.fire(camera);
+        game.advance(.025, camera, true);
+        var early = game.tracers().getFirst();
+        float earlySlope = early.to().sub(early.from()).y() / early.to().sub(early.from()).z();
+        game.advance(.1, camera, true);
+        var late = game.tracers().getLast();
+        float lateSlope = late.to().sub(late.from()).y() / late.to().sub(late.from()).z();
+        assertTrue(lateSlope < earlySlope);
+        var enemies = new ShooterGame(List.of(floor()));
+        advance(enemies, camera(-2, 1.7f), 3.05);
+        assertTrue(enemies.tracers().stream().anyMatch(t -> !t.player()));
+    }
+
+    @Test
+    void adventureTracerOverlayCostStaysBounded() {
+        var game = new ShooterGame(AdventureWorld.create().instances());
+        var camera = camera(0, 12);
+        advance(game, camera, 3.05);
+        game.fire(camera);
+        game.advance(.08, camera, true);
+        assertTrue(!game.tracers().isEmpty() && game.tracers().size() <= 256);
+        var image =
+                new java.awt.image.BufferedImage(
+                        960, 600, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var draw = image.createGraphics();
+        try {
+            for (int i = 0; i < 20; i++) {
+                TracerOverlay.draw(draw, 960, 600, camera, game);
+            }
+            long start = System.nanoTime();
+            for (int i = 0; i < 100; i++) {
+                TracerOverlay.draw(draw, 960, 600, camera, game);
+            }
+            System.out.printf(
+                    java.util.Locale.ROOT,
+                    "Tracer overlay: %d segments, %.3f ms per draw%n",
+                    game.tracers().size(),
+                    (System.nanoTime() - start) / 1e8);
+        } finally {
+            draw.dispose();
+        }
+    }
 }
