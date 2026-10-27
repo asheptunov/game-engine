@@ -56,7 +56,7 @@ final class GpuScene implements AutoCloseable {
     final VulkanDevice.Buffer triangles;
     VulkanDevice.Buffer instances;
     VulkanDevice.Buffer textures;
-    final Structure top;
+    Structure top;
     final long buildNanos;
 
     record MeshRange(Structure structure, int firstTriangle) {}
@@ -268,6 +268,37 @@ final class GpuScene implements AutoCloseable {
         compileMaterials(world, meshes);
     }
 
+    /** Mesh buffers and bottom-level structures remain valid across instance motion/removal. */
+    boolean containsGeometry(WorldSnapshot world) {
+        return world.instances().stream().allMatch(object -> meshes.containsKey(object.geometry()));
+    }
+
+    void updateInstances(WorldSnapshot before, WorldSnapshot after) {
+        if (!sameMaterialLayout(before, after)) {
+            updateMaterials(after);
+        }
+        var previous = top;
+        top = compileInstances(after, meshes);
+        // VulkanDevice.submit waits for completion; no traversal can still use the old top level.
+        vkDestroyAccelerationStructureKHR(gpu.device, previous.handle, null);
+        previous.storage.close();
+        structures.remove(previous);
+    }
+
+    private static boolean sameMaterialLayout(WorldSnapshot before, WorldSnapshot after) {
+        if (before.instances().size() != after.instances().size()) {
+            return false;
+        }
+        for (int index = 0; index < before.instances().size(); index++) {
+            var a = before.instances().get(index);
+            var b = after.instances().get(index);
+            if (a.geometry() != b.geometry() || !a.material().equals(b.material())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private Structure build(
             VkAccelerationStructureGeometryKHR.Buffer geometry, int count, int type) {
         try (var stack = MemoryStack.stackPush()) {
@@ -305,7 +336,7 @@ final class GpuScene implements AutoCloseable {
                             null,
                             out),
                     "acceleration structure");
-            var result = new Structure(out.get(0));
+            var result = new Structure(out.get(0), storage);
             structures.add(result);
             // Overallocate and align to the queried device requirement.
             var properties =
@@ -347,9 +378,11 @@ final class GpuScene implements AutoCloseable {
 
     final class Structure {
         final long handle;
+        final VulkanDevice.Buffer storage;
 
-        Structure(long handle) {
+        Structure(long handle, VulkanDevice.Buffer storage) {
             this.handle = handle;
+            this.storage = storage;
         }
 
         long address() {

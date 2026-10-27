@@ -213,6 +213,37 @@ public final class ObjectAccelerationTest {
         }
     }
 
+    @Test
+    void movingInstancesRetainStaticPreparationAndMatchFreshTrace() {
+        var state = state(24);
+        state.instances().addAll(game.AdventureWorld.create().instances());
+        state.instances().add(box("moving", 0, 0, 3));
+        state.camera(new GameNavigation().view().camera());
+        state.lights().add(GameLighting.defaults().sun());
+        state.sky(GameLighting.defaults().sky());
+        state.workers(1);
+        state.samplesPerFrame(1);
+        state.sampleTarget(1);
+        try (var retained = new DirectRgbTracer(state)) {
+            retained.trace();
+            long builds = retained.preparedObjectBuilds;
+            for (int frame = 0; frame < 4; frame++) {
+                state.instances().set(state.instances().size() - 1, box("moving", frame, 0, 4));
+                var actual = retained.trace();
+                assertEquals(builds + frame + 1, retained.preparedObjectBuilds);
+                try (var fresh = new DirectRgbTracer(state.renderSnapshot())) {
+                    assertEquals(fresh.trace(), actual);
+                }
+            }
+            state.instances().removeLast();
+            var actual = retained.trace();
+            assertEquals(builds + 4, retained.preparedObjectBuilds);
+            try (var fresh = new DirectRgbTracer(state.renderSnapshot())) {
+                assertEquals(fresh.trace(), actual);
+            }
+        }
+    }
+
     public static void main(String[] args) {
         SuiteRunner.runThis();
     }

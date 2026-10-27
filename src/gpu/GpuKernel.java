@@ -397,6 +397,8 @@ final class GpuKernel implements AutoCloseable {
         if (compiledWorld == null || !compiledWorld.instances().equals(world.instances())) {
             if (compiledWorld != null && sameGeometry(compiledWorld, world)) {
                 scene.updateMaterials(world);
+            } else if (scene != null && scene.containsGeometry(world)) {
+                scene.updateInstances(compiledWorld, world);
             } else {
                 if (scene != null) {
                     scene.close();

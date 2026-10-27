@@ -19,6 +19,7 @@ public final class DirectRgbTracer implements AutoCloseable {
     private List<SceneInstance> cachedInstances = List.of();
     private List<RenderPrimitive> cachedLegacyObjects = List.of();
     private PreparedObject[] objects = new PreparedObject[0];
+    long preparedObjectBuilds;
     private PrimitiveBvh objectBvh;
     private final int objectBvhThreshold;
     private PreparedEmitter[] emitters = new PreparedEmitter[0];
@@ -150,8 +151,14 @@ public final class DirectRgbTracer implements AutoCloseable {
         geometryBuilds++;
         var prepared = new java.util.ArrayList<PreparedObject>();
         var emitting = new java.util.ArrayList<PreparedEmitter>();
-        for (var instance : instances) {
-            var object = new PreparedObject(instance);
+        for (int index = 0; index < instances.size(); index++) {
+            var instance = instances.get(index);
+            // Immutable instances that remain in their slot retain their transformed primitives
+            // and per-object hierarchy. Motion elsewhere still rebuilds the top-level hierarchy.
+            var object =
+                    index < cachedInstances.size() && instance == cachedInstances.get(index)
+                            ? objects[index]
+                            : prepareObject(instance);
             prepared.add(object);
             if (instance.material().emissive()) emitting.add(new PreparedEmitter(object, instance));
         }
@@ -181,6 +188,11 @@ public final class DirectRgbTracer implements AutoCloseable {
         emitters = emitting.toArray(PreparedEmitter[]::new);
         cachedInstances = instances;
         cachedLegacyObjects = legacy;
+    }
+
+    private PreparedObject prepareObject(SceneInstance instance) {
+        preparedObjectBuilds++;
+        return new PreparedObject(instance);
     }
 
     // One lazily started process-wide pool: scene switches and test tracers do not multiply
