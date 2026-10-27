@@ -205,6 +205,39 @@ public final class GameRenderer implements AutoCloseable {
     private final java.util.concurrent.atomic.AtomicReference<engine.RenderFailure> fatal =
             new java.util.concurrent.atomic.AtomicReference<>();
     private final GameNavigation navigation;
+    private volatile ShooterGame shooter;
+
+    public synchronized void enableShooter() {
+        if (shooter == null) {
+            shooter = new ShooterGame(world.instances());
+        }
+    }
+
+    public ShooterGame shooter() {
+        return shooter;
+    }
+
+    private void publishCombat() {
+        if (shooter == null) {
+            return;
+        }
+        var instances =
+                new java.util.ArrayList<>(
+                        world.instances().stream()
+                                .filter(instance -> !instance.name().startsWith("patrol/"))
+                                .toList());
+        instances.addAll(shooter.instances());
+        if (!instances.equals(world.instances())) {
+            world =
+                    new engine.WorldSnapshot(
+                            world.revision() + 1,
+                            instances,
+                            world.legacyObjects(),
+                            world.lights(),
+                            world.sky());
+        }
+    }
+
     private final String backend;
     private final engine.RenderCapabilities capabilities;
     private engine.WorldSnapshot world;
@@ -323,7 +356,16 @@ public final class GameRenderer implements AutoCloseable {
                 () -> {
                     try {
                         long now = System.nanoTime();
-                        navigation.advance((now - previousTick[0]) / 1e9);
+                        var combat = shooter;
+                        if (combat == null || combat.alive()) {
+                            navigation.advance((now - previousTick[0]) / 1e9);
+                        }
+                        if (combat != null) {
+                            combat.advance(
+                                    (now - previousTick[0]) / 1e9,
+                                    navigation.view().camera(),
+                                    navigation.active() && navigation.captured());
+                        }
                         previousTick[0] = now;
                     } catch (Throwable failure) {
                         navigation.active(false);
@@ -444,6 +486,7 @@ public final class GameRenderer implements AutoCloseable {
                 captureDiagnostics(view, session.progress(acquired), cachedBackendStatus);
                 converted = acquired.publicationNanos();
                 publishClock(copied);
+                publishCombat();
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }

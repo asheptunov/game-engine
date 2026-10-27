@@ -93,6 +93,9 @@ public final class SampleGameMain {
         if (scene.equals("world")) {
             renderer.dayCycle(true);
             navigation.speed(5);
+            if (capture == null) {
+                renderer.enableShooter();
+            }
         }
         navigation.walking(true);
         if (capture != null) {

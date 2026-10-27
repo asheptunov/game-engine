@@ -157,6 +157,25 @@ public final class GameNavigation {
     private float aperture;
     private float focus = 5;
     private boolean autofocus;
+    private boolean scoped;
+    private float scopeFocus = 25;
+
+    public synchronized void scoped(boolean value) {
+        scoped = value && captured;
+    }
+
+    public synchronized boolean scoped() {
+        return scoped;
+    }
+
+    public synchronized void scopeFocus(int clicks) {
+        scopeFocus = Math.clamp(scopeFocus * (float) Math.pow(1.12, clicks), 2, 250);
+    }
+
+    public synchronized float scopeFocus() {
+        return scopeFocus;
+    }
+
     private long focusRevision;
     private static final double PITCH_LIMIT = Math.toRadians(89);
     private static final Vec3 SPAWN = new Vec3(0, 2.4f, -6);
@@ -179,6 +198,7 @@ public final class GameNavigation {
     }
 
     public synchronized void release() {
+        scoped = false;
         captured = false;
         held.clear();
         jumpPending = false;
@@ -257,8 +277,9 @@ public final class GameNavigation {
     /** Positive screen X turns right; positive screen Y looks down. */
     public synchronized void look(int dx, int dy) {
         if (captured) {
-            yaw = Math.IEEEremainder(yaw + dx * sensitivity, Math.PI * 2);
-            pitch = Math.clamp(pitch - dy * sensitivity, -PITCH_LIMIT, PITCH_LIMIT);
+            double effectiveSensitivity = sensitivity * (scoped ? .25 : 1);
+            yaw = Math.IEEEremainder(yaw + dx * effectiveSensitivity, Math.PI * 2);
+            pitch = Math.clamp(pitch - dy * effectiveSensitivity, -PITCH_LIMIT, PITCH_LIMIT);
         }
     }
 
@@ -453,14 +474,14 @@ public final class GameNavigation {
         var right = new Vec3((float) Math.cos(yaw), 0, (float) -Math.sin(yaw));
         var up = forward.cross(right);
         // Sensor one unit ahead; field of view is vertical.
-        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(fov / 2)));
+        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(fov / 2))) / (scoped ? 4 : 1);
         var horizontal = right.scale(sensorHeight * aspect);
         var vertical = up.scale(sensorHeight);
         var origin = position.add(forward).sub(horizontal.scale(.5f)).sub(vertical.scale(.5f));
         var camera =
                 new Camera(position, new Rect(origin, horizontal, vertical))
-                        .withFocus(focus)
-                        .withAperture(aperture)
+                        .withFocus(scoped ? scopeFocus : focus)
+                        .withAperture(scoped ? .025f : aperture)
                         .validated();
         int traceWidth = Math.clamp(Math.round(200 * aspect), 64, 1600);
         int traceHeight = Math.clamp(Math.round(traceWidth / aspect), 64, 1600);

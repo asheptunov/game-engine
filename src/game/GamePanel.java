@@ -48,6 +48,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 new KeyAdapter() {
                     @Override
                     public void keyPressed(KeyEvent event) {
+                        if (combatKey(event)) {
+                            return;
+                        }
                         navigation.key(AwtInputAdapter.key(event));
                         updateCursor();
                     }
@@ -62,10 +65,13 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 new MouseAdapter() {
                     @Override
                     public void mousePressed(MouseEvent event) {
-                        if (event.getButton() == MouseEvent.BUTTON1) {
-                            if (!lightingClick(event)) {
-                                capturePointer();
-                            }
+                        pressMouse(event);
+                    }
+
+                    @Override
+                    public void mouseReleased(MouseEvent event) {
+                        if (event.getButton() == MouseEvent.BUTTON3) {
+                            navigation.scoped(false);
                         }
                     }
 
@@ -81,6 +87,12 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 };
         addMouseListener(mouse);
         addMouseMotionListener(mouse);
+        addMouseWheelListener(
+                event -> {
+                    if (navigation.scoped()) {
+                        navigation.scopeFocus(event.getWheelRotation());
+                    }
+                });
         addComponentListener(
                 new ComponentAdapter() {
                     @Override
@@ -130,6 +142,50 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                                 captureKeys.remove(key);
                             }
                         });
+    }
+
+    private void pressMouse(MouseEvent event) {
+        if (navigation.captured() && renderer.shooter() != null) {
+            if (event.getButton() == MouseEvent.BUTTON1) {
+                renderer.shooter().fire(navigation.view().camera());
+            } else if (event.getButton() == MouseEvent.BUTTON3) {
+                navigation.scoped(true);
+            }
+            return;
+        }
+        if (event.getButton() == MouseEvent.BUTTON1 && !lightingClick(event)) {
+            capturePointer();
+        }
+    }
+
+    private String movementHelp() {
+        if (renderer.shooter() != null) {
+            return "WASD: move | LMB: fire | RMB: scope | Wheel: focus | R: reload | Enter:"
+                    + " restart";
+        }
+        return navigation.walking()
+                ? "WASD: walk | Space: jump | Mouse: look | R: respawn"
+                : "WASD: fly | Space/Ctrl: up/down | Mouse: look | R: reset";
+    }
+
+    private boolean combatKey(KeyEvent event) {
+        var combat = renderer.shooter();
+        if (combat == null || !navigation.captured()) {
+            return false;
+        }
+        if (event.getKeyCode() == KeyEvent.VK_R) {
+            combat.reload();
+            return true;
+        }
+        if (event.getKeyCode() == KeyEvent.VK_ENTER) {
+            combat.reset();
+            navigation.reset();
+            return true;
+        }
+        if (combat.status().health() == 0 && event.getKeyCode() != KeyEvent.VK_ESCAPE) {
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -262,6 +318,10 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         null);
             }
             renderer.displayed(frame);
+            if (renderer.shooter() != null && navigation.captured()) {
+                ShooterOverlay.draw(
+                        draw, getWidth(), getHeight(), navigation, renderer.shooter().status());
+            }
             drawOverlay(draw, frame);
             draw.setColor(Color.WHITE);
             drawBackendStatus(draw);
@@ -311,12 +371,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         ? "Mouse captured | Esc releases pointer"
                         : "Pointer free | Click the view to move";
         draw.drawString("Sample game | " + capture, 24, 34);
-        draw.drawString(
-                navigation.walking()
-                        ? "WASD: walk | Space: jump | Mouse: look | R: respawn"
-                        : "WASD: fly | Space/Ctrl: up/down | Mouse: look | R: reset",
-                24,
-                56);
+        draw.drawString(movementHelp(), 24, 56);
         var view = navigation.view();
         String shown =
                 frame == null
