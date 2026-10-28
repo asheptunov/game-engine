@@ -9,6 +9,13 @@ public interface RenderSession extends AutoCloseable {
 
     void request();
 
+    /** Prefer device-resident publications; unsupported backends reject enabling it. */
+    default void devicePresentation(boolean enabled) {
+        if (enabled) {
+            throw new UnsupportedOperationException("Device presentation unavailable");
+        }
+    }
+
     /** Optional display hint; changes neither raw accumulation nor sample targets. */
     default void displayExposure(float multiplier) {}
 

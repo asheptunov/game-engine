@@ -9,6 +9,10 @@ import java.util.concurrent.TimeUnit;
 /** Headless real-device checks for packed presentation and lazy raw snapshot ownership. */
 public final class CompactDisplayCheck {
     public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("resident-captures")) {
+            checkCaptures(true);
+            return;
+        }
         int width = args.length == 0 ? 1920 : Integer.parseInt(args[0]);
         int height = args.length < 2 ? 1080 : Integer.parseInt(args[1]);
         var nav = new GameNavigation();
@@ -64,12 +68,12 @@ public final class CompactDisplayCheck {
             session.close();
             require(session.awaitClosed(30), "cleanup");
         }
-        checkCaptures();
+        checkCaptures(false);
         System.out.println("PASS compact GPU display " + width + "x" + height
                 + ": pixels, exposure, raw snapshots, resize, three-slot leases, close");
     }
 
-    private static void checkCaptures() throws Exception {
+    private static void checkCaptures(boolean resident) throws Exception {
         var nav = new GameNavigation();
         nav.fixedResolution(320, 180);
         var session = new GpuRenderSession[1];
@@ -80,23 +84,29 @@ public final class CompactDisplayCheck {
                 });
         try (var renderer = new GameRenderer(nav, BlockWorld.landscape().snapshot(), "gpu",
                 GameRenderer::copyImage, hooks)) {
+            if (resident) renderer.devicePresentation();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-            while (renderer.frame() == null && System.nanoTime() < deadline) {
+            while ((renderer.frame() == null || (resident && renderer.frame().devicePixels() == null))
+                    && System.nanoTime() < deadline) {
                 if (renderer.error() != null) throw new AssertionError(renderer.error());
                 Thread.sleep(5);
             }
-            var frame = renderer.frame();
+            var frame = renderer.acquireFrame();
             require(frame != null, "capture frame");
-            renderer.displayed(frame);
-            var root = java.nio.file.Path.of("out/gpu/compact-captures");
-            for (boolean history : new boolean[] {false, true}) {
-                var directory = renderer.captureBundle(history, root).get(30, TimeUnit.SECONDS);
-                GameCapture.load(directory);
-                var png = javax.imageio.ImageIO.read(directory.resolve("displayed.png").toFile());
-                require(Arrays.equals(frame.image().getRGB(0, 0, 320, 180, null, 0, 320),
-                        png.getRGB(0, 0, 320, 180, null, 0, 320)), "capture displayed bytes");
+            try {
+                renderer.displayed(frame);
+                var root = java.nio.file.Path.of("out/gpu/compact-captures");
+                for (boolean history : new boolean[] {false, true}) {
+                    var directory = renderer.captureBundle(history, root).get(30, TimeUnit.SECONDS);
+                    GameCapture.load(directory);
+                    var png = javax.imageio.ImageIO.read(directory.resolve("displayed.png").toFile());
+                    require(Arrays.equals(frame.image().getRGB(0, 0, 320, 180, null, 0, 320),
+                            png.getRGB(0, 0, 320, 180, null, 0, 320)), "capture displayed bytes");
+                }
+                System.out.println("PASS GPU snapshot/history captures and reload, resident=" + resident);
+            } finally {
+                frame.release();
             }
-            System.out.println("PASS GPU packed snapshot/history captures and reload");
         } finally {
             if (session[0] != null) require(session[0].awaitClosed(30), "capture owner retires");
         }

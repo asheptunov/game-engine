@@ -78,9 +78,9 @@ final class GameRecording {
         if (!pictures.isEmpty() && now - pictures.getLast().nanos() < 4_000_000_000L) {
             return;
         }
-        pictures.addLast(new Picture(now, frame));
+        pictures.addLast(new Picture(now, frame.retain()));
         while (pictures.size() > MAX_PICTURES) {
-            pictures.removeFirst();
+            pictures.removeFirst().frame().release();
         }
     }
 
@@ -91,7 +91,16 @@ final class GameRecording {
         return new Frozen(
                 motions.stream().filter(value -> value.nanos() >= now - WINDOW_NANOS).toList(),
                 states.stream().filter(value -> value.nanos() >= now - WINDOW_NANOS).toList(),
-                pictures.stream().filter(value -> value.nanos() >= now - WINDOW_NANOS).toList(),
+                pictures.stream()
+                        .filter(value -> value.nanos() >= now - WINDOW_NANOS)
+                        .map(value -> new Picture(value.nanos(), value.frame().retain()))
+                        .toList(),
                 dropped);
+    }
+
+    synchronized void close() {
+        while (!pictures.isEmpty()) {
+            pictures.removeFirst().frame().release();
+        }
     }
 }

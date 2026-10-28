@@ -1,6 +1,7 @@
 param([switch]$NoBuild, [ValidateSet('world', 'landscape', 'gallery')][string]$Scene = 'world',
     [ValidateSet('cpu','gpu')][string]$Backend = 'cpu',
-    [ValidateRange(0,1920)][int]$Width = 0, [ValidateRange(0,1920)][int]$Height = 0, [string]$Capture = "")
+    [ValidateRange(0,1920)][int]$Width = 0, [ValidateRange(0,1920)][int]$Height = 0, [string]$Capture = "",
+    [switch]$NativePresentation)
 $ErrorActionPreference = "Stop"
 $repository = $PSScriptRoot
 $output = Join-Path $repository "out/game"
@@ -19,7 +20,8 @@ New-Item -ItemType Directory -Force $crashes | Out-Null
 $jvmError = Join-Path $crashes 'hs_err_pid%p.log'
 $stderr = Join-Path $output "game-error.log"
 $captureArgument = if ($Capture) { @('"' + (Resolve-Path -LiteralPath $Capture).Path + '"') } else { @() }
-$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList (@("--enable-preview", ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) + $captureArgument) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
+$nativeArgument = '-Dgame.nativePresentation=' + $NativePresentation.IsPresent.ToString().ToLowerInvariant()
+$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList (@("--enable-preview", $nativeArgument, ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) + $captureArgument) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
 Start-Sleep -Milliseconds 750
 if ($process.HasExited) { throw "Sample game exited during startup; inspect $stderr" }
 Write-Output "Sample game started (PID $($process.Id)). Errors: $stderr"

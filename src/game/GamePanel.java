@@ -29,6 +29,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private final Timer timer;
     private final profiling.FreshPaintRate freshPaints = new profiling.FreshPaintRate();
     private final GameSettingsPanel settingsPanel;
+    private final GameDisplay nativeDisplay;
     private Robot pointer;
     private final java.util.Set<Integer> captureKeys = new java.util.HashSet<>();
     private String pointerError;
@@ -118,7 +119,42 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         if (!Boolean.getBoolean("game.timerPresentation")) {
             renderer.onFrameAvailable(this::repaint);
         }
+        nativeDisplay = createNativeDisplay();
+        if (nativeDisplay != null) {
+            var surface = nativeDisplay.component();
+            add(surface);
+            setComponentZOrder(settingsPanel, 0);
+            surface.addMouseListener(mouse);
+            surface.addMouseMotionListener(mouse);
+            surface.addMouseWheelListener(
+                    event -> {
+                        if (navigation.scoped()) {
+                            navigation.scopeFocus(event.getWheelRotation());
+                        }
+                    });
+            renderer.devicePresentation();
+        }
         timer.start();
+    }
+
+    private GameDisplay createNativeDisplay() {
+        if (java.awt.GraphicsEnvironment.isHeadless()
+                || renderer.capabilities() != engine.RenderCapabilities.GPU
+                || !Boolean.getBoolean("game.nativePresentation")
+                || Boolean.getBoolean("game.swingPresentation")) {
+            return null;
+        }
+        try {
+            return (GameDisplay)
+                    Class.forName("gpu.GpuGameSurface")
+                            .getConstructor(Runnable.class, java.util.function.Consumer.class)
+                            .newInstance(
+                                    (Runnable) this::repaint,
+                                    (java.util.function.Consumer<Throwable>)
+                                            renderer::displayFailure);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot initialize native GPU presentation", error);
+        }
     }
 
     private void bindCapture(int key, boolean history) {
@@ -196,6 +232,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
     @Override
     public void doLayout() {
+        if (nativeDisplay != null) {
+            nativeDisplay.component().setBounds(0, 0, getWidth(), getHeight());
+        }
         settingsPanel.setBounds(
                 12,
                 214,
@@ -303,8 +342,14 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     @Override
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
+        if (nativeDisplay != null) {
+            if (nativeDisplay.ready()) {
+                presentNativeFrame();
+            }
+            return; // Do not download a resident frame while its native peer is hidden or starting.
+        }
         var draw = (Graphics2D) graphics.create();
-        var frame = renderer.frame();
+        var frame = renderer.acquireFrame();
         try {
             if (frame != null) {
                 var image = frame.image();
@@ -323,37 +368,83 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         height,
                         null);
             }
-            if (renderer.shooter() != null && navigation.captured()) {
-                if (frame != null) {
-                    drawTracers(draw, frame);
-                }
-                ShooterOverlay.draw(
-                        draw, getWidth(), getHeight(), navigation, renderer.shooter().status());
-            }
-            drawOverlay(draw, frame);
-            draw.setColor(Color.WHITE);
-            drawBackendStatus(draw);
-            draw.drawString(renderer.captureStatus(), 14, getHeight() - 60);
-            if (frame != null) {
-                draw.drawString(
-                        "Generation "
-                                + frame.generation()
-                                + " | age "
-                                + ((System.nanoTime() - frame.capturedNanos()) / 1_000_000)
-                                + " ms since capture | "
-                                + String.format(
-                                        java.util.Locale.ROOT,
-                                        "%.1f fresh paints/s (2s)",
-                                        freshPaints.perSecond(System.nanoTime())),
-                        14,
-                        getHeight() - 10);
-            }
+            drawFrameOverlay(draw, frame);
+            markPresented(frame);
         } finally {
             draw.dispose();
+            if (frame != null) {
+                frame.release();
+            }
         }
+    }
+
+    private void drawFrameOverlay(Graphics2D draw, GameRenderer.Frame frame) {
+        if (renderer.shooter() != null && navigation.captured()) {
+            if (frame != null) {
+                drawTracers(draw, frame);
+            }
+            ShooterOverlay.draw(
+                    draw, getWidth(), getHeight(), navigation, renderer.shooter().status());
+        }
+        drawOverlay(draw, frame);
+        draw.setColor(Color.WHITE);
+        drawBackendStatus(draw);
+        draw.drawString(renderer.captureStatus(), 14, getHeight() - 60);
+        if (frame != null) {
+            draw.drawString(
+                    "Generation "
+                            + frame.generation()
+                            + " | age "
+                            + ((System.nanoTime() - frame.capturedNanos()) / 1_000_000)
+                            + " ms since capture | "
+                            + String.format(
+                                    java.util.Locale.ROOT,
+                                    "%.1f fresh paints/s (2s)",
+                                    freshPaintRate()),
+                    14,
+                    getHeight() - 10);
+        }
+    }
+
+    private void presentNativeFrame() {
+        var frame = renderer.acquireFrame();
+        if (frame == null) {
+            return;
+        }
+        try {
+            if (frame.devicePixels() == null) {
+                return;
+            }
+            var transform = getGraphicsConfiguration().getDefaultTransform();
+            double scale = transform.getScaleX();
+            int width = (int) Math.ceil(getWidth() * scale);
+            int height = (int) Math.ceil(getHeight() * scale);
+            boolean full =
+                    renderer.shooter() != null
+                            && navigation.captured()
+                            && (renderer.shooter().status().hurtTime() > 0
+                                    || !renderer.shooter().tracers().isEmpty());
+            int[] overlay =
+                    GameOverlay.capture(
+                            width, height, scale, full, draw -> drawFrameOverlay(draw, frame));
+            nativeDisplay.submit(frame, width, height, overlay, this::markPresented);
+        } finally {
+            frame.release();
+        }
+    }
+
+    private void markPresented(GameRenderer.Frame frame) {
         renderer.displayed(frame);
         if (frame != null) {
-            freshPaints.painted(frame.publicationNanos(), System.nanoTime());
+            synchronized (freshPaints) {
+                freshPaints.painted(frame.publicationNanos(), System.nanoTime());
+            }
+        }
+    }
+
+    private double freshPaintRate() {
+        synchronized (freshPaints) {
+            return freshPaints.perSecond(System.nanoTime());
         }
     }
 
@@ -380,10 +471,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private void drawTracers(Graphics2D draw, GameRenderer.Frame frame) {
         double scale =
                 Math.min(
-                        (double) getWidth() / frame.image().getWidth(),
-                        (double) getHeight() / frame.image().getHeight());
-        int width = (int) Math.round(frame.image().getWidth() * scale);
-        int height = (int) Math.round(frame.image().getHeight() * scale);
+                        (double) getWidth() / frame.width(), (double) getHeight() / frame.height());
+        int width = (int) Math.round(frame.width() * scale);
+        int height = (int) Math.round(frame.height() * scale);
         var layer = (Graphics2D) draw.create();
         try {
             layer.translate((getWidth() - width) / 2, (getHeight() - height) / 2);
@@ -406,10 +496,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         draw.drawString("Sample game | " + capture, 24, 34);
         draw.drawString(movementHelp(), 24, 56);
         var view = navigation.view();
-        String shown =
-                frame == null
-                        ? "waiting"
-                        : frame.image().getWidth() + " x " + frame.image().getHeight();
+        String shown = frame == null ? "waiting" : frame.width() + " x " + frame.height();
         draw.drawString(
                 "Requested "
                         + view.width()
@@ -473,6 +560,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
     void releaseForFailure() {
         renderer.onFrameAvailable(null);
+        if (nativeDisplay != null) {
+            nativeDisplay.close();
+        }
         timer.stop();
         navigation.release();
         updateCursor();

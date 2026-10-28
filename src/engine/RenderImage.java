@@ -8,6 +8,11 @@ import profiling.TraceProfile;
  * lease closes.
  */
 public interface RenderImage extends AutoCloseable {
+    /** Independent owned device snapshot, or null when this backend uses host presentation. */
+    default DevicePixels copyDevicePixels() {
+        return null;
+    }
+
     int width();
 
     int height();

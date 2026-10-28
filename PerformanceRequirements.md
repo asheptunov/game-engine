@@ -456,7 +456,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | ID | User can now... | Prerequisite | Status / evidence |
 | --- | --- | --- | --- |
 | S1.1 | Play the textured landscape using an explicitly selected GPU backend and compare it with CPU rendering | Verified hardware/API inventory; scope agreed above | Implemented and automatically verified; [S1.1 results](benchmarks/s1/README.md); native-window human acceptance pending |
-| S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Authorized October 27; pending implementation and verification |
+| S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Opt-in Windows implementation available October 28; automated functional checks passed; hidden-window performance regressed, so default promotion and native-window human acceptance remain pending |
 | S1.1a | Explore the existing GPU game with less image-conversion overhead at identical quality | Existing GPU backend | Implemented; verification results below; human acceptance pending |
 | S1.1b | Choose a standard internal render resolution or retain custom dimensions in game settings | Existing settings panel | Implemented; settings tests and game gate passed; human acceptance pending |
 | S1.1c | Play at 1080p with GPU color conversion and one-quarter-sized routine readback | S1.1a and S1.1b | Implemented; real-device, capture, game and completion gates passed; human acceptance pending |
@@ -691,6 +691,59 @@ never silently substitute CPU rendering. Presentation pacing must support a 120+
 without a fixed 16 ms repaint ceiling. Report GPU execution, transfers, CPU work, fresh window
 submissions and image age separately. Native-window acceptance requires a human playthrough.
 
+**S1.2 implementation evaluation — October 28.** The GPU game has an opt-in native
+Windows presenter. Launch `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080
+-NativePresentation` as one command. Omitting `-NativePresentation` retains the existing
+Swing display, including all earlier performance improvements. CPU rendering is unchanged.
+This is an evaluation build, not an accepted speed improvement or a completed S1.2 milestone.
+
+`GpuGameSurface` attaches a Vulkan window surface to an AWT Canvas through the Java AWT
+Native Interface (JAWT). `GpuSwapchain` manages the window's rotating presentation images.
+`GpuCompositor` performs linear-radiance box filtering, exposure, tone mapping and sRGB
+encoding on the GPU. Integer enlargement, including 1080p to 4K, encodes each source pixel
+once. Java paints the existing HUD into small transparent patches that are uploaded separately;
+active damage borders and shot tracers use a full-window overlay. Settings remain Swing controls
+over the native Canvas. F8/F9 explicitly download retained scene images for existing capture
+bundles. The native footer counts fresh Vulkan submissions, not monitor scanout.
+
+`DevicePixels` and `GameFrameImage` retain immutable GPU snapshots independently of the
+three tracing slots. The presenter holds one active request and one replaceable pending request.
+The existing eight-picture history and single capture writer also own explicit references;
+released display storage has a three-entry reuse pool. Normal display does not copy scene
+pixels to host memory. Explicit captures, CPU comparisons and retained readers surviving
+normal renderer shutdown may download them. Input never waits for the presentation worker.
+Vulkan present fences protect swapchain and semaphore retirement; these fences do not measure
+when the monitor displays the image. The native path requires Windows, a presentation-capable
+GPU queue, BGRA8 window images, and Vulkan swapchain-maintenance support. Unsupported
+native initialization reports a GPU failure; relaunch without the switch to use Swing with the
+same GPU tracer. It never silently switches to CPU tracing.
+
+Automated checks cover resident-frame reuse and bounded allocation, zero routine scene-image
+readback, retained reads after close, exact equal-grid/integer-enlargement encoding, linear
+filtering and letterboxing through 4K, transparent HUD composition at multiple display scales,
+hidden JAWT window creation, swapchain resizing/retirement, and resident F8/F9 bundle exports.
+The hidden tests never show a window or move the pointer. They do not establish visible-window
+focus behavior, settings/Canvas overlap, minimize/restore behavior, or actual display pacing.
+The implementation, commands, raw comparison and gate logs are in
+[the direct-presentation evidence](benchmarks/s1/direct-presentation/README.md).
+
+The matched 1080p ruins/combat/Full-atmosphere route with a 4K destination measured about
+50–53 fresh native submissions/s versus 57 fresh Swing offscreen paints/s. Native p95 intervals
+were about 23–27 ms. These are different submission endpoints: native uses an invisible
+Windows swapchain, while Swing paints to an offscreen image. Neither measures scanout, and
+hidden-window compositor behavior can differ from a visible game. Nevertheless, the available
+evidence does not support making native presentation the default. The first native version was
+slower still; encoding integer-enlarged pixels once reduced that cost without changing image
+semantics. The remaining presentation/scheduling cost needs profiling before default promotion.
+
+When available, the player can compare normal launch with `-NativePresentation` in the ruins
+at 1080p with Full atmosphere. Check movement/aiming, Escape settings over the scene, HUD and
+tracers, exposure, resolution changes, Alt-Tab, minimize/restore, F8/F9 and closing while rendering.
+Report fresh rates and visible artifacts separately. No playthrough is required while the player
+is away. The 60 FPS minimum and 120+ goal remain unmet in this stress route. The next default-path
+optimization candidate is S1.4 reuse/update of the top-level GPU acceleration structure for
+moving combat objects; this can benefit both presentation paths.
+
 **S1.1b — Standard render resolutions.** The player uses a 4K monitor and accepts lower
 internal rendering resolutions. In Escape → Render, a Render resolution dropdown offers
 360p (640x360), 480p (854x480), 540p (960x540), 720p HD (1280x720), 900p (1600x900),
@@ -802,8 +855,9 @@ Raw measurements, exact fixture source, quality results and verification logs ar
 **Larger optimizations - agreed sequence (October 28).** The player reports a slight
 improvement with reduced atmosphere resolution, but the target remains unmet. Continue with
 quality-preserving work first. Keep these priorities in this specification rather than relying
-on conversation history. S1.4b is delivered below; S1.2 is the next implementation priority,
-while native-window evaluation of S1.4b remains open.
+on conversation history. S1.4b is delivered below. S1.2 now has an opt-in Windows implementation, described below;
+its hidden-window comparison did not justify replacing the default Swing presentation.
+Native-window evaluation of both changes remains open.
 
 1. S1.4b removed unnecessary combat-frame submission delays and redundant old-frame work.
    Completed-image and fresh-paint measurements at unchanged quality are recorded below.

@@ -97,10 +97,13 @@ final class VulkanDevice implements AutoCloseable {
     long pool;
     long fence;
     long queries;
+    int queueFamily;
+    boolean presentation;
     String name;
     String description = "unavailable";
     float timestampPeriod;
     long allocatedBytes;
+    long imageReadbackBytes;
     long peakBytes;
     final List<AutoCloseable> resources = new ArrayList<>();
 
@@ -113,10 +116,21 @@ final class VulkanDevice implements AutoCloseable {
                             .pApplicationName(stack.UTF8("RayTracingEngine S1.1"))
                             .apiVersion(VK_API_VERSION_1_2);
             var ci = VkInstanceCreateInfo.calloc(stack).sType$Default().pApplicationInfo(app);
+            presentation =
+                    System.getProperty("os.name").startsWith("Windows")
+                            && supportsPresentationExtensions(stack);
+            if (presentation) {
+                ci.ppEnabledExtensionNames(
+                        stack.pointers(
+                                stack.UTF8("VK_KHR_surface"), stack.UTF8("VK_KHR_win32_surface"),
+                                stack.UTF8("VK_KHR_get_surface_capabilities2"),
+                                        stack.UTF8("VK_EXT_surface_maintenance1")));
+            }
             var pointer = stack.mallocPointer(1);
             check(vkCreateInstance(ci, null, pointer), "create instance");
             instance = new VkInstance(pointer.get(0), ci);
             int family = selectPhysicalDevice(stack);
+            queueFamily = family;
             var properties = VkPhysicalDeviceProperties.calloc(stack);
             vkGetPhysicalDeviceProperties(physical, properties);
             name = properties.deviceNameString();
@@ -143,6 +157,33 @@ final class VulkanDevice implements AutoCloseable {
                             .sType$Default()
                             .bufferDeviceAddress(true)
                             .pNext(acceleration.address());
+            var presentFeatures =
+                    org.lwjgl.vulkan.VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT.calloc(stack)
+                            .sType$Default();
+            var query =
+                    VkPhysicalDeviceFeatures2.calloc(stack)
+                            .sType$Default()
+                            .pNext(presentFeatures.address());
+            vkGetPhysicalDeviceFeatures2(physical, query);
+            presentation &= presentFeatures.swapchainMaintenance1();
+            if (presentation) {
+                ray.pNext(presentFeatures.address());
+            }
+            var extensions =
+                    new java.util.ArrayList<String>(
+                            java.util.List.of(
+                                    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+                                    VK_KHR_RAY_QUERY_EXTENSION_NAME,
+                                    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME));
+            if (presentation) {
+                extensions.add("VK_KHR_swapchain");
+                extensions.add("VK_EXT_swapchain_maintenance1");
+            }
+            var extensionNames = stack.mallocPointer(extensions.size());
+            for (var extension : extensions) {
+                extensionNames.put(stack.UTF8(extension));
+            }
+            extensionNames.flip();
             var queues = VkDeviceQueueCreateInfo.calloc(1, stack);
             queues.get(0)
                     .sType$Default()
@@ -157,13 +198,7 @@ final class VulkanDevice implements AutoCloseable {
                                     VkPhysicalDeviceFeatures.calloc(stack)
                                             .shaderFloat64(true)
                                             .shaderInt64(true))
-                            .ppEnabledExtensionNames(
-                                    stack.pointers(
-                                            stack.UTF8(
-                                                    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME),
-                                            stack.UTF8(VK_KHR_RAY_QUERY_EXTENSION_NAME),
-                                            stack.UTF8(
-                                                    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)));
+                            .ppEnabledExtensionNames(extensionNames);
             check(vkCreateDevice(physical, create, null, pointer), "create device");
             device = new VkDevice(pointer.get(0), physical, create);
             vkGetDeviceQueue(device, family, 0, pointer);
@@ -275,6 +310,29 @@ final class VulkanDevice implements AutoCloseable {
                             + " timestamps");
         }
         return family;
+    }
+
+    private static boolean supportsPresentationExtensions(MemoryStack stack) {
+        var count = stack.ints(0);
+        check(
+                org.lwjgl.vulkan.VK10.vkEnumerateInstanceExtensionProperties(
+                        (String) null, count, null),
+                "instance extensions");
+        var values = org.lwjgl.vulkan.VkExtensionProperties.calloc(count.get(0), stack);
+        check(
+                org.lwjgl.vulkan.VK10.vkEnumerateInstanceExtensionProperties(
+                        (String) null, count, values),
+                "instance extensions");
+        var names = new java.util.HashSet<String>();
+        for (var value : values) {
+            names.add(value.extensionNameString());
+        }
+        return names.containsAll(
+                java.util.List.of(
+                        "VK_KHR_surface",
+                        "VK_KHR_win32_surface",
+                        "VK_KHR_get_surface_capabilities2",
+                        "VK_EXT_surface_maintenance1"));
     }
 
     static void check(int result, String operation) {
@@ -418,6 +476,10 @@ final class VulkanDevice implements AutoCloseable {
     }
 
     void submit() {
+        submit(0);
+    }
+
+    void submit(long signalSemaphore) {
         check(vkEndCommandBuffer(command), "end command");
         try (var stack = MemoryStack.stackPush()) {
             check(vkResetFences(device, fence), "reset fence");
@@ -425,6 +487,9 @@ final class VulkanDevice implements AutoCloseable {
                     VkSubmitInfo.calloc(stack)
                             .sType$Default()
                             .pCommandBuffers(stack.pointers(command));
+            if (signalSemaphore != 0) {
+                submit.pSignalSemaphores(stack.longs(signalSemaphore));
+            }
             check(vkQueueSubmit(queue, submit, fence), "submit");
             // Only the GPU owner waits. Input and display never call this method.
             check(vkWaitForFences(device, fence, true, 30_000_000_000L), "wait for completion");

@@ -26,3 +26,8 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/GpuDisplayCheck.java','tools/gpu/CompactDisplayCheck.java') 'out/gpu/compact-compile.log' 'Compact display check compilation failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.GpuDisplayCheck') 'out/gpu/display-encoding-check.log' 'GPU display encoding checks failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.CompactDisplayCheck') 'out/gpu/compact-display-check.log' 'Compact display lifecycle checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/DirectPresentationCheck.java','tools/gpu/GameOverlayCheck.java') 'out/gpu/direct-compile.log' 'Direct presentation check compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=false','-cp',$classPath,'gpu.DirectPresentationCheck','native') 'out/gpu/direct-check.log' 'Resident/compositor/hidden native-window checks failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.GameOverlayCheck') 'out/gpu/overlay-check.log' 'UI patch checks failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.CompactDisplayCheck','resident-captures') 'out/gpu/resident-capture-check.log' 'Resident snapshot/history checks failed'

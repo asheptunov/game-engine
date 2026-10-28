@@ -31,6 +31,7 @@ public final class GpuRenderSession implements RenderSession {
         volatile float[] pixels;
         int[] packed;
         float exposure;
+        boolean deviceOnly;
         GpuKernel.Snapshot snapshot;
         int readers;
         boolean writing;
@@ -51,6 +52,10 @@ public final class GpuRenderSession implements RenderSession {
                         thread.setDaemon(true);
                         return thread;
                     });
+    private volatile boolean devicePresentation;
+    private final java.util.ArrayDeque<GpuKernel.Snapshot> recycledDisplay =
+            new java.util.ArrayDeque<>();
+    private final java.util.Set<GpuDevicePixels> displayFrames = new java.util.HashSet<>();
     private WorldSnapshot world;
     private RenderView view;
     private RenderSettings settings;
@@ -148,6 +153,12 @@ public final class GpuRenderSession implements RenderSession {
     }
 
     @Override
+    public synchronized void devicePresentation(boolean enabled) {
+        checkOpen();
+        devicePresentation = enabled;
+    }
+
+    @Override
     public synchronized void request() {
         checkOpen();
         if (failure != null) {
@@ -173,12 +184,7 @@ public final class GpuRenderSession implements RenderSession {
         }
         var destination = available;
         destination.writing = true;
-        if (displayExposure != null) {
-            destination.exposure = displayExposure;
-            if (destination.snapshot == null) {
-                destination.snapshot = new GpuKernel.Snapshot();
-            }
-        }
+        preparePresentation(destination);
         running = true;
         activeGeneration = generation;
         var capturedKey = key;
@@ -195,6 +201,16 @@ public final class GpuRenderSession implements RenderSession {
                                 capturedGeneration,
                                 capturedEpoch,
                                 capturedTime));
+    }
+
+    private void preparePresentation(Slot destination) {
+        destination.deviceOnly = devicePresentation;
+        if (displayExposure != null || devicePresentation) {
+            destination.exposure = displayExposure == null ? 1 : displayExposure;
+            if (destination.snapshot == null) {
+                destination.snapshot = new GpuKernel.Snapshot();
+            }
+        }
     }
 
     private void render(
@@ -291,7 +307,11 @@ public final class GpuRenderSession implements RenderSession {
                                     capturedSettings.fogLightingGrid(),
                                     kernel.lightingBuildNanos / 1e6,
                                     capturedSettings.fogJitter(),
-                                    destination.packed == null ? "CPU RGB" : "GPU packed");
+                                    destination.deviceOnly
+                                            ? "GPU resident"
+                                            : destination.packed == null
+                                                    ? "CPU RGB"
+                                                    : "GPU packed");
                 } else {
                     cancelled++;
                     accumulatedKey = null;
@@ -315,7 +335,9 @@ public final class GpuRenderSession implements RenderSession {
         int length = capturedView.width() * capturedView.height() * 3;
         if (destination.snapshot != null) {
             destination.pixels = null;
-            if (destination.packed == null || destination.packed.length != length / 3) {
+            if (destination.deviceOnly) {
+                destination.packed = null;
+            } else if (destination.packed == null || destination.packed.length != length / 3) {
                 destination.packed = new int[length / 3];
             }
         } else if (destination.pixels == null || destination.pixels.length != length) {
@@ -513,18 +535,101 @@ public final class GpuRenderSession implements RenderSession {
 
     private void retire() {
         try {
-            if (kernel != null) {
-                preserveRetainedRawImages();
+            try {
+                if (kernel != null) {
+                    for (var image : java.util.List.copyOf(displayFrames)) {
+                        image.retireOnOwner();
+                    }
+                    preserveRetainedRawImages();
+                }
+            } finally {
+                if (kernel != null) {
+                    kernel.close();
+                    kernel = null;
+                }
             }
             retired.complete(null);
         } catch (Throwable error) {
             retired.completeExceptionally(error);
-        } finally {
-            if (kernel != null) {
-                kernel.close();
-                kernel = null;
+        }
+    }
+
+    <T> T onOwner(java.util.concurrent.Callable<T> action) {
+        var result = new java.util.concurrent.CompletableFuture<T>();
+        synchronized (this) {
+            checkOpen();
+            owner.execute(
+                    () -> {
+                        try {
+                            result.complete(action.call());
+                        } catch (Throwable failure) {
+                            result.completeExceptionally(failure);
+                        }
+                    });
+        }
+        return result.join();
+    }
+
+    void releaseDeviceFrame(GpuDevicePixels image) {
+        synchronized (this) {
+            if (closed) {
+                return;
+            } // Retirement materializes retained frames and releases storage.
+            owner.execute(
+                    () -> {
+                        displayFrames.remove(image);
+                        if (recycledDisplay.size() < 3) {
+                            recycledDisplay.addLast(image.snapshot);
+                        } else {
+                            image.destroyOnOwner();
+                        }
+                    });
+        }
+    }
+
+    GpuKernel.Snapshot takeDisplayStorage() {
+        return recycledDisplay.isEmpty() ? new GpuKernel.Snapshot() : recycledDisplay.removeFirst();
+    }
+
+    float[] readDeviceFrame(GpuDevicePixels image) {
+        var result = new java.util.concurrent.CompletableFuture<float[]>();
+        synchronized (this) {
+            if (closed) {
+                retired.whenComplete(
+                        (unused, error) -> {
+                            if (error != null) {
+                                result.completeExceptionally(error);
+                            } else {
+                                result.complete(image.retiredPixels);
+                            }
+                        });
+            } else {
+                owner.execute(
+                        () -> {
+                            try {
+                                result.complete(image.snapshot.read(kernel.gpu));
+                            } catch (Throwable error) {
+                                result.completeExceptionally(error);
+                            }
+                        });
             }
         }
+        return result.join();
+    }
+
+    private engine.DevicePixels deviceCopy(Slot slot) {
+        return onOwner(
+                () -> {
+                    var image =
+                            new GpuDevicePixels(
+                                    this,
+                                    kernel.gpu,
+                                    slot.snapshot,
+                                    slot.view.width(),
+                                    slot.view.height());
+                    displayFrames.add(image);
+                    return image;
+                });
     }
 
     private void preserveRetainedRawImages() {
@@ -646,6 +751,12 @@ public final class GpuRenderSession implements RenderSession {
         public Camera camera() {
             open();
             return slot.view.camera();
+        }
+
+        @Override
+        public engine.DevicePixels copyDevicePixels() {
+            open();
+            return devicePresentation && slot.snapshot != null ? deviceCopy(slot) : null;
         }
 
         @Override

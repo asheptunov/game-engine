@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** One background owner for the session. Published display images are never modified. */
 public final class GameRenderer implements AutoCloseable {
     public record Frame(
-            BufferedImage image,
+            GameFrameImage storage,
             int requestedWidth,
             int requestedHeight,
             long generation,
@@ -25,7 +25,36 @@ public final class GameRenderer implements AutoCloseable {
             long capturedNanos,
             engine.Camera camera,
             Metrics metrics,
-            FrameContext context) {}
+            FrameContext context) {
+        public BufferedImage image() {
+            return storage.image();
+        }
+
+        public int width() {
+            return storage.width();
+        }
+
+        public int height() {
+            return storage.height();
+        }
+
+        public engine.DevicePixels devicePixels() {
+            return storage.device();
+        }
+
+        public float displayExposure() {
+            return storage.exposure();
+        }
+
+        public Frame retain() {
+            storage.retain();
+            return this;
+        }
+
+        public void release() {
+            storage.release();
+        }
+    }
 
     public record FrameContext(
             engine.WorldSnapshot world, RenderSettings settings, float exposure) {}
@@ -75,8 +104,34 @@ public final class GameRenderer implements AutoCloseable {
         return captureStatus;
     }
 
-    void displayed(Frame value) {
+    synchronized void displayed(Frame value) {
+        if (closed) {
+            return;
+        }
+        if (value == displayedFrame) {
+            return;
+        }
+        if (value != null) {
+            value.retain();
+        }
+        var previous = displayedFrame;
         displayedFrame = value;
+        if (previous != null) {
+            previous.release();
+        }
+    }
+
+    public synchronized Frame acquireFrame() {
+        return frame == null ? null : frame.retain();
+    }
+
+    public void displayFailure(Throwable error) {
+        failed(asFailure(backend, "native presentation", error));
+    }
+
+    public synchronized void devicePresentation() {
+        session.devicePresentation(true);
+        converted = -1;
     }
 
     Frame displayedFrame() {
@@ -103,7 +158,7 @@ public final class GameRenderer implements AutoCloseable {
                                 world,
                                 captureControls(),
                                 navigation.snapshot(),
-                                displayedFrame,
+                                displayedFrame == null ? null : displayedFrame.retain(),
                                 recording.freeze(now, history),
                                 backend,
                                 cachedBackendStatus,
@@ -126,13 +181,25 @@ public final class GameRenderer implements AutoCloseable {
                             captureStatus = "Capture failed: " + failure.getMessage();
                             exporting.set(false);
                             result.completeExceptionally(failure);
+                        } finally {
+                            releaseCapture(pending);
                         }
                     });
         } catch (RejectedExecutionException closing) {
+            releaseCapture(pending);
             exporting.set(false);
             result.completeExceptionally(closing);
         }
         return result;
+    }
+
+    private static void releaseCapture(GameCapture.Pending pending) {
+        if (pending.displayed() != null) {
+            pending.displayed().release();
+        }
+        for (var picture : pending.history().pictures()) {
+            picture.frame().release();
+        }
     }
 
     synchronized GameCapture.Controls captureControls() {
@@ -450,6 +517,7 @@ public final class GameRenderer implements AutoCloseable {
 
     private void tick() {
         RenderImage acquired = null;
+        GameFrameImage pendingDisplay = null;
         Runnable notifyFrame = null;
         boolean advanceCombat = false;
         try {
@@ -488,31 +556,18 @@ public final class GameRenderer implements AutoCloseable {
             // Only this executor converts images; input can keep editing immutable settings
             // meanwhile.
             long copyStart = System.nanoTime();
-            var display = imageConverter.apply(acquired, capturedExposure);
+            var deviceImage = acquired.copyDevicePixels();
+            pendingDisplay =
+                    deviceImage == null
+                            ? new GameFrameImage(imageConverter.apply(acquired, capturedExposure))
+                            : new GameFrameImage(deviceImage, capturedExposure);
             long copied = System.nanoTime();
             synchronized (this) {
                 if (!canPublish(capturedWorld, capturedSettings, capturedExposure)) {
                     return;
                 }
-                var metrics =
-                        new Metrics(
-                                acquired.traceNanos(),
-                                copied - copyStart,
-                                session.progress(acquired).shownAgeNanos(),
-                                copyStart - acquired.finishedNanos(),
-                                acquired.traceStats());
-                frame =
-                        new Frame(
-                                display,
-                                view.width(),
-                                view.height(),
-                                acquired.generation(),
-                                acquired.samples(),
-                                copied,
-                                acquired.publicationNanos(),
-                                acquired.camera(),
-                                metrics,
-                                contextFor(acquired.generation(), capturedExposure));
+                publishFrame(acquired, pendingDisplay, view, copyStart, copied, capturedExposure);
+                pendingDisplay = null; // Ownership transferred to the published frame.
                 recording.picture(frame);
                 session.presented(acquired);
                 cachedBackendStatus = session.status();
@@ -532,7 +587,42 @@ public final class GameRenderer implements AutoCloseable {
         } catch (Throwable failure) {
             failed(asFailure(backend, "presentation/execution", failure));
         } finally {
+            if (pendingDisplay != null) {
+                pendingDisplay.release();
+            }
             releaseAndAdvanceCombat(acquired, advanceCombat);
+        }
+    }
+
+    private void publishFrame(
+            RenderImage acquired,
+            GameFrameImage display,
+            engine.RenderView view,
+            long copyStart,
+            long copied,
+            float capturedExposure) {
+        var metrics =
+                new Metrics(
+                        acquired.traceNanos(),
+                        copied - copyStart,
+                        session.progress(acquired).shownAgeNanos(),
+                        copyStart - acquired.finishedNanos(),
+                        acquired.traceStats());
+        var previousFrame = frame;
+        frame =
+                new Frame(
+                        display,
+                        view.width(),
+                        view.height(),
+                        acquired.generation(),
+                        acquired.samples(),
+                        copied,
+                        acquired.publicationNanos(),
+                        acquired.camera(),
+                        metrics,
+                        contextFor(acquired.generation(), capturedExposure));
+        if (previousFrame != null) {
+            previousFrame.release();
         }
     }
 
@@ -1051,6 +1141,15 @@ public final class GameRenderer implements AutoCloseable {
             captureWriter.shutdown();
             simulation.shutdownNow();
             executor.shutdownNow();
+            recording.close();
+            if (frame != null) {
+                frame.release();
+                frame = null;
+            }
+            if (displayedFrame != null) {
+                displayedFrame.release();
+                displayedFrame = null;
+            }
             session.close();
         }
     }

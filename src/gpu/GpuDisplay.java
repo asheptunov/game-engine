@@ -255,6 +255,7 @@ final class GpuDisplay implements AutoCloseable {
     }
 
     void transfer() {
+        gpu.imageReadbackBytes += packed.size;
         try (var stack = MemoryStack.stackPush()) {
             vkCmdCopyBuffer(
                     gpu.command,

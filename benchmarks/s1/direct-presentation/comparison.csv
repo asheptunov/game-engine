@@ -1,0 +1,7 @@
+round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent
+0,native-hidden,52.333,18.819,23.574,24.026,27.240,27.323,93.590
+0,swing-offscreen,57.333,17.088,23.596,22.098,33.193,33.428,63.743
+1,swing-offscreen,56.000,17.092,27.101,22.104,36.275,40.322,68.263
+1,native-hidden,50.000,19.238,27.249,29.293,35.594,38.272,89.262
+2,native-hidden,52.667,18.718,22.730,23.909,32.670,34.999,90.446
+2,swing-offscreen,57.000,17.126,19.865,21.149,32.964,41.740,67.059
