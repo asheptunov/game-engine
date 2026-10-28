@@ -27,6 +27,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private final GameNavigation navigation;
     private final GameRenderer renderer;
     private final Timer timer;
+    private final profiling.FreshPaintRate freshPaints = new profiling.FreshPaintRate();
     private final GameSettingsPanel settingsPanel;
     private Robot pointer;
     private final java.util.Set<Integer> captureKeys = new java.util.HashSet<>();
@@ -112,6 +113,11 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                             }
                             repaint();
                         });
+        // repaint() is thread-safe; Swing coalesces dirty regions when the EDT is busy.
+        // Fresh images no longer wait for the UI timer. Keep that timer for controls/HUD updates.
+        if (!Boolean.getBoolean("game.timerPresentation")) {
+            renderer.onFrameAvailable(this::repaint);
+        }
         timer.start();
     }
 
@@ -298,8 +304,8 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
         var draw = (Graphics2D) graphics.create();
+        var frame = renderer.frame();
         try {
-            var frame = renderer.frame();
             if (frame != null) {
                 var image = frame.image();
                 // Letterbox a lagging pre-resize frame rather than stretching its geometry.
@@ -317,7 +323,6 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                         height,
                         null);
             }
-            renderer.displayed(frame);
             if (renderer.shooter() != null && navigation.captured()) {
                 if (frame != null) {
                     drawTracers(draw, frame);
@@ -335,12 +340,20 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                                 + frame.generation()
                                 + " | age "
                                 + ((System.nanoTime() - frame.capturedNanos()) / 1_000_000)
-                                + " ms since capture",
+                                + " ms since capture | "
+                                + String.format(
+                                        java.util.Locale.ROOT,
+                                        "%.1f fresh paints/s (2s)",
+                                        freshPaints.perSecond(System.nanoTime())),
                         14,
                         getHeight() - 10);
             }
         } finally {
             draw.dispose();
+        }
+        renderer.displayed(frame);
+        if (frame != null) {
+            freshPaints.painted(frame.publicationNanos(), System.nanoTime());
         }
     }
 
@@ -459,6 +472,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     }
 
     void releaseForFailure() {
+        renderer.onFrameAvailable(null);
         timer.stop();
         navigation.release();
         updateCursor();

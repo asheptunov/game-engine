@@ -7,6 +7,7 @@ $output = Join-Path $repository $OutputDirectory
 $classes = Join-Path $output "classes"
 & (Join-Path $repository "engine-build.ps1") -OutputDirectory $OutputDirectory
 $sources = @(
+    (Join-Path $repository "src/profiling/FreshPaintRate.java")
     (Get-ChildItem (Join-Path $repository "src/platform/awt/input") -Filter *.java).FullName
     (Get-ChildItem (Join-Path $repository "src/game") -Recurse -Filter *.java).FullName
 )

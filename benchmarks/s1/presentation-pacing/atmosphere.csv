@@ -1,0 +1,7 @@
+round,atmosphere,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs,p99IntervalMs,over16msPercent,medianCopyMs,p95CopyMs,medianTraceHostMs
+0,atmosphere-on,87.667,8.321,20.650,23.419,37.379,11.450,1.567,2.872,7.585
+0,atmosphere-off,134.667,5.180,17.260,18.927,18.793,9.926,1.423,2.142,4.812
+1,atmosphere-off,135.333,5.034,17.299,18.947,18.208,10.617,1.367,2.150,4.679
+1,atmosphere-on,87.333,8.900,20.996,22.616,23.064,23.755,1.515,2.700,7.361
+2,atmosphere-on,99.000,7.794,18.385,19.811,20.417,11.824,1.457,2.863,7.116
+2,atmosphere-off,144.667,5.482,17.102,18.967,19.755,5.543,1.646,3.208,5.231

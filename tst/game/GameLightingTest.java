@@ -24,6 +24,82 @@ public final class GameLightingTest {
     }
 
     @Test
+    void freshPaintRateExcludesCachedFramesAndExpiresDuringHolds() {
+        var rate = new profiling.FreshPaintRate();
+        rate.painted(1, 0);
+        rate.painted(1, 1);
+        rate.painted(2, 100_000_000);
+        assertEquals(1., rate.perSecond(1_000_000_000));
+        assertEquals(.5, rate.perSecond(2_000_000_000L));
+        assertEquals(0., rate.perSecond(2_100_000_000L));
+        rate.painted(1, 2_200_000_000L);
+        assertEquals(0., rate.perSecond(2_200_000_000L));
+        for (int i = 0; i < 5000; i++) {
+            rate.painted(3 + i, 3_000_000_000L + i);
+        }
+        assertEquals(2048., rate.perSecond(3_000_005_000L));
+    }
+
+    @Test
+    void freshImagesRequestRepaintWithoutWaitingForUiTimer() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(64, 64);
+        var requests = new java.util.concurrent.atomic.AtomicInteger();
+        var panel = new GamePanel[1];
+        var previous = javax.swing.RepaintManager.currentManager(null);
+        var repaint =
+                new javax.swing.RepaintManager() {
+                    @Override
+                    public void addDirtyRegion(
+                            javax.swing.JComponent component, int x, int y, int w, int h) {
+                        if (component == panel[0] && !SwingUtilities.isEventDispatchThread()) {
+                            requests.incrementAndGet();
+                        }
+                        super.addDirtyRegion(component, x, y, w, h);
+                    }
+                };
+        try (var renderer = new GameRenderer(navigation, BlockWorld.gallery(), "cpu")) {
+            SwingUtilities.invokeAndWait(
+                    () -> {
+                        javax.swing.RepaintManager.setCurrentManager(repaint);
+                        panel[0] = new GamePanel(navigation, renderer);
+                        panel[0].setSize(320, 180);
+                    });
+            long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+            while (requests.get() < 3 && System.nanoTime() < deadline) {
+                Thread.sleep(5);
+            }
+            assertTrue(requests.get() >= 3);
+            assertTrue(renderer.frame() != null);
+            SwingUtilities.invokeAndWait(panel[0]::releaseForFailure);
+            // Drain any wakeup that was already in flight at detachment.
+            awaitFreshPublications(renderer);
+            int detached = requests.get();
+            renderer.restart();
+            awaitFreshPublications(renderer);
+            assertEquals(detached, requests.get());
+        } finally {
+            SwingUtilities.invokeAndWait(
+                    () -> {
+                        if (panel[0] != null) {
+                            panel[0].close();
+                        }
+                        javax.swing.RepaintManager.setCurrentManager(previous);
+                    });
+        }
+    }
+
+    private static void awaitFreshPublications(GameRenderer renderer) throws InterruptedException {
+        var completed = new java.util.concurrent.CountDownLatch(2);
+        renderer.observePublications(frame -> completed.countDown());
+        try {
+            assertTrue(completed.await(10, java.util.concurrent.TimeUnit.SECONDS));
+        } finally {
+            renderer.observePublications(null);
+        }
+    }
+
+    @Test
     void autofocusTracksCenterRetainsSkyAndStopsForManualAndSuspension() throws Exception {
         var navigation = new GameNavigation();
         navigation.pose(new math.Vec3(0, 0, -6), 0, 0);

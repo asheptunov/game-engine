@@ -79,6 +79,10 @@ public final class GameRenderer implements AutoCloseable {
         displayedFrame = value;
     }
 
+    Frame displayedFrame() {
+        return displayedFrame;
+    }
+
     public java.util.concurrent.CompletableFuture<java.nio.file.Path> captureBundle(
             boolean history) {
         return captureBundle(history, java.nio.file.Path.of("out/game/captures"));
@@ -283,6 +287,7 @@ public final class GameRenderer implements AutoCloseable {
     private float exposure = 1;
     private long refinementTarget;
     private java.util.function.Consumer<Frame> publicationObserver;
+    private Runnable frameAvailable;
     private boolean suspended;
     private boolean closed;
 
@@ -443,6 +448,7 @@ public final class GameRenderer implements AutoCloseable {
 
     private void tick() {
         RenderImage acquired = null;
+        Runnable notifyFrame = null;
         try {
             engine.RenderView view;
             engine.WorldSnapshot capturedWorld;
@@ -522,6 +528,10 @@ public final class GameRenderer implements AutoCloseable {
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }
+                notifyFrame = frameAvailable;
+            }
+            if (notifyFrame != null) {
+                notifyFrame.run();
             }
         } catch (Throwable failure) {
             failed(asFailure(backend, "presentation/execution", failure));
@@ -712,6 +722,15 @@ public final class GameRenderer implements AutoCloseable {
         session.update(world, navigation.view(), settings);
         captureDiagnostics(navigation.view(), session.progress(null), cachedBackendStatus);
         return session.progress(null).requestedGeneration();
+    }
+
+    /**
+     * Replace the display wakeup, or detach with null. Called after fresh frame publication,
+     * outside the controls monitor. It must only request painting, without waiting for the EDT. A
+     * callback already in flight may finish after detachment.
+     */
+    synchronized void onFrameAvailable(Runnable listener) {
+        frameAvailable = listener;
     }
 
     /** Benchmark-only observation of every copied publication, serialized with tick and detach. */
@@ -985,6 +1004,7 @@ public final class GameRenderer implements AutoCloseable {
     public synchronized void close() {
         if (!closed) {
             closed = true;
+            frameAvailable = null;
             navigation.active(false);
             autofocus.close();
             session.onImageAvailable(null);

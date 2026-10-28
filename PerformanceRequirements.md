@@ -460,8 +460,9 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1a | Explore the existing GPU game with less image-conversion overhead at identical quality | Existing GPU backend | Implemented; verification results below; human acceptance pending |
 | S1.1b | Choose a standard internal render resolution or retain custom dimensions in game settings | Existing settings panel | Implemented; settings tests and game gate passed; human acceptance pending |
 | S1.1c | Play at 1080p with GPU color conversion and one-quarter-sized routine readback | S1.1a and S1.1b | Implemented; real-device, capture, game and completion gates passed; human acceptance pending |
+| S1.1d | See fresh images painted without waiting for the UI timer, and inspect fresh paint rate | S1.1c | Implemented; game, GPU UI and completion checks passed; native-window acceptance pending |
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 | Authorized; lower internal resolutions accepted for the player's 4K display; implementation pending |
-| S1.4 | Play combat and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
+| S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -501,8 +502,8 @@ same publication does not count as a fresh frame. The historical
 [fog lighting-grid experiment](benchmarks/atmosphere/fog-grid/README.md) measured
 45–47 ms of headless frame work at 1600x766 with its fastest tested settings, including
 roughly 11 ms of CPU conversion. These measurements exclude native window presentation
-and do not describe current combat performance. The present Swing repaint timer requests
-updates every 16 ms. The initial investigation found a 1600-pixel per-axis software limit;
+and do not describe current combat performance. At the start of this program, the Swing repaint timer requested
+updates every 16 ms; S1.1d below removes that wait for fresh images. The initial investigation found a 1600-pixel per-axis software limit;
 the subsequent 1080p delivery below raises it to 1920.
 
 **Scope and quality.** Optimize the existing Vulkan game backend and preserve the CPU
@@ -619,6 +620,65 @@ Reproduce after `./gpu-build.ps1` using Java 23 with `--enable-preview`,
 Compile `tools/gpu/CompactDisplayBenchmark.java` into `out/gpu/classes` with that classpath,
 then run `game.CompactDisplayBenchmark`; it alternates both presentation paths itself.
 `./gpu-check.ps1` builds and runs the encoding and lifecycle checks automatically.
+
+**S1.1d — Paint fresh images immediately (October 28).** The game now requests a
+Swing repaint whenever the renderer publishes a new display image, outside the controls
+monitor. Swing coalesces dirty regions when its event thread is busy, so slow painting does
+not create an image queue. The existing 16 ms timer remains for controls, overlays and idle
+updates; it no longer limits how often fresh images can request painting. Closing the panel
+or entering its failure state detaches the wakeup. A callback already in flight may finish.
+
+The footer reports `fresh paints/s (2s)`: distinct display images painted during the previous
+two seconds, divided by two. Repainting a cached image does not count. The first two seconds
+include startup, and the rate falls toward zero when refinement finishes or rendering stops.
+This measures game-image painting, not monitor refresh, scanout or physical input latency.
+It is separate from renderer completion throughput. This increment retains compact CPU
+readback and Swing painting; S1.2's device-resident window presentation remains unfinished.
+
+User test: launch `./game.ps1 -Backend gpu -Width 1920 -Height 1080`, move and turn, and
+watch the new footer rate. Stop with refinement disabled: cached redraws must not keep the
+rate high. Change resolution and exposure, open settings, save a capture, switch focus away
+and back, then close. Controls, image content and capture behavior must be preserved.
+Compare smoothness with atmosphere off and on; no atmosphere quality setting changes in
+this delivery. Native-window acceptance and the 60/120 FPS targets remain open.
+
+The [paired paint benchmark](benchmarks/s1/presentation-pacing/presentation.csv) paints the
+real game panel and HUD on the Swing event thread into a 3840x2160 offscreen image, with
+1920x1080 internal rendering and atmosphere off. Three alternating pairs use two seconds
+of warmup and three seconds of the same moving landscape route, draining each GPU owner
+before the next run. Immediate/timer-only fresh-paint rates were 62.7/33.7, 78.3/33.3 and
+81.7/33.0 per second. Immediate-paint p95 intervals were 20.96–27.77 ms versus
+34.73–36.67 ms with the timer. Copy-to-paint p95 latency results were mixed, so these runs
+support a throughput improvement, not a uniform latency improvement or a 60 FPS floor.
+They exercise real Swing painting but exclude native window submission and monitor scanout.
+The JVM property `-Dgame.timerPresentation=true` restores timer-only repaint requests for
+comparison; it does not change tracing quality. The benchmark selects both modes itself.
+
+**Atmosphere observation and follow-up.** The player reported a noticeable slowdown with
+atmosphere enabled. The [paired atmosphere measurement](benchmarks/s1/presentation-pacing/atmosphere.csv)
+keeps the compact GPU path fixed and toggles the clear-air atmosphere, with fog off, on the
+same headless 1080p route. It measured 87.3–99.0 completed images/s with atmosphere and
+134.7–144.7 without. Median GPU-job host wall time rose from 4.68–5.23 ms to 7.12–7.59 ms;
+image-copy medians stayed around 1.4–1.6 ms. Job wall time includes GPU preparation,
+submission, waiting and compact readback, not just shader execution. The shader performs
+32-step atmospheric scattering integration along traced segments, which is a concrete
+candidate for investigation. These results isolate atmosphere's cost on the current path;
+they are not a historical before/after regression test. Cache or integration changes need
+their own cost/quality comparison before adoption. No effect is disabled or approximated
+by this delivery. Track this separately from direct presentation under S1.4.
+
+[Measurement settings](benchmarks/s1/presentation-pacing/metadata.json) record both methods.
+To reproduce, run `./gpu-build.ps1`, compile `tools/gpu/PresentationBenchmark.java` and
+`tools/gpu/AtmosphereRouteBenchmark.java` into `out/gpu/classes`, then run
+`game.PresentationBenchmark` and `game.AtmosphereRouteBenchmark`. Use Java 23,
+`--enable-preview`, `-Djava.awt.headless=true`, and classpath
+`out/gpu/classes;out/game/classes;out/gpu/lib/*` for both. Run each benchmark separately.
+The [game gate](benchmarks/s1/presentation-pacing/game-check.log),
+[GPU UI check](benchmarks/s1/presentation-pacing/gpu-ui.log),
+[completion gate](benchmarks/s1/presentation-pacing/verify.log), and
+[focused tests](benchmarks/s1/presentation-pacing/focused-test.log) passed. Tests cover fresh
+repaint requests from the renderer thread, detachment while rendering continues, cached-frame
+exclusion, idle expiry and bounded rate history. Native presentation remains a human check.
 
 **S1.2 acceptance extension.** Preserve the user test above and all existing settings,
 input and F8/F9 capture entry points while keeping normal display images on the GPU.

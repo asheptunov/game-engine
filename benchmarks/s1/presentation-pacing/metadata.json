@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "26f4bf3",
+  "gpu": "NVIDIA GeForce RTX 3080 12GB",
+  "java": "23.0.1",
+  "internalResolution": [
+    1920,
+    1080
+  ],
+  "scene": "BlockWorld.landscape",
+  "depth": 2,
+  "samplesPerBatch": 1,
+  "warmupSeconds": 2,
+  "routeSeconds": 3,
+  "pairs": 3,
+  "comparisonOrder": "Alternating, GPU owner drained between renderers",
+  "presentation": {
+    "paintSurface": [
+      3840,
+      2160
+    ],
+    "atmosphere": false,
+    "pointer": "Captured navigation state; no real pointer operations",
+    "method": "Actual GamePanel.paint on the Swing event thread into a reusable BufferedImage; bounded custom RepaintManager schedules offscreen painting",
+    "counter": "Unique GameRenderer.Frame publication once per completed paint",
+    "excludes": [
+      "native window submission",
+      "physical input",
+      "monitor scanout"
+    ]
+  },
+  "atmosphere": {
+    "method": "Headless GameRenderer completed-image comparison; clearAir atmosphere only toggled, fixed packed GPU display path",
+    "fog": false,
+    "medianTraceHostMs": "Wall time for the last GPU job, including preparation, submission, waiting and compact readback; excludes GameRenderer image copying"
+  },
+  "sourceSha256": {
+    "src\\game\\GameRenderer.java": "31ba2bcaaa15017c78fe0fbed3e562860538badeba09e8c213f74fffa4b1eb92",
+    "src\\game\\GamePanel.java": "09337e1c12a46dbfa748e65a3275bef88bfce1a6e57cf8f1595f1a2a19250f34",
+    "src\\profiling\\FreshPaintRate.java": "41f3bd25d01dd3662c7678534fc28389343fd0e76550e5d8056e8b0b7f22fce7",
+    "tools\\gpu\\PresentationBenchmark.java": "9f7ac529c58d9b448dc733517f10296b8bbb3db14d5ce43fcab25b86f165fcda",
+    "tools\\gpu\\AtmosphereRouteBenchmark.java": "4a71d6a747820af4e80acd130da04dbf9c9dedd24ec207635728e9a0e047bf65"
+  }
+}

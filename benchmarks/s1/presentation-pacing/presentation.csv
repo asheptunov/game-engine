@@ -1,0 +1,7 @@
+round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs
+0,fresh-image,62.667,14.098,27.770,20.877
+0,timer-16ms,33.667,30.861,34.734,13.623
+1,timer-16ms,33.333,30.829,36.669,14.313
+1,fresh-image,78.333,11.009,24.460,14.862
+2,fresh-image,81.667,10.935,20.961,15.528
+2,timer-16ms,33.000,30.593,36.037,21.225
