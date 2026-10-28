@@ -176,19 +176,17 @@ public final class ShooterGame {
     }
 
     public synchronized boolean fire(Camera camera) {
+        return fire(camera, false);
+    }
+
+    public synchronized boolean fire(Camera camera, boolean scoped) {
         if (health == 0 || cooldown > 0 || rounds == 0) {
             return false;
         }
         rounds--;
         cooldown = 1.25;
         // Fire from the visible barrel and zero the bore at 25 metres along the crosshair ray.
-        var right = camera.sensor().edge1().normalized();
-        var up = camera.sensor().edge2().normalized();
-        var muzzle =
-                camera.eye()
-                        .add(right.scale(.12f))
-                        .add(up.scale(-.23f))
-                        .add(camera.forward().scale(1.5f));
+        var muzzle = RifleMesh.muzzle(camera, scoped);
         var toMuzzle = muzzle.sub(camera.eye());
         float obstruction = blocked(camera.eye(), toMuzzle, toMuzzle.length());
         var closeHit = enemyImpact(camera.eye(), toMuzzle, obstruction);

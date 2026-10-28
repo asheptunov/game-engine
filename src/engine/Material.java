@@ -29,6 +29,15 @@ public record Material(
         this(name, color, kind, ior, absorption, roughness, emission, scattering, anisotropy, null);
     }
 
+    /** Ideal, nonabsorbing glass supported by the sun/sky and GPU surface paths. */
+    public boolean clearGlass() {
+        return kind == Kind.DIELECTRIC
+                && roughness == 0
+                && scattering == 0
+                && absorption.equals(Vec3.ZERO)
+                && !emissive();
+    }
+
     public Material withTextures(CubeTextures value) {
         return new Material(
                 name,

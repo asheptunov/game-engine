@@ -200,7 +200,7 @@ public final class GameSettingsPanel extends JPanel {
                 "Path depth",
                 () -> renderer.settings().pathDepth(),
                 value -> renderer.configure(s -> s.withPathDepth((int) value)),
-                0,
+                renderer.shooter() == null ? 0 : 8,
                 renderer.capabilities().maximumDepth(),
                 1,
                 true);

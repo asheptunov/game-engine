@@ -516,6 +516,31 @@ void main() {
         }
         vec3 n = dot(hit.normal,d)<0 ? hit.normal : -hit.normal;
         vec3 p = o+d*hit.t;
+        float glassIor = instances[hit.instanceIndex*4+1].w;
+        if (glassIor > 0) {
+            if (depth == grid.z) break;
+            bool entering = dot(hit.normal,d) < 0;
+            float eta = entering ? 1.0/glassIor : glassIor;
+            float ci = clamp(-dot(n,d),0.0,1.0);
+            float st2 = eta*eta*(1-ci*ci);
+            float reflectProbability=1;
+            float ct=0;
+            if (st2 < 1) {
+                ct=sqrt(1-st2);
+                float rs=(eta*ci-ct)/(eta*ci+ct);
+                float rp=(ci-eta*ct)/(ci+eta*ct);
+                reflectProbability=.5*(rs*rs+rp*rp);
+            }
+            if (randomValue()<reflectProbability) {
+                d=reflect(d,n);
+                o=p+n*BIAS;
+            } else {
+                d=normalize(eta*d+(eta*ci-ct)*n);
+                weight*=eta*eta;
+                o=p-n*BIAS;
+            }
+            continue;
+        }
         vec3 color = reflectance(hit);
         float cosine = dot(n,sunDirection.xyz);
         if (cosine>0 && any(greaterThan(sunRadiance.xyz,vec3(0)))) {

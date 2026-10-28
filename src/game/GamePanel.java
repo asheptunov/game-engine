@@ -26,7 +26,6 @@ import javax.swing.Timer;
 public final class GamePanel extends JPanel implements AutoCloseable {
     private final GameNavigation navigation;
     private final GameRenderer renderer;
-    private final RifleView rifle = new RifleView();
     private final Timer timer;
     private final GameSettingsPanel settingsPanel;
     private Robot pointer;
@@ -148,7 +147,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private void pressMouse(MouseEvent event) {
         if (navigation.captured() && renderer.shooter() != null) {
             if (event.getButton() == MouseEvent.BUTTON1) {
-                renderer.shooter().fire(navigation.view().camera());
+                renderer.shooter().fire(navigation.view().camera(), navigation.scoped());
             } else if (event.getButton() == MouseEvent.BUTTON3) {
                 navigation.scoped(true);
             }
@@ -320,7 +319,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
             }
             renderer.displayed(frame);
             if (renderer.shooter() != null && navigation.captured()) {
-                drawCombat(draw, frame);
+                if (frame != null) {
+                    drawTracers(draw, frame);
+                }
                 ShooterOverlay.draw(
                         draw, getWidth(), getHeight(), navigation, renderer.shooter().status());
             }
@@ -360,31 +361,6 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         for (String text : lines) {
             draw.drawString(text, 14, y);
             y += 16;
-        }
-    }
-
-    private void drawCombat(Graphics2D draw, GameRenderer.Frame frame) {
-        if (frame != null) {
-            drawTracers(draw, frame);
-        }
-        if (!navigation.scoped()) {
-            int height = Math.min(getHeight(), 300);
-            int width = Math.clamp(Math.round(height * (float) getWidth() / getHeight()), 64, 1600);
-            var image =
-                    rifle.request(
-                            width,
-                            Math.max(64, height),
-                            renderer.shooter().status().cooldown(),
-                            navigation.view().camera(),
-                            renderer.lighting(),
-                            renderer.exposure());
-            if (image != null) {
-                draw.drawImage(image, 0, 0, getWidth(), getHeight(), null);
-            }
-        }
-        if (rifle.error() != null) {
-            draw.setColor(Color.RED);
-            draw.drawString(rifle.error(), 24, 210);
         }
     }
 
@@ -448,7 +424,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         if (!navigation.captured()) {
             drawLighting(draw);
         }
-        if (navigation.captured()) {
+        if (navigation.captured() && !navigation.scoped()) {
             draw.drawLine(getWidth() / 2 - 5, getHeight() / 2, getWidth() / 2 + 5, getHeight() / 2);
             draw.drawLine(getWidth() / 2, getHeight() / 2 - 5, getWidth() / 2, getHeight() / 2 + 5);
         }
@@ -491,7 +467,6 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     @Override
     public void close() {
         releaseForFailure();
-        rifle.close();
         renderer.close();
     }
 }

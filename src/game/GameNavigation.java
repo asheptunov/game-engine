@@ -474,14 +474,14 @@ public final class GameNavigation {
         var right = new Vec3((float) Math.cos(yaw), 0, (float) -Math.sin(yaw));
         var up = forward.cross(right);
         // Sensor one unit ahead; field of view is vertical.
-        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(fov / 2))) / (scoped ? 4 : 1);
+        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(fov / 2)));
         var horizontal = right.scale(sensorHeight * aspect);
         var vertical = up.scale(sensorHeight);
         var origin = position.add(forward).sub(horizontal.scale(.5f)).sub(vertical.scale(.5f));
         var camera =
                 new Camera(position, new Rect(origin, horizontal, vertical))
                         .withFocus(scoped ? scopeFocus : focus)
-                        .withAperture(scoped ? .025f : aperture)
+                        .withAperture(scoped ? 0 : aperture)
                         .validated();
         int traceWidth = Math.clamp(Math.round(200 * aspect), 64, 1600);
         int traceHeight = Math.clamp(Math.round(traceWidth / aspect), 64, 1600);

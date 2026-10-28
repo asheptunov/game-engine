@@ -8,7 +8,7 @@ import java.util.Objects;
 /** Software support, independent of whether a native device is installed or available. */
 public enum RenderCapabilities {
     CPU("cpu", 32),
-    GPU("gpu", 2);
+    GPU("gpu", 8);
 
     public static final String COMMON_GAME_PROFILE = "game-v1";
 
@@ -117,7 +117,8 @@ public enum RenderCapabilities {
                     case OPTIONAL_ACCELERATION -> "GPU requires acceleration";
                     case ORTHOGRAPHIC_CAMERA -> "GPU supports perspective cameras only";
                     case POINT_LIGHTS -> "GPU supports at most one directional light";
-                    case ADVANCED_MATERIALS -> "GPU supports opaque diffuse polygon instances only";
+                    case ADVANCED_MATERIALS ->
+                            "GPU supports diffuse polygons and disjoint ideal clear glass only";
                 };
         return reason == null ? SUPPORTED : new Support(false, reason);
     }
@@ -150,6 +151,7 @@ public enum RenderCapabilities {
         // it.
         if (this == GPU) {
             validateGpuWorld(world);
+            GpuGlassBounds.validate(world);
         }
     }
 
@@ -182,14 +184,14 @@ public enum RenderCapabilities {
         for (var object : world.instances()) {
             var material = object.material();
             if (!(object.geometry() instanceof PolygonMesh)
-                    || material.kind() != Material.Kind.DIFFUSE
+                    || (material.kind() != Material.Kind.DIFFUSE && !material.clearGlass())
                     || material.roughness() != 0
                     || material.emissive()
                     || material.scattering() != 0) {
                 throw new UnsupportedInput(
                         "world.instances[" + object.name() + "]",
-                        "GPU requires opaque diffuse polygon geometry without roughness, emission"
-                                + " or scattering");
+                        "GPU requires diffuse or ideal clear-glass polygon geometry without"
+                                + " roughness, emission or scattering");
             }
         }
     }

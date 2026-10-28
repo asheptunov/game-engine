@@ -124,16 +124,16 @@ public final class ShooterGameTest {
     }
 
     @Test
-    void scopeUsesFinitePupilAndPreservesUnscopedOptics() {
+    void scopeUsesSceneOpticsAndPreservesUnscopedCamera() {
         var navigation = new GameNavigation();
         navigation.optics(.01f, 7);
         var before = navigation.view().camera();
         navigation.capture();
         navigation.scoped(true);
         var scoped = navigation.view().camera();
-        assertEquals(.025f, scoped.aperture());
+        assertEquals(0f, scoped.aperture());
         assertTrue(
-                Math.abs(before.sensor().edge2().length() / scoped.sensor().edge2().length() - 4)
+                Math.abs(before.sensor().edge2().length() / scoped.sensor().edge2().length() - 1)
                         < .0001);
         navigation.scopeFocus(2);
         assertTrue(navigation.view().camera().focus() > 25);
@@ -172,14 +172,14 @@ public final class ShooterGameTest {
                 frame = renderer.frame();
                 assertEquals(null, renderer.error());
                 if (frame != null
-                        && frame.camera().aperture() == .025f
+                        && frame.camera().aperture() == 0f
                         && frame.context().world().instances().stream()
                                 .anyMatch(value -> value.name().startsWith("patrol/"))) {
                     break;
                 }
                 Thread.sleep(20);
             }
-            assertTrue(frame != null && frame.camera().aperture() == .025f);
+            assertTrue(frame != null && frame.camera().aperture() == 0f);
             assertTrue(frame.context().world().instances().size() > 1);
             var image =
                     new java.awt.image.BufferedImage(

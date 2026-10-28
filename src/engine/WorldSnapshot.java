@@ -62,11 +62,13 @@ public record WorldSnapshot(
         if ((!sky.equals(Sky.BLACK) || lights.stream().anyMatch(DirectionalLight.class::isInstance))
                 && instances.stream()
                         .anyMatch(
-                                instance -> instance.material().kind() != Material.Kind.DIFFUSE)) {
+                                instance ->
+                                        instance.material().kind() != Material.Kind.DIFFUSE
+                                                && !instance.material().clearGlass())) {
             throw new RenderCapabilities.UnsupportedInput(
                     "world.lights/sky with world.instances.material",
-                    "Directional lights and sky currently require diffuse materials; mirror,"
-                            + " dielectric and volume transport are unsupported");
+                    "Directional lights and sky require diffuse or ideal clear glass; mirror,"
+                            + " rough/absorbing glass and volume transport are unsupported");
         }
     }
 

@@ -168,7 +168,7 @@ public final class SunSkyTest {
         var materials =
                 List.of(
                         DIFFUSE.withKind(Material.Kind.MIRROR),
-                        DIFFUSE.withKind(Material.Kind.DIELECTRIC),
+                        DIFFUSE.withKind(Material.Kind.DIELECTRIC).withRoughness(.1f),
                         DIFFUSE.withKind(Material.Kind.DIELECTRIC).withScattering(1));
         for (var material : materials) {
             var instances = List.of(cube("unsupported", Vec3.ZERO, material));

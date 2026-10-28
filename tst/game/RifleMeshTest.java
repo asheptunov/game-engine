@@ -30,24 +30,87 @@ public final class RifleMeshTest {
     }
 
     @Test
-    void asynchronousRiflePublishesOwnedImageAndCloses() throws Exception {
-        var camera = new GameNavigation().view().camera();
-        try (var rifle = new RifleView()) {
-            long start = System.nanoTime();
-            var image = rifle.request(320, 200, 0, camera, GameLighting.defaults(), 1);
-            assertTrue((System.nanoTime() - start) < 200_000_000L);
-            long deadline = System.nanoTime() + 10_000_000_000L;
-            while (image == null && System.nanoTime() < deadline) {
+    void firstPersonSharesCapturedCameraDuringContinuousLook() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        navigation.capture();
+        try (var renderer =
+                new GameRenderer(
+                        navigation,
+                        BlockWorld.gallery(),
+                        System.getProperty("scope.backend", "cpu"))) {
+            renderer.enableShooter();
+            long deadline = System.nanoTime() + 15_000_000_000L;
+            long previous = -1;
+            int checked = 0;
+            while (System.nanoTime() < deadline && checked < 6) {
+                navigation.look(12, checked % 2 == 0 ? 3 : -3);
+                var frame = renderer.frame();
+                if (frame != null
+                        && frame.publicationNanos() != previous
+                        && frame.context() != null) {
+                    if (checkCapturedRifle(frame)) {
+                        previous = frame.publicationNanos();
+                        checked++;
+                    }
+                }
                 Thread.sleep(10);
-                image = rifle.request(320, 200, 0, camera, GameLighting.defaults(), 1);
             }
-            assertEquals(null, rifle.error());
-            assertTrue(image != null);
-            var before = image.getRGB(0, 0, 320, 200, null, 0, 320);
-            rifle.request(320, 200, .625, camera, GameLighting.defaults(), 1);
-            rifle.close();
-            assertEquals(before, image.getRGB(0, 0, 320, 200, null, 0, 320));
+            assertEquals(null, renderer.error());
+            assertEquals(6, checked);
         }
+    }
+
+    private static boolean checkCapturedRifle(GameRenderer.Frame frame) {
+        var parts =
+                frame.context().world().instances().stream()
+                        .filter(part -> part.name().startsWith("player/rifle/"))
+                        .toList();
+        var expected = RifleMesh.firstPersonPose(frame.camera());
+        for (var part : parts) {
+            if (part.name().contains("body/")) {
+                assertEquals(expected, part.transform());
+            }
+        }
+        return !parts.isEmpty();
+    }
+
+    @Test
+    void worldGeometryOccludesFirstPersonRifle() {
+        var camera = new GameNavigation().view().camera();
+        var parts = new java.util.ArrayList<>(RifleMesh.firstPerson(camera, 0));
+        var target = RifleMesh.firstPersonPose(camera).point(new Vec3(0, -.08f, -.35f));
+        var direction = target.sub(camera.eye()).normalized();
+        var ray = new engine.RayQuery(camera.eye(), direction);
+        assertTrue(query(parts).nearest(ray).isPresent());
+        parts.add(
+                new engine.SceneInstance(
+                        "cover",
+                        engine.SceneInstance.box(),
+                        new Transform(
+                                camera.eye().add(direction.scale(.1f)),
+                                Vec3.ZERO,
+                                new Vec3(.05f, .05f, .05f)),
+                        new engine.Material("cover", new Vec3(.5f, .5f, .5f))));
+        var hit = query(parts).nearest(ray).orElseThrow();
+        assertTrue(hit.distance() < .2f);
+    }
+
+    private static engine.SpatialQuery query(List<engine.SceneInstance> instances) {
+        return engine.SpatialQuery.prepare(
+                new engine.SceneDocument()
+                        .transact(
+                                edit -> {
+                                    for (var part : instances) {
+                                        var node =
+                                                edit.createNode(
+                                                        part.name(), null, part.transform());
+                                        edit.assignGeometry(
+                                                node,
+                                                edit.createGeometry(part.name(), part.geometry()),
+                                                edit.createMaterial(part.name(), part.material()));
+                                    }
+                                }));
     }
 
     @Test
@@ -67,34 +130,7 @@ public final class RifleMeshTest {
             }
         }
         assertTrue(faces > 500);
-        assertTrue(resting.size() <= 8);
-    }
-
-    @Test
-    void viewCachesMeshPassAndPreservesTransparentBackground() throws Exception {
-        var renderer = new RifleView();
-        var rest = renderer.image(960, 600, 0);
-        assertSame(rest, renderer.image(960, 600, 0));
-        assertEquals(0, rest.getRGB(480, 200));
-        int visible = 0;
-        for (int y = 0; y < 600; y++) {
-            for (int x = 0; x < 960; x++) {
-                if ((rest.getRGB(x, y) >>> 24) != 0) {
-                    visible++;
-                }
-            }
-        }
-        assertTrue(visible > 5000 && visible < 200000);
-        var cycle = renderer.image(960, 600, .625);
-        assertSame(rest, renderer.image(960, 600, 0));
-        assertSame(cycle, renderer.image(960, 600, .625));
-        assertTrue(
-                !java.util.Arrays.equals(
-                        rest.getRGB(0, 0, 960, 600, null, 0, 960),
-                        cycle.getRGB(0, 0, 960, 600, null, 0, 960)));
-        Files.createDirectories(Path.of("out/game"));
-        ImageIO.write(rest, "png", Path.of("out/game/rifle-first-person.png").toFile());
-        ImageIO.write(cycle, "png", Path.of("out/game/rifle-bolt.png").toFile());
+        assertTrue(resting.size() <= 12);
     }
 
     @Test
@@ -125,7 +161,7 @@ public final class RifleMeshTest {
                         lighting.sky());
         var settings =
                 RenderSettings.defaults()
-                        .withPathDepth(2)
+                        .withPathDepth(6)
                         .withSampleTarget(16)
                         .withSamplesPerBatch(8);
         try (var session =

@@ -210,6 +210,7 @@ public final class GameRenderer implements AutoCloseable {
     public synchronized void enableShooter() {
         if (shooter == null) {
             shooter = new ShooterGame(world.instances());
+            settings = settings.withPathDepth(Math.max(8, settings.pathDepth()));
         }
     }
 
@@ -217,16 +218,24 @@ public final class GameRenderer implements AutoCloseable {
         return shooter;
     }
 
-    private void publishCombat() {
+    private engine.RenderView combatView;
+    private boolean combatFrameComplete = true;
+
+    private void publishCombat(engine.Camera camera, boolean scoped) {
         if (shooter == null) {
             return;
         }
         var instances =
                 new java.util.ArrayList<>(
                         world.instances().stream()
-                                .filter(instance -> !instance.name().startsWith("patrol/"))
+                                .filter(
+                                        instance ->
+                                                !instance.name().startsWith("patrol/")
+                                                        && !instance.name()
+                                                                .startsWith("player/rifle/"))
                                 .toList());
         instances.addAll(shooter.instances());
+        instances.addAll(RifleMesh.firstPerson(camera, shooter.status().cooldown(), scoped));
         if (!instances.equals(world.instances())) {
             world =
                     new engine.WorldSnapshot(
@@ -412,6 +421,25 @@ public final class GameRenderer implements AutoCloseable {
         }
     }
 
+    private engine.RenderView captureCombatView() {
+        if (shooter == null) {
+            return navigation.view();
+        }
+        // Camera-attached geometry and its camera must remain one immutable frame.
+        // Advance only after publication so continuous input cannot cancel every pass.
+        if (combatFrameComplete || combatView == null) {
+            var previousWorld = world;
+            var previousView = combatView;
+            synchronized (navigation) {
+                combatView = navigation.view();
+                publishCombat(combatView.camera(), navigation.scoped());
+            }
+            // An unchanged, converged request may produce no new publication.
+            combatFrameComplete = world == previousWorld && combatView.equals(previousView);
+        }
+        return combatView;
+    }
+
     private void tick() {
         RenderImage acquired = null;
         try {
@@ -433,7 +461,7 @@ public final class GameRenderer implements AutoCloseable {
                     return;
                 }
                 suspended = false;
-                view = navigation.view();
+                view = captureCombatView();
                 capturedWorld = world;
                 capturedSettings = settings;
                 capturedExposure = exposure;
@@ -486,7 +514,7 @@ public final class GameRenderer implements AutoCloseable {
                 captureDiagnostics(view, session.progress(acquired), cachedBackendStatus);
                 converted = acquired.publicationNanos();
                 publishClock(copied);
-                publishCombat();
+                combatFrameComplete = true;
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }
@@ -669,6 +697,10 @@ public final class GameRenderer implements AutoCloseable {
 
     public synchronized void configure(java.util.function.UnaryOperator<RenderSettings> edit) {
         var next = edit.apply(settings);
+        if (shooter != null && next.pathDepth() < 8) {
+            throw new IllegalArgumentException(
+                    "The physical scope requires path depth 8 or higher");
+        }
         capabilities.validate(world, navigation.view(), next);
         settings = next;
         recordControls();

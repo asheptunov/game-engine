@@ -96,7 +96,7 @@ public final class BackendConformance {
         }
         var invalidSettings =
                 List.of(
-                        settings.withPathDepth(3),
+                        settings.withPathDepth(9),
                         settings.withAcceleration(false),
                         settings.withTemporal(true, 1),
                         settings.withTemporalBudget(true, 1, 1),
@@ -108,7 +108,7 @@ public final class BackendConformance {
             RenderCapabilities.CPU.validate(world, view, unsupported);
         }
         try {
-            RenderEngine.openSession(world, view, settings.withPathDepth(3), "gpu");
+            RenderEngine.openSession(world, view, settings.withPathDepth(9), "gpu");
             throw new AssertionError("unsupported creation accepted");
         } catch (RenderCapabilities.UnsupportedInput expected) {
             require(
@@ -292,7 +292,7 @@ public final class BackendConformance {
                                     "UI capability reason");
                             var before = renderer.settings();
                             try {
-                                renderer.configure(s -> s.withPathDepth(3));
+                                renderer.configure(s -> s.withPathDepth(9));
                                 throw new AssertionError("unsupported edit accepted");
                             } catch (RenderCapabilities.UnsupportedInput expected) {
                                 require(

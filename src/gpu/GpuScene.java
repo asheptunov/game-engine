@@ -142,7 +142,10 @@ final class GpuScene implements AutoCloseable {
                             ? new Texture2D[3]
                             : new Texture2D[] {binding.top(), binding.bottom(), binding.sides()}) {
                 if (texture == null) {
-                    append(materials, new Vec3(-1, 0, 0), 0);
+                    append(
+                            materials,
+                            new Vec3(-1, 0, 0),
+                            object.material().clearGlass() ? object.material().ior() : 0);
                     continue;
                 }
                 int offset =

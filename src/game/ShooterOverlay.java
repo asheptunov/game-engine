@@ -3,11 +3,8 @@ package game;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
 
-/** Presentation only; the scope's magnification and finite pupil are rendered by the camera. */
+/** Health, ammunition and hit feedback; the scope and reticle belong to the world. */
 final class ShooterOverlay {
 
     private ShooterOverlay() {}
@@ -20,33 +17,6 @@ final class ShooterOverlay {
             ShooterGame.Status status) {
         int cx = width / 2;
         int cy = height / 2;
-        if (navigation.scoped()) {
-            int radius = (int) (Math.min(width, height) * .43);
-            var mask = new Area(new Rectangle2D.Float(0, 0, width, height));
-            mask.subtract(
-                    new Area(
-                            new Ellipse2D.Float(cx - radius, cy - radius, radius * 2, radius * 2)));
-            draw.setColor(new Color(5, 8, 10));
-            draw.fill(mask);
-            draw.setStroke(new BasicStroke(8));
-            draw.setColor(new Color(63, 76, 80));
-            draw.drawOval(cx - radius, cy - radius, radius * 2, radius * 2);
-            draw.setStroke(new BasicStroke(1));
-            draw.setColor(new Color(20, 25, 25));
-            draw.drawLine(cx - radius + 6, cy, cx + radius - 6, cy);
-            draw.drawLine(cx, cy - radius + 6, cx, cy + radius - 6);
-            for (int tick = -4; tick <= 4; tick++) {
-                if (tick != 0) {
-                    draw.drawLine(cx - 5, cy + tick * 22, cx + 5, cy + tick * 22);
-                    draw.drawLine(cx + tick * 22, cy - 5, cx + tick * 22, cy + 5);
-                }
-            }
-            draw.setColor(Color.WHITE);
-            draw.drawString(
-                    "4×  |  50 mm pupil  |  Focus " + Math.round(navigation.scopeFocus()) + " m",
-                    cx - 140,
-                    cy + radius - 24);
-        }
         if (status.hurtTime() > 0) {
             draw.setColor(new Color(220, 30, 20, 70));
             draw.setStroke(new BasicStroke(20));

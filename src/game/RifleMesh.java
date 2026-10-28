@@ -20,13 +20,17 @@ final class RifleMesh {
     private static final Material RUBBER =
             new Material("Rubber and recesses", new Vec3(.018f, .022f, .025f));
     private static final Material EDGE = new Material("Machined edges", new Vec3(.24f, .29f, .32f));
-    private static final Material LENS = new Material("Coated optic", new Vec3(.035f, .23f, .27f));
     private static final List<SceneInstance> BODY = build();
     private static final List<SceneInstance> BOLT = bolt();
 
     private RifleMesh() {}
 
     static List<SceneInstance> instances(String prefix, Transform pose, double cycle) {
+        return instances(prefix, pose, cycle, 25);
+    }
+
+    private static List<SceneInstance> instances(
+            String prefix, Transform pose, double cycle, float focus) {
         var result = new ArrayList<SceneInstance>();
         for (var part : BODY) {
             result.add(
@@ -42,7 +46,51 @@ final class RifleMesh {
                     new SceneInstance(
                             prefix + part.name(), part.geometry(), boltPose, part.material()));
         }
+        result.addAll(ScopeMesh.instances(prefix + "scope/", pose, focus));
         return List.copyOf(result);
+    }
+
+    /** Camera-local metres, transformed into the same world space as all other geometry. */
+    static Transform firstPersonPose(engine.Camera camera) {
+        return firstPersonPose(camera, false);
+    }
+
+    static Transform firstPersonPose(engine.Camera camera, boolean scoped) {
+        var forward = camera.forward();
+        float yaw = (float) Math.toDegrees(Math.atan2(forward.x(), forward.z()));
+        float pitch = (float) -Math.toDegrees(Math.asin(Math.clamp(forward.y(), -1, 1)));
+        var cameraPose = new Transform(camera.eye(), new Vec3(pitch, yaw, 0), new Vec3(1, 1, 1));
+        if (scoped) {
+            return Transform.compose(
+                    cameraPose,
+                    new Transform(
+                            new Vec3(
+                                    0,
+                                    -ScopeMesh.AXIS_Y,
+                                    -ScopeMesh.EYEPIECE_Z + ScopeMesh.EYE_RELIEF),
+                            Vec3.ZERO,
+                            new Vec3(1, 1, 1)));
+        }
+        return Transform.compose(
+                cameraPose,
+                new Transform(
+                        new Vec3(.24f, -.245f, .85f), new Vec3(0, -10, -3), new Vec3(1, 1, 1)));
+    }
+
+    static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown) {
+        return firstPerson(camera, cooldown, false);
+    }
+
+    static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown, boolean scoped) {
+        return instances(
+                "player/rifle/",
+                firstPersonPose(camera, scoped),
+                cooldown,
+                scoped ? camera.focus() : 25);
+    }
+
+    static Vec3 muzzle(engine.Camera camera, boolean scoped) {
+        return firstPersonPose(camera, scoped).point(new Vec3(0, .018f, .687f));
     }
 
     private static List<SceneInstance> build() {
@@ -70,18 +118,10 @@ final class RifleMesh {
         model.box(EDGE, new Vec3(0, -.1f, -.085f), new Vec3(.006f, .027f, .006f));
         model.box(RUBBER, new Vec3(.035f, .006f, -.035f), new Vec3(.002f, .014f, .055f));
         model.box(EDGE, new Vec3(0, .052f, -.01f), new Vec3(.026f, .008f, .145f));
-        for (float z : new float[] {-.12f, .09f}) {
-            model.box(METAL, new Vec3(0, .08f, z), new Vec3(.022f, .028f, .015f));
-            model.tube(EDGE, new Vec3(0, .115f, z - .014f), .025f, .025f, .028f);
+        for (float z : new float[] {-.07f, .0f}) {
+            model.box(METAL, new Vec3(0, .075f, z), new Vec3(.022f, .022f, .012f));
         }
-        model.tube(METAL, new Vec3(0, .115f, -.22f), .022f, .022f, .38f);
-        model.tube(METAL, new Vec3(0, .115f, .16f), .022f, .042f, .08f);
-        model.tube(METAL, new Vec3(0, .115f, .24f), .044f, .044f, .045f);
-        model.tube(LENS, new Vec3(0, .115f, .286f), .036f, .036f, .001f);
-        model.tube(METAL, new Vec3(0, .115f, -.29f), .032f, .032f, .07f);
-        model.tube(LENS, new Vec3(0, .115f, -.292f), .026f, .026f, .001f);
-        model.box(METAL, new Vec3(0, .151f, -.015f), new Vec3(.027f, .024f, .027f));
-        model.box(EDGE, new Vec3(.036f, .115f, -.015f), new Vec3(.018f, .019f, .019f));
+        model.box(METAL, new Vec3(0, .16f, -.02f), new Vec3(.02f, .012f, .02f));
         for (int index = 0; index < 8; index++) {
             model.box(
                     EDGE, new Vec3(0, .061f, -.14f + index * .035f), new Vec3(.028f, .003f, .004f));

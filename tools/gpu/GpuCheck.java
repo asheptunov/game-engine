@@ -312,7 +312,7 @@ public final class GpuCheck {
             waitImage(session,2);
             require(session.progress(null).samples()==2,"resume converges to requested target");
             boolean rejected=false;
-            try { session.update(world,view,settings.withPathDepth(3)); } catch(IllegalArgumentException failure) { rejected=true; }
+            try { session.update(world,view,settings.withPathDepth(9)); } catch(IllegalArgumentException failure) { rejected=true; }
             require(rejected,"unsupported depth rejected");
         } finally { session.close(); }
         batchesAndBounds(world, view);
