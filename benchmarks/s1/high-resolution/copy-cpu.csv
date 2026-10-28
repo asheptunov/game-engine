@@ -1,0 +1,33 @@
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+backend,width,height,round,referenceMedianMs,bulkMedianMs
+cpu,128,81,0,0.1241,0.1283
+cpu,128,81,1,0.0930,0.0917
+cpu,128,81,2,0.0914,0.0879
+PASS closed lease rejected

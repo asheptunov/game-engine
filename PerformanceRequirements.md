@@ -1,6 +1,6 @@
 # Renderer performance specification
 
-Status: P0 through P5, P5.1, P5.2, P7, P2.1, P8 and P9 implemented. P7, P2.1, P8 and P9 are automatically verified; native-window acceptance remains pending. P6, P10 through P16, P11.1, and S2 remain proposed. S1.1 GPU game rendering is implemented; verification and native-window acceptance status are tracked in its milestone table below. S1.2 direct GPU presentation remains conditional. The October 10 game profiling review set the delivery order below; the subsequent [P7 results](benchmarks/p7/README.md) record its implementation and measurements. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), [P5 results](benchmarks/p5/README.md), and [game profiling](benchmarks/game/PROFILE.md).
+Status: P0 through P5, P5.1, P5.2, P7, P2.1, P8 and P9 implemented. P7, P2.1, P8 and P9 are automatically verified; native-window acceptance remains pending. P6, P10 through P16, P11.1, and S2 remain proposed. S1.1 GPU game rendering is implemented; verification and native-window acceptance status are tracked in its milestone table below. S1.2 direct GPU presentation is authorized; the October 27 GPU performance program below defines its incremental delivery and pending acceptance. The October 10 game profiling review set the delivery order below; the subsequent [P7 results](benchmarks/p7/README.md) record its implementation and measurements. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), [P5 results](benchmarks/p5/README.md), and [game profiling](benchmarks/game/PROFILE.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
@@ -89,7 +89,7 @@ The game passed its original 200 ms p95 freshness threshold by reducing resoluti
 | 2 | P15: analytic box intersections; conditional experiment | Cubes use polygon faces. Face work may become the next bottleneck after object pruning. | Keep only a measured fixed-grid gain with equivalent images, texture orientation, surface identity and shadow behavior. The current profile does not isolate face cost from inlined bounds/loop work. |
 | Deferred | P14, chunk/hidden-face world representations, P6/P11/P12/P13, further temporal work, S2 | Shared acceleration and chunks need a larger-world workload; quality changes and new backends do not address the first measured CPU bottleneck as directly. | Reopen using scaling, quality-at-equal-time, or residual CPU-budget evidence. Chunking is an investigation, not an approved new world architecture. |
 
-S1 was reopened for evaluation on October 11. Its game-first implementation below does not reorder the remaining CPU phases or authorize S1.2.
+S1 was reopened for evaluation on October 11. Its initial game-first scope did not authorize S1.2; the October 27 request below now authorizes that work.
 
 P0 measurement work belongs in each delivery: retain the frozen route, source fingerprints, fixed/adaptive comparisons, actual grids, image age, copy/pickup timings, and separate profiled versus unprofiled runs. Add larger block counts before claiming world scalability. Keep the existing 200 ms threshold as a historical regression check, not a smooth-gameplay acceptance target. The original 60-useful-updates-per-second aspiration remains; a new hard gameplay target and minimum acceptable moving resolution require human evaluation and are not settled by this profiling review.
 
@@ -422,7 +422,7 @@ Updated October 24, 2026. Audience: the developer/player evaluating the sample g
 
 #### Intent and verified evidence
 
-Allow the player to explore the existing textured landscape at higher useful resolution or quality while retaining responsive camera updates. A faster shader alone does not meet this purpose: compare complete image delivery and quality at equal elapsed time. Sixty useful native-resolution updates per second remains an aspiration, not a verified capability or mandatory prototype threshold.
+Allow the player to explore the existing textured landscape at higher useful resolution or quality while retaining responsive camera updates. A faster shader alone does not meet this purpose: compare complete image delivery and quality at equal elapsed time. The original prototype had no mandatory FPS threshold. The October 27 program below now targets a 60 FPS floor and preferably 120+ FPS, with resolution and quality acceptance still to be settled.
 
 Local read-only probes on October 11 reported NVIDIA GeForce RTX 3080, 12,288 MiB VRAM, driver 616.92 and Vulkan device API 1.4.351. `vulkaninfo` reported both extensions and true feature flags for acceleration structures, ray queries and ray-tracing pipelines. Reproduce with `nvidia-smi --query-gpu=name,driver_version,memory.total,compute_cap --format=csv` and `vulkaninfo`. This establishes API availability, not successful renderer execution or speed. Recheck at initialization rather than assuming every machine has these capabilities.
 
@@ -438,7 +438,7 @@ Pack immutable scene data into device buffers. Build bottom-level acceleration s
 
 Submit batches across the Java/native boundary, never individual rays. Start with a simple path loop; separating tracing and shading into queues is a conditional optimization if divergent paths demonstrably waste execution. Neither queue organization nor a new public Java API name is prescribed. Package pinned Java/native dependencies and compiled shaders through the existing script-based build. Document setup; subsequent normal launches must not download dependencies or require a shader compiler. CPU-only launch must work without initializing Vulkan.
 
-Readback to the existing CPU image contract is acceptable in S1.1. Measure GPU-to-host transfer, synchronization, CPU conversion and AWT presentation. S1.2 conditionally removes that round trip from normal display, while retaining explicit readback for comparisons and exports. Native-window integration and overlay/input composition belong to that delivery; they cannot be assumed to work by replacing the tracer alone.
+Readback to the existing CPU image contract is acceptable in S1.1. Measure GPU-to-host transfer, synchronization, CPU conversion and AWT presentation. S1.2 removes that round trip from normal display, while retaining explicit readback for comparisons and exports. Native-window integration and overlay/input composition belong to that delivery; they cannot be assumed to work by replacing the tracer alone.
 
 #### Shared behavior and correctness constraints
 
@@ -456,7 +456,10 @@ The inventory above is completed investigation. The table distinguishes delivere
 | ID | User can now... | Prerequisite | Status / evidence |
 | --- | --- | --- | --- |
 | S1.1 | Play the textured landscape using an explicitly selected GPU backend and compare it with CPU rendering | Verified hardware/API inventory; scope agreed above | Implemented and automatically verified; [S1.1 results](benchmarks/s1/README.md); native-window human acceptance pending |
-| S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Conditional proposal; not approved implementation scope |
+| S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Authorized October 27; pending implementation and verification |
+| S1.1a | Explore the existing GPU game with less image-conversion overhead at identical quality | Existing GPU backend | Implemented; verification results below; human acceptance pending |
+| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 and resolution/quality decisions below | Proposed; blocked on user-visible quality decisions |
+| S1.4 | Play combat and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -466,9 +469,9 @@ This delivery includes the complete Java-to-shader path, scene compilation/cache
 
 Performance evaluation uses the frozen `benchmarks/game/camera-route.csv` and landscape, depth two, seed one, one sample per batch, temporal off and adaptation off. Compare fixed 320x200 and native 960x600 on both backends. Record window dimensions separately. Use thirty seconds warmup per backend and at least three measured route replays, alternating order without simultaneous sessions. Record source fingerprint, JDK, driver/device, dependency/shader versions, CPU worker/tile settings, power/load conditions, actual grids and all transport settings. Separate cold shader/scene preparation from warm tracing. Compare stationary error over multiple seeds against a sufficiently converged CPU reference at equal elapsed time; record reference spp, chosen error metric and numeric tolerances with the evidence.
 
-Report median/p95 completed-image intervals, snapshot-to-display age, fresh images/second, stationary quality, full pipeline timing, upload/build/readback, allocations and peak host/device memory. Distinguish headless publication timing from actual window submission; neither is physical input-to-photon latency. Human acceptance includes native-window responsiveness and visible artifacts. Functional completion requires the behavior and tests above plus a reproducible comparison report, even if the result shows no useful speedup. The historical 200 ms p95 check remains a regression check, not a smoothness target. No numerical speedup target is agreed. Continued investment requires a demonstrated end-to-end improvement at matching quality and acceptable observed responsiveness; the user evaluates the measured tradeoff before S1.2. An unfavorable result may close the experiment as evaluated/deferred without promoting GPU to default.
+Report median/p95 completed-image intervals, snapshot-to-display age, fresh images/second, stationary quality, full pipeline timing, upload/build/readback, allocations and peak host/device memory. Distinguish headless publication timing from actual window submission; neither is physical input-to-photon latency. Human acceptance includes native-window responsiveness and visible artifacts. Functional completion requires the behavior and tests above plus a reproducible comparison report, even if the result shows no useful speedup. The historical 200 ms p95 check remains a regression check, not a smoothness target. These are historical S1.1 acceptance conditions. The October 27 request authorizes continued investment through S1.2, with targets and incremental acceptance defined below. An unfavorable result may close the experiment as evaluated/deferred without promoting GPU to default.
 
-**S1.2 — Display GPU images directly, conditional.** Preserve S1.1's game and CPU option while presenting the GPU image without routine full-image GPU-to-CPU readback. Include GPU filtering, exposure/tone mapping, sRGB encoding, window presentation, input/focus handling and diagnostic/UI composition. Preserve the CPU reference display semantics, including linear-space filtering before tone mapping. Explicit export/reference capture may still read back. Keep any GPU image alive until presentation completion as well as reader release.
+**S1.2 — Display GPU images directly.** Preserve S1.1's game and CPU option while presenting the GPU image without routine full-image GPU-to-CPU readback. Include GPU filtering, exposure/tone mapping, sRGB encoding, window presentation, input/focus handling and diagnostic/UI composition. Preserve the CPU reference display semantics, including linear-space filtering before tone mapping. Explicit export/reference capture may still read back. Keep any GPU image alive until presentation completion as well as reader release.
 
 User test: use the same GPU game entry point and fixed-grid controls, follow the same route, inspect diagnostics, stop/refine, change supported lighting, switch window focus and close. Navigation and displayed scene behavior remain intact. Compare S1.1 readback and direct presentation at matching settings and image quality, measuring transfer removal and complete display cost, age and interval p95. Accept the change only if it produces a repeatable end-to-end benefit without new correctness, lifecycle or input regressions. Selection of a Vulkan window/surface integration is a bounded engineering investigation inside this outcome; it must preserve the actual game's controls and UI. If integration cost or measurements do not justify the change, retain S1.1 and record why.
 
@@ -476,9 +479,140 @@ User test: use the same GPU game entry point and fixed-grid controls, follow the
 
 Broader engine parity is deferred, not a hidden prerequisite for S1.1. Before calling GPU a general replacement, specify further user-testable slices and cover every existing transport/camera/history feature, including nested media, absorption, Fresnel/IOR weights, rough materials, area-light MIS, volume visibility, orthographic cameras and temporal modes. The October 24 follow-up adds perspective depth of field and grouped sample-game settings on CPU and GPU; see the [support and verification notes](benchmarks/s1/README.md#october-24-follow-up-settings-panel-and-gpu-depth-of-field). It preserves exact zero-aperture behavior and does not add GPU temporal reuse or adaptive resolution. Retain the Java reference throughout. Other GPU vendors/platforms need their own capability and correctness runs; initial acceptance is on the inventoried Windows machine and does not establish cross-vendor support.
 
-No blocking user decisions remain for the agreed S1.1 scope. Vulkan/LWJGL and double-precision accumulation are implemented; the best kernel organization remains an evidence-led optimization choice. The threshold for further investment is deliberately evidence-led rather than an invented FPS commitment. Direct GPU presentation and full parity require later scope decisions.
+No blocking user decisions remain for the agreed S1.1 scope. Vulkan/LWJGL and double-precision accumulation are implemented; the best kernel organization remains an evidence-led optimization choice. The threshold for further investment is deliberately evidence-led rather than an invented FPS commitment. Direct GPU presentation is authorized by the October 27 request; full engine parity remains separate scope.
 
 Run `./verify.ps1`, relevant game checks and new GPU tests for implementation changes; document selected-suite limits and inspect failures. Automated verification must remain window-free and must not steal focus. Record milestone results and commands in `tracker.md` and `benchmarks/s1/README.md` when implemented, with raw settings/results beside them. Keep milestone status here authoritative and link evidence rather than duplicating completion claims. Changes to this specification require independent document review; implementation changes require the checks above.
+
+
+#### October 27, 2026: high-resolution game performance program
+
+Audience: the player evaluating the sample game and maintainers implementing its renderer.
+The user authorized implementation, durable specification tracking, and notifications when
+playable increments are ready. This program supersedes the earlier condition that S1.2
+needed separate authorization. The existing CPU performance phases remain available but
+are not the current delivery priority.
+
+**Intent and evidence.** Make exploration and combat feel responsive on the RTX 3080
+12 GB, targeting at least 60 fresh displayed images per second and preferably 120+.
+A frame budget is 16.67 ms at 60 FPS and 8.33 ms at 120 FPS. Repeatedly displaying the
+same publication does not count as a fresh frame. The historical
+[fog lighting-grid experiment](benchmarks/atmosphere/fog-grid/README.md) measured
+45–47 ms of headless frame work at 1600x766 with its fastest tested settings, including
+roughly 11 ms of CPU conversion. These measurements exclude native window presentation
+and do not describe current combat performance. The present Swing repaint timer requests
+updates every 16 ms. Render dimensions currently cap at 1600 per axis.
+
+**Scope and quality.** Optimize the existing Vulkan game backend and preserve the CPU
+reference, controls, captures, diagnostics, optics, fog and supported scene behavior.
+Begin with changes that preserve displayed bytes and raw radiance. The first slice parallelizes conversion of large GPU images across at most four strips on the existing process-wide worker pool; small images retain serial conversion. All strips finish before the calling image lease can be released, including after interruption. CPU rendering retains its existing per-pixel conversion behavior. Device-resident
+presentation, improved traversal, GPU adaptive resolution/reconstruction and cheaper
+dynamic-scene/fog work are authorized areas of investigation and implementation.
+Do not silently reduce path depth, disable effects, change exposure, or call an enlarged
+low-resolution image native rendering. Changes that approximate lighting or reuse history
+must be selectable and retain a reference mode. No new GPU vendor or general engine parity
+promise is part of this program.
+
+S1.1a is useful independently; it does not complete S1.2 direct presentation.
+
+**S1.1a user test and acceptance.** Launch `./game.ps1 -Backend gpu -Scene world
+-Width 1600 -Height 1000`, move and turn, release the pointer with Escape, change exposure,
+stop to refine, save an F8 capture, switch focus away/back and close. Geometry, lighting,
+pixel orientation and controls must match the reference. Measure a paired conversion
+comparison on the same leased GPU image and matched end-to-end scene runs; retain this
+slice only with a repeatable benefit and no raw-image or lifecycle regression. It is useful
+independently of direct presentation but does not claim the final FPS target.
+
+
+**S1.1a measured result (October 27).** On a frozen 1600x1001 GPU landscape image,
+three alternating paired rounds compared the former conversion loop with the new one,
+including creation of the AWT image in both. Forty paired warmups preceded three rounds
+of forty pairs. Median conversion times were 26.84/26.90/24.20 ms before and
+8.32/8.39/7.67 ms after: approximately 3.2 times faster for this stage. The serial bulk
+prototype did not improve performance and was superseded by bounded parallel conversion.
+The timings are host-load-dependent and do not establish displayed FPS or a whole-game
+speedup. Byte comparisons cover five exposures, orientation, special float values, held
+image stability, invalid destinations, closed leases and interruption. The CPU path is
+checked separately. Raw sampling and the production shader are unchanged; a deferred-normal
+shader experiment passed device checks but was removed because stable end-to-end performance
+evidence was unavailable.
+
+Evidence is in [paired conversion results](benchmarks/s1/high-resolution/copy-gpu.csv),
+[CPU compatibility results](benchmarks/s1/high-resolution/copy-cpu.csv) and
+[host-variable baseline](benchmarks/s1/high-resolution/before-fog.csv). The baseline fog
+sweep varied widely and is retained only to explain why it cannot support a speedup claim.
+The [paired live-game routes](benchmarks/s1/high-resolution/route.csv) replay a three-second
+landscape camera path at 1600x1000, depth 2, one sample per batch and fixed resolution,
+after two seconds of warmup per renderer. Three pairs alternate conversion order and drain
+the previous GPU owner before starting the next. Parallel/reference fresh-copy rates were
+68.0/20.7, 26.3/10.7 and 39.7/34.0 images per second. Host variability was large, and the
+last pair's p95 interval regressed despite higher throughput. These short headless runs
+support continued investigation, not a stable whole-game speedup or a 60 FPS floor.
+Combat, fog and native-window target acceptance remain outstanding.
+Reproduce the paired check after `./gpu-build.ps1`: compile
+`tools/gpu/DisplayCopyCheck.java` into `out/gpu/classes` with Java 23 and the
+`out/game/classes;out/gpu/classes;out/gpu/lib/*` classpath, then run
+`game.DisplayCopyCheck gpu 1600` on that classpath with `--enable-preview` and
+`-Djava.awt.headless=true`. `./gpu-check.ps1` includes the GPU parallel and CPU compatibility
+checks at smaller sizes. `./verify.ps1` and `./game-check.ps1` passed; full GPU checks are
+recorded in the retained verification log. Run PowerShell 7 for the readability gate:
+Windows PowerShell 5.1 miscompares the existing baseline on this machine. No baseline
+allowances were expanded. Native-window smoothness remains for the player to evaluate.
+Compile `tools/gpu/DisplayRouteBenchmark.java` alongside `DisplayCopyCheck.java` and run
+`game.DisplayRouteBenchmark` on the same classpath/options to repeat the live-game pairs.
+The [GPU checks](benchmarks/s1/high-resolution/gpu-check.log),
+[completion gate](benchmarks/s1/high-resolution/verify.log), and
+[game checks](benchmarks/s1/high-resolution/game-check.log) retain the automated outcomes.
+
+**S1.2 acceptance extension.** Preserve the user test above and all existing settings,
+input and F8/F9 capture entry points while keeping normal display images on the GPU.
+Bound in-flight images and never overwrite an image still being presented. Exposure changes
+must not reset raw accumulation. Resize, minimize/restore, focus loss, initialization failure
+and close must remain responsive. Preserve explicit CPU launch and report GPU failures;
+never silently substitute CPU rendering. Presentation pacing must support a 120+ Hz display
+without a fixed 16 ms repaint ceiling. Report GPU execution, transfers, CPU work, fresh window
+submissions and image age separately. Native-window acceptance requires a human playthrough.
+
+**S1.3 user test and acceptance.** Select a 60 or 120 FPS budget in game settings, move
+through ordinary and expensive views, then stop. Show output size and actual internal
+render size separately; restore configured stationary quality without stale history.
+The full-quality fixed-resolution mode must remain available. Reject history after cuts,
+scene/optics changes and newly revealed surfaces. Compare moving images against reference
+captures for ghosting, disappearing detail and fog artifacts. This milestone's quality
+tradeoff and output resolution are not settled by the implementation authorization.
+
+**S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
+and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain
+current. Measure hierarchy updates, fog and frame-time tails before choosing optimizations;
+reuse unchanged geometry and avoid per-frame allocation where evidence supports it.
+Keep a change only when repeated matched runs improve its targeted workload without a
+material regression in the ordinary route. If a hypothesis fails, record the result rather
+than declaring a delivery complete.
+
+**Measurement protocol.** Record source revision/fingerprint, device/driver, grid/output
+dimensions, depth, batch samples, optics, fog modes, seed and pacing. Use identical settings
+and camera routes for paired baseline/candidate runs, warm up before timing, and alternate
+order across at least three measured runs. Include exploration, the saved ruins-fog view
+(or a recorded replacement when the private capture is absent), and moving combat.
+Record median/p95/p99 fresh-image intervals, missed frame deadlines, capture-to-submission
+age and stationary quality. Headless tests must be labeled as such. Do not combine
+overlapping pipeline stage timings as though they were sequential, or multiply predicted
+optimization gains. A 60 FPS average is insufficient evidence of a minimum: report deadline
+misses and worst intervals as well. Final acceptance workload and allowed miss rate remain
+open; no 60/120 guarantee is claimed until those conditions and measurements exist.
+
+**Open decisions and assumptions.** Initial unchanged-quality work uses existing 1600-wide
+grids and is unblocked. The player's desired output resolution/monitor refresh and whether
+high-resolution output may use reconstruction instead of native-resolution tracing must be
+confirmed before S1.3 and final target acceptance. Ask for those decisions when the first
+playable increment is delivered. The implementation keeps quality-preserving improvements
+enabled; new approximate rendering modes remain opt-in pending evaluation.
+
+**Verification and handoff.** Run `./verify.ps1`, `./game-check.ps1`, GPU device checks and
+focused image/lease tests for affected behavior. Keep automated runs window-free and
+console-free. Store raw measurements under `benchmarks/s1/` with their settings and link
+them from this specification. Distinguish implementation, automated verification and human
+acceptance in the status rows. Notify the player with the exact launch and things to inspect
+when each usable increment is ready; a notification does not mark human acceptance complete.
 
 ### S2 Native CPU rendering backend
 

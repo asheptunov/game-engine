@@ -1,6 +1,5 @@
 package game;
 
-import engine.DisplayMapping;
 import engine.RenderEngine;
 import engine.RenderImage;
 import engine.RenderSession;
@@ -596,19 +595,7 @@ public final class GameRenderer implements AutoCloseable {
     static BufferedImage copyImage(RenderImage image, float exposure) {
         var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         var pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
-        var source = image.presentationPixels();
-        for (int y = 0; y < image.height(); y++) {
-            for (int x = 0; x < image.width(); x++) {
-                int red =
-                        Byte.toUnsignedInt(DisplayMapping.encode(source.value(0, x, y), exposure));
-                int green =
-                        Byte.toUnsignedInt(DisplayMapping.encode(source.value(1, x, y), exposure));
-                int blue =
-                        Byte.toUnsignedInt(DisplayMapping.encode(source.value(2, x, y), exposure));
-                pixels[(image.height() - 1 - y) * image.width() + x] =
-                        (red << 16) | (green << 8) | blue;
-            }
-        }
+        image.presentationPixels().copyDisplayTo(pixels, exposure);
         return result;
     }
 

@@ -29,4 +29,10 @@ public final class DisplayMapping {
         float mapped = Float.isInfinite(c) ? 1 : c / (1 + c);
         return SRGB[Math.min(65535, Math.round(mapped * 65535))];
     }
+
+    public static int pack(float red, float green, float blue, float exposureMultiplier) {
+        return (Byte.toUnsignedInt(encode(red, exposureMultiplier)) << 16)
+                | (Byte.toUnsignedInt(encode(green, exposureMultiplier)) << 8)
+                | Byte.toUnsignedInt(encode(blue, exposureMultiplier));
+    }
 }

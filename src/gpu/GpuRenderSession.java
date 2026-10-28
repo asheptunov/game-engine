@@ -694,5 +694,17 @@ public final class GpuRenderSession implements RenderSession {
                 }
             }
         }
+
+        @Override
+        public void copyDisplayTo(int[] destination, float exposureMultiplier) {
+            open();
+            // Internal workers join before this single-owner lease can be released.
+            engine.DisplayCopy.interleaved(
+                    slot.pixels,
+                    destination,
+                    slot.view.width(),
+                    slot.view.height(),
+                    exposureMultiplier);
+        }
     }
 }

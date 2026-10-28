@@ -1,0 +1,7 @@
+round,conversion,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs
+0,parallel,68.000,13.476,24.534,34.758
+0,reference,20.667,37.059,102.846,128.539
+1,reference,10.667,49.074,229.413,259.852
+1,parallel,26.333,33.755,63.221,74.355
+2,parallel,39.667,19.426,47.398,56.704
+2,reference,34.000,28.796,36.655,70.154

@@ -16,3 +16,7 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.FogGridCheck') 'out/gpu/fog-grid-check.log' 'Fog lighting grid verification failed'
 
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.FogJitterCheck') 'out/gpu/fog-jitter-check.log' 'Fog jitter verification failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/DisplayCopyCheck.java') 'out/gpu/display-copy-compile.log' 'Display conversion check compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.DisplayCopyCheck','gpu','800') 'out/gpu/display-copy-check.log' 'Parallel GPU image conversion checks failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.DisplayCopyCheck','cpu','128') 'out/gpu/display-copy-cpu-check.log' 'CPU image conversion compatibility checks failed'

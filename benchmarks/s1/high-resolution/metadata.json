@@ -1,0 +1,23 @@
+{
+  "output": "headless AWT image copy; excludes native presentation",
+  "jdk": "23.0.1",
+  "concurrentHostActivity": "uncontrolled",
+  "traceSettings": "landscape, depth=2, spp=1, fixed=1600x1000, default sun/sky, pinhole",
+  "device": [
+    "name, driver_version, memory.total [MiB]",
+    "NVIDIA GeForce RTX 3080, 616.92, 12288 MiB"
+  ],
+  "baseCommit": "ece387407db937ff41019b7e32558277082cdd11",
+  "sourceSha256": {
+    "src/engine/DisplayCopy.java": "629ECACD2E0099198BDA5858C505DC94108996BCBECA548A4AC176B8CCABD854",
+    "src/game/GameRenderer.java": "4C6EF4CD7853A9CE224DAAC5BD1E9AF7B84C645D7C8C2AB2FB728A365C1EAD67",
+    "src/game/SampleGameMain.java": "93E955F1D57FCC173A030B04516105A03E1E7D354D6680FB322D80927FF6A3BA",
+    "src/gpu/GpuRenderSession.java": "43B76F84BCF5200DFF8D8199F354523105ED4337346B7412D920BC04E3D112F3",
+    "assets/gpu/diffuse.comp": "8F1A843EF1AA941E4ED32CB2A19C7D86123D064ED62F932758815457F2906587",
+    "src/engine/RgbPixels.java": "367DE0E3F77B051E1AC9B578C57B1C0F456447BD959705EE1555F4456736B5AF",
+    "src/engine/DisplayMapping.java": "B073843A8153706C8CCA090694833A8EF191C2A18858185F78081D92875F49C8",
+    "tools/gpu/DisplayCopyCheck.java": "01EBCF20B4A8E095DE59FC72BD8761473B62895CA2E35774C3CD2177C3476FC9",
+    "tools/gpu/DisplayRouteBenchmark.java": "BE365D27BC2DA7DF0D0DC4B45CB521959C15938B920B7F7885C1A720EA383614"
+  },
+  "conversionSettings": "frozen GPU landscape image, depth=0, 1600x1001, exposure=1 timing; five exposures for equivalence"
+}

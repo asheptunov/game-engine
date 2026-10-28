@@ -1,5 +1,19 @@
 # Ray Tracing Viewport — Build Tracker
 
+## October 27, 2026: GPU performance delivery
+
+The high-resolution game performance program is tracked in
+[PerformanceRequirements.md](PerformanceRequirements.md#october-27-2026-high-resolution-game-performance-program).
+S1.1a implements bounded parallel display conversion for GPU images; exact pixel/lease
+checks and the completion, game and GPU gates passed. Human smoothness acceptance remains
+pending. Its paired conversion benchmark improves this stage by approximately 3.2 times;
+variable live-game timings do not establish a 60 FPS floor. The specification links raw
+results and launch instructions and remains authoritative for milestone status.
+Direct GPU presentation is now authorized, superseding the earlier S1.1 entry's deferral;
+native output resolution and reconstruction preferences remain open for later acceptance.
+
+## Earlier delivery history
+
 Bottom-up, TDD. Each milestone lands with passing tests before the next starts.
 
 The proposed engine/application separation and scene/mesh authoring roadmap is in
@@ -780,4 +794,4 @@ The sample game now offers `./game.ps1 -Backend gpu -Width 960 -Height 600` afte
 
 `gpu-check.ps1` passes 29 real-device checks plus offscreen game-panel verification on the RTX 3080. Coverage includes CPU radiance comparisons, transformed/touching/tied geometry, tiny triangles and the near-surface cutoff, batch equivalence, long-count precision, material edits, resize, pause, sustained camera publication, leases, initialization/device failures and resource retirement. `verify.ps1`, `game-check.ps1` and `style-test.ps1` pass without expanding the readability baseline. The CPU all-source build explicitly excludes the optional GPU module; `gpu-build.ps1` compiles it separately and builds changed shaders offline after initial dependency setup.
 
-See [S1.1 results](benchmarks/s1/README.md) for repeated fixed-grid CPU/GPU route comparisons, equal-time quality, raw evidence, setup and launch commands, and the initial uncached-readback finding. These measurements include host readback and game image conversion but exclude actual input delivery, Swing painting and monitor scanout. Native-window acceptance remains pending. S1.2 direct GPU presentation and full renderer parity remain separate decisions; no GPU-default switch or general replacement is implied.
+See [S1.1 results](benchmarks/s1/README.md) for repeated fixed-grid CPU/GPU route comparisons, equal-time quality, raw evidence, setup and launch commands, and the initial uncached-readback finding. These measurements include host readback and game image conversion but exclude actual input delivery, Swing painting and monitor scanout. Native-window acceptance remains pending. At the original S1.1 delivery, direct GPU presentation and full renderer parity were deferred. The October 27 program above now authorizes S1.2 direct presentation; full parity remains separate scope. No GPU-default switch or general replacement is implied.

@@ -1,0 +1,7 @@
+reference,backend,round,width,height,daySeconds,startHour,gpuMedianMs,gpuP95Ms,fogBuildMedianMs,transferMedianMs,traceMedianMs,copyMedianMs,totalMedianMs,totalP95Ms,fogDownsample,lightingGrid,gridBuildMedianMs
+false,gpu,0,1600,766,0,7.00,113.430,120.270,0.000,11.390,143.357,22.369,166.505,188.704,4,true,0.030
+false,gpu,0,1600,766,600,7.00,103.430,119.100,0.040,6.590,130.408,21.851,153.025,164.505,4,true,0.020
+false,gpu,0,1600,766,30,7.00,131.630,679.200,0.040,11.750,160.624,21.826,182.929,791.222,4,true,0.020
+false,gpu,1,1600,766,0,7.00,168.810,409.460,0.000,12.460,196.125,21.545,214.634,486.992,4,true,0.030
+false,gpu,1,1600,766,600,7.00,64.640,112.780,0.040,5.820,90.716,21.766,113.755,164.631,4,true,0.020
+false,gpu,1,1600,766,30,7.00,74.970,87.340,0.040,6.490,101.235,22.046,123.394,134.588,4,true,0.020
