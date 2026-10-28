@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "fc16d0b",
+  "device": "NVIDIA GeForce RTX 3080 12GB",
+  "driver": "616.92 (recorded in high-resolution baseline; not reprobed this run)",
+  "java": "23.0.1",
+  "internalResolution": [
+    1920,
+    1080
+  ],
+  "paintSurface": [
+    3840,
+    2160
+  ],
+  "scene": "AdventureWorld.create, ruins camera",
+  "cameraStart": {
+    "position": [
+      10.879049,
+      2.7514815,
+      22.884184
+    ],
+    "yaw": 1.251,
+    "pitch": 0.079
+  },
+  "route": "x=start.x+sin(t)*0.5, z=start.z+t*0.2, yaw=start.yaw+sin(t*0.7)*0.1, pitch fixed; t in seconds",
+  "atmosphere": "clearAir, hour 9, cycle stopped",
+  "fog": false,
+  "samplesPerBatch": 1,
+  "seed": 1,
+  "aperture": 0,
+  "warmupSeconds": 2,
+  "routeSeconds": 3,
+  "repetitions": 3,
+  "order": [
+    [
+      1,
+      2,
+      4
+    ],
+    [
+      4,
+      2,
+      1
+    ],
+    [
+      1,
+      2,
+      4
+    ]
+  ],
+  "diagnostic": {
+    "depth": 2,
+    "combat": false,
+    "completed": "completed-images.csv",
+    "paint": "diagnostic-paint.csv"
+  },
+  "combat": {
+    "depth": 8,
+    "combat": "GameRenderer.enableShooter; animated scene updates, no firing",
+    "completed": "combat-completed.csv",
+    "paint": "combat-paint.csv"
+  },
+  "limitations": [
+    "Offscreen painting into BufferedImage excludes native-window submission and monitor scanout",
+    "Synthetic navigation, not physical input",
+    "Elapsed-time combat updates and scheduling are not frame-locked across runs",
+    "No 60 FPS floor or 120 FPS acceptance claimed"
+  ],
+  "commands": {
+    "build": "./gpu-build.ps1",
+    "compile": "javac --enable-preview --release 23 -cp \"out/gpu/classes;out/game/classes;out/gpu/lib/*\" -d out/gpu/classes tools/gpu/RuinsAtmosphereBenchmark.java tools/gpu/PresentationBenchmark.java",
+    "completed": "java --enable-preview -Djava.awt.headless=true -cp \"out/gpu/classes;out/game/classes;out/gpu/lib/*\" game.RuinsAtmosphereBenchmark combat",
+    "paint": "java --enable-preview -Djava.awt.headless=true -cp \"out/gpu/classes;out/game/classes;out/gpu/lib/*\" game.PresentationBenchmark ruins combat"
+  },
+  "sourceSha256": {
+    "src\\gpu\\GpuKernel.java": "55e7d34079094032eae89d5f73c73e07fdeeef37d8b234b0df90de4cf09b347a",
+    "src\\game\\GameSettingsPanel.java": "0c6288f6ea0134dc5c3a560bad9e8602db0d6a9a91cb862e47f3fb950855ba87",
+    "src\\game\\GameRenderer.java": "31ba2bcaaa15017c78fe0fbed3e562860538badeba09e8c213f74fffa4b1eb92",
+    "src\\game\\GamePanel.java": "09337e1c12a46dbfa748e65a3275bef88bfce1a6e57cf8f1595f1a2a19250f34",
+    "assets\\gpu\\diffuse.comp": "8f1a843ef1aa941e4ed32cb2a19c7d86123d064ed62f932758815457f2906587",
+    "tools\\gpu\\RuinsAtmosphereBenchmark.java": "782e9dc21e487dbe432a8c7b84bc9017a6605d5994eb12f7ad82a9766de210d2",
+    "tools\\gpu\\PresentationBenchmark.java": "ca9df4cb5b3d225080fbef726734b4c8ec0f03a93d3e75f547aae5f50ae6dc31"
+  }
+}

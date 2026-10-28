@@ -31,7 +31,23 @@ public final class FogResolutionCheck {
             compare(kernel,world(7,false),navigation.view(),settings,"camera movement");
             var scene=world(7,false);
             var empty=new WorldSnapshot(1,scene.instances(),List.of(),scene.lights(),scene.sky().withFog(List.of()));
-            exactFallback(kernel,empty,view,settings,"no fog");
+            compare(kernel,empty,view,settings,"atmosphere without fog");
+            for (double hour : new double[]{6,9,12,17.8}) {
+                for (var air : new Atmosphere.Parameters[]{Atmosphere.Parameters.clearAir(),Atmosphere.Parameters.hazyMorning()}) {
+                    var clock=new DayNightCycle(); clock.hour(hour);
+                    var light=clock.atmosphericLighting(air);
+                    var airWorld=new WorldSnapshot(0,AdventureWorld.create().instances(),List.of(),List.of(light.sun()),light.sky());
+                    compare(kernel,airWorld,view,settings.withPathDepth(2),"air hour="+hour+" haze="+air.aerosolHeightKm());
+                    if(hour==9 && air.equals(Atmosphere.Parameters.clearAir())) {
+                        compare(kernel,airWorld,new RenderView(view.camera(),1920,1080),settings,"air 1080p");
+                        compare(kernel,airWorld,new RenderView(view.camera(),1920,1080),settings.withPathDepth(8),"air 1080p depth 8");
+                    }
+                }
+            }
+            session(empty,view,settings);
+            exactFallback(kernel,empty, new RenderView(view.camera().withAperture(.1f),197,131),settings,"air aperture");
+            var vacuum=new WorldSnapshot(2,empty.instances(),List.of(),empty.lights(),empty.sky().withAtmosphere(null));
+            exactFallback(kernel,vacuum,view,settings,"no participating air");
             exactFallback(kernel,world(6,false),view,settings,"horizon");
             var dense=new WorldSnapshot(1,scene.instances(),List.of(),scene.lights(),scene.sky().withFog(List.of(
                     new FogRegion(new Vec3(20,3,28),new Vec3(13,5,12),0,new Vec3(.2f,.2f,.2f),new Vec3(.1f,.1f,.1f),3,1.5f,.65f,.45f,2,.2f))));

@@ -463,6 +463,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1d | See fresh images painted without waiting for the UI timer, and inspect fresh paint rate | S1.1c | Implemented; game, GPU UI and completion checks passed; native-window acceptance pending |
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 | Authorized; lower internal resolutions accepted for the player's 4K display; implementation pending |
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
+| S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -727,6 +728,75 @@ scene/optics changes and newly revealed surfaces. Compare moving images against 
 captures for ghosting, disappearing detail and fog artifacts. This milestone's quality
 tradeoff is accepted in principle for the player's 4K display, with visual quality still
 subject to hands-on evaluation.
+
+**S1.4a - Optional faster atmosphere in the ruins (October 28).** The player reports
+low-to-mid 30s FPS in the ruins at 1080p with atmosphere enabled, and near-target performance
+without it. This observation is not a controlled benchmark. The next increment makes the
+existing GPU primary-fog reconstruction available for atmosphere without local fog. It can
+ship before S1.2's direct GPU presentation; the broader S1.4 workload remains unfinished.
+
+In Escape -> Lighting, below Atmosphere enabled, the Atmosphere / fog resolution selector
+offers Full, Half and Quarter. The Fog page exposes the same shared setting. Full remains
+the default and restores the original integration. Half and Quarter reduce each dimension
+of the primary air grid, not the geometry grid: 1080p geometry remains 1920x1080. Surface
+shading and bounced-ray air integration retain full quality. Interpolation rejects incompatible
+surface identity, depth, normals, sharp lighting changes and solar-disc pixels; rejected pixels
+use direct integration. Approximate air can soften fine gradients or change during movement,
+so these modes remain opt-in pending visual evaluation. Existing saved Half/Quarter fog
+settings now also apply when atmosphere is enabled without fog. The stored setting retains
+its existing `fogDownsample` name for capture compatibility.
+
+CPU rendering, finite-aperture cameras and ineligible fog retain Full integration. Fog's
+existing eligibility checks remain in place even when atmosphere is enabled. With neither
+atmosphere nor fog enabled, there is no reconstruction work. Changing quality restarts
+accumulation; switching to Full releases the extra reconstruction buffers. At 1080p the
+extra guide/coarse buffers require about 87 MiB for Half and 69 MiB for Quarter. This uses
+current-frame spatial reconstruction only; it adds no temporal history or delayed lighting.
+
+User test: launch `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080`, fly to
+the ruins, enable Atmosphere in Lighting, and compare Full, Half and Quarter along the same
+route. Start with Half. Inspect pillar edges, the horizon, sunlight and haze while moving;
+compare the two-second fresh-paint counter after each mode settles. Switch back to Full to
+recover exact integration. Change the shared selector on the Fog page and confirm Lighting
+shows the same choice. Opening settings alone must not change quality. Human acceptance
+requires both a useful native-window improvement and acceptable moving-image quality.
+
+Automated verification compares Full/Half/Quarter radiance at odd dimensions under clear
+and hazy air at sunrise, morning, noon and sunset, plus clear-air 1080p at depths 0 and 8 in the ruins. It
+checks finite nonnegative radiance, root-mean-square error <=0.004, and every channel's
+absolute error <=0.015 + 5% of its reference. Full restoration is exact; lens/no-air and
+unsupported-fog fallback, resize, accumulation reset and held-image stability are covered.
+The 1080p Quarter comparison reused 1,806,029 of 2,073,600 pixels, with linear-radiance
+root-mean-square error 0.00000263 and maximum channel error 0.000152. These are numerical
+checks of specific views, not proof of perceptual equivalence for every atmosphere setting.
+
+Matched headless runs use AdventureWorld's ruins, clear air at 09:00, no local fog, 1080p,
+depth 2, one sample per batch and a moving camera. Each mode warms for two seconds, runs
+for three seconds, and repeats three times in alternating order. Completed-image rates
+were 116-126/s Full, 139-142/s Half and 142-147/s Quarter: approximately 13% and 18%
+improvement respectively using the median rate of each mode. Median GPU-job host time
+fell from 7.47-7.67 ms to 6.68-6.81 ms (Half) and 6.43-6.83 ms (Quarter). This metric
+includes preparation, GPU work, waiting and compact readback. It excludes game image copying.
+The rates exclude native-window painting and do not reproduce the player's reported FPS.
+The playable world additionally enables combat and raises depth to 8. A second matched
+route with `enableShooter()` includes animated scene updates, but no firing, and freezes
+the clock at 09:00 for comparison. Completed-image rates were 40.7-42.7/s Full,
+47.0-51.3/s Half and 48.7-51.7/s Quarter. Full p95 intervals were 29.9-31.9 ms;
+Half and Quarter reduced them to 27.1-28.2 ms and 27.2-27.6 ms respectively.
+Nevertheless, 54-74% of measured intervals exceeded 16.67 ms, with worst intervals
+29-52 ms across the modes. This does not meet a 60 FPS minimum.
+
+Real GamePanel painting into a reusable 4K offscreen image reduced that benefit:
+35.7-39.3 fresh paints/s Full, 37.3-41.3 Half and 36.0-41.0 Quarter. Median rates across
+three runs improved only about 3% for either reduced mode. Paint p95 intervals remained
+34-42 ms, with 80-88% over 16.67 ms and worst intervals 41-54 ms. Native window
+submission and scanout remain excluded. The atmospheric transport saving is real, but
+presentation and animated-scene costs still need work; this slice is not a claim that the
+reported slowdown is solved. Half is the first hands-on comparison because Quarter gives
+little additional end-to-end speed in this workload. S1.2 and remaining S1.4 profiling stay open.
+
+Raw measurements, exact fixture source, quality results and verification logs are retained in
+[ruins atmosphere evidence](benchmarks/s1/ruins-atmosphere/metadata.json).
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain

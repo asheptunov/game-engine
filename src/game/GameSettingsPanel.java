@@ -450,6 +450,7 @@ public final class GameSettingsPanel extends JPanel {
                 renderer::atmosphereEnabled,
                 renderer::atmosphereEnabled,
                 true);
+        airQuality(panel, "atmosphereResolution");
         button(panel, "Clear air / reset atmosphere", () -> renderer.atmospherePreset(false));
         button(panel, "Hazy morning air (keeps time)", () -> renderer.atmospherePreset(true));
         number(
@@ -597,11 +598,10 @@ public final class GameSettingsPanel extends JPanel {
 
     private int selectedFog;
 
-    private JPanel fogControls() {
-        var panel = page();
-        heading(panel, "Fog rendering quality (experimental)");
+    private void airQuality(JPanel panel, String name) {
+        heading(panel, "Atmosphere / fog resolution (experimental)");
         var quality = new javax.swing.JComboBox<>(new String[] {"Full", "Half", "Quarter"});
-        quality.setName("fogResolution");
+        quality.setName(name);
         quality.setMaximumSize(
                 new java.awt.Dimension(Integer.MAX_VALUE, quality.getPreferredSize().height));
         quality.addActionListener(
@@ -617,9 +617,14 @@ public final class GameSettingsPanel extends JPanel {
                                 Integer.numberOfTrailingZeros(
                                         renderer.settings().fogDownsample())));
         panel.add(quality);
-        panel.add(new JLabel("GPU fog only; geometry stays sharp."));
+        panel.add(new JLabel("Shared GPU air setting; geometry stays sharp."));
         panel.add(new JLabel("CPU, lens and unsupported fog use Full."));
-        panel.add(new JLabel("Half / Quarter may soften shafts; compare with Full."));
+        panel.add(new JLabel("Half / Quarter approximate air; compare with Full."));
+    }
+
+    private JPanel fogControls() {
+        var panel = page();
+        airQuality(panel, "fogResolution");
         check(
                 panel,
                 "Shared 3D fog lighting (experimental)",

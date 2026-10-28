@@ -54,6 +54,11 @@ public final class GpuUiCheck {
                 if(jitter==null) throw new AssertionError("Missing jitter control");
                 jitter.doClick();if(!renderer.settings().fogJitter()) throw new AssertionError("Jitter did not enable");
                 jitter.doClick();if(renderer.settings().fogJitter()) throw new AssertionError("Jitter did not disable");
+                var air=(javax.swing.JComboBox<?>)find(holder[0],"atmosphereResolution");
+                if(air==null) throw new AssertionError("Missing atmosphere quality control");
+                air.setSelectedIndex(1);
+                if(renderer.settings().fogDownsample()!=2) throw new AssertionError("Half atmosphere control failed");
+                air.setSelectedIndex(0);
                 var fog=(javax.swing.JComboBox<?>)find(holder[0],"fogResolution");
                 if(fog==null) throw new AssertionError("Missing fog resolution control");
                 var fogPage=(java.awt.Container)fog.getParent();
@@ -65,6 +70,9 @@ public final class GpuUiCheck {
                 fogPage.setSize(oldSize);layout(fogPage);
                 fog.setSelectedIndex(2);
                 if(renderer.settings().fogDownsample()!=4) throw new AssertionError("Quarter fog control failed");
+                var settingsPanel=(GameSettingsPanel)javax.swing.SwingUtilities.getAncestorOfClass(GameSettingsPanel.class,air);
+                settingsPanel.refresh();
+                if(air.getSelectedIndex()!=2) throw new AssertionError("Air/fog selectors did not synchronize");
                 fog.setSelectedIndex(1);
                 if(renderer.settings().fogDownsample()!=2) throw new AssertionError("Half fog control failed");
                 fog.setSelectedIndex(0);

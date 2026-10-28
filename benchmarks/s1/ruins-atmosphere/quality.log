@@ -1,0 +1,43 @@
+depth=0 hour=7.0 divisor=2 rmse=3.69612395159889E-4 max=0.00963371992111206 outside=0 reused=7761
+depth=0 hour=7.0 divisor=4 rmse=2.955004090127483E-4 max=0.010434657335281372 outside=0 reused=3081
+depth=0 hour=7.08 divisor=2 rmse=3.7105168803262123E-4 max=0.009720668196678162 outside=0 reused=7481
+depth=0 hour=7.08 divisor=4 rmse=3.5886899764580704E-4 max=0.012013852596282959 outside=0 reused=2913
+depth=0 hour=12.0 divisor=2 rmse=1.1162196014168498E-4 max=0.002238154411315918 outside=0 reused=13003
+depth=0 hour=12.0 divisor=4 rmse=1.3162033246565008E-4 max=0.0019043684005737305 outside=0 reused=9341
+depth=0 hour=17.8 divisor=2 rmse=2.2969289220225443E-5 max=4.0423497557640076E-4 outside=0 reused=13003
+depth=0 hour=17.8 divisor=4 rmse=3.0169142192167067E-5 max=5.623847246170044E-4 outside=0 reused=9405
+depth=2 hour=7.0 divisor=2 rmse=3.6911645743660407E-4 max=0.010349303483963013 outside=0 reused=7819
+depth=2 hour=7.0 divisor=4 rmse=2.986376620333186E-4 max=0.0107603520154953 outside=0 reused=3079
+depth=2 hour=7.08 divisor=2 rmse=3.631456977191175E-4 max=0.008107434958219528 outside=0 reused=7543
+depth=2 hour=7.08 divisor=4 rmse=3.596163781712673E-4 max=0.011491835117340088 outside=0 reused=2914
+depth=2 hour=12.0 divisor=2 rmse=1.1000890647704652E-4 max=0.001779213547706604 outside=0 reused=13166
+depth=2 hour=12.0 divisor=4 rmse=1.3122897787303935E-4 max=0.0019562095403671265 outside=0 reused=9335
+depth=2 hour=17.8 divisor=2 rmse=2.284378388610427E-5 max=4.8177503049373627E-4 outside=0 reused=13166
+depth=2 hour=17.8 divisor=4 rmse=3.080271493337239E-5 max=6.216764450073242E-4 outside=0 reused=9399
+closed sunlight gap divisor=2 rmse=2.4448449405741564E-4 max=0.008214697241783142 outside=0 reused=11607
+closed sunlight gap divisor=4 rmse=1.589172902201272E-4 max=0.010463520884513855 outside=0 reused=6156
+camera movement divisor=2 rmse=3.8448998141045747E-4 max=0.010243415832519531 outside=0 reused=7997
+camera movement divisor=4 rmse=2.5999709870221083E-4 max=0.005895569920539856 outside=0 reused=3103
+atmosphere without fog divisor=2 rmse=2.3535436934806455E-5 max=4.025474190711975E-4 outside=0 reused=12059
+atmosphere without fog divisor=4 rmse=3.14381723630438E-5 max=5.267485976219177E-4 outside=0 reused=6814
+air hour=6.0 haze=1.2 divisor=2 rmse=7.723486476714449E-6 max=1.1088699102401733E-4 outside=0 reused=12728
+air hour=6.0 haze=1.2 divisor=4 rmse=1.480432877354725E-5 max=1.8792599439620972E-4 outside=0 reused=8804
+air hour=6.0 haze=0.35 divisor=2 rmse=7.502166991844542E-6 max=1.247785985469818E-4 outside=0 reused=12720
+air hour=6.0 haze=0.35 divisor=4 rmse=1.4863575341632428E-5 max=1.9007176160812378E-4 outside=0 reused=8852
+air hour=9.0 haze=1.2 divisor=2 rmse=1.8827515590522528E-5 max=3.959536552429199E-4 outside=0 reused=12564
+air hour=9.0 haze=1.2 divisor=4 rmse=3.069651551502931E-5 max=7.921010255813599E-4 outside=0 reused=7588
+air 1080p divisor=2 rmse=8.214932614384357E-7 max=5.067884922027588E-5 outside=0 reused=1958057
+air 1080p divisor=4 rmse=2.628309565092822E-6 max=1.5208125114440918E-4 outside=0 reused=1806029
+air 1080p depth 8 divisor=2 rmse=9.301800234837617E-7 max=9.885430335998535E-5 outside=0 reused=1958701
+air 1080p depth 8 divisor=4 rmse=2.7018235122410227E-6 max=1.9991397857666016E-4 outside=0 reused=1806325
+air hour=9.0 haze=0.35 divisor=2 rmse=2.1368346588037142E-5 max=6.116330623626709E-4 outside=0 reused=12588
+air hour=9.0 haze=0.35 divisor=4 rmse=3.630342172583482E-5 max=0.0011645108461380005 outside=0 reused=7460
+air hour=12.0 haze=1.2 divisor=2 rmse=1.4535712535016648E-5 max=2.758204936981201E-4 outside=0 reused=12804
+air hour=12.0 haze=1.2 divisor=4 rmse=2.2860745641314214E-5 max=5.45211136341095E-4 outside=0 reused=7619
+air hour=12.0 haze=0.35 divisor=2 rmse=1.410648208318003E-5 max=2.7292221784591675E-4 outside=0 reused=12821
+air hour=12.0 haze=0.35 divisor=4 rmse=2.2707557222320997E-5 max=5.395039916038513E-4 outside=0 reused=7667
+air hour=17.8 haze=1.2 divisor=2 rmse=9.914564405367004E-6 max=1.8344074487686157E-4 outside=0 reused=12913
+air hour=17.8 haze=1.2 divisor=4 rmse=1.9261856151879322E-5 max=3.6206096410751343E-4 outside=0 reused=9061
+air hour=17.8 haze=0.35 divisor=2 rmse=9.748601313589742E-6 max=1.8212944269180298E-4 outside=0 reused=12925
+air hour=17.8 haze=0.35 divisor=4 rmse=1.9018627317383467E-5 max=3.5945698618888855E-4 outside=0 reused=9093
+PASS fog quality, odd dimensions, current lighting, exact fallback and session toggles

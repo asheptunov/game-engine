@@ -319,7 +319,13 @@ final class GpuKernel implements AutoCloseable {
             readback = gpu.buffer(output.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
         }
         var nextFogLayout = engine.FogSunTable.layout(world.sky());
-        changed |= preparePrimaryFog(view, settings, nextFogLayout);
+        changed |=
+                preparePrimaryFog(
+                        view,
+                        settings,
+                        nextFogLayout != null
+                                || (world.sky().atmosphere() != null
+                                        && world.sky().fog().isEmpty()));
         changed |=
                 prepareLightingGrid(
                         settings.fogLightingGrid()
@@ -526,12 +532,11 @@ final class GpuKernel implements AutoCloseable {
     }
 
     private boolean preparePrimaryFog(
-            RenderView view, RenderSettings settings, engine.FogSunTable.Layout nextFogLayout) {
+            RenderView view, RenderSettings settings, boolean eligibleAir) {
         boolean changed = false;
-        fogDownsample =
-                view.camera().aperture() == 0 && nextFogLayout != null
-                        ? settings.fogDownsample()
-                        : 1;
+        // Atmosphere alone uses the same edge-checked primary-segment reconstruction.
+        // Fog still requires its conservative layout eligibility; lenses always integrate directly.
+        fogDownsample = view.camera().aperture() == 0 && eligibleAir ? settings.fogDownsample() : 1;
         long fogBytes =
                 fogDownsample == 1
                         ? 48
