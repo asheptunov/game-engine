@@ -17,6 +17,13 @@ public final class RuinsAtmosphereBenchmark {
         System.out.println(
                 "round,atmosphere,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs,p99IntervalMs,over16msPercent,medianCopyMs,p95CopyMs,medianTraceHostMs,maxIntervalMs");
         for (int round = 0; round < 3; round++) {
+            if(java.util.Arrays.asList(args).contains("submission")) {
+                for(boolean timer : new boolean[]{round%2==0,round%2!=0}) {
+                    System.setProperty("game.timerCombatSubmission",Boolean.toString(timer));
+                    measure(round,1,true);
+                }
+                continue;
+            }
             for (int divisor : round % 2 == 0 ? new int[]{1,2,4} : new int[]{4,2,1}) measure(round, divisor, args.length>0 && args[0].equals("combat"));
         }
     }
@@ -86,7 +93,7 @@ public final class RuinsAtmosphereBenchmark {
                     Locale.ROOT,
                     "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f%n",
                     round,
-                    "divisor-" + divisor,
+                    "divisor-" + divisor + (Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate"),
                     count[0] / 3.,
                     quantile(intervals, .5),
                     quantile(intervals, .95),

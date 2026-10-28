@@ -158,6 +158,68 @@ public final class ShooterGameTest {
     }
 
     @Test
+    void combatFramesKeepWeaponAndCameraCoherentAcrossWakeupsAndSuspension() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        navigation.active(false);
+        navigation.pose(new Vec3(-2, 1.7f, 0), 0, 0);
+        var frames = new java.util.concurrent.CopyOnWriteArrayList<GameRenderer.Frame>();
+        var finished = new java.util.concurrent.CountDownLatch(1);
+        try (var renderer =
+                new GameRenderer(
+                        navigation, engine.WorldSnapshot.of(List.of(floor()), List.of()), "cpu")) {
+            renderer.enableShooter();
+            renderer.refinement(false);
+            renderer.observePublications(
+                    frame -> {
+                        assertEquals(navigation.view().camera(), frame.camera());
+                        var rifle =
+                                frame.context().world().instances().stream()
+                                        .filter(
+                                                instance ->
+                                                        instance.name().startsWith("player/rifle/"))
+                                        .toList();
+                        assertEquals(RifleMesh.firstPerson(frame.camera(), 0, 0f), rifle);
+                        frames.add(frame);
+                        if (frames.size() == 6) {
+                            navigation.active(false);
+                            finished.countDown();
+                        } else {
+                            navigation.pose(
+                                    new Vec3(-2 + frames.size() * .1f, 1.7f, 0),
+                                    frames.size() * .01,
+                                    0);
+                        }
+                    });
+            navigation.active(true);
+            assertTrue(finished.await(15, java.util.concurrent.TimeUnit.SECONDS));
+            renderer.observePublications(null);
+            assertEquals(null, renderer.error());
+            long last = renderer.frame().publicationNanos();
+            int[] pixels = frames.getFirst().image().getRGB(0, 0, 96, 64, null, 0, 96);
+            Thread.sleep(100);
+            assertEquals(last, renderer.frame().publicationNanos());
+            assertEquals(6, frames.size());
+            navigation.pose(new Vec3(1, 2, 0), .2, 0);
+            renderer.configure(settings -> settings.withSampleTarget(3));
+            navigation.active(true);
+            long deadline = System.nanoTime() + 15_000_000_000L;
+            while (renderer.frame().samples() != 3 && System.nanoTime() < deadline) {
+                assertEquals(null, renderer.error());
+                Thread.sleep(5);
+            }
+            assertEquals(3L, renderer.frame().samples());
+            assertEquals(navigation.view().camera(), renderer.frame().camera());
+            last = renderer.frame().publicationNanos();
+            Thread.sleep(100);
+            assertEquals(last, renderer.frame().publicationNanos());
+            assertTrue(
+                    java.util.Arrays.equals(
+                            pixels, frames.getFirst().image().getRGB(0, 0, 96, 64, null, 0, 96)));
+        }
+    }
+
+    @Test
     void liveCombatPublishesAndWritesScopePreview() throws Exception {
         var navigation = new GameNavigation();
         navigation.fixedResolution(320, 200);

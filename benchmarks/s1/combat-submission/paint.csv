@@ -1,0 +1,7 @@
+round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent
+0,air-divisor-1-timer,41.000,26.602,33.885,15.652,38.641,38.724,82.787
+0,air-divisor-1-immediate,59.333,17.091,20.530,14.131,21.940,22.017,58.757
+1,air-divisor-1-immediate,57.333,17.213,24.655,15.604,33.077,33.551,60.819
+1,air-divisor-1-timer,40.667,26.347,34.255,14.856,45.750,48.760,80.992
+2,air-divisor-1-timer,36.000,28.930,46.478,16.626,56.968,60.044,85.981
+2,air-divisor-1-immediate,56.667,17.017,26.385,12.900,40.653,45.082,57.396

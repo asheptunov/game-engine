@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "2f32743",
+  "device": "NVIDIA GeForce RTX 3080 12GB",
+  "java": "23.0.1",
+  "driver": "616.92 from preceding hardware inventory; not reprobed",
+  "scene": "AdventureWorld ruins with enableShooter, animated enemies and rifle; no firing",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "paintSurface": [
+    3840,
+    2160
+  ],
+  "depth": 8,
+  "seed": 1,
+  "samplesPerBatch": 1,
+  "atmosphere": "clearAir, Full, fixed hour 9",
+  "fog": false,
+  "aperture": 0,
+  "warmupSeconds": 2,
+  "routeSeconds": 3,
+  "pairs": 3,
+  "order": [
+    "timer/immediate",
+    "immediate/timer",
+    "timer/immediate"
+  ],
+  "baseline": "game.timerCombatSubmission=true: request before acquire, next combat state waits for periodic update",
+  "candidate": "default: collect fresh combat image before requesting another pass; release lease then coalesce next owner update",
+  "cameraRoute": "Start eye (10.879049,2.7514815,22.884184), yaw1.251,pitch0.079. During t=0..3 seconds: x+=sin(t)*0.5,z+=t*0.2,yaw+=sin(t*0.7)*0.1. Driver samples every approximately5ms.",
+  "counter": "completed-images.csv counts copied renderer publications; paint.csv counts unique frames after GamePanel.paint on Swing event thread",
+  "limitations": [
+    "Offscreen painting; no native-window submission or scanout",
+    "No physical input",
+    "Animated scene state follows elapsed time, not frame-locked replay",
+    "No guaranteed 60 FPS floor or 120 FPS result"
+  ],
+  "rejectedExperiment": "rejected-wakeup-only.csv records an earlier candidate that queued a next tick but still requested an old-frame pass before acquisition; it regressed throughput and was replaced",
+  "commands": {
+    "build": "./gpu-build.ps1",
+    "compile": "javac --enable-preview --release 23 -cp \"out/gpu/classes;out/game/classes;out/gpu/lib/*\" -d out/gpu/classes tools/gpu/RuinsAtmosphereBenchmark.java tools/gpu/PresentationBenchmark.java",
+    "completed": "java --enable-preview -Djava.awt.headless=true -cp \"out/gpu/classes;out/game/classes;out/gpu/lib/*\" game.RuinsAtmosphereBenchmark submission",
+    "paint": "java --enable-preview -Djava.awt.headless=true -cp \"out/gpu/classes;out/game/classes;out/gpu/lib/*\" game.PresentationBenchmark submission"
+  },
+  "sourceSha256": {
+    "src\\game\\GameRenderer.java": "d33b1a02f37628995fe7f6da4fc487a05699314a7ac28e473d50564b4496cdd6",
+    "src\\game\\GamePanel.java": "09337e1c12a46dbfa748e65a3275bef88bfce1a6e57cf8f1595f1a2a19250f34",
+    "src\\gpu\\GpuRenderSession.java": "b13c02eec96be52556e0b1b45dac960f743b97ea7517d249c59802d56465a5d6",
+    "tst\\game\\ShooterGameTest.java": "512dae33b41f456762e258236b575e83ea7238dacec52830c2a34ba1a4a2a808",
+    "tools\\gpu\\RuinsAtmosphereBenchmark.java": "897580686051f92775b35a1cdfdfdd1d601417abf462bd5b40f1aad29e162f33",
+    "tools\\gpu\\PresentationBenchmark.java": "f478d1aa9af0f9faf198b90729c85b532ed3ef372450048176dbd78beae0cba3"
+  }
+}

@@ -464,6 +464,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 | Authorized; lower internal resolutions accepted for the player's 4K display; implementation pending |
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 | S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
+| S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -797,6 +798,81 @@ little additional end-to-end speed in this workload. S1.2 and remaining S1.4 pro
 
 Raw measurements, exact fixture source, quality results and verification logs are retained in
 [ruins atmosphere evidence](benchmarks/s1/ruins-atmosphere/metadata.json).
+
+**Larger optimizations - agreed sequence (October 28).** The player reports a slight
+improvement with reduced atmosphere resolution, but the target remains unmet. Continue with
+quality-preserving work first. Keep these priorities in this specification rather than relying
+on conversation history. S1.4b is delivered below; S1.2 is the next implementation priority,
+while native-window evaluation of S1.4b remains open.
+
+1. S1.4b removed unnecessary combat-frame submission delays and redundant old-frame work.
+   Completed-image and fresh-paint measurements at unchanged quality are recorded below.
+2. S1.2: keep normal display images on the GPU through window presentation. Replace the
+   GPU-to-CPU image download and Swing image scaling with direct GPU presentation while
+   retaining settings, overlays, input and F8/F9 capture. On-demand captures may still read
+   pixels back to the CPU. Existing S1.2 ownership and lifecycle acceptance conditions apply.
+3. Remaining S1.4: reduce moving-object update costs. `GpuScene.updateInstances` currently
+   builds a replacement top-level acceleration structure, which locates instances for ray
+   intersection, when enemies or the camera-attached rifle move. Static mesh structures are
+   already cached. Investigate updating the top-level structure in place and reusing storage;
+   measure preparation and frame-time tails before retaining a change. Preserve moving
+   objects, shadows, glass, stable identities and addition/removal behavior.
+4. S1.3: add a selectable GPU frame-budget mode that reduces the entire internal tracing
+   grid under load and reconstructs the output. This is separate from the atmosphere grid.
+   Preserve a fixed-resolution mode and evaluate fine detail, motion artifacts and recovery
+   to stationary quality. It remains opt-in; no 120 FPS guarantee is inferred from fewer pixels.
+
+Re-measure after each delivery. These are ordered priorities, not predicted multipliers;
+large remaining bottlenecks may justify revisiting the order with new evidence. Combat's
+physical scope still requires depth 8 or higher; reducing it globally is not an accepted shortcut.
+
+**S1.4b - Submit the next coherent combat frame promptly.** `GameRenderer` previously
+requested another pass before acquiring a completed image. During combat, that could start
+work for the old camera/weapon state. After publication, the next coherent state could then
+wait for the periodic 16 ms update. The new path first collects a fresh completed combat
+image, then releases its lease and queues one coalesced owner-thread update to capture and
+submit the next state. When no fresh image exists, it requests work normally. A converged
+image cannot recursively trigger more wakeups. The periodic timer remains for input and
+idle updates; non-combat scheduling stays unchanged.
+
+This is enabled by default and changes no resolution, atmosphere quality, path depth or
+sample target. Camera-attached weapon geometry stays paired with its captured camera.
+Do not publish partially copied or stale edited frames, retain a released image lease, or
+build a queue of historical camera states. Suspend, finite targets, errors and close must
+remain bounded. `-Dgame.timerCombatSubmission=true` retains the previous ordering and
+cadence for benchmark comparison; it is not a player quality setting.
+
+User test: launch `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080`, enable
+atmosphere at Full, and repeat movement through the ruins. Inspect the fresh-paint counter,
+weapon alignment while turning, aiming through the scope, firing, and moving enemies.
+Stop to check stationary refinement, open settings, switch focus away and back, then close.
+The game should update more promptly without new visual changes or stuck rendering.
+Native-window smoothness and final 60/120 FPS acceptance remain human checks.
+
+S1.4b measurements use the same 1080p AdventureWorld ruins route with combat enabled,
+depth 8, one sample per batch, clear atmosphere at Full, no local fog and a fixed 09:00 clock.
+Each mode warms for two seconds and moves for three seconds, with three alternating pairs.
+Completed images rose from 40.0-42.0/s to 63.3-64.7/s. Their p95 intervals fell from
+29.4-32.4 ms to 17.5-17.8 ms; deadline misses above 16.67 ms fell from 71-74% to 15-20%.
+Worst completed-image intervals remained 19-36 ms with the new path, versus 37-48 ms before.
+Median GPU-job host time remained roughly 13-14 ms, consistent with removing scheduling
+and redundant-pass overhead rather than changing the image calculation.
+
+With actual GamePanel painting into a 3840x2160 offscreen image, fresh paints rose from
+36.0-41.0/s to 56.7-59.3/s, approximately 41% using the median rate across three runs.
+Paint p95 intervals improved from 33.9-46.5 ms to 20.5-26.4 ms. However, 57-61% of paint
+intervals still exceeded 16.67 ms, with worst intervals 22-45 ms. These runs exclude native
+window submission, physical input and scanout; they do not establish a 60 FPS minimum.
+The earlier wakeup-only experiment regressed completed-image throughput because it retained
+the old request-before-acquire ordering. That candidate was rejected; its measurements are
+retained alongside the final paired results for context.
+
+The focused combat regression checks six successive camera/weapon snapshots, suspension,
+resumption, exact finite sample-target completion, idle publication stability and preservation
+of an earlier copied image. The game gate covers scope and shooting behavior; GPU checks
+cover image ownership, resizing, captured state and failures. Source fingerprints, commands,
+raw measurements and passed checks are in the
+[combat submission evidence](benchmarks/s1/combat-submission/metadata.json).
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain

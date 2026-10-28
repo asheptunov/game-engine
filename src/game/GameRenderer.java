@@ -223,6 +223,8 @@ public final class GameRenderer implements AutoCloseable {
 
     private engine.RenderView combatView;
     private boolean combatFrameComplete = true;
+    // Retain the former cadence only for matched benchmark comparisons.
+    private final boolean timerCombatSubmission = Boolean.getBoolean("game.timerCombatSubmission");
 
     private void publishCombat(engine.Camera camera, float aim) {
         if (shooter == null) {
@@ -449,6 +451,7 @@ public final class GameRenderer implements AutoCloseable {
     private void tick() {
         RenderImage acquired = null;
         Runnable notifyFrame = null;
+        boolean advanceCombat = false;
         try {
             engine.RenderView view;
             engine.WorldSnapshot capturedWorld;
@@ -476,11 +479,8 @@ public final class GameRenderer implements AutoCloseable {
                 if (!Boolean.getBoolean("game.referenceDisplay")) {
                     session.displayExposure(capturedExposure);
                 }
-                session.request();
-                rememberFrameContext();
-                captureDiagnostics(view, session.progress(null), cachedBackendStatus);
-                acquired = session.acquireImage();
-                if (acquired == null || acquired.publicationNanos() == converted) {
+                acquired = acquireOrRequestImage(view);
+                if (acquired == null) {
                     return;
                 }
             }
@@ -491,12 +491,7 @@ public final class GameRenderer implements AutoCloseable {
             var display = imageConverter.apply(acquired, capturedExposure);
             long copied = System.nanoTime();
             synchronized (this) {
-                if (closed
-                        || suspended
-                        || !navigation.active()
-                        || world != capturedWorld
-                        || settings != capturedSettings
-                        || exposure != capturedExposure) {
+                if (!canPublish(capturedWorld, capturedSettings, capturedExposure)) {
                     return;
                 }
                 var metrics =
@@ -525,6 +520,7 @@ public final class GameRenderer implements AutoCloseable {
                 converted = acquired.publicationNanos();
                 publishClock(copied);
                 combatFrameComplete = true;
+                advanceCombat = shooter != null && !timerCombatSubmission;
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }
@@ -536,10 +532,53 @@ public final class GameRenderer implements AutoCloseable {
         } catch (Throwable failure) {
             failed(asFailure(backend, "presentation/execution", failure));
         } finally {
-            if (acquired != null) {
-                acquired.close();
-            }
+            releaseAndAdvanceCombat(acquired, advanceCombat);
         }
+    }
+
+    private void releaseAndAdvanceCombat(RenderImage acquired, boolean advanceCombat) {
+        if (acquired != null) {
+            acquired.close();
+        }
+        // Release this image before capturing/submitting the next coherent combat frame.
+        // One coalesced owner task avoids recursion and a queue of stale camera states.
+        if (advanceCombat && fatal.get() == null) {
+            imageAvailable();
+        }
+    }
+
+    /** Called under the controls monitor after conversion to reject edits made during copying. */
+    private boolean canPublish(
+            engine.WorldSnapshot capturedWorld,
+            RenderSettings capturedSettings,
+            float capturedExposure) {
+        return !closed
+                && !suspended
+                && navigation.active()
+                && world == capturedWorld
+                && settings == capturedSettings
+                && exposure == capturedExposure;
+    }
+
+    /** Return a fresh owned lease, or request work without resubmitting a completed combat view. */
+    private RenderImage acquireOrRequestImage(engine.RenderView view) {
+        boolean advanceOnPublication = shooter != null && !timerCombatSubmission;
+        if (!advanceOnPublication) {
+            session.request();
+        }
+        rememberFrameContext();
+        captureDiagnostics(view, session.progress(null), cachedBackendStatus);
+        var image = session.acquireImage();
+        if (image != null && image.publicationNanos() != converted) {
+            return image;
+        }
+        if (image != null) {
+            image.close();
+        }
+        if (advanceOnPublication) {
+            session.request();
+        }
+        return null;
     }
 
     private FrameContext contextFor(long generation, float capturedExposure) {

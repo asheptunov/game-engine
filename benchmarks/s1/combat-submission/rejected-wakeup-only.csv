@@ -1,0 +1,7 @@
+round,atmosphere,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs,p99IntervalMs,over16msPercent,medianCopyMs,p95CopyMs,medianTraceHostMs,maxIntervalMs
+0,divisor-1-timer,40.667,27.109,31.698,20.273,38.054,71.901,1.787,3.239,14.155,42.829
+0,divisor-1-immediate,37.333,26.555,28.965,17.844,30.790,100.000,1.365,1.912,13.605,32.772
+1,divisor-1-immediate,37.333,26.528,28.875,17.473,36.154,100.000,1.309,1.861,13.392,41.557
+1,divisor-1-timer,43.667,26.309,29.759,18.566,37.531,66.923,1.422,2.169,13.265,49.286
+2,divisor-1-timer,42.667,26.339,30.716,18.126,35.932,69.291,1.499,2.295,13.732,51.153
+2,divisor-1-immediate,36.667,26.679,29.900,17.807,49.744,100.000,1.289,2.151,13.305,50.066
