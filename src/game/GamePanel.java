@@ -147,7 +147,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private void pressMouse(MouseEvent event) {
         if (navigation.captured() && renderer.shooter() != null) {
             if (event.getButton() == MouseEvent.BUTTON1) {
-                renderer.shooter().fire(navigation.view().camera(), navigation.scoped());
+                renderer.shooter().fire(navigation.view().camera(), navigation.aimAmount());
             } else if (event.getButton() == MouseEvent.BUTTON3) {
                 navigation.scoped(true);
             }
@@ -424,7 +424,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         if (!navigation.captured()) {
             drawLighting(draw);
         }
-        if (navigation.captured() && !navigation.scoped()) {
+        if (navigation.captured() && navigation.aimAmount() < .5f) {
             draw.drawLine(getWidth() / 2 - 5, getHeight() / 2, getWidth() / 2 + 5, getHeight() / 2);
             draw.drawLine(getWidth() / 2, getHeight() / 2 - 5, getWidth() / 2, getHeight() / 2 + 5);
         }

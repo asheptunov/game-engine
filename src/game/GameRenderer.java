@@ -221,7 +221,7 @@ public final class GameRenderer implements AutoCloseable {
     private engine.RenderView combatView;
     private boolean combatFrameComplete = true;
 
-    private void publishCombat(engine.Camera camera, boolean scoped) {
+    private void publishCombat(engine.Camera camera, float aim) {
         if (shooter == null) {
             return;
         }
@@ -235,7 +235,7 @@ public final class GameRenderer implements AutoCloseable {
                                                                 .startsWith("player/rifle/"))
                                 .toList());
         instances.addAll(shooter.instances());
-        instances.addAll(RifleMesh.firstPerson(camera, shooter.status().cooldown(), scoped));
+        instances.addAll(RifleMesh.firstPerson(camera, shooter.status().cooldown(), aim));
         if (!instances.equals(world.instances())) {
             world =
                     new engine.WorldSnapshot(
@@ -368,6 +368,8 @@ public final class GameRenderer implements AutoCloseable {
                         var combat = shooter;
                         if (combat == null || combat.alive()) {
                             navigation.advance((now - previousTick[0]) / 1e9);
+                        } else {
+                            navigation.advanceAim((now - previousTick[0]) / 1e9);
                         }
                         if (combat != null) {
                             combat.advance(
@@ -432,7 +434,7 @@ public final class GameRenderer implements AutoCloseable {
             var previousView = combatView;
             synchronized (navigation) {
                 combatView = navigation.view();
-                publishCombat(combatView.camera(), navigation.scoped());
+                publishCombat(combatView.camera(), navigation.aimAmount());
             }
             // An unchanged, converged request may produce no new publication.
             combatFrameComplete = world == previousWorld && combatView.equals(previousView);

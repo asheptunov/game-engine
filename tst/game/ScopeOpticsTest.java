@@ -33,6 +33,56 @@ public final class ScopeOpticsTest {
     }
 
     @Test
+    void aimingAnimatesReversesAndReturnsWithoutSticking() {
+        var navigation = new GameNavigation();
+        navigation.capture();
+        navigation.scoped(true);
+        assertEquals(0f, navigation.aimAmount());
+        navigation.advance(.1);
+        float partial = navigation.aimAmount();
+        assertTrue(partial > 0 && partial < 1);
+        var camera = navigation.view().camera();
+        var pose = RifleMesh.firstPersonPose(camera, partial);
+        var hip = RifleMesh.firstPersonPose(camera, 0f);
+        var sight = RifleMesh.firstPersonPose(camera, 1f);
+        assertTrue(pose.position.sub(hip.position).length() > .01f);
+        assertTrue(pose.position.sub(sight.position).length() > .01f);
+        navigation.scoped(false);
+        assertEquals(partial, navigation.aimAmount());
+        navigation.advance(.15);
+        assertTrue(navigation.aimAmount() < partial);
+        navigation.scoped(true);
+        for (int i = 0; i < 8; i++) {
+            navigation.advance(.125);
+        }
+        assertEquals(1f, navigation.aimAmount());
+        navigation.scoped(false);
+        for (int i = 0; i < 8; i++) {
+            navigation.advance(.125);
+        }
+        assertEquals(0f, navigation.aimAmount());
+        navigation.scoped(true);
+        navigation.advance(.1);
+        navigation.active(false);
+        assertEquals(0f, navigation.aimAmount());
+        assertTrue(!navigation.scoped());
+    }
+
+    @Test
+    void aimSpringUsesElapsedTimeAndScopesCloser() {
+        var whole = new AimMotion();
+        var split = new AimMotion();
+        whole.advance(.2, true);
+        for (int i = 0; i < 20; i++) {
+            split.advance(.01, true);
+        }
+        assertTrue(Math.abs(whole.amount() - split.amount()) < .00001);
+        whole.advance(Double.NaN, false);
+        assertEquals(split.amount(), whole.amount());
+        assertTrue(ScopeMesh.EYE_RELIEF < .08f);
+    }
+
+    @Test
     void lensesBendRaysAndMagnifyWithoutCameraZoom() {
         var parts =
                 ScopeMesh.instances("scope/", Transform.IDENTITY).stream()
@@ -91,6 +141,9 @@ public final class ScopeOpticsTest {
         navigation.pose(new Vec3(0, 1.7f, 0), 0, 0);
         navigation.capture();
         navigation.scoped(true);
+        for (int i = 0; i < 8; i++) {
+            navigation.advance(.125);
+        }
         var camera = navigation.view().camera();
         var parts = new ArrayList<>(RifleMesh.firstPerson(camera, 0, true));
         for (int i = -12; i <= 12; i++) {

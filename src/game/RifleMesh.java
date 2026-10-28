@@ -56,25 +56,20 @@ final class RifleMesh {
     }
 
     static Transform firstPersonPose(engine.Camera camera, boolean scoped) {
+        return firstPersonPose(camera, scoped ? 1f : 0f);
+    }
+
+    static Transform firstPersonPose(engine.Camera camera, float aim) {
+        aim = Math.clamp(aim, 0, 1);
         var forward = camera.forward();
         float yaw = (float) Math.toDegrees(Math.atan2(forward.x(), forward.z()));
         float pitch = (float) -Math.toDegrees(Math.asin(Math.clamp(forward.y(), -1, 1)));
         var cameraPose = new Transform(camera.eye(), new Vec3(pitch, yaw, 0), new Vec3(1, 1, 1));
-        if (scoped) {
-            return Transform.compose(
-                    cameraPose,
-                    new Transform(
-                            new Vec3(
-                                    0,
-                                    -ScopeMesh.AXIS_Y,
-                                    -ScopeMesh.EYEPIECE_Z + ScopeMesh.EYE_RELIEF),
-                            Vec3.ZERO,
-                            new Vec3(1, 1, 1)));
-        }
-        return Transform.compose(
-                cameraPose,
-                new Transform(
-                        new Vec3(.24f, -.245f, .85f), new Vec3(0, -10, -3), new Vec3(1, 1, 1)));
+        var hip = new Vec3(.24f, -.245f, .85f);
+        var sight = new Vec3(0, -ScopeMesh.AXIS_Y, -ScopeMesh.EYEPIECE_Z + ScopeMesh.EYE_RELIEF);
+        var position = hip.add(sight.sub(hip).scale(aim));
+        var rotation = new Vec3(0, -10 * (1 - aim), -3 * (1 - aim));
+        return Transform.compose(cameraPose, new Transform(position, rotation, new Vec3(1, 1, 1)));
     }
 
     static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown) {
@@ -82,15 +77,19 @@ final class RifleMesh {
     }
 
     static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown, boolean scoped) {
-        return instances(
-                "player/rifle/",
-                firstPersonPose(camera, scoped),
-                cooldown,
-                scoped ? camera.focus() : 25);
+        return firstPerson(camera, cooldown, scoped ? 1f : 0f);
     }
 
-    static Vec3 muzzle(engine.Camera camera, boolean scoped) {
-        return firstPersonPose(camera, scoped).point(new Vec3(0, .018f, .687f));
+    static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown, float aim) {
+        return instances(
+                "player/rifle/",
+                firstPersonPose(camera, aim),
+                cooldown,
+                aim > 0 ? camera.focus() : 25);
+    }
+
+    static Vec3 muzzle(engine.Camera camera, float aim) {
+        return firstPersonPose(camera, aim).point(new Vec3(0, .018f, .687f));
     }
 
     private static List<SceneInstance> build() {

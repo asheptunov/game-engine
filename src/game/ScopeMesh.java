@@ -14,7 +14,7 @@ import java.util.List;
 final class ScopeMesh {
     static final float EYEPIECE_Z = -.10f;
     static final float OBJECTIVE_Z = .270762f;
-    static final float EYE_RELIEF = .092537f;
+    static final float EYE_RELIEF = .072537f;
     static final float AXIS_Y = .115f;
     private static final int SIDES = 128;
     private static final int RINGS = 64;

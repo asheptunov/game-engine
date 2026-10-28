@@ -158,6 +158,12 @@ public final class GameNavigation {
     private float focus = 5;
     private boolean autofocus;
     private boolean scoped;
+    private final AimMotion aimMotion = new AimMotion();
+
+    public synchronized float aimAmount() {
+        return aimMotion.amount();
+    }
+
     private float scopeFocus = 25;
 
     public synchronized void scoped(boolean value) {
@@ -199,6 +205,7 @@ public final class GameNavigation {
 
     public synchronized void release() {
         scoped = false;
+        aimMotion.reset();
         captured = false;
         held.clear();
         jumpPending = false;
@@ -244,6 +251,8 @@ public final class GameNavigation {
     }
 
     public synchronized void reset() {
+        scoped = false;
+        aimMotion.reset();
         focusRevision++;
         position = SPAWN;
         character.teleport(position);
@@ -277,14 +286,21 @@ public final class GameNavigation {
     /** Positive screen X turns right; positive screen Y looks down. */
     public synchronized void look(int dx, int dy) {
         if (captured) {
-            double effectiveSensitivity = sensitivity * (scoped ? .25 : 1);
+            double effectiveSensitivity = sensitivity * (1 - .75 * aimMotion.amount());
             yaw = Math.IEEEremainder(yaw + dx * effectiveSensitivity, Math.PI * 2);
             pitch = Math.clamp(pitch - dy * effectiveSensitivity, -PITCH_LIMIT, PITCH_LIMIT);
         }
     }
 
     /** Seconds of elapsed wall time, capped after a stall to avoid a large teleport. */
+    synchronized void advanceAim(double seconds) {
+        if (active && captured) {
+            aimMotion.advance(seconds, scoped);
+        }
+    }
+
     public synchronized void advance(double seconds) {
+        advanceAim(seconds);
         if (recording == null) {
             advanceMotion(seconds);
             return;
@@ -480,8 +496,8 @@ public final class GameNavigation {
         var origin = position.add(forward).sub(horizontal.scale(.5f)).sub(vertical.scale(.5f));
         var camera =
                 new Camera(position, new Rect(origin, horizontal, vertical))
-                        .withFocus(scoped ? scopeFocus : focus)
-                        .withAperture(scoped ? 0 : aperture)
+                        .withFocus(focus + (scopeFocus - focus) * aimMotion.amount())
+                        .withAperture(aperture * (1 - aimMotion.amount()))
                         .validated();
         int traceWidth = Math.clamp(Math.round(200 * aspect), 64, 1600);
         int traceHeight = Math.clamp(Math.round(traceWidth / aspect), 64, 1600);

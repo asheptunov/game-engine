@@ -130,6 +130,9 @@ public final class ShooterGameTest {
         var before = navigation.view().camera();
         navigation.capture();
         navigation.scoped(true);
+        for (int i = 0; i < 8; i++) {
+            navigation.advance(.125);
+        }
         var scoped = navigation.view().camera();
         assertEquals(0f, scoped.aperture());
         assertTrue(
