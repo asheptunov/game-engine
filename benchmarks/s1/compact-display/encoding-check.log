@@ -1,0 +1,6 @@
+PASS exact shader encoding exposure=0.0 pixels=131072
+PASS exact shader encoding exposure=0.125 pixels=131072
+PASS exact shader encoding exposure=1.0 pixels=131072
+PASS exact shader encoding exposure=4.0 pixels=131072
+PASS exact shader encoding exposure=100.0 pixels=131072
+PASS exact shader encoding exposure=3.4028235E38 pixels=131072

@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-28",
+  "baseCommit": "a12e90a",
+  "gpu": "NVIDIA GeForce RTX 3080 12GB",
+  "java": "23.0.1",
+  "workload": "BlockWorld.landscape, fixed 1920x1080, depth 2, one sample per batch; same elapsed-time sinusoidal camera route",
+  "warmupSecondsPerRenderer": 2,
+  "measuredSecondsPerRenderer": 3,
+  "pairs": 3,
+  "order": "alternating; each preceding owner drained before next renderer",
+  "excluded": "native window painting, actual input delivery, monitor scanout; no concurrent benchmark/test command during route run",
+  "comparison": "GPU packed readback versus prior parallel CPU conversion, both via GameRenderer; JVM game.referenceDisplay selects reference",
+  "evidence": "route.csv is headless copied-image completion, not displayed FPS",
+  "sourceSha256": {
+    "assets\\gpu\\display.comp": "cd3ba3166d3cbf74b323d8d6efa74a0a62f9bcee5aa8c271d10ca31c0ed89370",
+    "src\\gpu\\GpuKernel.java": "7a448f788f6735c57beddedb6167ce41e875d798ae07e7d7ccfc4a07ce2c64b9",
+    "src\\gpu\\GpuDisplay.java": "d6c717ede88c5c60cf9385d9fd8e67af52ef6c223d37e563f37e6ca0f110e092",
+    "src\\gpu\\GpuRenderSession.java": "b13c02eec96be52556e0b1b45dac960f743b97ea7517d249c59802d56465a5d6",
+    "tools\\gpu\\CompactDisplayBenchmark.java": "eddc071c33bbf97315f56444c8d41764406112ef34d15cf21a5e05386b6a26c3"
+  }
+}

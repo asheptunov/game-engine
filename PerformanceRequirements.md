@@ -459,6 +459,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Authorized October 27; pending implementation and verification |
 | S1.1a | Explore the existing GPU game with less image-conversion overhead at identical quality | Existing GPU backend | Implemented; verification results below; human acceptance pending |
 | S1.1b | Choose a standard internal render resolution or retain custom dimensions in game settings | Existing settings panel | Implemented; settings tests and game gate passed; human acceptance pending |
+| S1.1c | Play at 1080p with GPU color conversion and one-quarter-sized routine readback | S1.1a and S1.1b | Implemented; real-device, capture, game and completion gates passed; human acceptance pending |
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 | Authorized; lower internal resolutions accepted for the player's 4K display; implementation pending |
 | S1.4 | Play combat and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 
@@ -564,6 +565,60 @@ Compile `tools/gpu/DisplayRouteBenchmark.java` alongside `DisplayCopyCheck.java`
 The [GPU checks](benchmarks/s1/high-resolution/gpu-check.log),
 [completion gate](benchmarks/s1/high-resolution/verify.log), and
 [game checks](benchmarks/s1/high-resolution/game-check.log) retain the automated outcomes.
+
+**S1.1c — Faster 1080p image delivery (October 28).** The normal GPU game path now
+applies exposure, Reinhard tone mapping and the existing sRGB lookup on the GPU. It reads
+back packed display pixels: four bytes per pixel plus a four-byte fog counter, versus the
+previous sixteen bytes per pixel. The existing Swing window receives the same top-down
+RGB bytes. This is a usable intermediate delivery, not completion of S1.2: packed images
+still cross to the CPU, and the 16 ms Swing repaint timer remains.
+
+Three bounded publication slots retain raw RGB snapshots on the device until requested
+by a raw-pixel reader or needed to recolor an already completed image after an exposure edit.
+Reads run on the GPU owner, never the input thread. A held image remains stable across newer
+frames and resolution changes; normal session shutdown preserves raw data for outstanding
+leases before retiring the device. Exposure edits retain accumulation. F8 snapshots and F9
+history exports still save the displayed image and replay information through the existing
+capture system. CPU launches retain their prior path. The renderer's diagnostics identify
+`display GPU packed`; the JVM property `-Dgame.referenceDisplay=true` selects the prior
+parallel CPU conversion for comparisons.
+
+User test: launch `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080` from
+the repository root, move and turn, then use Escape to change exposure and select 720p and
+1080p. Stop to refine, save F8 and F9 captures, switch focus away/back, and close. Colors,
+orientation, camera framing, captures and controls must remain intact. The faster path is
+automatic for GPU launches; no settings switch is needed. Human smoothness acceptance,
+combat/fog performance and the final 60/120 FPS targets remain open.
+
+The [paired 1080p route](benchmarks/s1/compact-display/route.csv) uses the same landscape
+camera path as S1.1a: depth 2, one sample per batch, two seconds of warmup and three seconds
+of measured movement per renderer, with three alternating pairs. The previous GPU owner
+retires before the next renderer starts. GPU-packed/CPU-parallel rates were 128.3/41.3,
+132.3/36.7 and 136.7/40.7 completed CPU images per second. Median image-copy cost fell from
+6.03–7.69 ms to 1.35–1.53 ms. The new path's p95 intervals were 17.79–18.27 ms, versus
+36.72–41.60 ms before; 10.2–14.4% of its intervals still exceeded 16.67 ms. These short,
+headless measurements show a repeatable delivery improvement, not 120 displayed FPS or a
+60 FPS floor. They exclude Swing painting, physical input delivery and monitor scanout.
+[Settings and source hashes](benchmarks/s1/compact-display/metadata.json) bind the evidence
+to the measured implementation.
+
+Automated checks compare exact displayed bytes, including random float bit patterns,
+NaN/infinities, subnormals and six exposures; check fog reuse counts, held raw and packed
+images, resize, three-slot backpressure and reading retained images after normal close;
+and save/reload both GPU capture kinds. Explicit double arithmetic in the display shader
+preserves CPU rounding and subnormal behavior; transport and raw accumulation are unchanged.
+The [encoding check](benchmarks/s1/compact-display/encoding-check.log),
+[1080p lifecycle/capture check](benchmarks/s1/compact-display/compact-check.log),
+[full GPU gate](benchmarks/s1/compact-display/gpu-check.log),
+[game gate](benchmarks/s1/compact-display/game-check.log), and
+[completion gate](benchmarks/s1/compact-display/verify.log) passed without expanding the
+readability baseline. Native-window behavior remains a human check.
+
+Reproduce after `./gpu-build.ps1` using Java 23 with `--enable-preview`,
+`-Djava.awt.headless=true`, and classpath `out/gpu/classes;out/game/classes;out/gpu/lib/*`.
+Compile `tools/gpu/CompactDisplayBenchmark.java` into `out/gpu/classes` with that classpath,
+then run `game.CompactDisplayBenchmark`; it alternates both presentation paths itself.
+`./gpu-check.ps1` builds and runs the encoding and lifecycle checks automatically.
 
 **S1.2 acceptance extension.** Preserve the user test above and all existing settings,
 input and F8/F9 capture entry points while keeping normal display images on the GPU.

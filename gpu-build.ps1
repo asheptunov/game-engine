@@ -10,12 +10,14 @@ New-Item -ItemType Directory -Force (Join-Path $output 'classes') | Out-Null
 $classPath = (Join-Path $repository 'out/game/classes') + ';' + (Join-Path $output 'lib/*')
 $sources = @((Get-ChildItem (Join-Path $repository 'src/gpu') -Filter *.java).FullName) + (Join-Path $repository 'tools/gpu/CompileShader.java')
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') (@('--enable-preview','--release','23','-cp',$classPath,'-d',(Join-Path $output 'classes')) + $sources) (Join-Path $output 'compile.log') 'GPU compilation failed'
-$shaderSource = Join-Path $repository 'assets/gpu/diffuse.comp'
-$shaderBinary = Join-Path $output 'diffuse.spv'
-$shaderStamp = Join-Path $output 'shader-source.sha256'
-$shaderHash = (Get-FileHash $shaderSource -Algorithm SHA256).Hash
-if (-not (Test-Path $shaderBinary) -or -not (Test-Path $shaderStamp) -or (Get-Content $shaderStamp -Raw).Trim() -ne $shaderHash) {
-Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-cp',((Join-Path $output 'classes') + ';' + $classPath),'gpu.CompileShader',(Join-Path $repository 'assets/gpu/diffuse.comp'),(Join-Path $output 'diffuse.spv')) (Join-Path $output 'shader.log') 'Shader compilation failed'
-    Set-Content $shaderStamp $shaderHash
+foreach ($shader in @('diffuse', 'display')) {
+    $shaderSource = Join-Path $repository "assets/gpu/$shader.comp"
+    $shaderBinary = Join-Path $output "$shader.spv"
+    $shaderStamp = Join-Path $output "$shader-source.sha256"
+    $shaderHash = (Get-FileHash $shaderSource -Algorithm SHA256).Hash
+    if (-not (Test-Path $shaderBinary) -or -not (Test-Path $shaderStamp) -or (Get-Content $shaderStamp -Raw).Trim() -ne $shaderHash) {
+        Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-cp',((Join-Path $output 'classes') + ';' + $classPath),'gpu.CompileShader',$shaderSource,$shaderBinary) (Join-Path $output "$shader-shader.log") 'Shader compilation failed'
+        Set-Content $shaderStamp $shaderHash
+    }
 }
 Write-Output 'GPU build passed.'

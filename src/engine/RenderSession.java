@@ -9,6 +9,9 @@ public interface RenderSession extends AutoCloseable {
 
     void request();
 
+    /** Optional display hint; changes neither raw accumulation nor sample targets. */
+    default void displayExposure(float multiplier) {}
+
     /**
      * Replace the optional completion signal (null detaches). Called on the coordinator outside
      * engine locks after publication. The listener must only enqueue work, must not throw, and must

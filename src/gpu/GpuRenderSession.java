@@ -15,7 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-/** Three bounded host slots and one GPU owner; no Vulkan calls occur on input/display threads. */
+/** Three bounded publication slots and one GPU owner; Vulkan calls stay on that owner. */
 public final class GpuRenderSession implements RenderSession {
     private record Key(
             WorldSnapshot world,
@@ -28,7 +28,10 @@ public final class GpuRenderSession implements RenderSession {
             boolean fogJitter) {}
 
     private static final class Slot {
-        float[] pixels;
+        volatile float[] pixels;
+        int[] packed;
+        float exposure;
+        GpuKernel.Snapshot snapshot;
         int readers;
         boolean writing;
         RenderView view;
@@ -52,6 +55,9 @@ public final class GpuRenderSession implements RenderSession {
     private RenderView view;
     private RenderSettings settings;
     private Key key;
+    private Float displayExposure;
+    private final java.util.concurrent.CompletableFuture<Void> retired =
+            new java.util.concurrent.CompletableFuture<>();
     private long activeGeneration = -1;
     private long generation;
     private long epoch;
@@ -133,6 +139,15 @@ public final class GpuRenderSession implements RenderSession {
     }
 
     @Override
+    public synchronized void displayExposure(float multiplier) {
+        checkOpen();
+        if (!Float.isFinite(multiplier) || multiplier < 0) {
+            throw new IllegalArgumentException("Display exposure must be finite and nonnegative");
+        }
+        displayExposure = multiplier;
+    }
+
+    @Override
     public synchronized void request() {
         checkOpen();
         if (failure != null) {
@@ -158,6 +173,12 @@ public final class GpuRenderSession implements RenderSession {
         }
         var destination = available;
         destination.writing = true;
+        if (displayExposure != null) {
+            destination.exposure = displayExposure;
+            if (destination.snapshot == null) {
+                destination.snapshot = new GpuKernel.Snapshot();
+            }
+        }
         running = true;
         activeGeneration = generation;
         var capturedKey = key;
@@ -193,10 +214,7 @@ public final class GpuRenderSession implements RenderSession {
                 accumulatedSamples = 0;
             }
             var capturedView = capturedKey.view();
-            int length = capturedView.width() * capturedView.height() * 3;
-            if (destination.pixels == null || destination.pixels.length != length) {
-                destination.pixels = new float[length];
-            }
+            prepareDestination(destination, capturedView);
             long target =
                     capturedSettings.sampleTarget() == 0
                             ? 1_000_000_000L
@@ -254,7 +272,7 @@ public final class GpuRenderSession implements RenderSession {
                                         + " build %.2f ms | fog builds %d | fog grid 1/%d requested"
                                         + " 1/%d | fog primary %.2f ms | fog reused %d | lighting"
                                         + " grid %b requested %b | grid build %.2f ms | fog jitter"
-                                        + " %b",
+                                        + " %b | display %s",
                                     kernel.gpu.name,
                                     kernel.executeNanos / 1e6,
                                     kernel.transferNanos / 1e6,
@@ -272,7 +290,8 @@ public final class GpuRenderSession implements RenderSession {
                                     kernel.lightingGrid,
                                     capturedSettings.fogLightingGrid(),
                                     kernel.lightingBuildNanos / 1e6,
-                                    capturedSettings.fogJitter());
+                                    capturedSettings.fogJitter(),
+                                    destination.packed == null ? "CPU RGB" : "GPU packed");
                 } else {
                     cancelled++;
                     accumulatedKey = null;
@@ -289,6 +308,18 @@ public final class GpuRenderSession implements RenderSession {
         }
         if (signal != null) {
             signal.run();
+        }
+    }
+
+    private static void prepareDestination(Slot destination, RenderView capturedView) {
+        int length = capturedView.width() * capturedView.height() * 3;
+        if (destination.snapshot != null) {
+            destination.pixels = null;
+            if (destination.packed == null || destination.packed.length != length / 3) {
+                destination.packed = new int[length / 3];
+            }
+        } else if (destination.pixels == null || destination.pixels.length != length) {
+            destination.pixels = new float[length];
         }
     }
 
@@ -372,7 +403,10 @@ public final class GpuRenderSession implements RenderSession {
                     capturedView,
                     capturedSettings,
                     accumulatedSamples,
-                    destination.pixels);
+                    destination.pixels,
+                    destination.packed,
+                    destination.snapshot,
+                    destination.exposure);
             accumulatedSamples++;
             synchronized (this) {
                 if (closed
@@ -473,14 +507,37 @@ public final class GpuRenderSession implements RenderSession {
         closed = true;
         epoch++;
         listener = null;
-        owner.execute(
-                () -> {
-                    if (kernel != null) {
-                        kernel.close();
-                        kernel = null;
-                    }
-                });
+        owner.execute(this::retire);
         owner.shutdown();
+    }
+
+    private void retire() {
+        try {
+            if (kernel != null) {
+                preserveRetainedRawImages();
+            }
+            retired.complete(null);
+        } catch (Throwable error) {
+            retired.completeExceptionally(error);
+        } finally {
+            if (kernel != null) {
+                kernel.close();
+                kernel = null;
+            }
+        }
+    }
+
+    private void preserveRetainedRawImages() {
+        // Outstanding leases remain readable after normal session shutdown.
+        for (var slot : slots) {
+            boolean retained;
+            synchronized (this) {
+                retained = slot.readers > 0;
+            }
+            if (retained && slot.snapshot != null && slot.pixels == null) {
+                slot.pixels = slot.snapshot.read(kernel.gpu);
+            }
+        }
     }
 
     /** Verification waits outside input/display code for native ownership to retire. */
@@ -491,6 +548,43 @@ public final class GpuRenderSession implements RenderSession {
     private void checkOpen() {
         if (closed) {
             throw new IllegalStateException("GPU session closed");
+        }
+    }
+
+    private float[] raw(Slot slot) {
+        if (slot.pixels != null) {
+            return slot.pixels;
+        }
+        if (failure != null) {
+            throw failure;
+        }
+        var result = new java.util.concurrent.CompletableFuture<float[]>();
+        synchronized (this) {
+            if (!closed) {
+                owner.execute(() -> readRaw(slot, result));
+            } else {
+                retired.whenComplete(
+                        (unused, error) -> {
+                            if (error == null) {
+                                result.complete(slot.pixels);
+                            } else {
+                                result.completeExceptionally(error);
+                            }
+                        });
+            }
+        }
+        return result.join();
+    }
+
+    private void readRaw(Slot slot, java.util.concurrent.CompletableFuture<float[]> result) {
+        try {
+            if (failure != null) {
+                throw failure;
+            }
+            slot.pixels = slot.snapshot.read(kernel.gpu);
+            result.complete(slot.pixels);
+        } catch (Throwable error) {
+            result.completeExceptionally(error);
         }
     }
 
@@ -671,7 +765,7 @@ public final class GpuRenderSession implements RenderSession {
             if (channel < 0 || channel >= 3 || x < 0 || x >= width() || y < 0 || y >= height()) {
                 throw new IndexOutOfBoundsException();
             }
-            return slot.pixels[(y * width() + x) * 3 + channel];
+            return raw(slot)[(y * width() + x) * 3 + channel];
         }
 
         @Override
@@ -698,9 +792,16 @@ public final class GpuRenderSession implements RenderSession {
         @Override
         public void copyDisplayTo(int[] destination, float exposureMultiplier) {
             open();
-            // Internal workers join before this single-owner lease can be released.
+            if (destination.length != slot.view.width() * slot.view.height()) {
+                throw new IllegalArgumentException("Display destination size mismatch");
+            }
+            if (slot.packed != null && exposureMultiplier == slot.exposure) {
+                System.arraycopy(slot.packed, 0, destination, 0, destination.length);
+                return;
+            }
+            // An exposure edit can recolor a converged image without tracing another sample.
             engine.DisplayCopy.interleaved(
-                    slot.pixels,
+                    raw(slot),
                     destination,
                     slot.view.width(),
                     slot.view.height(),

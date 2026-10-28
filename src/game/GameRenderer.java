@@ -467,6 +467,9 @@ public final class GameRenderer implements AutoCloseable {
                 capturedSettings = settings;
                 capturedExposure = exposure;
                 session.update(capturedWorld, view, capturedSettings);
+                if (!Boolean.getBoolean("game.referenceDisplay")) {
+                    session.displayExposure(capturedExposure);
+                }
                 session.request();
                 rememberFrameContext();
                 captureDiagnostics(view, session.progress(null), cachedBackendStatus);

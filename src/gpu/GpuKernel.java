@@ -102,6 +102,7 @@ final class GpuKernel implements AutoCloseable {
     private VulkanDevice.Buffer mean;
     private VulkanDevice.Buffer output;
     private VulkanDevice.Buffer readback;
+    private GpuDisplay display;
     private int width;
     private int height;
     long executeNanos;
@@ -297,10 +298,26 @@ final class GpuKernel implements AutoCloseable {
             RenderSettings settings,
             long sample,
             float[] pixels) {
+        trace(world, view, settings, sample, pixels, null, null, 1);
+    }
+
+    void trace(
+            WorldSnapshot world,
+            RenderView view,
+            RenderSettings settings,
+            long sample,
+            float[] pixels,
+            int[] packed,
+            Snapshot snapshot,
+            float exposure) {
         validate(world, view, settings);
         long start = System.nanoTime();
+        prepareDisplay(view, packed, snapshot);
         boolean changed = prepareScene(world);
         changed |= prepareImages(view);
+        if (packed == null && readback == null) {
+            readback = gpu.buffer(output.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+        }
         var nextFogLayout = engine.FogSunTable.layout(world.sky());
         changed |= preparePrimaryFog(view, settings, nextFogLayout);
         changed |=
@@ -352,6 +369,9 @@ final class GpuKernel implements AutoCloseable {
                             : lightingVariant(fogReconstructPipeline, 3));
             vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
             resolvePrimaryFog();
+            if (packed != null) {
+                display.encode(output, width, height, exposure);
+            }
             gpu.barrier(
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                     VK_ACCESS_SHADER_WRITE_BIT,
@@ -359,7 +379,12 @@ final class GpuKernel implements AutoCloseable {
                     VK_ACCESS_TRANSFER_READ_BIT);
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 1);
             var copy = VkBufferCopy.calloc(1, stack).size(output.size);
-            vkCmdCopyBuffer(gpu.command, output.handle, readback.handle, copy);
+            if (packed == null) {
+                vkCmdCopyBuffer(gpu.command, output.handle, readback.handle, copy);
+            } else {
+                vkCmdCopyBuffer(gpu.command, output.handle, snapshot.source.handle, copy);
+                display.transfer();
+            }
             gpu.barrier(
                     VK_PIPELINE_STAGE_TRANSFER_BIT,
                     VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -380,8 +405,13 @@ final class GpuKernel implements AutoCloseable {
                     "read timestamps");
             recordTimings(rebuildFog, times);
         }
-        fogReusedPixels = 0;
-        for (int i = 0; i < width * height; i++) {
+        readOutput(pixels, packed);
+        hostNanos = System.nanoTime() - start;
+    }
+
+    private void readOutput(float[] pixels, int[] packed) {
+        fogReusedPixels = packed == null ? 0 : display.read(packed);
+        for (int i = 0; packed == null && i < width * height; i++) {
             if (readback.mapped.getFloat(i * 16 + 12) > 0) {
                 fogReusedPixels++;
             }
@@ -389,7 +419,71 @@ final class GpuKernel implements AutoCloseable {
             pixels[i * 3 + 1] = readback.mapped.getFloat(i * 16 + 4);
             pixels[i * 3 + 2] = readback.mapped.getFloat(i * 16 + 8);
         }
-        hostNanos = System.nanoTime() - start;
+    }
+
+    private void prepareDisplay(RenderView view, int[] packed, Snapshot snapshot) {
+        if (packed != null) {
+            if (display == null) {
+                display = new GpuDisplay(gpu);
+            }
+            display.prepare(view.width() * view.height());
+            snapshot.prepare(gpu, view.width() * view.height());
+        }
+    }
+
+    /** Bounded by the session's three publication slots; accesses run on its GPU owner. */
+    static final class Snapshot {
+        private VulkanDevice.Buffer source;
+        private float[] pixels;
+
+        void prepare(VulkanDevice gpu, int count) {
+            pixels = null;
+            if (source == null || source.size != (long) count * 16) {
+                if (source != null) {
+                    source.close();
+                }
+                source =
+                        gpu.buffer(
+                                (long) count * 16,
+                                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                false);
+            }
+        }
+
+        float[] read(VulkanDevice gpu) {
+            if (pixels != null) {
+                return pixels;
+            }
+            int count = (int) (source.size / 16);
+            try (var staging = gpu.buffer(source.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
+                    var stack = MemoryStack.stackPush()) {
+                gpu.begin();
+                gpu.barrier(
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_TRANSFER_READ_BIT);
+                vkCmdCopyBuffer(
+                        gpu.command,
+                        source.handle,
+                        staging.handle,
+                        VkBufferCopy.calloc(1, stack).size(source.size));
+                gpu.barrier(
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_ACCESS_TRANSFER_WRITE_BIT,
+                        VK_PIPELINE_STAGE_HOST_BIT,
+                        VK_ACCESS_HOST_READ_BIT);
+                gpu.submit();
+                var result = new float[count * 3];
+                for (int i = 0; i < count; i++) {
+                    for (int c = 0; c < 3; c++) {
+                        result[i * 3 + c] = staging.mapped.getFloat(i * 16 + c * 4);
+                    }
+                }
+                pixels = result;
+                return result;
+            }
+        }
     }
 
     private boolean prepareScene(WorldSnapshot world) {
@@ -426,7 +520,6 @@ final class GpuKernel implements AutoCloseable {
                             (long) width * height * 16,
                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                             false);
-            readback = gpu.buffer(output.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
             changed = true;
         }
         return changed;
@@ -802,6 +895,10 @@ final class GpuKernel implements AutoCloseable {
             if (scene != null) {
                 scene.close();
             }
+        }
+        if (display != null) {
+            display.close();
+            display = null;
         }
         gpu.close();
     }

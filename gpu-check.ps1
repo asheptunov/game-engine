@@ -22,3 +22,7 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.DisplayCopyCheck','cpu','128') 'out/gpu/display-copy-cpu-check.log' 'CPU image conversion compatibility checks failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.DisplayCopyCheck','gpu','1920','1080','check') 'out/gpu/1080p-gpu-check.log' '1080p GPU rendering and lease checks failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.DisplayCopyCheck','cpu','1920','1080','check') 'out/gpu/1080p-cpu-check.log' '1080p CPU rendering and lease checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/GpuDisplayCheck.java','tools/gpu/CompactDisplayCheck.java') 'out/gpu/compact-compile.log' 'Compact display check compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.GpuDisplayCheck') 'out/gpu/display-encoding-check.log' 'GPU display encoding checks failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.CompactDisplayCheck') 'out/gpu/compact-display-check.log' 'Compact display lifecycle checks failed'

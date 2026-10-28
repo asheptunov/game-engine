@@ -13,6 +13,7 @@ public final class DisplayRouteBenchmark {
     private DisplayRouteBenchmark() {}
 
     public static void main(String[] args) throws Exception {
+        System.setProperty("game.referenceDisplay", "true");
         System.out.println(
                 "round,conversion,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs");
         for (int round = 0; round < 3; round++) {

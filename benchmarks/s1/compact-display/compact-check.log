@@ -1,0 +1,11 @@
+exposure=1.0 differingPixels=0 maxChannelError=0
+exposure=0.0 differingPixels=0 maxChannelError=0
+exposure=0.125 differingPixels=0 maxChannelError=0
+exposure=4.0 differingPixels=0 maxChannelError=0
+exposure=100.0 differingPixels=0 maxChannelError=0
+exposure=0.125 differingPixels=0 maxChannelError=0
+exposure=1.0 differingPixels=0 maxChannelError=0
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-28T05-17-08.294612400Z-4108cd5b-3ab3-426d-a8bf-c11c3ec7fdd9
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-28T05-17-08.740736200Z-24ac34c4-13a9-4608-8ef9-587074a1a276
+PASS GPU packed snapshot/history captures and reload
+PASS compact GPU display 1920x1080: pixels, exposure, raw snapshots, resize, three-slot leases, close

@@ -1,0 +1,7 @@
+round,conversion,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs,p99IntervalMs,over16msPercent,medianCopyMs,p95CopyMs
+0,gpu-packed,128.333,5.212,17.787,19.426,20.031,10.156,1.526,3.023
+0,cpu-parallel,41.333,22.050,36.720,43.470,38.380,94.309,6.034,10.699
+1,cpu-parallel,36.667,26.537,41.601,50.619,48.832,96.330,7.692,11.581
+1,gpu-packed,132.333,5.007,18.267,19.641,20.774,14.394,1.377,2.556
+2,gpu-packed,136.667,4.956,17.988,19.270,19.682,11.247,1.348,2.433
+2,cpu-parallel,40.667,21.523,37.899,45.966,42.010,91.736,6.285,10.852
