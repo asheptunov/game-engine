@@ -735,10 +735,26 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     static BufferedImage copyImage(RenderImage image, float exposure) {
+        int[] owned =
+                Boolean.getBoolean("game.copyDisplayPixels")
+                        ? null
+                        : image.takeDisplayPixels(exposure);
+        if (owned != null) {
+            return wrapDisplayPixels(owned, image.width(), image.height());
+        }
         var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         var pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
         image.presentationPixels().copyDisplayTo(pixels, exposure);
         return result;
+    }
+
+    private static BufferedImage wrapDisplayPixels(int[] pixels, int width, int height) {
+        var color = new java.awt.image.DirectColorModel(24, 0xff0000, 0xff00, 0xff);
+        var data = new DataBufferInt(pixels, pixels.length);
+        var raster =
+                java.awt.image.Raster.createPackedRaster(
+                        data, width, height, width, new int[] {0xff0000, 0xff00, 0xff}, null);
+        return new BufferedImage(color, raster, false, null);
     }
 
     public Frame frame() {

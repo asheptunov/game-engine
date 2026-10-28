@@ -1,0 +1,3 @@
+round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent,minWidth,maxWidth,meanWidth,medianTraceMs,medianCopyMs
+0,budget-120-upscale-false,118.667,8.196,11.426,11.835,15.798,18.525,0.282,480,1200,918.9,3.887,0.016
+0,budget-120-upscale-true,93.667,10.278,14.811,14.357,18.506,21.323,3.214,720,1920,895.9,5.219,0.020

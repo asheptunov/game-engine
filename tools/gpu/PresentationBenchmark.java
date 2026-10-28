@@ -14,9 +14,17 @@ import javax.swing.SwingUtilities;
 /** Real Swing painting to a 4K offscreen surface; excludes native window submission and scanout. */
 public final class PresentationBenchmark {
     public static void main(String[] args) throws Exception {
-        System.out.println("round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent,minWidth,maxWidth,meanWidth");
+        System.out.println("round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent,minWidth,maxWidth,meanWidth,medianTraceMs,medianCopyMs");
         boolean ruins = args.length > 0 && args[0].equals("ruins");
         for (int round = 0; round < 3; round++) {
+            if (java.util.Arrays.asList(args).contains("ownership")) {
+                System.setProperty("game.benchmarkBudget", java.util.Arrays.asList(args).contains("fixed") ? "0" : "120");
+                for (boolean copy : new boolean[]{round % 2 == 0, round % 2 != 0}) {
+                    System.setProperty("game.copyDisplayPixels", Boolean.toString(copy));
+                    measure(round, true, 1, true);
+                }
+                continue;
+            }
             if (java.util.Arrays.asList(args).contains("budget")) {
                 for (int fps : round % 2 == 0 ? new int[]{0,60,120} : new int[]{120,60,0}) {
                     System.setProperty("game.benchmarkBudget", Integer.toString(fps));
@@ -98,12 +106,12 @@ public final class PresentationBenchmark {
                 RepaintManager.setCurrentManager(previous);
             });
             if (collector.intervals.isEmpty()) throw new AssertionError("No fresh paints");
-            System.out.printf(Locale.ROOT, "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.1f%n", round,
-                    System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / 3.,
+            System.out.printf(Locale.ROOT, "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.1f,%.3f,%.3f%n", round,
+                    System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / 3.,
                     quantile(collector.intervals, .5), quantile(collector.intervals, .95),
                     quantile(collector.latencies, .95),quantile(collector.intervals,.99),quantile(collector.intervals,1),
                     100.0*collector.intervals.stream().filter(value->value>16.67).count()/collector.intervals.size(),
-                    collector.minWidth, collector.maxWidth, (double)collector.totalWidth/collector.count);
+                    collector.minWidth, collector.maxWidth, (double)collector.totalWidth/collector.count,quantile(collector.traces,.5),quantile(collector.copies,.5));
         } finally {
             SwingUtilities.invokeAndWait(() -> {
                 collector.stopped = true;
@@ -133,6 +141,7 @@ public final class PresentationBenchmark {
         int count;
         int minWidth = Integer.MAX_VALUE, maxWidth;
         long totalWidth;
+        final ArrayList<Double> traces = new ArrayList<>(), copies = new ArrayList<>();
 
         PaintCollector(GamePanel[] panel) { this.panel = panel; }
 
@@ -163,6 +172,8 @@ public final class PresentationBenchmark {
             minWidth = Math.min(minWidth, shown.width());
             maxWidth = Math.max(maxWidth, shown.width());
             totalWidth += shown.width();
+            traces.add(shown.metrics().traceNanos()/1e6);
+            copies.add(shown.metrics().copyNanos()/1e6);
             latencies.add((now - publication) / 1e6);
         }
     }

@@ -456,13 +456,14 @@ The inventory above is completed investigation. The table distinguishes delivere
 | ID | User can now... | Prerequisite | Status / evidence |
 | --- | --- | --- | --- |
 | S1.1 | Play the textured landscape using an explicitly selected GPU backend and compare it with CPU rendering | Verified hardware/API inventory; scope agreed above | Implemented and automatically verified; [S1.1 results](benchmarks/s1/README.md); native-window human acceptance pending |
-| S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Opt-in Windows implementation available October 28; automated functional checks passed; hidden-window performance regressed, so default promotion and native-window human acceptance remain pending |
+| S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Opt-in Windows implementation available October 28; automated functional checks passed; hidden-window performance regressed; player also reports native presentation substantially slower; keep Swing default, other native-window QA pending |
 | S1.1a | Explore the existing GPU game with less image-conversion overhead at identical quality | Existing GPU backend | Implemented; verification results below; human acceptance pending |
 | S1.1b | Choose a standard internal render resolution or retain custom dimensions in game settings | Existing settings panel | Implemented; settings tests and game gate passed; human acceptance pending |
 | S1.1c | Play at 1080p with GPU color conversion and one-quarter-sized routine readback | S1.1a and S1.1b | Implemented; real-device, capture, game and completion gates passed; human acceptance pending |
 | S1.1d | See fresh images painted without waiting for the UI timer, and inspect fresh paint rate | S1.1c | Implemented; game, GPU UI and completion checks passed; native-window acceptance pending |
+| S1.1e | Play the GPU game with less CPU display-copy overhead at identical image quality | S1.1c; Swing presentation | Implemented; ownership, GPU, game and completion checks passed; fixed-grid paired measurements improve; human check pending |
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | Existing GPU rendering and presentation | In progress: S1.3a provides adaptive grids with existing spatial scaling; temporal reconstruction remains pending |
-| S1.3a | Select a 60/120 FPS movement budget, then recover the selected resolution when still | S1.1c; S1.4b | Implemented; GPU lifecycle, settings and completion checks passed; offscreen performance improves; human visual acceptance pending |
+| S1.3a | Select a 60/120 FPS movement budget, then recover the selected resolution when still | S1.1c; S1.4b | Implemented and automatically verified; player reports substantially smoother movement; detailed quality and minimum-FPS acceptance remain pending |
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 | S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
 | S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
@@ -741,8 +742,9 @@ semantics. The remaining presentation/scheduling cost needs profiling before def
 When available, the player can compare normal launch with `-NativePresentation` in the ruins
 at 1080p with Full atmosphere. Check movement/aiming, Escape settings over the scene, HUD and
 tracers, exposure, resolution changes, Alt-Tab, minimize/restore, F8/F9 and closing while rendering.
-Report fresh rates and visible artifacts separately. No playthrough is required while the player
-is away. The 60 FPS minimum and 120+ goal remain unmet in this stress route. S1.4c below subsequently implements storage reuse for the top-level GPU acceleration
+Report fresh rates and visible artifacts separately. On October 28, the player confirmed that
+native presentation is substantially slower than Swing. Keep it opt-in. The fixed-resolution
+60 FPS minimum and 120+ goal remain unmet in this stress route. S1.4c below subsequently implements storage reuse for the top-level GPU acceleration
 structure when combat objects move; both presentation paths use it.
 
 **S1.1b — Standard render resolutions.** The player uses a 4K monitor and accepts lower
@@ -814,7 +816,9 @@ It uses existing spatial scaling, not temporal reconstruction or a learned upsca
 There is no history to trail or invalidate, but thin geometry and texture detail can disappear
 at low resolutions. Camera-independent object animation alone does not trigger adaptation.
 Temporal reconstruction and its separate history rejection/quality requirements remain
-undelivered S1.3 work. Human evaluation of moving detail and resolution transitions is pending.
+undelivered S1.3 work. On October 28, the player reported that the 120 FPS budget feels
+substantially smoother. Detailed evaluation of moving detail and resolution transitions, and
+verification of minimum FPS, remain pending.
 
 On the RTX 3080 12GB, three alternating runs through ruins combat with Full atmosphere,
 depth 8, one sample per moving frame and a 1920x1080 requested grid measured 58.0–62.3
@@ -834,6 +838,48 @@ and 60 FPS. Stop moving and confirm displayed size returns to 1920x1080 after th
 period and a completed job. Switch to Fixed during movement, pause/resume, change the
 requested resolution and reopen settings. The selected settings must persist, framing must
 stay fixed, and full-resolution stationary refinement must remain available.
+
+**S1.1e - Transfer GPU display-image ownership to Swing (October 28).** The GPU already
+reads packed display pixels into a Java array. Previously, `GameRenderer.copyImage` allocated
+a BufferedImage pixel array and copied the entire readback array into it. It now takes exclusive
+ownership of the packed array and wraps it as the BufferedImage's storage. This removes one
+full-image CPU copy without changing resolution, exposure, raw samples or displayed pixels.
+It does not remove GPU-to-CPU readback, Swing painting, or the allocation of an owned array
+for each fresh image.
+
+`RenderImage.takeDisplayPixels(exposure)` is optional. GPU images transfer only with matching
+cached exposure and exactly one image lease. The session monitor protects the ownership change;
+no pixels are copied under that monitor. The slot detaches the array, so later slot reuse allocates
+another array and cannot overwrite an image retained by Swing or a capture. Other/multiple-lease,
+CPU, native-resident and changed-exposure cases retain the existing copy path. Raw snapshots stay
+independent, including when the caller edits the transferred array. The normal game enables this
+path automatically; `-Dgame.copyDisplayPixels=true` exists only for before/after benchmarks.
+
+Three alternating fixed-1080p ruins/combat/Full-atmosphere comparisons measured median display
+handoff cost of 2.08–2.36 ms with copying versus 0.010–0.025 ms with ownership transfer. Median
+fresh-paint rate across runs rose from 61 to 66 per second, about 8%, at identical quality. The
+first copy run was slower (54.3), so do not treat its larger paired gain as typical. This remains
+a 4K offscreen GamePanel measurement, not monitor FPS; p95 intervals still exceed 16.67 ms.
+120-budget results varied: two pairs improved throughput and mean internal width, one regressed.
+That does not establish a universal adaptive-rate or detail gain. Full results, earlier noisy
+repeats and limitations are in [the display-ownership evidence](benchmarks/s1/display-ownership/README.md).
+
+User test: relaunch the normal GPU game, retaining the 120 FPS budget or comparing Fixed at
+1080p. Movement, image colors, exposure changes and stationary recovery should behave as before.
+Use F8/F9, change resolution and revisit captured images; older images must not acquire newer
+frame contents. Automated ownership checks cover exact bytes, multiple leases, caller mutation,
+20 grid changes, exposure fallback, restart and close. Existing GPU, game and completion gates
+cover normal display, native-resident fallback and capture regressions.
+
+**S1.3 reconstruction investigation outcome (October 28).** A prototype reconstructed each
+smaller GPU frame to the requested 1080p grid with clamped bicubic filtering before readback.
+Its 120-budget fresh-paint rates fell substantially. Even after cheaper conversion and the
+ownership transfer above, one exploratory pair measured 93.7 paints/s with reconstruction
+versus 118.7 without it, at similar mean internal widths. This is insufficient evidence of a
+useful quality/performance tradeoff. The prototype was removed; no upscaling control or shader
+change ships in S1.1e. Spatial and temporal reconstruction remain future work. Further experiments
+must account for output readback and Swing cost as well as shader cost, preserve the accepted
+smoothness, and demonstrate detail benefits against reference images before promotion.
 
 **S1.4a - Optional faster atmosphere in the ruins (October 28).** The player reports
 low-to-mid 30s FPS in the ruins at 1080p with atmosphere enabled, and near-target performance

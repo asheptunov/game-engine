@@ -1,0 +1,8 @@
+{
+  "src/engine/RenderImage.java": "13eabb3a57daa7efcbc307d171d030be4be2e4618acd21c00dedcdf58461fc74",
+  "src/game/GameRenderer.java": "ffb02bef292ee2ee08bb5de82830b7dfa330c257710a0872fa0a7afe2cad963e",
+  "src/gpu/GpuRenderSession.java": "09721da18d4c3e88f483a62d811afe671213511448835376d72a4ab8cc06cc1f",
+  "tools/gpu/DisplayOwnershipCheck.java": "4c339f4cf019a107845d10ef02991373b0a4a5e6208cdd1c40bde1e2102ebf1e",
+  "tools/gpu/PresentationBenchmark.java": "94d62cb2f52fb4f3740529226475bb8089b76a2c8d9fe451004d4bf0f5073a55",
+  "gpu-check.ps1": "3e6767f84fe3bd6a6b6823c1f0de5f717ee3e8e6f01643046e4001c00d84f4ea"
+}

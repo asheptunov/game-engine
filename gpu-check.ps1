@@ -37,3 +37,6 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/GpuAdaptiveCheck.java') 'out/gpu/adaptive-compile.log' 'GPU adaptive check compilation failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.GpuAdaptiveCheck') 'out/gpu/adaptive-check.log' 'GPU adaptive resolution checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/DisplayOwnershipCheck.java') 'out/gpu/ownership-compile.log' 'Display ownership compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.DisplayOwnershipCheck') 'out/gpu/ownership-check.log' 'Display ownership checks failed'

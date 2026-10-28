@@ -797,6 +797,21 @@ public final class GpuRenderSession implements RenderSession {
         }
 
         @Override
+        public int[] takeDisplayPixels(float exposure) {
+            synchronized (GpuRenderSession.this) {
+                open();
+                if (slot.readers != 1 || slot.packed == null || slot.exposure != exposure) {
+                    return null;
+                }
+                // Detach, never lend. Require the sole lease so another reader cannot be copying
+                // this array when ownership changes. Later leases use the immutable raw snapshot.
+                int[] pixels = slot.packed;
+                slot.packed = null;
+                return pixels;
+            }
+        }
+
+        @Override
         public RgbPixels rawPixels() {
             open();
             return this;
