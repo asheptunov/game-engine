@@ -23,7 +23,8 @@ public final class GpuUiCheck {
             SwingUtilities.invokeAndWait(()->{
                 var panel=new GamePanel(navigation,renderer);holder[0]=panel;panel.setSize(960,600);layout(panel);
                 panel.dispatchEvent(new MouseEvent(panel,MouseEvent.MOUSE_PRESSED,System.currentTimeMillis(),0,30,175,1,false,MouseEvent.BUTTON1));
-                if(renderer.adaptive()) throw new AssertionError("GPU adaptive button changed fixed grid");
+                if(!renderer.adaptive()) throw new AssertionError("GPU adaptive button did not enable");
+                renderer.adaptive(false);
                 var before=renderer.lighting();
                 panel.dispatchEvent(new MouseEvent(panel,MouseEvent.MOUSE_PRESSED,System.currentTimeMillis(),0,30,130,1,false,MouseEvent.BUTTON1));
                 if(renderer.lighting().equals(before)) throw new AssertionError("Sun control did not change lighting");
@@ -71,6 +72,18 @@ public final class GpuUiCheck {
                 fog.setSelectedIndex(2);
                 if(renderer.settings().fogDownsample()!=4) throw new AssertionError("Quarter fog control failed");
                 var settingsPanel=(GameSettingsPanel)javax.swing.SwingUtilities.getAncestorOfClass(GameSettingsPanel.class,air);
+                var budget=(javax.swing.JComboBox<?>)find(holder[0],"frameBudget");
+                if(budget==null) throw new AssertionError("Missing frame budget selector");
+                budget.setSelectedIndex(2);
+                if(!renderer.adaptive() || Math.abs(renderer.settings().interactiveMillis()-1000./120)>.001)
+                    throw new AssertionError("120 FPS selection failed");
+                var budgetSettings=renderer.settings();
+                settingsPanel.refresh();
+                if(!renderer.settings().equals(budgetSettings)) throw new AssertionError("Refresh mutated budget");
+                budget.setSelectedIndex(1);
+                if(Math.abs(renderer.settings().interactiveMillis()-1000./60)>.001) throw new AssertionError("60 FPS selection failed");
+                budget.setSelectedIndex(0);
+                if(renderer.adaptive()) throw new AssertionError("Fixed selection failed");
                 settingsPanel.refresh();
                 if(air.getSelectedIndex()!=2) throw new AssertionError("Air/fog selectors did not synchronize");
                 fog.setSelectedIndex(1);

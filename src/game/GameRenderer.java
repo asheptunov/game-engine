@@ -400,7 +400,7 @@ public final class GameRenderer implements AutoCloseable {
         navigation.recording(recording);
         this.backend = backend;
         capabilities = RenderEngine.capabilities(backend);
-        if (!adaptiveSupported() || navigation.fixedResolution()) {
+        if (!adaptiveSupported() || backend.equals("gpu") || navigation.fixedResolution()) {
             settings = settings.withInteractive(false, settings.interactiveMillis(), 0, 0);
         }
         var prepared = source;

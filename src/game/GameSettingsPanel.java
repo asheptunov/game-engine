@@ -202,6 +202,53 @@ public final class GameSettingsPanel extends JPanel {
                 });
     }
 
+    private void frameBudget(JPanel panel) {
+        var selector =
+                new JComboBox<>(
+                        new String[] {"Fixed resolution", "60 FPS", "120 FPS", "Custom budget"});
+        row(panel, "Movement frame budget", selector);
+        selector.setName("frameBudget");
+        panel.add(
+                new JLabel("Lowers detail while moving; restores selected resolution when still."));
+        selector.addActionListener(
+                event ->
+                        apply(
+                                () -> {
+                                    int choice = selector.getSelectedIndex();
+                                    if (choice == 3) {
+                                        return;
+                                    }
+                                    renderer.configure(
+                                            s ->
+                                                    s.withInteractive(
+                                                            choice != 0,
+                                                            choice == 0
+                                                                    ? s.interactiveMillis()
+                                                                    : 1000.
+                                                                            / (choice == 1
+                                                                                    ? 60
+                                                                                    : 120),
+                                                            s.minimumWidth(),
+                                                            s.minimumHeight()));
+                                }));
+        refreshers.add(
+                () -> {
+                    var settings = renderer.settings();
+                    int choice = frameBudgetChoice(settings);
+                    selector.setSelectedIndex(choice);
+                });
+    }
+
+    private static int frameBudgetChoice(engine.RenderSettings settings) {
+        if (!settings.interactive()) {
+            return 0;
+        }
+        if (Math.abs(settings.interactiveMillis() - 1000. / 60) < .001) {
+            return 1;
+        }
+        return Math.abs(settings.interactiveMillis() - 1000. / 120) < .001 ? 2 : 3;
+    }
+
     private JPanel renderControls() {
         var panel = page();
         heading(
@@ -226,6 +273,7 @@ public final class GameSettingsPanel extends JPanel {
         button(panel, "Restart samples", () -> renderer.restart());
         heading(panel, "Image and transport");
         resolutionPresets(panel);
+        frameBudget(panel);
         number(
                 panel,
                 "Width (pixels)",
@@ -815,7 +863,7 @@ public final class GameSettingsPanel extends JPanel {
                                                         s.withSeed(
                                                                 ((Number) seed.getValue())
                                                                         .longValue()))));
-        heading(panel, "CPU scheduling (unavailable on GPU)");
+        heading(panel, "Adaptive resolution (CPU and GPU)");
         var adaptive = support(engine.RenderCapabilities.Feature.ADAPTIVE_RESOLUTION);
         check(panel, "Adaptive resolution", renderer::adaptive, renderer::adaptive, adaptive);
         number(
@@ -884,6 +932,7 @@ public final class GameSettingsPanel extends JPanel {
         if (!adaptive.supported()) {
             automaticMinimum.setToolTipText(adaptive.reason());
         }
+        heading(panel, "CPU scheduling (unavailable on GPU)");
         number(
                 panel,
                 "Workers",

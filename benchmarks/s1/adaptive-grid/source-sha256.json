@@ -1,0 +1,12 @@
+{
+  "src/gpu/GpuResolutionPolicy.java": "be023290c110e26ddb42b5571e0c1bf63d404d0d6ba5ab60764e1cd43c122dd0",
+  "src/gpu/GpuRenderSession.java": "46027c98e9eb2ab1a202e36d213943078eef43e8b614b0a507687f9f3e5f0cc7",
+  "src/engine/RenderCapabilities.java": "ef93ed4f06a88de9a71fb8cede4391bbb93bfa670a4193333250cfd88d7408f0",
+  "src/game/GameRenderer.java": "7c7638d1fd2b9a4ceb5f9b02d1e7fd36594b41d23442a1ee86955d134278b26e",
+  "src/game/GameSettingsPanel.java": "f1b2a6e95d08edd1058dcc348c7c443cbcd3a59fc67d981b2548d3b609242956",
+  "tools/gpu/GpuAdaptiveCheck.java": "8873734cab38766be2aa4ce9bdd186e14edb3a5176aba413456ce61e33284a60",
+  "tools/gpu/PresentationBenchmark.java": "303cc4370c77c4bc4afe514898406cfc5d410475ff3e101423360dd688e90b73",
+  "tools/gpu/GpuUiCheck.java": "63ef055ee70b83368b8a529126dec61673a08aa077900649303dfb132dba43ec",
+  "tst/game/BackendConformance.java": "48fb8e8c8727250366a80d5bb4f1699cc78c632e047db560b77d534ba43424a9",
+  "gpu-check.ps1": "fcc870872371854ffc0ff98b40e16d6a2cf7d15d49b8a77686a7b91b67b91227"
+}

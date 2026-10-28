@@ -107,9 +107,9 @@ public enum RenderCapabilities {
                                     SKY_DISC,
                                     ATMOSPHERE,
                                     LOCAL_FOG,
+                                    ADAPTIVE_RESOLUTION,
                                     DEPTH_OF_FIELD ->
                             null;
-                    case ADAPTIVE_RESOLUTION -> "GPU requires fixed resolution";
                     case TEMPORAL_RECONSTRUCTION, TEMPORAL_BUDGET ->
                             "GPU does not implement temporal reconstruction or budgets";
                     case WORKER_CONTROL, TILE_CONTROL ->

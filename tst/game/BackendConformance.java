@@ -99,8 +99,8 @@ public final class BackendConformance {
                         settings.withPathDepth(9),
                         settings.withAcceleration(false),
                         settings.withTemporal(true, 1),
-                        settings.withTemporalBudget(true, 1, 1),
-                        settings.withInteractive(true, 16, 0, 0));
+                        settings.withTemporalBudget(true, 1, 1));
+        RenderCapabilities.GPU.validate(world, view, settings.withInteractive(true, 16, 0, 0));
         for (var unsupported : invalidSettings) {
             require(
                     !RenderCapabilities.GPU.issues(world, view, unsupported).isEmpty(),

@@ -461,7 +461,8 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1b | Choose a standard internal render resolution or retain custom dimensions in game settings | Existing settings panel | Implemented; settings tests and game gate passed; human acceptance pending |
 | S1.1c | Play at 1080p with GPU color conversion and one-quarter-sized routine readback | S1.1a and S1.1b | Implemented; real-device, capture, game and completion gates passed; human acceptance pending |
 | S1.1d | See fresh images painted without waiting for the UI timer, and inspect fresh paint rate | S1.1c | Implemented; game, GPU UI and completion checks passed; native-window acceptance pending |
-| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 | Authorized; lower internal resolutions accepted for the player's 4K display; implementation pending |
+| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | Existing GPU rendering and presentation | In progress: S1.3a provides adaptive grids with existing spatial scaling; temporal reconstruction remains pending |
+| S1.3a | Select a 60/120 FPS movement budget, then recover the selected resolution when still | S1.1c; S1.4b | Implemented; GPU lifecycle, settings and completion checks passed; offscreen performance improves; human visual acceptance pending |
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 | S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
 | S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
@@ -783,6 +784,57 @@ captures for ghosting, disappearing detail and fog artifacts. This milestone's q
 tradeoff is accepted in principle for the player's 4K display, with visual quality still
 subject to hands-on evaluation.
 
+**S1.3a - GPU movement frame budgets (October 28).** Escape → Render now offers
+Movement frame budget: Fixed resolution, 60 FPS, 120 FPS, and Custom budget. Fixed remains
+the GPU launch default. Selecting 60/120 enables adaptive internal resolution and sets its
+budget; these choices are performance targets, not frame-rate caps or guarantees. The
+selected Render resolution remains the stationary grid and maximum. Advanced retains the
+numeric target and minimum-grid controls for CPU and GPU; Custom budget reflects those
+settings and does not itself change them. CPU's existing adaptive policy remains unchanged.
+
+During camera movement, the GPU session selects a smaller grid only between complete
+frames and caps each moving batch at one sample. It preserves the camera's field of view,
+optics, depth, atmosphere settings and scene contents. Selection uses smoothed capture-to-copy
+cost, reserves 20% of the budget for presentation, and limits normal grid changes to every
+500 ms. Faster grids must produce three fresh inexpensive images before increasing detail.
+The default minimum is one-quarter of each requested dimension, with at least 64 pixels per
+axis. Custom minima preserve aspect ratio, are capped by the requested grid and take effect
+at the next job boundary. These minima bound the quality loss even when the target is missed.
+
+After 350 ms without camera changes, restore the selected stationary resolution at the next
+job boundary. Disabling adaptation also restores it; pausing submits no new work. Suspension,
+mode toggles and requested-grid changes reset adaptation conservatively. Each actual grid
+has separate accumulation: no samples or history are borrowed from another grid. GPU buffers
+remain owned by the render coordinator, and outstanding image leases survive later grid
+changes and close. Requested and displayed internal sizes remain visible in the game overlay;
+the existing presentation path scales the image to the window.
+
+This is a usable first slice of S1.3, independent of promoting native GPU presentation.
+It uses existing spatial scaling, not temporal reconstruction or a learned upscaler.
+There is no history to trail or invalidate, but thin geometry and texture detail can disappear
+at low resolutions. Camera-independent object animation alone does not trigger adaptation.
+Temporal reconstruction and its separate history rejection/quality requirements remain
+undelivered S1.3 work. Human evaluation of moving detail and resolution transitions is pending.
+
+On the RTX 3080 12GB, three alternating runs through ruins combat with Full atmosphere,
+depth 8, one sample per moving frame and a 1920x1080 requested grid measured 58.0–62.3
+fresh paints/s in Fixed mode, 79.0–91.0 with the 60 FPS budget, and 112.0–125.7 with the
+120 FPS budget. The 120 mode used frame-weighted mean widths of about 1016–1055 pixels;
+it trades detail for throughput. Its p95 fresh-paint intervals were 10.4–12.2 ms, but
+individual intervals reached 21.6–33.8 ms. Neither a minimum 60 nor sustained minimum 120
+is established. These measurements include real GamePanel painting to a 4K offscreen
+surface, but exclude native window submission, physical input and monitor scanout.
+Reproduction, complete intervals, actual-grid ranges and checks are in
+[the S1.3a evidence](benchmarks/s1/adaptive-grid/README.md).
+
+User test: launch `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080`, enable
+Full atmosphere, select the 120 FPS movement budget, and move/aim through the ruins.
+Compare fresh paint rate, weapon edges, distant enemies, textures and fog against Fixed
+and 60 FPS. Stop moving and confirm displayed size returns to 1920x1080 after the quiet
+period and a completed job. Switch to Fixed during movement, pause/resume, change the
+requested resolution and reopen settings. The selected settings must persist, framing must
+stay fixed, and full-resolution stationary refinement must remain available.
+
 **S1.4a - Optional faster atmosphere in the ruins (October 28).** The player reports
 low-to-mid 30s FPS in the ruins at 1080p with atmosphere enabled, and near-target performance
 without it. This observation is not a controlled benchmark. The next increment makes the
@@ -870,8 +922,9 @@ Native-window evaluation of both changes remains open.
    The hierarchy is still fully rebuilt after motion; updating only its bounds remains a
    separate profiling candidate. Preserve moving objects, shadows, glass, stable identities
    and addition/removal behavior. Measurements and acceptance are below.
-4. S1.3: add a selectable GPU frame-budget mode that reduces the entire internal tracing
-   grid under load and reconstructs the output. This is separate from the atmosphere grid.
+4. S1.3a now provides a selectable GPU frame-budget mode that reduces the entire internal
+   tracing grid during camera movement and uses existing spatial scaling. Temporal
+   reconstruction remains future S1.3 work. This is separate from the atmosphere grid.
    Preserve a fixed-resolution mode and evaluate fine detail, motion artifacts and recovery
    to stationary quality. It remains opt-in; no 120 FPS guarantee is inferred from fewer pixels.
 

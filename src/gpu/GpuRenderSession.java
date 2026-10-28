@@ -75,6 +75,8 @@ public final class GpuRenderSession implements RenderSession {
     private String diagnostics = "GPU initializing; fixed grid; primitive counters unavailable";
     private Runnable listener;
     private Slot latest;
+    private final GpuResolutionPolicy resolution = new GpuResolutionPolicy();
+    private long measuredPublication = -1;
     // The fields below belong only to the GPU owner.
     private GpuKernel kernel;
     private final java.util.function.Supplier<GpuKernel> kernelFactory;
@@ -109,6 +111,7 @@ public final class GpuRenderSession implements RenderSession {
                         nextSettings.fogJitter());
         synchronized (this) {
             checkOpen();
+            resolution.observe(nextView, System.nanoTime());
             if (!nextKey.equals(key)) {
                 generation++;
                 boolean cameraOnly =
@@ -129,8 +132,10 @@ public final class GpuRenderSession implements RenderSession {
             }
             if (settings != null
                     && (settings.paused() != nextSettings.paused()
-                            || settings.sampleTarget() != nextSettings.sampleTarget())) {
+                            || settings.sampleTarget() != nextSettings.sampleTarget()
+                            || settings.interactive() != nextSettings.interactive())) {
                 epoch++;
+                resolution.reset();
             }
             world = nextWorld;
             view = nextView;
@@ -168,8 +173,14 @@ public final class GpuRenderSession implements RenderSession {
         if (running || settings.paused()) {
             return;
         }
+        long now = System.nanoTime();
+        var sampledView = resolution.choose(view, settings, now);
         long target = settings.sampleTarget() == 0 ? 1_000_000_000L : settings.sampleTarget();
-        if (latest != null && latest.generation == generation && latest.samples >= target) {
+        if (latest != null
+                && latest.generation == generation
+                && latest.samples >= target
+                && latest.view.width() == sampledView.width()
+                && latest.view.height() == sampledView.height()) {
             return;
         }
         Slot available = null;
@@ -187,8 +198,20 @@ public final class GpuRenderSession implements RenderSession {
         preparePresentation(destination);
         running = true;
         activeGeneration = generation;
-        var capturedKey = key;
-        var capturedSettings = settings;
+        var capturedKey =
+                new Key(
+                        key.world(),
+                        sampledView,
+                        key.depth(),
+                        key.seed(),
+                        key.restart(),
+                        key.fogDownsample(),
+                        key.fogLightingGrid(),
+                        key.fogJitter());
+        var capturedSettings =
+                settings.interactive() && resolution.moving(now)
+                        ? settings.withSamplesPerBatch(1)
+                        : settings;
         long capturedGeneration = generation;
         long capturedEpoch = epoch;
         long capturedTime = System.nanoTime();
@@ -282,14 +305,15 @@ public final class GpuRenderSession implements RenderSession {
                     diagnostics =
                             String.format(
                                     java.util.Locale.ROOT,
-                                    "GPU %s | fixed | execute %.2f ms | transfer %.2f ms | host"
-                                        + " %.2f ms | prepare %.2f ms | peak %.1f MiB | primitive"
+                                    "GPU %s | %s | execute %.2f ms | transfer %.2f ms | host %.2f"
+                                        + " ms | prepare %.2f ms | peak %.1f MiB | primitive"
                                         + " counters n/a | init %.2f ms | max prepare %.2f ms | fog"
                                         + " build %.2f ms | fog builds %d | fog grid 1/%d requested"
                                         + " 1/%d | fog primary %.2f ms | fog reused %d | lighting"
                                         + " grid %b requested %b | grid build %.2f ms | fog jitter"
                                         + " %b | display %s",
                                     kernel.gpu.name,
+                                    resolutionLabel(capturedSettings),
                                     kernel.executeNanos / 1e6,
                                     kernel.transferNanos / 1e6,
                                     kernel.hostNanos / 1e6,
@@ -329,6 +353,10 @@ public final class GpuRenderSession implements RenderSession {
         if (signal != null) {
             signal.run();
         }
+    }
+
+    private static String resolutionLabel(RenderSettings settings) {
+        return settings.interactive() ? "adaptive" : "fixed";
     }
 
     private static void prepareDestination(Slot destination, RenderView capturedView) {
@@ -485,7 +513,15 @@ public final class GpuRenderSession implements RenderSession {
     @Override
     public synchronized void presented(RenderImage image) {
         checkOpen();
-        lease(image);
+        var shown = lease(image).slot;
+        if (shown.captured != measuredPublication) {
+            resolution.completed(
+                    shown.view.width(),
+                    shown.view.height(),
+                    (System.nanoTime() - shown.captured)
+                            / Math.max(1, shown.stats.samplesPerPixel()));
+            measuredPublication = shown.captured;
+        }
     }
 
     @Override
@@ -514,6 +550,7 @@ public final class GpuRenderSession implements RenderSession {
         checkOpen();
         suspended = true;
         epoch++;
+        resolution.reset();
     }
 
     @Override
