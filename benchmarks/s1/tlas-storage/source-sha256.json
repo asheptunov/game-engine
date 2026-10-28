@@ -1,0 +1,8 @@
+{
+  "src/gpu/GpuScene.java": "1de31d579a928c97ba5dcff20cf25406e1665d3ad0b709308b654697ef075a48",
+  "tools/gpu/TlasReuseCheck.java": "22bc2c68d602cef40268046aab8d855ba92a4083d79eaa7764a074043b1c3a14",
+  "tools/gpu/TlasPreparationBenchmark.java": "03c8f85722d4619b52a3e39c7fa88bb9393cdcf7c37d98da20e95379a04753ac",
+  "tools/gpu/RuinsAtmosphereBenchmark.java": "672147ca1b82dee4b9c44b215f74e9f8739d8bebcb82633d8dbd30683aae937b",
+  "tools/gpu/PresentationBenchmark.java": "4b0c30671a7a543664f595a74924f56c5ebbf87fa5f535f893975c75c41d534d",
+  "gpu-check.ps1": "77af2420bf5d8ef5b1a607c0e9ffc145d9e67f544906b5f992959ed2b0cf029b"
+}

@@ -17,6 +17,13 @@ public final class PresentationBenchmark {
         System.out.println("round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent");
         boolean ruins = args.length > 0 && args[0].equals("ruins");
         for (int round = 0; round < 3; round++) {
+            if (java.util.Arrays.asList(args).contains("tlas")) {
+                for (boolean rebuild : new boolean[]{round % 2 == 0, round % 2 != 0}) {
+                    System.setProperty("game.rebuildGpuTlas", Boolean.toString(rebuild));
+                    measure(round, true, 1, !java.util.Arrays.asList(args).contains("static"));
+                }
+                continue;
+            }
             if(java.util.Arrays.asList(args).contains("submission")) {
                 for(boolean timer : new boolean[]{round%2==0,round%2!=0}) {
                     System.setProperty("game.timerCombatSubmission",Boolean.toString(timer));
@@ -83,7 +90,7 @@ public final class PresentationBenchmark {
             });
             if (collector.intervals.isEmpty()) throw new AssertionError("No fresh paints");
             System.out.printf(Locale.ROOT, "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f%n", round,
-                    airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / 3.,
+                    airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / 3.,
                     quantile(collector.intervals, .5), quantile(collector.intervals, .95),
                     quantile(collector.latencies, .95),quantile(collector.intervals,.99),quantile(collector.intervals,1),
                     100.0*collector.intervals.stream().filter(value->value>16.67).count()/collector.intervals.size());

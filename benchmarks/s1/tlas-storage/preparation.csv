@@ -1,0 +1,7 @@
+round,mode,instances,medianPrepareMs,p95PrepareMs,liveDeviceBytes,topAllocations,topReuses
+0,allocate,416,0.9893,1.2503,1757040,121,0
+0,reuse,416,0.2161,0.2855,1831280,1,120
+1,reuse,416,0.1941,0.2941,1831280,1,120
+1,allocate,416,0.6595,0.9100,1757040,121,0
+2,allocate,416,0.6376,0.7819,1757040,121,0
+2,reuse,416,0.1914,0.3780,1831280,1,120

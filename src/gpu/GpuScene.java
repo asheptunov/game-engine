@@ -58,6 +58,13 @@ final class GpuScene implements AutoCloseable {
     VulkanDevice.Buffer textures;
     Structure top;
     final long buildNanos;
+    private final boolean reuseTopStorage = !Boolean.getBoolean("game.rebuildGpuTlas");
+    private VulkanDevice.Buffer topInstances;
+    private VulkanDevice.Buffer topScratch;
+    private long topScratchAddress;
+    private int topCount;
+    long topReuses;
+    long topAllocations;
 
     record MeshRange(Structure structure, int firstTriangle) {}
 
@@ -171,13 +178,7 @@ final class GpuScene implements AutoCloseable {
 
     private Structure compileInstances(WorldSnapshot world, Map<PolygonMesh, MeshRange> meshes) {
         Structure result;
-        var data =
-                own(
-                        gpu.buffer(
-                                64L * world.instances().size(),
-                                VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
-                                        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                                true));
+        var data = instanceBuffer(world.instances().size());
         try (var stack = MemoryStack.stackPush()) {
             var records = new VkAccelerationStructureInstanceKHR.Buffer(data.mapped);
             int index = 0;
@@ -211,13 +212,60 @@ final class GpuScene implements AutoCloseable {
                     .arrayOfPointers(false)
                     .data()
                     .deviceAddress(data.address());
-            result =
-                    build(
-                            geometry,
-                            world.instances().size(),
-                            VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR);
+            result = buildTop(geometry, world.instances().size());
         }
-        data.close();
+        if (!reuseTopStorage) {
+            data.close();
+        }
+        return result;
+    }
+
+    private VulkanDevice.Buffer instanceBuffer(int count) {
+        long bytes = 64L * count;
+        if (reuseTopStorage && topInstances != null && topInstances.size == bytes) {
+            return topInstances;
+        }
+        if (topInstances != null) {
+            topInstances.close();
+        }
+        var data =
+                own(
+                        gpu.buffer(
+                                bytes,
+                                VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+                                        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                true));
+        if (reuseTopStorage) {
+            topInstances = data;
+        }
+        return data;
+    }
+
+    /**
+     * Rebuild in existing storage, rather than refitting a hierarchy that can degrade after motion.
+     */
+    private Structure buildTop(VkAccelerationStructureGeometryKHR.Buffer geometry, int count) {
+        if (reuseTopStorage && top != null && topCount == count) {
+            try (var stack = MemoryStack.stackPush()) {
+                var build = VkAccelerationStructureBuildGeometryInfoKHR.calloc(1, stack);
+                build.get(0)
+                        .sType$Default()
+                        .type(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR)
+                        .flags(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR)
+                        .mode(VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR)
+                        .pGeometries(geometry)
+                        .geometryCount(1)
+                        .dstAccelerationStructure(top.handle)
+                        .scratchData()
+                        .deviceAddress(topScratchAddress);
+                executeBuild(build, count, stack);
+                topReuses++;
+                return top;
+            }
+        }
+        var result = build(geometry, count, VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR);
+        topCount = count;
+        topAllocations++;
         return result;
     }
 
@@ -283,9 +331,11 @@ final class GpuScene implements AutoCloseable {
         var previous = top;
         top = compileInstances(after, meshes);
         // VulkanDevice.submit waits for completion; no traversal can still use the old top level.
-        vkDestroyAccelerationStructureKHR(gpu.device, previous.handle, null);
-        previous.storage.close();
-        structures.remove(previous);
+        if (previous != top) {
+            vkDestroyAccelerationStructureKHR(gpu.device, previous.handle, null);
+            previous.storage.close();
+            structures.remove(previous);
+        }
     }
 
     private static boolean sameMaterialLayout(WorldSnapshot before, WorldSnapshot after) {
@@ -362,21 +412,45 @@ final class GpuScene implements AutoCloseable {
                     .dstAccelerationStructure(result.handle)
                     .scratchData()
                     .deviceAddress((scratch.address() + alignment - 1) & -alignment);
-            var range = VkAccelerationStructureBuildRangeInfoKHR.calloc(1, stack);
-            range.get(0).primitiveCount(count);
-            gpu.begin();
-            vkCmdBuildAccelerationStructuresKHR(
-                    gpu.command, build, stack.pointers(range.address()));
-            gpu.barrier(
-                    VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-                    VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
-                    VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
-                            | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
-            gpu.submit();
-            scratch.close();
+            executeBuild(build, count, stack);
+            if (type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR && reuseTopStorage) {
+                if (topScratch != null) {
+                    topScratch.close();
+                }
+                topScratch = scratch;
+                topScratchAddress = (scratch.address() + alignment - 1) & -alignment;
+            } else {
+                scratch.close();
+            }
             return result;
         }
+    }
+
+    private void executeBuild(
+            VkAccelerationStructureBuildGeometryInfoKHR.Buffer build,
+            int count,
+            MemoryStack stack) {
+        var range = VkAccelerationStructureBuildRangeInfoKHR.calloc(1, stack);
+        range.get(0).primitiveCount(count);
+        gpu.begin();
+        // The owner waits after every submission. This dependency also makes previous traversal
+        // and scratch accesses visible before overwriting the retained top-level storage.
+        gpu.barrier(
+                VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+                        | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR
+                        | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+                VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR
+                        | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
+        vkCmdBuildAccelerationStructuresKHR(gpu.command, build, stack.pointers(range.address()));
+        gpu.barrier(
+                VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+                VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+                VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+                        | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+        gpu.submit();
     }
 
     final class Structure {

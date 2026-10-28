@@ -1,0 +1,15 @@
+Tracer overlay: 24 segments, 0.646 ms per draw
+2026-10-28T12:26:53.749044300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Suite game.ShooterGameTest [PT6.5159471S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#headshotTravelsThenKillsAndRemovesBody [PT0.0010011S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#adventureTracerOverlayCostStaysBounded [PT0.1833731S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#tracerPathCurvesUnderGravityAndEnemyShotsAreDistinct [PT0.0010034S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#combatFramesKeepWeaponAndCameraCoherentAcrossWakeupsAndSuspension [PT5.2943331S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#liveCombatPublishesAndWritesScopePreview [PT0.7686951S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#returnFireAndPausedPatrols [PT0.0009406S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#gravityDropsShotIntoHeadAndSubstepsAgree [PT0.0010001S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#torsoDamageAndThinCoverOcclusion [PT0.1977552S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#tracersFollowFlightStopAtCoverFadeAndReset [PT0.0290069S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#boltReloadPauseAndRestart [PT0.0071655S]
+2026-10-28T12:26:53.753198800  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#scopeUsesSceneOpticsAndPreservesUnscopedCamera [PT0.031673S]
+2026-10-28T12:26:53.760199300  [INFO] harness.SuiteRunner: ========================

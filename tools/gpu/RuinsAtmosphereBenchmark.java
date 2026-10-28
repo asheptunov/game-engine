@@ -17,6 +17,13 @@ public final class RuinsAtmosphereBenchmark {
         System.out.println(
                 "round,atmosphere,imagesPerSecond,medianIntervalMs,p95IntervalMs,p95AgeMs,p99IntervalMs,over16msPercent,medianCopyMs,p95CopyMs,medianTraceHostMs,maxIntervalMs");
         for (int round = 0; round < 3; round++) {
+            if (java.util.Arrays.asList(args).contains("tlas")) {
+                for (boolean rebuild : new boolean[]{round % 2 == 0, round % 2 != 0}) {
+                    System.setProperty("game.rebuildGpuTlas", Boolean.toString(rebuild));
+                    measure(round, 1, !java.util.Arrays.asList(args).contains("static"));
+                }
+                continue;
+            }
             if(java.util.Arrays.asList(args).contains("submission")) {
                 for(boolean timer : new boolean[]{round%2==0,round%2!=0}) {
                     System.setProperty("game.timerCombatSubmission",Boolean.toString(timer));
@@ -93,7 +100,7 @@ public final class RuinsAtmosphereBenchmark {
                     Locale.ROOT,
                     "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f%n",
                     round,
-                    "divisor-" + divisor + (Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate"),
+                    "divisor-" + divisor + (Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse") + (Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate"),
                     count[0] / 3.,
                     quantile(intervals, .5),
                     quantile(intervals, .95),

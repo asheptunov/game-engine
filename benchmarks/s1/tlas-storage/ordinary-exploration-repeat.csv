@@ -1,0 +1,7 @@
+round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent
+0,air-divisor-1-allocate-immediate,98.000,8.624,16.205,13.978,50.826,52.822,3.413
+0,air-divisor-1-reuse-immediate,108.333,8.756,11.454,12.921,18.055,20.063,2.469
+1,air-divisor-1-reuse-immediate,109.333,8.780,11.364,13.146,17.254,21.033,2.446
+1,air-divisor-1-allocate-immediate,107.333,8.685,12.398,13.337,17.470,18.284,1.558
+2,air-divisor-1-allocate-immediate,108.667,8.576,15.354,12.932,18.245,20.826,1.231
+2,air-divisor-1-reuse-immediate,108.000,8.813,12.994,13.215,17.713,19.559,3.096

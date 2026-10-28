@@ -465,6 +465,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 | S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
 | S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
+| S1.4c | Move and fight with less GPU scene-preparation overhead at unchanged image quality | S1.4b; cached per-mesh structures | Implemented; completion, GPU and exact-image reuse checks passed; controlled Swing-paint benchmark improves; human acceptance pending |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -740,9 +741,8 @@ When available, the player can compare normal launch with `-NativePresentation` 
 at 1080p with Full atmosphere. Check movement/aiming, Escape settings over the scene, HUD and
 tracers, exposure, resolution changes, Alt-Tab, minimize/restore, F8/F9 and closing while rendering.
 Report fresh rates and visible artifacts separately. No playthrough is required while the player
-is away. The 60 FPS minimum and 120+ goal remain unmet in this stress route. The next default-path
-optimization candidate is S1.4 reuse/update of the top-level GPU acceleration structure for
-moving combat objects; this can benefit both presentation paths.
+is away. The 60 FPS minimum and 120+ goal remain unmet in this stress route. S1.4c below subsequently implements storage reuse for the top-level GPU acceleration
+structure when combat objects move; both presentation paths use it.
 
 **S1.1b — Standard render resolutions.** The player uses a 4K monitor and accepts lower
 internal rendering resolutions. In Escape → Render, a Render resolution dropdown offers
@@ -865,12 +865,11 @@ Native-window evaluation of both changes remains open.
    GPU-to-CPU image download and Swing image scaling with direct GPU presentation while
    retaining settings, overlays, input and F8/F9 capture. On-demand captures may still read
    pixels back to the CPU. Existing S1.2 ownership and lifecycle acceptance conditions apply.
-3. Remaining S1.4: reduce moving-object update costs. `GpuScene.updateInstances` currently
-   builds a replacement top-level acceleration structure, which locates instances for ray
-   intersection, when enemies or the camera-attached rifle move. Static mesh structures are
-   already cached. Investigate updating the top-level structure in place and reusing storage;
-   measure preparation and frame-time tails before retaining a change. Preserve moving
-   objects, shadows, glass, stable identities and addition/removal behavior.
+3. S1.4c now reuses the top-level acceleration structure's storage, instance records and build
+   workspace when the object count stays unchanged. Per-mesh structures remain cached.
+   The hierarchy is still fully rebuilt after motion; updating only its bounds remains a
+   separate profiling candidate. Preserve moving objects, shadows, glass, stable identities
+   and addition/removal behavior. Measurements and acceptance are below.
 4. S1.3: add a selectable GPU frame-budget mode that reduces the entire internal tracing
    grid under load and reconstructs the output. This is separate from the atmosphere grid.
    Preserve a fixed-resolution mode and evaluate fine detail, motion artifacts and recovery
@@ -927,6 +926,52 @@ of an earlier copied image. The game gate covers scope and shooting behavior; GP
 cover image ownership, resizing, captured state and failures. Source fingerprints, commands,
 raw measurements and passed checks are in the
 [combat submission evidence](benchmarks/s1/combat-submission/metadata.json).
+
+**S1.4c - Reuse GPU build storage during combat (October 28).** `GpuScene` previously
+allocated a new top-level acceleration structure (TLAS), instance-input buffer and scratch
+workspace whenever enemies or the camera-attached weapon moved. The TLAS tells the GPU
+which scene objects a ray might intersect; per-mesh structures then locate their triangles.
+The new default path retains those three allocations while the object count stays the same.
+It writes the current transforms and performs a complete Vulkan BUILD into the retained
+structure. It does not reuse stale object bounds or use Vulkan UPDATE/refitting, which would
+adjust bounds in an existing hierarchy rather than construct a new hierarchy.
+
+Object-count changes allocate a correctly sized replacement. Cached mesh geometry is retained
+where applicable; a new mesh still follows the existing geometry-rebuild path. Material and
+texture edits retain their existing handling. GPU work stays on its single owner, with completed
+submissions and explicit acceleration-structure dependencies protecting overwrites and scratch
+reuse. The retained buffers are released with the scene. No resolution, atmosphere setting,
+path depth, sampling, camera or image-display behavior changes. CPU tracing is unchanged.
+`-Dgame.rebuildGpuTlas=true` selects the former allocation behavior for measurements; it is
+not a player quality control. Both Swing and opt-in native GPU presentation use the optimization.
+
+The real-device regression compares 36 seeded frames with fresh allocation and retained
+storage. Raw RGB arrays match exactly through translation, rotation, scale, material changes,
+instance reordering, removal and addition. The expected three allocations and 33 same-count
+reuses occur, and resident memory reaches a fixed plateau. The completion and GPU gates pass.
+In an isolated 416-instance ruins preparation test, median host preparation drops from
+0.64–0.99 ms to 0.19–0.22 ms; p95 drops from 0.78–1.25 ms to 0.29–0.38 ms. Retained live
+storage increases by 74,240 bytes (72.5 KiB) in that test, trading a small bounded workspace
+for fewer allocations. The test still performs a full GPU hierarchy build for every motion.
+
+The final paired 1080p ruins/combat/Full-atmosphere route records 59.7–63.7 completed
+images/s with fresh allocations and 64.3–67.3/s with reuse. Actual GamePanel painting to a
+4K offscreen image improves from 58.0–58.7 to 59.7–63.0 fresh paints/s, about 6% using the
+median of each mode's three runs. Paint p95 intervals remain 20.2–23.5 ms with reuse, and
+40–53% of intervals still exceed 16.67 ms. This is an improvement, not achievement of a
+60 FPS minimum or the 120+ goal. Native-window submission and physical scanout are excluded.
+An earlier independent paint comparison also improved, from 56.0–59.3 to 61.7–62.3/s.
+The ordinary camera-only route showed no median regression across two paired comparisons;
+it does not rebuild the TLAS after startup, and short-run timing variation remains visible.
+Commands, raw comparisons, source fingerprints and verification logs are in the
+[TLAS storage-reuse evidence](benchmarks/s1/tlas-storage/README.md).
+
+User test: run `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080` normally;
+no new switch is needed. Enable Full atmosphere and repeat movement through the ruins.
+Check fresh-paint rate, enemy motion, rifle alignment while turning, scope glass, firing and
+shadows. Stop to check refinement, open settings, change resolution, switch focus away and
+back, and close while rendering. Removing an enemy must not leave a stale visible object.
+Human visual and native-window smoothness acceptance remain pending.
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain
