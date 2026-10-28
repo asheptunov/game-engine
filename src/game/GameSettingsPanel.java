@@ -20,6 +20,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -36,6 +37,7 @@ public final class GameSettingsPanel extends JPanel {
     private final JLabel message =
             new JLabel("Changes apply immediately. Esc releases the pointer.");
     private boolean refreshing;
+    private boolean customResolution;
 
     public GameSettingsPanel(GameNavigation navigation, GameRenderer renderer) {
         this.navigation = navigation;
@@ -94,6 +96,7 @@ public final class GameSettingsPanel extends JPanel {
                             java.awt.Rectangle text,
                             boolean selected) {}
                 });
+        refresh();
     }
 
     private JPanel captureControls() {
@@ -145,6 +148,55 @@ public final class GameSettingsPanel extends JPanel {
         panel.add(title);
     }
 
+    private record ResolutionPreset(String label, int width, int height) {
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private void resolutionPresets(JPanel panel) {
+        var choices =
+                new ResolutionPreset[] {
+                    new ResolutionPreset("360p — 640 × 360", 640, 360),
+                    new ResolutionPreset("480p — 854 × 480", 854, 480),
+                    new ResolutionPreset("540p — 960 × 540", 960, 540),
+                    new ResolutionPreset("720p HD — 1280 × 720", 1280, 720),
+                    new ResolutionPreset("900p — 1600 × 900", 1600, 900),
+                    new ResolutionPreset("Custom", 0, 0)
+                };
+        var selector = new JComboBox<>(choices);
+        selector.setToolTipText("Internal render size; the image is scaled to the game window.");
+        row(panel, "Render resolution", selector);
+        panel.add(new JLabel("Scaled to window. Lower resolution renders faster."));
+        panel.add(new JLabel("Current render limit: 1600 pixels per dimension."));
+        selector.addActionListener(
+                event ->
+                        apply(
+                                () -> {
+                                    var selected = (ResolutionPreset) selector.getSelectedItem();
+                                    customResolution = selected != null && selected.width() == 0;
+                                    if (selected != null && selected.width() != 0) {
+                                        navigation.fixedResolution(
+                                                selected.width(), selected.height());
+                                    }
+                                }));
+        refreshers.add(
+                () -> {
+                    var view = navigation.view();
+                    var selected = choices[choices.length - 1];
+                    for (var choice : choices) {
+                        if (!customResolution
+                                && choice.width() == view.width()
+                                && choice.height() == view.height()) {
+                            selected = choice;
+                            break;
+                        }
+                    }
+                    selector.setSelectedItem(selected);
+                });
+    }
+
     private JPanel renderControls() {
         var panel = page();
         heading(
@@ -168,6 +220,7 @@ public final class GameSettingsPanel extends JPanel {
                 true);
         button(panel, "Restart samples", () -> renderer.restart());
         heading(panel, "Image and transport");
+        resolutionPresets(panel);
         number(
                 panel,
                 "Width (pixels)",

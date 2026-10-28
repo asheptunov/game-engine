@@ -372,6 +372,46 @@ public final class GameLightingTest {
         }
     }
 
+    @Test
+    void standardResolutionSelectorPreservesCameraAndCustomDimensions() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(96, 64);
+        try (var renderer = new GameRenderer(navigation, BlockWorld.landscape())) {
+            renderer.configure(settings -> settings.withPaused(true));
+            SwingUtilities.invokeAndWait(
+                    () -> {
+                        var editor = new GameSettingsPanel(navigation, renderer);
+                        var selector =
+                                (javax.swing.JComboBox<?>) findControl(editor, "Render resolution");
+                        assertEquals("Custom", selector.getSelectedItem().toString());
+                        var camera = navigation.view().camera();
+                        int[][] sizes = {
+                            {640, 360}, {854, 480}, {960, 540}, {1280, 720}, {1600, 900}
+                        };
+                        for (int i = 0; i < sizes.length; i++) {
+                            selector.setSelectedIndex(i);
+                            assertEquals(sizes[i][0], navigation.view().width());
+                            assertEquals(sizes[i][1], navigation.view().height());
+                            assertEquals(camera, navigation.view().camera());
+                        }
+                        selector.setSelectedIndex(5);
+                        editor.refresh();
+                        assertEquals("Custom", selector.getSelectedItem().toString());
+                        assertEquals(1600, navigation.view().width());
+                        setNumber(editor, "Width (pixels)", 1008);
+                        setNumber(editor, "Height (pixels)", 672);
+                        assertEquals(1008, navigation.view().width());
+                        assertEquals(672, navigation.view().height());
+                        assertEquals(camera, navigation.view().camera());
+                        selector.setSelectedIndex(3);
+                        editor.refresh();
+                        assertEquals(1280, navigation.view().width());
+                        assertEquals(720, navigation.view().height());
+                        assertEquals(3, selector.getSelectedIndex());
+                    });
+        }
+    }
+
     private static void setNumber(java.awt.Container parent, String name, double value) {
         var spinner = (javax.swing.JSpinner) findControl(parent, name);
         assertTrue(spinner != null && spinner.isEnabled());

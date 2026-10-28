@@ -458,7 +458,8 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1 | Play the textured landscape using an explicitly selected GPU backend and compare it with CPU rendering | Verified hardware/API inventory; scope agreed above | Implemented and automatically verified; [S1.1 results](benchmarks/s1/README.md); native-window human acceptance pending |
 | S1.2 | Play the same supported game with device-resident presentation, preserving navigation and diagnostics | S1.1 evidence supports continued investment; presentation approach selected | Authorized October 27; pending implementation and verification |
 | S1.1a | Explore the existing GPU game with less image-conversion overhead at identical quality | Existing GPU backend | Implemented; verification results below; human acceptance pending |
-| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 and resolution/quality decisions below | Proposed; blocked on user-visible quality decisions |
+| S1.1b | Choose a standard internal render resolution or retain custom dimensions in game settings | Existing settings panel | Implemented; settings tests and game gate passed; human acceptance pending |
+| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | S1.2 | Authorized; lower internal resolutions accepted for the player's 4K display; implementation pending |
 | S1.4 | Play combat and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
@@ -572,13 +573,35 @@ never silently substitute CPU rendering. Presentation pacing must support a 120+
 without a fixed 16 ms repaint ceiling. Report GPU execution, transfers, CPU work, fresh window
 submissions and image age separately. Native-window acceptance requires a human playthrough.
 
+**S1.1b — Standard render resolutions.** The player uses a 4K monitor and accepts lower
+internal rendering resolutions. In Escape → Render, a Render resolution dropdown offers
+360p (640x360), 480p (854x480), 540p (960x540), 720p HD (1280x720), 900p (1600x900),
+and Custom. Selecting a preset changes both dimensions together. Custom retains the current
+dimensions and allows editing the existing width/height controls. Merely opening or refreshing
+settings must not change resolution. Existing non-preset dimensions display Custom.
+Preset selection retains camera framing, optics, transport and existing adaptive-mode settings;
+CPU adaptive mode may sample below the selected requested size as before. The image is scaled
+to the game window; these options do not change the monitor mode or claim native 4K tracing.
+The UI states the existing 1600-pixel per-axis render limit. 1080p, 1440p and native 4K rendering
+require a separately verified limit increase during subsequent GPU work; they are not offered
+as working choices here. Automatic monitor-native sizing is not added by this selector.
+
+User test: launch `./game.ps1 -Backend gpu -Scene world`, press Escape, open Render, choose
+720p and then 900p, and resume movement. Inspect the rendered size and scene detail; camera
+framing and controls must remain intact. Choose Custom, edit width/height, reopen settings,
+then choose 540p. Custom dimensions must persist until explicitly replaced, and the selected
+preset must agree with the width/height fields. The same control is available for CPU.
+Automated settings tests cover all presets, initial Custom state, refresh without mutation,
+atomic paired dimensions and retained camera state; game and completion gates cover regressions.
+
 **S1.3 user test and acceptance.** Select a 60 or 120 FPS budget in game settings, move
 through ordinary and expensive views, then stop. Show output size and actual internal
 render size separately; restore configured stationary quality without stale history.
 The full-quality fixed-resolution mode must remain available. Reject history after cuts,
 scene/optics changes and newly revealed surfaces. Compare moving images against reference
 captures for ghosting, disappearing detail and fog artifacts. This milestone's quality
-tradeoff and output resolution are not settled by the implementation authorization.
+tradeoff is accepted in principle for the player's 4K display, with visual quality still
+subject to hands-on evaluation.
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain
@@ -600,12 +623,13 @@ optimization gains. A 60 FPS average is insufficient evidence of a minimum: repo
 misses and worst intervals as well. Final acceptance workload and allowed miss rate remain
 open; no 60/120 guarantee is claimed until those conditions and measurements exist.
 
-**Open decisions and assumptions.** Initial unchanged-quality work uses existing 1600-wide
-grids and is unblocked. The player's desired output resolution/monitor refresh and whether
-high-resolution output may use reconstruction instead of native-resolution tracing must be
-confirmed before S1.3 and final target acceptance. Ask for those decisions when the first
-playable increment is delivered. The implementation keeps quality-preserving improvements
-enabled; new approximate rendering modes remain opt-in pending evaluation.
+**Open decisions and assumptions.** The player confirmed a 4K monitor and accepts lower
+internal resolutions, including the proposed optional performance mode. Existing 1600-wide
+grids remain the first comparison workloads. Probe the actual monitor mode and refresh during
+S1.2 integration rather than assuming a 120 Hz display. Final workload, deadline-miss allowance
+and reconstruction quality still need evaluation before declaring the FPS goal met; they do
+not block implementation. Quality-preserving improvements remain enabled; new approximate
+rendering modes remain opt-in pending evaluation.
 
 **Verification and handoff.** Run `./verify.ps1`, `./game-check.ps1`, GPU device checks and
 focused image/lease tests for affected behavior. Keep automated runs window-free and
