@@ -44,6 +44,32 @@ public final class GpuRenderSession implements RenderSession {
         TraceProfile.Stats stats;
     }
 
+    /**
+     * Optional benchmark timings in nanoseconds for the last sample of a published batch.
+     * capturedNanos uses System.nanoTime; samples is the accumulated publication count. GPU
+     * durations overlap submitWaitNanos, which includes host submission and fence waiting.
+     */
+    public record FrameTiming(
+            long capturedNanos,
+            long samples,
+            int batchSamples,
+            long hostNanos,
+            long prepareNanos,
+            long executeNanos,
+            long transferNanos,
+            long submitWaitNanos,
+            long readbackNanos) {}
+
+    private final boolean profileFrames = Boolean.getBoolean("game.profileFrames");
+    private final java.util.ArrayDeque<FrameTiming> frameTimings = new java.util.ArrayDeque<>();
+
+    /**
+     * Returns an immutable snapshot; collection is disabled unless requested at session creation.
+     */
+    public synchronized java.util.List<FrameTiming> frameTimings() {
+        return java.util.List.copyOf(frameTimings);
+    }
+
     private final Slot[] slots = {new Slot(), new Slot(), new Slot()};
     private final ExecutorService owner =
             Executors.newSingleThreadExecutor(
@@ -236,6 +262,27 @@ public final class GpuRenderSession implements RenderSession {
         }
     }
 
+    // Called under the session monitor; records only scalar metadata, never image storage.
+    private void recordFrameTiming(long capturedTime, int completed) {
+        if (!profileFrames) {
+            return;
+        }
+        if (frameTimings.size() == 4096) {
+            frameTimings.removeFirst();
+        }
+        frameTimings.addLast(
+                new FrameTiming(
+                        capturedTime,
+                        accumulatedSamples,
+                        completed,
+                        kernel.hostNanos,
+                        kernel.prepareNanos,
+                        kernel.executeNanos,
+                        kernel.transferNanos,
+                        kernel.submitWaitNanos,
+                        kernel.readbackNanos));
+    }
+
     private void render(
             Slot destination,
             Key capturedKey,
@@ -301,6 +348,7 @@ public final class GpuRenderSession implements RenderSession {
                                     0,
                                     0,
                                     0);
+                    recordFrameTiming(capturedTime, completed);
                     latest = destination;
                     diagnostics =
                             String.format(

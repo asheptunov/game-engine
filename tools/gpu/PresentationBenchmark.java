@@ -15,6 +15,25 @@ import javax.swing.SwingUtilities;
 public final class PresentationBenchmark {
     public static void main(String[] args) throws Exception {
         System.out.println("round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent,minWidth,maxWidth,meanWidth,medianTraceMs,medianCopyMs");
+        if (java.util.Arrays.asList(args).contains("paint")) {
+            for (int round = 0; round < 3; round++) {
+                for (boolean full : new boolean[]{round % 2 == 0, round % 2 != 0}) {
+                    System.setProperty("game.fullPaintClear", Boolean.toString(full));
+                    measure(round, true, 1, true);
+                }
+            }
+            return;
+        }
+        if (java.util.Arrays.asList(args).contains("profile")) {
+            System.setProperty("game.profileFrames", "true");
+            for (int round = 0; round < 3; round++) {
+                for (int budget : round % 2 == 0 ? new int[]{0,120} : new int[]{120,0}) {
+                    System.setProperty("game.benchmarkBudget", Integer.toString(budget));
+                    measure(round, true, 1, true);
+                }
+            }
+            return;
+        }
         boolean ruins = args.length > 0 && args[0].equals("ruins");
         for (int round = 0; round < 3; round++) {
             if (java.util.Arrays.asList(args).contains("ownership")) {
@@ -68,6 +87,8 @@ public final class PresentationBenchmark {
         var previous = RepaintManager.currentManager(null);
         var panel = new GamePanel[1];
         var collector = new PaintCollector(panel);
+        long duration = Long.getLong("game.benchmarkSeconds", 3) * 1_000_000_000L;
+        collector.duration = duration;
         try (var renderer = new GameRenderer(navigation, airDivisor>0 ? AdventureWorld.create() : BlockWorld.landscape().snapshot(),
                 "gpu", GameRenderer::copyImage, hooks)) {
             if(combat) renderer.enableShooter();
@@ -92,7 +113,7 @@ public final class PresentationBenchmark {
             }
             SwingUtilities.invokeAndWait(() -> collector.start = System.nanoTime());
             long start = collector.start;
-            while (System.nanoTime() - start < 3_000_000_000L) {
+            while (System.nanoTime() - start < duration) {
                 double time = (System.nanoTime() - start) / 1e9;
                 if(airDivisor>0) navigation.pose(new Vec3(10.879049f+(float)Math.sin(time)*.5f,2.7514815f,22.884184f+(float)time*.2f),1.251+Math.sin(time*.7)*.1,.079);
                 else navigation.pose(new Vec3((float) Math.sin(time) * 2, 2.4f, (float) (-6 + time)),
@@ -105,9 +126,10 @@ public final class PresentationBenchmark {
                 panel[0].close();
                 RepaintManager.setCurrentManager(previous);
             });
+            if (Boolean.getBoolean("game.profileFrames")) collector.writeProfile(round, budget, session[0]);
             if (collector.intervals.isEmpty()) throw new AssertionError("No fresh paints");
             System.out.printf(Locale.ROOT, "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.1f,%.3f,%.3f%n", round,
-                    System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / 3.,
+                    System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels")+"-clear-"+Boolean.getBoolean("game.fullPaintClear") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / (duration / 1e9),
                     quantile(collector.intervals, .5), quantile(collector.intervals, .95),
                     quantile(collector.latencies, .95),quantile(collector.intervals,.99),quantile(collector.intervals,1),
                     100.0*collector.intervals.stream().filter(value->value>16.67).count()/collector.intervals.size(),
@@ -136,6 +158,12 @@ public final class PresentationBenchmark {
         GameRenderer renderer;
         volatile boolean stopped;
         long start;
+        long duration;
+        volatile long queuedAt;
+        final ArrayList<PaintTiming> paints = new ArrayList<>();
+        private record PaintTiming(int width, int height, long capturedNanos, long samples,
+                long publicationNanos, GameRenderer.Metrics metrics, long ended, long interval,
+                long queueNanos, long paintNanos) {}
         long last;
         long publication;
         int count;
@@ -152,19 +180,57 @@ public final class PresentationBenchmark {
                 return;
             }
             if (!stopped && queued.compareAndSet(false, true)) {
+                queuedAt = System.nanoTime();
                 SwingUtilities.invokeLater(this::paint);
             }
         }
 
+        private void writeProfile(int round, int budget, GpuRenderSession session) throws Exception {
+            var timings = new java.util.HashMap<String, GpuRenderSession.FrameTiming>();
+            for (var timing : session.frameTimings()) {
+                timings.put(timing.capturedNanos() + ":" + timing.samples(), timing);
+            }
+            var directory = java.nio.file.Path.of(System.getProperty("game.profileDirectory", "out/performance/frame-profile"));
+            java.nio.file.Files.createDirectories(directory);
+            try (var writer = java.nio.file.Files.newBufferedWriter(directory.resolve("round-" + round + "-budget-" + budget + "-clear-" + Boolean.getBoolean("game.fullPaintClear") + ".csv"))) {
+                writer.write("elapsedMs,width,height,intervalMs,queueMs,paintMs,pickupMs,copyMs,copyToPaintMs,captureToPaintMs,batchSamples,hostMs,prepareMs,gpuExecuteMs,gpuTransferMs,submitWaitMs,readbackMs\n");
+                for (var paint : paints) {
+                    var frame = paint;
+                    var timing = timings.get(frame.capturedNanos() + ":" + frame.samples());
+                    if (timing == null) throw new AssertionError("Missing GPU timing for painted frame");
+                    if (timing.hostNanos() != frame.metrics().traceNanos()
+                            || timing.submitWaitNanos() < 0 || timing.readbackNanos() < 0
+                            || timing.submitWaitNanos() + timing.readbackNanos() > timing.hostNanos()) {
+                        throw new AssertionError("Inconsistent correlated GPU timing");
+                    }
+                    writer.write(String.format(Locale.ROOT,
+                            "%.6f,%d,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f%n",
+                            (paint.ended()-start)/1e6,frame.width(),frame.height(),paint.interval()/1e6,
+                            paint.queueNanos()/1e6,paint.paintNanos()/1e6,frame.metrics().pickupNanos()/1e6,
+                            frame.metrics().copyNanos()/1e6,(paint.ended()-frame.publicationNanos())/1e6,
+                            (paint.ended()-frame.capturedNanos())/1e6,timing.batchSamples(),
+                            timing.hostNanos()/1e6,timing.prepareNanos()/1e6,timing.executeNanos()/1e6,
+                            timing.transferNanos()/1e6,timing.submitWaitNanos()/1e6,timing.readbackNanos()/1e6));
+                }
+            }
+        }
+
         private void paint() {
+            long paintStart = System.nanoTime();
+            long queueNanos = paintStart - queuedAt;
             queued.set(false);
             if (stopped) return;
             var draw = surface.createGraphics();
             try { panel[0].paint(draw); } finally { draw.dispose(); }
             long now = System.nanoTime();
             var shown = renderer.displayedFrame();
-            if (start == 0 || now - start >= 3_000_000_000L || shown == null
+            if (start == 0 || now - start >= duration || shown == null
                     || shown.publicationNanos() == publication) return;
+            if (Boolean.getBoolean("game.profileFrames")) {
+                paints.add(new PaintTiming(shown.width(), shown.height(), shown.capturedNanos(),
+                        shown.samples(), shown.publicationNanos(), shown.metrics(), now, last == 0 ? 0 : now - last,
+                        queueNanos, now - paintStart));
+            }
             publication = shown.publicationNanos();
             if (last != 0) intervals.add((now - last) / 1e6);
             last = now;

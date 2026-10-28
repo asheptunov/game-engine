@@ -1,0 +1,152 @@
+Engine-only build passed: C:\Users\andri\Documents\RayTracingEngine\out\game-check\classes
+Game build passed: C:\Users\andri\Documents\RayTracingEngine\out\game-check\classes
+Scope angular magnification: 5.1028414
+Scope angular magnification: 3.7224936
+Scope angular magnification: 3.8419142
+2026-10-28T16:48:10.715787300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:10.719299700  [INFO] harness.SuiteRunner: ? Suite game.ScopeOpticsTest [PT4.7453043S]
+2026-10-28T16:48:10.723811100  [INFO] harness.SuiteRunner: ? Test game.ScopeOpticsTest#aimSpringUsesElapsedTimeAndScopesCloser [PT0.0009999S]
+2026-10-28T16:48:10.724811200  [INFO] harness.SuiteRunner: ? Test game.ScopeOpticsTest#lensesBendRaysAndMagnifyWithoutCameraZoom [PT0.2466691S]
+2026-10-28T16:48:10.724811200  [INFO] harness.SuiteRunner: ? Test game.ScopeOpticsTest#physicalScopeRendersWithWorldOnBothSides [PT4.4126377S]
+2026-10-28T16:48:10.724811200  [INFO] harness.SuiteRunner: ? Test game.ScopeOpticsTest#aimingAnimatesReversesAndReturnsWithoutSticking [PT0.0769603S]
+2026-10-28T16:48:10.725812200  [INFO] harness.SuiteRunner: ? Test game.ScopeOpticsTest#gpuRejectsNestedGlassAndAcceptsScope [PT0.0080373S]
+2026-10-28T16:48:10.726876100  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:17.849337200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:17.852841600  [INFO] harness.SuiteRunner: ? Suite game.RifleMeshTest [PT6.8951958S]
+2026-10-28T16:48:17.853294000  [INFO] harness.SuiteRunner: ? Test game.RifleMeshTest#sharesGeometryAndMovesOnlyBolt [PT0S]
+2026-10-28T16:48:17.853294000  [INFO] harness.SuiteRunner: ? Test game.RifleMeshTest#rayTracesSharedMeshPreview [PT0.6910857S]
+2026-10-28T16:48:17.854298200  [INFO] harness.SuiteRunner: ? Test game.RifleMeshTest#worldGeometryOccludesFirstPersonRifle [PT0.3234619S]
+2026-10-28T16:48:17.854298200  [INFO] harness.SuiteRunner: ? Test game.RifleMeshTest#firstPersonSharesCapturedCameraDuringContinuousLook [PT5.8806482S]
+2026-10-28T16:48:17.854298200  [INFO] harness.SuiteRunner: ========================
+Tracer overlay: 24 segments, 0.560 ms per draw
+2026-10-28T16:48:26.240134300  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:26.245640900  [INFO] harness.SuiteRunner: ? Suite game.ShooterGameTest [PT8.0415075S]
+2026-10-28T16:48:26.248647600  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#headshotTravelsThenKillsAndRemovesBody [PT0.0030061S]
+2026-10-28T16:48:26.248647600  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#adventureTracerOverlayCostStaysBounded [PT0.2450925S]
+2026-10-28T16:48:26.248647600  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#tracerPathCurvesUnderGravityAndEnemyShotsAreDistinct [PT0.2031283S]
+2026-10-28T16:48:26.249648100  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#combatFramesKeepWeaponAndCameraCoherentAcrossWakeupsAndSuspension [PT6.3814368S]
+2026-10-28T16:48:26.249648100  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#liveCombatPublishesAndWritesScopePreview [PT1.0453048S]
+2026-10-28T16:48:26.249648100  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#returnFireAndPausedPatrols [PT0.010569S]
+2026-10-28T16:48:26.250648200  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#gravityDropsShotIntoHeadAndSubstepsAgree [PT0.0009999S]
+2026-10-28T16:48:26.250648200  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#torsoDamageAndThinCoverOcclusion [PT0.012548S]
+2026-10-28T16:48:26.250648200  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#tracersFollowFlightStopAtCoverFadeAndReset [PT0.1228701S]
+2026-10-28T16:48:26.251646700  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#boltReloadPauseAndRestart [PT0.0050096S]
+2026-10-28T16:48:26.251646700  [INFO] harness.SuiteRunner: ? Test game.ShooterGameTest#scopeUsesSceneOpticsAndPreservesUnscopedCamera [PT0.0115424S]
+2026-10-28T16:48:26.254159100  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:30.401780600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:30.406809900  [INFO] harness.SuiteRunner: ? Suite game.SampleGameTest [PT3.8285668S]
+2026-10-28T16:48:30.408806300  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#flightUsesElapsedTimeNormalizedHeadingAndPhysicalRelease [PT0.02558S]
+2026-10-28T16:48:30.408806300  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#gallerySharesUnitGeometryAndWritesRepresentativePreviews [PT1.1353582S]
+2026-10-28T16:48:30.408806300  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#missingAndTransparentAssetsNameTheirPaths [PT0.0035264S]
+2026-10-28T16:48:30.409808400  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#pitchFramingResetEscapeAndFocusTransitions [PT0.0009995S]
+2026-10-28T16:48:30.409808400  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#controlsAndCloseDoNotWaitForImageConversion [PT0.2306343S]
+2026-10-28T16:48:30.409808400  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#editsDuringConversionDiscardObsoleteDisplayWithoutLosingExposureUpdate [PT0.0190505S]
+2026-10-28T16:48:30.410807000  [INFO] harness.SuiteRunner: ? Test game.SampleGameTest#liveMovementPublishesSuspendsResumesAndCloses [PT2.4134179S]
+2026-10-28T16:48:30.411806300  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:30.916662000  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:30.921664200  [INFO] harness.SuiteRunner: ? Suite engine.CubeTextureTest [PT0.2038717S]
+2026-10-28T16:48:30.923170500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#materialCopiesRetainBindingsAndUnsupportedKindsGeometryAndSaveReject [PT0.0500064S]
+2026-10-28T16:48:30.923170500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#ownsPixelsConvertsSrgbAndClampsNearestTexel [PT0.0010061S]
+2026-10-28T16:48:30.923170500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#allFaceOrientationsAndEdgeNormalsChooseExpectedTexels [PT0S]
+2026-10-28T16:48:30.923170500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#textureEditsInvalidateSamplesEvenWhenReturningToAnEarlierBinding [PT0.1353133S]
+2026-10-28T16:48:30.923170500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#diffuseContinuationAndAreaLightingUseTextureReflectance [PT0.0110418S]
+2026-10-28T16:48:30.924177500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#textureModulatesDirectLightAndStaysAttachedUnderTrs [PT0.0019996S]
+2026-10-28T16:48:30.924177500  [INFO] harness.SuiteRunner: ? Test engine.CubeTextureTest#terminalAreaLightingUsesTextureWithoutAContinuation [PT0.0045045S]
+2026-10-28T16:48:30.925685200  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:31.364268700  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:31.376968900  [INFO] harness.SuiteRunner: ? Suite engine.SunSkyTest [PT0.2719621S]
+2026-10-28T16:48:31.380978000  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#visibleDiscHasAngularExtentOcclusionAndNoExtraDiffuseEnergy [PT0.0030067S]
+2026-10-28T16:48:31.381975600  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#sunDirectionPointsTowardSourceAndIlluminationIsDistanceIndependent [PT0.0019992S]
+2026-10-28T16:48:31.381975600  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#lightingEditsInvalidateIdentityAndUndoNeverRevivesPublications [PT0.0538845S]
+2026-10-28T16:48:31.381975600  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#seededSunSkyImagesAgreeAcrossWorkersAndBatchBoundaries [PT0.0762791S]
+2026-10-28T16:48:31.381975600  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#sunShadowsReachDistantOccludersAndPointLightsStillContribute [PT0.0251241S]
+2026-10-28T16:48:31.382976500  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#isolatedDiffuseConstantSkyMatchesReflectanceAndGradientConverges [PT0.0544565S]
+2026-10-28T16:48:31.382976500  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#skyGradientUsesWorldDirectionAndLegacyWorldDefaultsToBlack [PT0.036546S]
+2026-10-28T16:48:31.382976500  [INFO] harness.SuiteRunner: ? Test engine.SunSkyTest#invalidLightsSkyAndAdvancedTransportRejectAtWorldBoundary [PT0.020666S]
+2026-10-28T16:48:31.387206400  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:37.806299200  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:37.810303200  [INFO] harness.SuiteRunner: ? Suite game.GameLightingTest [PT6.2321894S]
+2026-10-28T16:48:37.812811600  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#standardResolutionSelectorPreservesCameraAndCustomDimensions [PT0.0946269S]
+2026-10-28T16:48:37.813817400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#sunPresetButtonsSelectSameClockTimesWithEitherSky [PT0.4520705S]
+2026-10-28T16:48:37.813817400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#releasedPointerButtonsChangeLightingAndCameraResetPreservesIt [PT0.0745982S]
+2026-10-28T16:48:37.813817400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#fogControlsPreserveOpticsAndResetOnlyLocalAir [PT0.4055663S]
+2026-10-28T16:48:37.814817400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#writesRefinedSunPresetAndSkyComparisonPreviews [PT0.5609658S]
+2026-10-28T16:48:37.815819800  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#autofocusRejectsResultsFromOldModeAndOldView [PT0.0045155S]
+2026-10-28T16:48:37.816327400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#freshPaintRateExcludesCachedFramesAndExpiresDuringHolds [PT0.0020018S]
+2026-10-28T16:48:37.816327400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#refinementControlReplacesRefinedImageAndResumesAfterMovement [PT0.2965551S]
+2026-10-28T16:48:37.816327400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#autofocusTracksCenterRetainsSkyAndStopsForManualAndSuspension [PT3.1898331S]
+2026-10-28T16:48:37.816327400  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#freshImagesRequestRepaintWithoutWaitingForUiTimer [PT0.0804401S]
+2026-10-28T16:48:37.817329700  [INFO] harness.SuiteRunner: ? Test game.GameLightingTest#groupedControlsApplyCameraLightingAndDisplaySettings [PT1.0710161S]
+2026-10-28T16:48:37.818336000  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:50.410778700  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:50.413281200  [INFO] harness.SuiteRunner: ? Suite game.GameLandscapeTest [PT11.313859S]
+2026-10-28T16:48:50.414292400  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#worldIsDeterministicUniqueAndSharesAssets [PT0.0140238S]
+2026-10-28T16:48:50.414292400  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#routeUsesElapsedTimeUnwrappedAnglesAndExactHold [PT0.0025122S]
+2026-10-28T16:48:50.414292400  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#seededLandscapeMatchesBruteAndWritesPreview [PT7.5054353S]
+2026-10-28T16:48:50.415798200  [INFO] harness.SuiteRunner: ? Test game.GameLandscapeTest#fullLandscapePreviewsRecoverRefineAndToggleWithoutCapture [PT3.7918877S]
+2026-10-28T16:48:50.415798200  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:53.676734600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:53.679734700  [INFO] harness.SuiteRunner: ? Suite game.AdventureWorldTest [PT2.9672296S]
+2026-10-28T16:48:53.680735800  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#cyclePublishesAndSuspendsWithoutStarvingImages [PT1.5835078S]
+2026-10-28T16:48:53.680735800  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#rendersDayAndNightPreviews [PT1.3224747S]
+2026-10-28T16:48:53.681735300  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#clockWrapsPausesAndProducesDayAndNight [PT0S]
+2026-10-28T16:48:53.681735300  [INFO] harness.SuiteRunner: ? Test game.AdventureWorldTest#deterministicMeshWorldHasUniqueNamesAndBroadTerrain [PT0.0612471S]
+2026-10-28T16:48:53.681735300  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:54.123184600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:54.126699600  [INFO] harness.SuiteRunner: ? Suite engine.AtmospherePathTest [PT0.2854212S]
+2026-10-28T16:48:54.127701600  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#indirectSkyIlluminationCountsSkyOnceWithoutSolarDiscEnergy [PT0.273897S]
+2026-10-28T16:48:54.127701600  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#editsDisableRestoreLegacyAndDisableTemporalPresentation [PT0.0025102S]
+2026-10-28T16:48:54.127701600  [INFO] harness.SuiteRunner: ? Test engine.AtmospherePathTest#surfaceCompositionAndGeometryShadowMatchIndependentReference [PT0.009014S]
+2026-10-28T16:48:54.128700800  [INFO] harness.SuiteRunner: ========================
+PASS atmosphere numerics: max absolute radiance error=0.006930649280548096, reference change=1.0728836059570312E-4
+2026-10-28T16:48:56.618923400  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:56.621923900  [INFO] harness.SuiteRunner: ? Suite game.AtmosphereLifecycleTest [PT0.8892489S]
+2026-10-28T16:48:56.623922500  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#unsupportedSceneCombinationRejectsWithoutChangingAirControls [PT0.0060572S]
+2026-10-28T16:48:56.623922500  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#settingsResetKeepsOpticsTimeExposureAndCameraResetKeepsAir [PT0.3000199S]
+2026-10-28T16:48:56.623922500  [INFO] harness.SuiteRunner: ? Test game.AtmosphereLifecycleTest#inFlightEditsRetainLeasesAndCannotPublishStaleAirAsCurrent [PT0.5831718S]
+2026-10-28T16:48:56.624923000  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:56.843009000  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:56.846016300  [INFO] harness.SuiteRunner: ? Suite game.FogNumerics [PT0.0553455S]
+2026-10-28T16:48:56.848203800  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#overlappingPhaseFunctionsAreSummedAndBoundaryExitIsContinuous [PT0.0342474S]
+2026-10-28T16:48:56.848203800  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#homogeneousBeerAndSingleScatteringBrightness [PT0.0010003S]
+2026-10-28T16:48:56.848203800  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#zeroDensityIdentityFiniteValidationAndTransforms [PT0.0065064S]
+2026-10-28T16:48:56.848203800  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#overlapsAddCoefficientsAndKeepIndividualPhaseFunctions [PT0.0019999S]
+2026-10-28T16:48:56.849203700  [INFO] harness.SuiteRunner: ? Test game.FogNumerics#spatialDensityConvergesAgainstRefinedIntegration [PT0.0115915S]
+2026-10-28T16:48:56.849203700  [INFO] harness.SuiteRunner: ========================
+Fog table build hour=7.0 ms=206.3271
+Fog table build hour=12.0 ms=173.7186
+Fog cache maximum transmittance error=0.0019172430038452148
+2026-10-28T16:48:57.745654500  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:57.749662400  [INFO] harness.SuiteRunner: ? Suite game.FogSunTableTest [PT0.7449511S]
+2026-10-28T16:48:57.750661100  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#interpolationMatchesReferenceAcrossMovingSunAndOverlaps [PT0.5090126S]
+2026-10-28T16:48:57.750661100  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#keyTracksFogAndDirectionButNotCameraOrRadiance [PT0.0065166S]
+2026-10-28T16:48:57.751662200  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#unresolvedAndSharpMediaKeepReferenceTransport [PT0.0015074S]
+2026-10-28T16:48:57.751662200  [INFO] harness.SuiteRunner: ? Test game.FogSunTableTest#rotatedColoredMediaStayWithinInterpolationTolerance [PT0.2279145S]
+2026-10-28T16:48:57.753168200  [INFO] harness.SuiteRunner: ========================
+2026-10-28T16:48:58.247765600  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:48:58.251766200  [INFO] harness.SuiteRunner: ? Suite game.CharacterPhysicsTest [PT0.3373608S]
+2026-10-28T16:48:58.253272600  [INFO] harness.SuiteRunner: ? Test game.CharacterPhysicsTest#timestepInputPauseAndModeTransitions [PT0.0404351S]
+2026-10-28T16:48:58.253272600  [INFO] harness.SuiteRunner: ? Test game.CharacterPhysicsTest#slopesLedgesAndTransformedGeometry [PT0.0019995S]
+2026-10-28T16:48:58.253272600  [INFO] harness.SuiteRunner: ? Test game.CharacterPhysicsTest#thinWallSlidingAndCeiling [PT0.0020018S]
+2026-10-28T16:48:58.253272600  [INFO] harness.SuiteRunner: ? Test game.CharacterPhysicsTest#valleyGroundAndRuinsWall [PT0.289417S]
+2026-10-28T16:48:58.254776800  [INFO] harness.SuiteRunner: ? Test game.CharacterPhysicsTest#gravityJumpAndLanding [PT0S]
+2026-10-28T16:48:58.254776800  [INFO] harness.SuiteRunner: ? Test game.CharacterPhysicsTest#steepSlopeDoesNotBecomeWalkable [PT0.0035074S]
+2026-10-28T16:48:58.255783700  [INFO] harness.SuiteRunner: ========================
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\capture-test-16143362469829949677\2026-10-28T21-49-00.451791300Z-ebe4e5b3-66ee-4bd5-95a3-76d6a76620ae
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\capture-test-5838951997744444903\2026-10-28T21-49-00.896796900Z-9974b040-7f3c-4ba2-9d56-7c8af5e7793f
+Rendered displayed state with cpu, 1 spp: C:\Users\andri\Documents\RayTracingEngine\out\capture-test-5838951997744444903\2026-10-28T21-49-00.896796900Z-9974b040-7f3c-4ba2-9d56-7c8af5e7793f\reproduced.png
+Full-window capture: 7500 updates, compressed timeline=959833 bytes; export/load/replay=1031.8381 ms
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\capture-test-5733301375081250798\2026-10-28T21-49-02.044215700Z-54ac6cca-f460-4476-bbfa-8b5ff14809d8
+2026-10-28T16:49:02.084184900  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-28T16:49:02.089700500  [INFO] harness.SuiteRunner: ? Suite game.GameCaptureTest [PT3.6771029S]
+2026-10-28T16:49:02.091700200  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#recorderBoundsAndIncompleteExportAreExplicit [PT0.006098S]
+2026-10-28T16:49:02.091700200  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#fullHdNavigationRoundTripsAndRejectsOversizedEdits [PT0.0040107S]
+2026-10-28T16:49:02.091700200  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#historyReplaysPhysicsInputsEditsAndDetectsDivergence [PT0.4845207S]
+2026-10-28T16:49:02.091700200  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#fogQualitySettingsSurviveEditsAndOlderCapturesUseFull [PT0.0155431S]
+2026-10-28T16:49:02.093206900  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#failedExportLeavesGameplayAliveAndCanRetry [PT0.0499912S]
+2026-10-28T16:49:02.093206900  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#captureKeysAreBoundAcrossSettingsFocusAndPaintSuppliesDisplayedImage [PT0.7778677S]
+2026-10-28T16:49:02.093206900  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#selfContainedSnapshotKeepsDisplayedAndCurrentStatesSeparate [PT0.0980572S]
+2026-10-28T16:49:02.093206900  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#fullAdventureGeometryRoundTripsWithoutPresetRegeneration [PT1.1937315S]
+2026-10-28T16:49:02.093206900  [INFO] harness.SuiteRunner: ? Test game.GameCaptureTest#fullWindowExportRemainsBoundedAndReplays [PT1.0472828S]
+2026-10-28T16:49:02.095719000  [INFO] harness.SuiteRunner: ========================
+Game checks passed; native pointer/window QA remains manual.

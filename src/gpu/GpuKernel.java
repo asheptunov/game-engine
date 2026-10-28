@@ -110,6 +110,8 @@ final class GpuKernel implements AutoCloseable {
     long fogBuilds;
     long transferNanos;
     long hostNanos;
+    long submitWaitNanos;
+    long readbackNanos;
     long prepareNanos;
     long maximumPrepareNanos;
 
@@ -391,7 +393,9 @@ final class GpuKernel implements AutoCloseable {
                     VK_PIPELINE_STAGE_HOST_BIT,
                     VK_ACCESS_HOST_READ_BIT);
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, gpu.queries, 2);
+            long submitStart = System.nanoTime();
             gpu.submit();
+            submitWaitNanos = System.nanoTime() - submitStart;
             var times = stack.mallocLong(6);
             VulkanDevice.check(
                     vkGetQueryPoolResults(
@@ -405,11 +409,13 @@ final class GpuKernel implements AutoCloseable {
                     "read timestamps");
             recordTimings(rebuildFog, times);
         }
+        long readbackStart = System.nanoTime();
         if (packed != null || snapshot == null) {
             readOutput(pixels, packed);
         } else {
             fogReusedPixels = -1;
         }
+        readbackNanos = System.nanoTime() - readbackStart;
         hostNanos = System.nanoTime() - start;
     }
 

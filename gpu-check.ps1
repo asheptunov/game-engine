@@ -40,3 +40,6 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/DisplayOwnershipCheck.java') 'out/gpu/ownership-compile.log' 'Display ownership compilation failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.DisplayOwnershipCheck') 'out/gpu/ownership-check.log' 'Display ownership checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/GamePaintCheck.java') 'out/gpu/game-paint-compile.log' 'Game paint compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.GamePaintCheck') 'out/gpu/game-paint-check.log' 'Game paint equivalence checks failed'

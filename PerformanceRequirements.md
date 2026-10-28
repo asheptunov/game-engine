@@ -462,6 +462,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1c | Play at 1080p with GPU color conversion and one-quarter-sized routine readback | S1.1a and S1.1b | Implemented; real-device, capture, game and completion gates passed; human acceptance pending |
 | S1.1d | See fresh images painted without waiting for the UI timer, and inspect fresh paint rate | S1.1c | Implemented; game, GPU UI and completion checks passed; native-window acceptance pending |
 | S1.1e | Play the GPU game with less CPU display-copy overhead at identical image quality | S1.1c; Swing presentation | Implemented; ownership, GPU, game and completion checks passed; fixed-grid paired measurements improve; human check pending |
+| S1.1f | Play the Swing game with less 4K background-paint overhead at unchanged image quality | S1.1e; correlated frame profiling | Implemented; paint equivalence and GPU/game/completion gates passed; three adaptive pairs improve; human check pending |
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | Existing GPU rendering and presentation | In progress: S1.3a provides adaptive grids with existing spatial scaling; temporal reconstruction remains pending |
 | S1.3a | Select a 60/120 FPS movement budget, then recover the selected resolution when still | S1.1c; S1.4b | Implemented and automatically verified; player reports substantially smoother movement; detailed quality and minimum-FPS acceptance remain pending |
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
@@ -870,6 +871,39 @@ Use F8/F9, change resolution and revisit captured images; older images must not 
 frame contents. Automated ownership checks cover exact bytes, multiple leases, caller mutation,
 20 grid changes, exposure fallback, restart and close. Existing GPU, game and completion gates
 cover normal display, native-resident fallback and capture regressions.
+
+**S1.1f - Avoid clearing pixels that the game frame replaces (October 28).** Correlated
+frame measurements identify Swing painting as a substantial cost at the adaptive 120 FPS
+setting. `GamePanel` previously cleared the whole 4K panel before drawing an opaque image
+across the same pixels. It now clears only uncovered letterbox bars. Transparent images,
+startup with no frame, and the optional native presentation path retain full background
+clearing. Rendering resolution, atmosphere quality, image scaling and overlays stay unchanged.
+
+Three alternating 10-second ruins/combat/Full-atmosphere comparisons improved fresh paints/s
+from 85.6/104.3/108.7 with full clearing to 133.8/144.7/153.9 with bar-only clearing. Median
+paint durations fell from 8.97–10.95 ms to 5.86–6.51 ms. The adaptive grid varied between runs;
+this is a presentation-path improvement, not proof of identical sampled quality in each pair.
+These are 4K offscreen Swing measurements on the RTX 3080, excluding native window submission
+and monitor scanout. p95 intervals after the change were 10.41–12.35 ms, still above the 8.33 ms
+120 FPS budget, and occasional intervals exceeded 16.67 ms. Neither a minimum 60 FPS nor
+consistent 120 FPS is accepted yet. See [the paint/profile evidence](benchmarks/s1/paint-clear/README.md)
+for paired results, fixed-resolution checks and reproducible commands.
+
+The opt-in `game.profileFrames` benchmark capture stores at most 4096 scalar publication
+records, without retaining image storage. `PresentationBenchmark` joins them to fresh Swing
+paints and exports queue delay, paint time, pickup, handoff, host render, preparation, GPU
+execution/transfer, submit-and-fence waiting, and mapped-memory readback durations. GPU timings
+overlap host waiting; they must not be added together. Last-sample timings are explicitly
+identified by the batch sample count. Normal gameplay does not collect these records.
+
+User test: relaunch the GPU game, select 1080p and a 120 FPS budget, and move through the ruins
+with Full atmosphere. Check steadiness, stop to recover full resolution, and open/close the
+settings. Resize a windowed game to different aspect ratios: black bars must remain clean,
+with no old HUD or scene fragments. Automated pixel comparisons cover opaque/alpha images,
+odd dimensions, letterboxing, partial repaint clips and 100/125/200 percent display scaling.
+Human window/compositor testing remains pending. Next, investigate remaining paint/queue tails
+and fixed-grid GPU cost using these correlated measurements before attempting a larger readback
+or presentation rewrite.
 
 **S1.3 reconstruction investigation outcome (October 28).** A prototype reconstructed each
 smaller GPU frame to the requested 1080p grid with clamped bicubic filtering before readback.

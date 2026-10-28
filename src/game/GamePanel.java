@@ -341,8 +341,8 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
     @Override
     protected void paintComponent(Graphics graphics) {
-        super.paintComponent(graphics);
         if (nativeDisplay != null) {
+            super.paintComponent(graphics);
             if (nativeDisplay.ready()) {
                 presentNativeFrame();
             }
@@ -353,20 +353,9 @@ public final class GamePanel extends JPanel implements AutoCloseable {
         try {
             if (frame != null) {
                 var image = frame.image();
-                // Letterbox a lagging pre-resize frame rather than stretching its geometry.
-                double scale =
-                        Math.min(
-                                (double) getWidth() / image.getWidth(),
-                                (double) getHeight() / image.getHeight());
-                int width = (int) Math.round(image.getWidth() * scale);
-                int height = (int) Math.round(image.getHeight() * scale);
-                draw.drawImage(
-                        image,
-                        (getWidth() - width) / 2,
-                        (getHeight() - height) / 2,
-                        width,
-                        height,
-                        null);
+                paintFrame(draw, image, getWidth(), getHeight(), getBackground());
+            } else {
+                super.paintComponent(graphics);
             }
             drawFrameOverlay(draw, frame);
             markPresented(frame);
@@ -376,6 +365,33 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 frame.release();
             }
         }
+    }
+
+    /** Opaque frames replace their background; only uncovered letterbox bars need clearing. */
+    static void paintFrame(
+            Graphics2D draw,
+            BufferedImage image,
+            int panelWidth,
+            int panelHeight,
+            Color background) {
+        double scale =
+                Math.min(
+                        (double) panelWidth / image.getWidth(),
+                        (double) panelHeight / image.getHeight());
+        int width = (int) Math.round(image.getWidth() * scale);
+        int height = (int) Math.round(image.getHeight() * scale);
+        int x = (panelWidth - width) / 2;
+        int y = (panelHeight - height) / 2;
+        draw.setColor(background);
+        if (image.getColorModel().hasAlpha() || Boolean.getBoolean("game.fullPaintClear")) {
+            draw.fillRect(0, 0, panelWidth, panelHeight);
+        } else {
+            draw.fillRect(0, 0, panelWidth, y);
+            draw.fillRect(0, y + height, panelWidth, panelHeight - y - height);
+            draw.fillRect(0, y, x, height);
+            draw.fillRect(x + width, y, panelWidth - x - width, height);
+        }
+        draw.drawImage(image, x, y, width, height, null);
     }
 
     private void drawFrameOverlay(Graphics2D draw, GameRenderer.Frame frame) {
