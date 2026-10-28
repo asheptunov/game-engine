@@ -72,11 +72,11 @@ public enum RenderCapabilities {
     }
 
     public int minimumDimension() {
-        return 64;
+        return RenderView.MIN_DIMENSION;
     }
 
     public int maximumDimension() {
-        return 1600;
+        return RenderView.MAX_DIMENSION;
     }
 
     public int maximumBatchSamples() {

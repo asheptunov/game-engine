@@ -163,13 +163,18 @@ public final class GameSettingsPanel extends JPanel {
                     new ResolutionPreset("540p — 960 × 540", 960, 540),
                     new ResolutionPreset("720p HD — 1280 × 720", 1280, 720),
                     new ResolutionPreset("900p — 1600 × 900", 1600, 900),
+                    new ResolutionPreset("1080p — 1920 × 1080", 1920, 1080),
                     new ResolutionPreset("Custom", 0, 0)
                 };
         var selector = new JComboBox<>(choices);
         selector.setToolTipText("Internal render size; the image is scaled to the game window.");
         row(panel, "Render resolution", selector);
         panel.add(new JLabel("Scaled to window. Lower resolution renders faster."));
-        panel.add(new JLabel("Current render limit: 1600 pixels per dimension."));
+        panel.add(
+                new JLabel(
+                        "Current render limit: "
+                                + renderer.capabilities().maximumDimension()
+                                + " pixels per dimension."));
         selector.addActionListener(
                 event ->
                         apply(
@@ -227,7 +232,7 @@ public final class GameSettingsPanel extends JPanel {
                 () -> navigation.view().width(),
                 value -> navigation.fixedResolution((int) value, navigation.view().height()),
                 64,
-                1600,
+                renderer.capabilities().maximumDimension(),
                 16,
                 true);
         number(
@@ -236,7 +241,7 @@ public final class GameSettingsPanel extends JPanel {
                 () -> navigation.view().height(),
                 value -> navigation.fixedResolution(navigation.view().width(), (int) value),
                 64,
-                1600,
+                renderer.capabilities().maximumDimension(),
                 16,
                 true);
         number(
@@ -839,7 +844,7 @@ public final class GameSettingsPanel extends JPanel {
                                                         ? 0
                                                         : Math.max(64, s.minimumHeight())))),
                 0,
-                1600,
+                renderer.capabilities().maximumDimension(),
                 16,
                 adaptive);
         number(
@@ -855,7 +860,7 @@ public final class GameSettingsPanel extends JPanel {
                                                 (value == 0 ? 0 : Math.max(64, s.minimumWidth())),
                                                 (int) value)),
                 0,
-                1600,
+                renderer.capabilities().maximumDimension(),
                 16,
                 adaptive);
         var automaticMinimum =

@@ -19,7 +19,7 @@ public final class DisplayCopyCheck {
         numericEdges();
         String backend = args.length == 0 ? "gpu" : args[0];
         int width = args.length < 2 ? 1600 : Integer.parseInt(args[1]);
-        int height = width * 5 / 8 + 1; // Include an odd dimension and non-square row orientation.
+        int height = args.length > 2 ? Integer.parseInt(args[2]) : width * 5 / 8 + 1;
         var navigation = new GameNavigation();
         navigation.fixedResolution(width, height);
         var source = BlockWorld.landscape().snapshot();
@@ -44,6 +44,9 @@ public final class DisplayCopyCheck {
             var image = session.acquireImage();
             require(image != null, "image lease");
             try (image) {
+                require(
+                        image.width() == width && image.height() == height,
+                        backend + " requested image dimensions " + width + "x" + height);
                 for (float exposure : new float[] {0, .125f, 1, 4, 100}) {
                     var expected = pixels(reference(image, exposure));
                     var actual = pixels(GameRenderer.copyImage(image, exposure));
@@ -69,33 +72,35 @@ public final class DisplayCopyCheck {
                 require(
                         Arrays.equals(original, interruptedCopy),
                         "interrupted conversion finishes all rows");
-                for (int i = 0; i < 40; i++) {
-                    consume(reference(image, 1));
-                    consume(GameRenderer.copyImage(image, 1));
-                }
-                System.out.println("backend,width,height,round,referenceMedianMs,bulkMedianMs");
-                for (int round = 0; round < 3; round++) {
-                    double[] old = new double[40], bulk = new double[40];
-                    for (int i = 0; i < old.length; i++) {
-                        if ((i + round) % 2 == 0) {
-                            old[i] = timed(image, false);
-                            bulk[i] = timed(image, true);
-                        } else {
-                            bulk[i] = timed(image, true);
-                            old[i] = timed(image, false);
-                        }
+                if (args.length < 4 || !args[3].equals("check")) {
+                    for (int i = 0; i < 40; i++) {
+                        consume(reference(image, 1));
+                        consume(GameRenderer.copyImage(image, 1));
                     }
-                    Arrays.sort(old);
-                    Arrays.sort(bulk);
-                    System.out.printf(
-                            Locale.ROOT,
-                            "%s,%d,%d,%d,%.4f,%.4f%n",
-                            backend,
-                            image.width(),
-                            image.height(),
-                            round,
-                            old[20],
-                            bulk[20]);
+                    System.out.println("backend,width,height,round,referenceMedianMs,bulkMedianMs");
+                    for (int round = 0; round < 3; round++) {
+                        double[] old = new double[40], bulk = new double[40];
+                        for (int i = 0; i < old.length; i++) {
+                            if ((i + round) % 2 == 0) {
+                                old[i] = timed(image, false);
+                                bulk[i] = timed(image, true);
+                            } else {
+                                bulk[i] = timed(image, true);
+                                old[i] = timed(image, false);
+                            }
+                        }
+                        Arrays.sort(old);
+                        Arrays.sort(bulk);
+                        System.out.printf(
+                                Locale.ROOT,
+                                "%s,%d,%d,%d,%.4f,%.4f%n",
+                                backend,
+                                image.width(),
+                                image.height(),
+                                round,
+                                old[20],
+                                bulk[20]);
+                    }
                 }
             }
             boolean rejected = false;

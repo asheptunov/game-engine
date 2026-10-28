@@ -49,11 +49,12 @@ public record RenderSettings(
         boolean defaultMinimum = minimumWidth == 0 && minimumHeight == 0;
         if (!defaultMinimum
                 && (minimumWidth < 64
-                        || minimumWidth > 1600
+                        || minimumWidth > RenderView.MAX_DIMENSION
                         || minimumHeight < 64
-                        || minimumHeight > 1600))
+                        || minimumHeight > RenderView.MAX_DIMENSION)) {
             throw new IllegalArgumentException(
-                    "Minimum dimensions must both be 0 or both be 64..1600");
+                    "Minimum dimensions must both be 0 or both be 64.." + RenderView.MAX_DIMENSION);
+        }
         if (motionSamples < 1 || motionSamples > 8)
             throw new IllegalArgumentException("Motion samples must be 1..8");
         if (!Double.isFinite(motionScale) || motionScale < .25 || motionScale > 1)

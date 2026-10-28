@@ -239,8 +239,7 @@ public class ViewportState {
     }
 
     public void interactiveMinimum(int width, int height) {
-        if (width < 64 || width > 1600 || height < 64 || height > 1600)
-            throw new IllegalArgumentException("Minimum dimensions must each be 64..1600");
+        RenderView.validateDimensions(width, height);
         minimumW = width;
         minimumH = height;
     }
@@ -512,8 +511,7 @@ public class ViewportState {
     }
 
     public void resolution(int width, int height) {
-        if (width < 64 || width > 1600 || height < 64 || height > 1600)
-            throw new IllegalArgumentException("Sensor width and height must each be 64..1600");
+        RenderView.validateDimensions(width, height);
         var next = new float[height][width];
         sensorPixelsW = width;
         sensorPixelsH = height;

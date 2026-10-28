@@ -4199,7 +4199,7 @@
     "detail": "The method 'request()' has a cognitive complexity of 72, current threshold is 15",
     "ceiling": 72,
     "count": 1,
-    "line": 104
+    "line": 122
   },
   {
     "id": "d94ce69c1ac892ee5397378a0f06498442d11c5a263abe65583d491ac25f7b02",
@@ -4210,7 +4210,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 168
+    "line": 188
   },
   {
     "id": "c6a662c53a135dab4e76a95dd0d2030170d6fc2145a9566d4fb653ed1d1f5216",
@@ -4221,7 +4221,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 137
+    "line": 157
   },
   {
     "id": "3b3a728b0ec733628777629ecfcc7fed4b13d757b7729212a47a15954154adbd",
@@ -4232,7 +4232,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 59
+    "line": 61
   },
   {
     "id": "2b25eb251c4fe5d615d95e76ca8319be4673452266c5c244995d9b2fdac744ed",
@@ -4243,7 +4243,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 62
+    "line": 64
   },
   {
     "id": "eca177eafec36916bd11958d7bbf2ef1640c14918e4839501e3a4da9e13a68c5",
@@ -4254,7 +4254,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 63
+    "line": 65
   },
   {
     "id": "576920c41fe65c3334010b89f02f111afc6affd950e4c839f24060e18f20c9b9",
@@ -4265,7 +4265,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 173
+    "line": 193
   },
   {
     "id": "cffc999d32b116b495ce1c4602df986fadbbbba0823c99be9e5162a3da4a1a48",
@@ -4276,7 +4276,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 174
+    "line": 194
   },
   {
     "id": "f4093e202992104f9f5061d03d6ea56eb586bc12a28014413e944ab1e0897a09",
@@ -4287,7 +4287,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 119
+    "line": 139
   },
   {
     "id": "61a85440f57d56e67ca1326d7a76b158bf4f33d496138e0383f0c00d0f6df5ce",
@@ -4298,7 +4298,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 199
+    "line": 219
   },
   {
     "id": "90ddca7830fcf82f6e553a65180fd61187b43e0778575547f4fb0b6090d68965",
@@ -4309,7 +4309,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 87
+    "line": 105
   },
   {
     "id": "c72a1b177a632c154883ffd7f9c549915c2fc408bf53227d43e2f9b1c98af075",
@@ -4320,7 +4320,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 358
+    "line": 434
   },
   {
     "id": "02e4100348018f75f28afeb43bf845454b3139915cceb49a577afa75d4e93335",
@@ -4331,7 +4331,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 107
+    "line": 127
   },
   {
     "id": "fafac1f4432c4a7a30dd9c7464027b252dffb378fbe31d7eae2c5264360123d4",
@@ -4342,7 +4342,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 203
+    "line": 223
   },
   {
     "id": "134c910f48f8908e181d12e95741979ff015e15e1c70cf5e06f592d8759fbabd",
@@ -4353,7 +4353,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 167
+    "line": 187
   },
   {
     "id": "47a2d9635faa76c57f8d02c73217b3f494fce826a879ebfc55d12b3286c9ced0",
@@ -4364,7 +4364,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 254
+    "line": 274
   },
   {
     "id": "8a61c425f1fd212892af7b748c9e48ba5d6e59e9decf2abb38debfcede03125c",
@@ -4375,7 +4375,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 112
+    "line": 132
   },
   {
     "id": "41450b448e4061e718459f0ce6bea2fbdfad8446e214bd6a87667eb5fbad9a75",
@@ -4386,7 +4386,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 124
+    "line": 144
   },
   {
     "id": "fe6bcd26aef086039766dc978a137d41132b3573f0d63811834813f549637802",
@@ -4397,7 +4397,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 236
+    "line": 256
   },
   {
     "id": "b83ea8909912b0173a97e4699739e1538d4ed841ca7de247be33d4d5c6d05161",
@@ -4408,7 +4408,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 188
+    "line": 208
   },
   {
     "id": "3924d302108a0db75c7173c455938bb89a1353dae4b8c09a1819e2105e46362a",
@@ -4419,7 +4419,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 169
+    "line": 189
   },
   {
     "id": "e9813a591436679383f47da056ff21d1bc53da533f48d7e27af8436f2f84e261",
@@ -4430,7 +4430,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 298
+    "line": 373
   },
   {
     "id": "cbe4eefda7b5c7f06a846fc9cc6ad36b30aaa6fdf8e2cc6076f8018ad1e484a2",
@@ -4441,7 +4441,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 292
+    "line": 367
   },
   {
     "id": "293e691c35c40e322df82f0f34904e7132488488ebf91a0fdd96b6e6c75d12a9",
@@ -4452,7 +4452,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 283
+    "line": 358
   },
   {
     "id": "c0a1d225bb6ef753d30a7838eb750882fd5b1958908f55fc067cdc7b2a6599ab",
@@ -4463,7 +4463,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 274
+    "line": 349
   },
   {
     "id": "6cfead987897efc5dc6204d9a8c2764e30c4ecae5f1772f8c43390e61cab379a",
@@ -5508,7 +5508,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 388
+    "line": 406
   },
   {
     "id": "d6e95867d95c7db20ed35f3ed2c1e71fb841e36600b9f97f3c0b86123bb1e573",
@@ -5530,7 +5530,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 380
+    "line": 398
   },
   {
     "id": "8931def2e52057c994970473b11efe60988413c7f5688d63ab83c7ffbdd1008b",
@@ -5541,7 +5541,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 203
+    "line": 221
   },
   {
     "id": "84db5a00922304d2805cb0b9ed5ee8371210a94d2e97a98ec9cff3337375ffe5",
@@ -5552,7 +5552,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 183
+    "line": 201
   },
   {
     "id": "6860dd88e712bf4e685f793a58302a14d0afa491866376723263bbf3ab6c2e99",
@@ -5563,7 +5563,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 389
+    "line": 407
   },
   {
     "id": "9f3a3dd31ac3bd6fbf251dd6f2bb88161dde4f91d3ab7e892929f7a563a505b2",
@@ -5574,7 +5574,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 392
+    "line": 410
   },
   {
     "id": "079f4da52744418aa1bc82886d0c4b762fefd1b31297dd8d405191abace43b73",
@@ -5585,7 +5585,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 395
+    "line": 413
   },
   {
     "id": "e34f252c3ec2c0e584e9ae77ae52d07709acb2a27c6893a2741824aff7b2f753",
@@ -5596,7 +5596,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 176
+    "line": 194
   },
   {
     "id": "49d0ec23e999c5a92a34a7d00bfd0a1e393fa0658d7ebef27478960257556530",
@@ -5607,7 +5607,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 164
+    "line": 182
   },
   {
     "id": "20455b43a37a493d19ccf7236c8317fdd4f095956f86876ecea229afcccc4e0d",
@@ -5662,7 +5662,7 @@
     "detail": "The method 'trace(ViewportState, BooleanSupplier, BooleanSupplier)' has a cognitive complexity of 106, current threshold is 15",
     "ceiling": 106,
     "count": 1,
-    "line": 268
+    "line": 302
   },
   {
     "id": "4141e6157c524cd33324d028062a95c0f976decfb1deac7c907f8da64af0c1fe",
@@ -5673,7 +5673,7 @@
     "detail": "The method 'areaLight(Hit, float[], Material, PreparedObject[], int, float, float, float, float, float, Sampler, Sample, boolean)' has a cognitive complexity of 17, current threshold is 15",
     "ceiling": 17,
     "count": 1,
-    "line": 1395
+    "line": 1513
   },
   {
     "id": "e06385d71982578213e9fad6bf8ca64db36d0ff7120c34f67acb7be7b2cb29d7",
@@ -5684,7 +5684,7 @@
     "detail": "The method 'captureSurface(int, int)' has a cognitive complexity of 17, current threshold is 15",
     "ceiling": 17,
     "count": 1,
-    "line": 916
+    "line": 989
   },
   {
     "id": "d8c81c15eaf901b345b5c36ee0b56d3a2850712e71d5034e39da81ead93961a5",
@@ -5695,7 +5695,7 @@
     "detail": "The method 'mediaAt(float, float, float, PreparedObject[], float[], Hit)' has a cognitive complexity of 22, current threshold is 15",
     "ceiling": 22,
     "count": 1,
-    "line": 1745
+    "line": 1919
   },
   {
     "id": "7f05a836a3c65c69ea96cc23b6ccbfcb72de81231bd25cdbe9197d118bed97c1",
@@ -5706,7 +5706,7 @@
     "detail": "The method 'nearestHit(float, float, float, float, float, float, Hit, float, PreparedPrimitive, PreparedObject, boolean)' has a cognitive complexity of 20, current threshold is 15",
     "ceiling": 20,
     "count": 1,
-    "line": 1642
+    "line": 1829
   },
   {
     "id": "f640c162c4fb3d8399bf3621a98f8b26e581f116e6a172df266ac1fd926abf13",
@@ -5717,7 +5717,7 @@
     "detail": "The method 'occluded(float, float, float, float, float, float, float, PreparedPrimitive, PreparedObject)' has a cognitive complexity of 17, current threshold is 15",
     "ceiling": 17,
     "count": 1,
-    "line": 1791
+    "line": 1965
   },
   {
     "id": "c0e92706f74f92116485d7f8a3f16d115d3a8bf491c921d3ad10cf3326e9d71f",
@@ -5728,7 +5728,7 @@
     "detail": "The method 'path(float, float, float, float, float, float, Hit, PointLight[], float[], float[], Sampler, Sample, Sample, PreparedObject[], int, PreparedObject[])' has a cognitive complexity of 88, current threshold is 15",
     "ceiling": 88,
     "count": 1,
-    "line": 986
+    "line": 1101
   },
   {
     "id": "1cec9d962bd873182c81efa2a63ad00b9c6843441f95388e9c7e40aa5f176471",
@@ -5739,7 +5739,7 @@
     "detail": "The method 'render(int, int, int, int)' has a cognitive complexity of 42, current threshold is 15",
     "ceiling": 42,
     "count": 1,
-    "line": 794
+    "line": 867
   },
   {
     "id": "c4f911492cbfca85ff966b3af9d6edf62912826060e952eebe48443372f49421",
@@ -5750,7 +5750,7 @@
     "detail": "The method 'volumeVisibility(float, float, float, float, float, float, float, PreparedObject)' has a cognitive complexity of 24, current threshold is 15",
     "ceiling": 24,
     "count": 1,
-    "line": 1281
+    "line": 1399
   },
   {
     "id": "0d19f009c38322a05d49d383ef1ca69c06682dd83816eea4a2f8519353a5a112",
@@ -5761,7 +5761,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 1395
+    "line": 1513
   },
   {
     "id": "805f0f7e69a0ad27c4d6e5809e4a30fb50e332b86ec48e43e55e3979cab4a5bb",
@@ -5772,7 +5772,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 1642
+    "line": 1829
   },
   {
     "id": "1ebdb65803ff89fc2a66bfc4bdc39123138fb1b98ad41a20a205713b8cdf3272",
@@ -5783,7 +5783,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 1791
+    "line": 1965
   },
   {
     "id": "def4be17045edbc04d4475f700ae827a5ec206e5ed54bb5ded31180131936e79",
@@ -5794,7 +5794,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 986
+    "line": 1101
   },
   {
     "id": "aefa7461ead01c9f3721f78e4e31b2975eb52921f456f3ebe5d64a6b48b553e1",
@@ -5805,7 +5805,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 951
+    "line": 1066
   },
   {
     "id": "26e22646e9f1ce72d544868efb43fde23eb678ec26a594a21d4e10efdc58f799",
@@ -5816,7 +5816,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 1462
+    "line": 1580
   },
   {
     "id": "769825540c751cf1b259cb660aa789a5280677c1b99b02d5472bfe15c2aa8982",
@@ -5827,7 +5827,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 1355
+    "line": 1473
   },
   {
     "id": "9224bbc1a34c7d7de25d15c10f72639561d3a51247591b5930bcc100f82a70b6",
@@ -5838,7 +5838,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 1211
+    "line": 1329
   },
   {
     "id": "3209d8f4d109325f983365d952c6788b6f152b6bb1614e025d47fd3da24b3ad8",
@@ -5849,7 +5849,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 658
+    "line": 693
   },
   {
     "id": "082c55ab8813638bfc90e5108f58d92345942c7df24f9974c72b8598007d9642",
@@ -5860,7 +5860,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1627
+    "line": 1814
   },
   {
     "id": "eb45bd9a15a3f20d5192013bcd8d4fce24e60ed3a568f9b34bc2d70a397e3955",
@@ -5871,7 +5871,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 827
+    "line": 900
   },
   {
     "id": "f3aacae15d3480bb5f1fcd18d2137b19fd9571f56e235f37d2be2723ad9b47b1",
@@ -5882,7 +5882,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 923
+    "line": 996
   },
   {
     "id": "02ed0b080ad6a593eace3fecf43e1f3556754aa151d99fbe4b59888602489588",
@@ -5893,7 +5893,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1252
+    "line": 1370
   },
   {
     "id": "041c3b51d3794704347b3927ed4e136216fd864d165564189d0d699af33c30f2",
@@ -5904,7 +5904,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1481
+    "line": 1599
   },
   {
     "id": "5d37827e420368a8c5574c2211eca1885f063be7d26fba2d4d2d02394cd14e2e",
@@ -5915,7 +5915,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1224
+    "line": 1342
   },
   {
     "id": "9b5073b1ad3eee3ae282f9f4332e9c34f2b77357200386bb95b65195cd3212ff",
@@ -5926,7 +5926,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1421
+    "line": 1539
   },
   {
     "id": "364b47acc3ef3aa74cdac56e3dc33c1a7aea8cdb21d59a1e866cf6cdf33a3878",
@@ -5937,7 +5937,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 2,
-    "line": 1138
+    "line": 1256
   },
   {
     "id": "d670fdef1f6d466b3f7a7e2b2341c0fac7ed1f46c41a30bc6cd814a42f06bfa5",
@@ -5948,7 +5948,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1005
+    "line": 1120
   },
   {
     "id": "098a257f76dd956845b1abb7e86868b8babe4e086b03e65c91d39fb51a1a6ab2",
@@ -5959,7 +5959,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1594
+    "line": 1781
   },
   {
     "id": "a35553d324a050176c15e1335549ca4f08a7166d6ce5d24a1c0d54e4a718687d",
@@ -5970,7 +5970,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 2,
-    "line": 1410
+    "line": 1528
   },
   {
     "id": "e6d5bb3f07f4c78be76e6d5a3cbc175bab9b48e2b9914efd2a04cac106db5e9c",
@@ -5981,7 +5981,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 2,
-    "line": 1248
+    "line": 1366
   },
   {
     "id": "b0cfbe570e1b7b9333883fd9a43b6818a2a4ccca648cd0395c98405d1ee57a97",
@@ -5992,7 +5992,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 1040
+    "line": 1155
   },
   {
     "id": "bdca708361f0ed9ea0b5dffa9010fba38ead3e1976e09adb3eba1e6b1028b7d2",
@@ -6003,7 +6003,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 126
+    "line": 127
   },
   {
     "id": "8b8a0fbb09315c9adc0b1ec75eb97e85f96634d3c18eee3eec254fa14c252928",
@@ -6014,7 +6014,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 928
+    "line": 1001
   },
   {
     "id": "febc4aba63ae96e6bc4eb2f54c7e926dfa205cee22e927c38e4b6c4e0e9887f4",
@@ -6025,7 +6025,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 917
+    "line": 990
   },
   {
     "id": "bab2d1ad1ab39741820cbf3346a4d256825bfdc017c991806b120e907746c38f",
@@ -6036,7 +6036,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 795
+    "line": 868
   },
   {
     "id": "e7ad8a8d6132d7938816883a8b666c923795d63567b77eb75729cac5d8980e96",
@@ -6047,7 +6047,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 303
+    "line": 337
   },
   {
     "id": "99454c34abec33e25cbeaef75bbef483514a2b1fe124ad8afbe8e62d4c3ce51a",
@@ -6058,7 +6058,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 774
+    "line": 847
   },
   {
     "id": "f2fa9ef781f7a7a0fe38195cdde87b11e6e958954915dd3e76415c03908c199b",
@@ -6069,7 +6069,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 277
+    "line": 311
   },
   {
     "id": "969d9fb3f15cae5391b4d91dddc94959b591eb383775f53943571daaee94d384",
@@ -6080,7 +6080,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 767
+    "line": 840
   },
   {
     "id": "eae385066ffb86e89814581d26145ab49c5062394c05ec0494d4aebcf2d841b5",
@@ -6091,7 +6091,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 39
+    "line": 40
   },
   {
     "id": "9b73725d02e84baa9f5c6882545a80add8518e8e6b07a4bbd7f1dd4d4767c3a4",
@@ -6102,7 +6102,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 690
+    "line": 756
   },
   {
     "id": "b7cf17b3ad4724a4919c6d84aa1fc933409fe31000542eb400b1f50e879ad994",
@@ -6113,7 +6113,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 669
+    "line": 735
   },
   {
     "id": "0e4a2833175ab5c43f1700e68f9c6633e975ce141dbe8fe2872930421b5b3883",
@@ -6124,7 +6124,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 675
+    "line": 741
   },
   {
     "id": "35ca65672e06c0b8a898010d61e371485b8e685f4f162cfc27948528fec8aeb5",
@@ -6135,7 +6135,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 678
+    "line": 744
   },
   {
     "id": "e097252463666e0658d9cc69eadde304100bc74476d603c269c9d05772b1978c",
@@ -6146,7 +6146,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 689
+    "line": 755
   },
   {
     "id": "01809453251a830d51b1ce9616d6d5a4533c7d1c5f356fcc4cd8b9c5547a97a2",
@@ -6157,7 +6157,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 691
+    "line": 757
   },
   {
     "id": "eb0eb4ef0bd6b55bd9162959cd60389310bf24b6a15fd34c298df929663fa841",
@@ -6168,7 +6168,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 673
+    "line": 739
   },
   {
     "id": "f48edce1b21e50c2c1117ec54e96533e3abbcbd8d616bf5c7ee9df8ee6cbf27e",
@@ -6179,7 +6179,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 680
+    "line": 746
   },
   {
     "id": "2933b8e9802d51e4dfa9346db9797cdd989e8674ba10788a92b9e8f6bc599c23",
@@ -6190,7 +6190,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 684
+    "line": 750
   },
   {
     "id": "24271bd7626e84ea5c764137cf273059ecf385520144fd0a791a601a12d1868c",
@@ -6201,7 +6201,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 664
+    "line": 724
   },
   {
     "id": "fb048c6691cc6279172376c79e67f6cdabbf9448272598b7ce1127476017cacc",
@@ -6212,7 +6212,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 114
+    "line": 115
   },
   {
     "id": "76d40658df5a8a70d802374f2d614b2f3918fdfc976487e207965afb08075f24",
@@ -6223,7 +6223,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 117
+    "line": 118
   },
   {
     "id": "1c723e6feae4ab8b372cae711e1b8ea9aa8210fb897d186a94b07e16a0013eb2",
@@ -6234,7 +6234,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 116
+    "line": 117
   },
   {
     "id": "fef8db7caf4884c42ec91e03ec8b948ec2aa3990ebe93c78756688474ac6a6d7",
@@ -6245,7 +6245,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 119
+    "line": 120
   },
   {
     "id": "30832dd9091ba8aa5b668b55ea553811456be745cee611006793658e5739f7ec",
@@ -6256,7 +6256,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 33
+    "line": 34
   },
   {
     "id": "b58ca9fab8e7d9367ca55f4494dceab36fd031a447c200291d8040eac28a94cf",
@@ -6267,7 +6267,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 115
+    "line": 116
   },
   {
     "id": "782b61dd3b32ecb9795079320f5a0c2ee296a4e58db535787bfc3beeb6fa910d",
@@ -6278,7 +6278,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 46
+    "line": 47
   },
   {
     "id": "192660269cf2ffd2b85ff882e7f8ae96ee4de86f147461b51163fed5549dbfc9",
@@ -6289,7 +6289,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 249
+    "line": 283
   },
   {
     "id": "da9f06e0600b0e2f6a2164ab7d11ef0070d2d665fb5a899f5e4ef5574399a29e",
@@ -6300,7 +6300,7 @@
     "detail": "The method 'trace(ViewportState, BooleanSupplier, BooleanSupplier)' has a NCSS line count of 152.",
     "ceiling": 152,
     "count": 1,
-    "line": 268
+    "line": 302
   },
   {
     "id": "a97337ed0d0a0736ef673f12c677fd769c2e5ee96845d125035c5413cc5909d4",
@@ -6311,7 +6311,7 @@
     "detail": "The method 'path(float, float, float, float, float, float, Hit, PointLight[], float[], float[], Sampler, Sample, Sample, PreparedObject[], int, PreparedObject[])' has a NCSS line count of 128.",
     "ceiling": 128,
     "count": 1,
-    "line": 986
+    "line": 1101
   },
   {
     "id": "9e1f4896a6979f2ff94180878d7faabd52ab4b36c41205504e47215983bea637",
@@ -6322,7 +6322,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 324
+    "line": 358
   },
   {
     "id": "568089871e44caf4417e4d2d6bfcd5c6132bc882d174f576c9c8291118f1a5c8",
@@ -6333,7 +6333,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1162
+    "line": 1280
   },
   {
     "id": "e45fcf9444bd60d4fcde23d65c863dd558ef859a41ae0e95c8ac59f9a8d2d6ec",
@@ -6344,7 +6344,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1163
+    "line": 1281
   },
   {
     "id": "2009203695d8139e14eb50f22850784390fcfb7e74b23dbaeb1dd3d9dd331ee5",
@@ -6355,7 +6355,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 808
+    "line": 881
   },
   {
     "id": "8324a616a08a64ffe41af0f24743fafee8984c7363802f492697de684f838239",
@@ -6366,7 +6366,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1143
+    "line": 1261
   },
   {
     "id": "3d7c14ff7229c843dc77a009c524a330b06c53ff855b6eb397f50c3302de34a0",
@@ -6377,7 +6377,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1341
+    "line": 1459
   },
   {
     "id": "17856411d5dae6206d202d1f303086f08d9ed086403d8b67ea3524bb551bed2c",
@@ -6388,7 +6388,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1161
+    "line": 1279
   },
   {
     "id": "ba80b970dca15a7d13f556363b12baa2284f03b0bde7c1e1bbda80c5eb2eeebc",
@@ -6399,7 +6399,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 325
+    "line": 359
   },
   {
     "id": "4cc231ba2e54a657104cf08e0359f41482c215534f32574677daf7d45e22c708",
@@ -6410,7 +6410,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 355
+    "line": 390
   },
   {
     "id": "398d9923eafe78e066f224ec1de9b70802ff252c90a659b04e0e977f6ca29f38",
@@ -6421,7 +6421,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 471
+    "line": 506
   },
   {
     "id": "11b753af0c847f2ffbfd181314e835b6a0e37a90984b6951b91d64481706e6b7",
@@ -6432,7 +6432,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 470
+    "line": 505
   },
   {
     "id": "6ea436ebfc03eff053754ea8fd199b39c3345c3c6076d6f4d4256d63c5b2ea85",
@@ -6443,7 +6443,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1075
+    "line": 1193
   },
   {
     "id": "888ef2854c22ac08453ce94a05573e1d84445831bfc2ab812c4bf69afc999e11",
@@ -6454,7 +6454,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 172
+    "line": 183
   },
   {
     "id": "5630e573ad844e12f68e7c04d6823b68fbe04515c7e2ae10feebe1aafbc49c1f",
@@ -6465,7 +6465,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 173
+    "line": 184
   },
   {
     "id": "3d20710304bbabae4d8d208b1ac8f199f5f59ada2c3befd7cb6cbacd1ede61e2",
@@ -6476,7 +6476,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 404
+    "line": 439
   },
   {
     "id": "18c2fc4030afe95ab05346a7381f201b4266f26a0e8dcb1fff8f9f13df72fda5",
@@ -6487,7 +6487,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 341
+    "line": 375
   },
   {
     "id": "4361191e754699ac596002ff6d97c5f5445207ba0d6c64473ec107234e025cde",
@@ -6498,7 +6498,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 387
+    "line": 422
   },
   {
     "id": "5b918a68e6022400f71721bbf4a86f26da0625fa72aab87da7d0acf1656d0748",
@@ -6509,7 +6509,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1185
+    "line": 1303
   },
   {
     "id": "d5cf479a7cee9cd87c02d429e1ebaea027b892c3f3a96efdb52ea69af0987263",
@@ -6520,7 +6520,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 206
+    "line": 222
   },
   {
     "id": "66201a74737b286e3dad2921a4922643d2b753756604d9671ffc88e3b6a1276a",
@@ -6531,7 +6531,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1328
+    "line": 1446
   },
   {
     "id": "6c27d9ce285b6fe2ebd8e9542ff573d39d3949f7d51e00a7be719c19e27635b0",
@@ -6542,7 +6542,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 920
+    "line": 993
   },
   {
     "id": "5bb5d52009b568d43129ee9ed7b615997cf30f1b1a13e094335660933c111eca",
@@ -6553,7 +6553,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 919
+    "line": 992
   },
   {
     "id": "dc2564a67e2d919e35294c3daff54918beb06ffbd3654f78aa5b3ec44c63a684",
@@ -6564,7 +6564,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1074
+    "line": 1192
   },
   {
     "id": "a6f49eb3da012be0bd6d71cabc1a5d38cf683bfbca7c7d5e323f6ea4e5ed76f3",
@@ -6575,7 +6575,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 101
+    "line": 102
   },
   {
     "id": "eb71eb9ad7619785e6bb9a5633ec7027fd058cd5464409f99ca82382450eb7d2",
@@ -6586,7 +6586,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 99
+    "line": 100
   },
   {
     "id": "592bb26d21a19d52c190e7f1532cd8edfec83e06c242307d028f31efd50b51e2",
@@ -6597,7 +6597,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 819
+    "line": 892
   },
   {
     "id": "fad153051998ae6f78d596914ab4792249a1612111ed0a990eb955444cf52e9b",
@@ -6608,7 +6608,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 464
+    "line": 499
   },
   {
     "id": "03229c1fdbab5a31cbbad352004ab3c260e1381bd8cbbfc07ea2bf791bb5dbca",
@@ -6619,7 +6619,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 276
+    "line": 310
   },
   {
     "id": "376d942eee5cabf9b70df7af19e155bf7160a6457a52bb2680c9698e67a1964d",
@@ -6630,7 +6630,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 939
+    "line": 1012
   },
   {
     "id": "44ffa1792562513d57e6bdf22b3cd161b86acfda097adf1dd786a77f58713758",
@@ -6641,7 +6641,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1608
+    "line": 1795
   },
   {
     "id": "3deb327a5e871f4b4a2c88cb9d4c756b972bc942b7e4d7a8b37b104225de87cc",
@@ -6652,7 +6652,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1228
+    "line": 1346
   },
   {
     "id": "d40e91068eeec1106ad6c3ec8be4793a7bf8fd03430dc5cd5946173a0f234724",
@@ -6663,7 +6663,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1256
+    "line": 1374
   },
   {
     "id": "586001935ec74dab6c24c776d231d0cd8b15ca02cabf5d4945720eb694023932",
@@ -6674,7 +6674,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1345
+    "line": 1463
   },
   {
     "id": "6e1f2498a3ef04060726ed10eb13a0a5bbbb9d21c46e4969c550070dde52b91a",
@@ -6685,7 +6685,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1602
+    "line": 1789
   },
   {
     "id": "d3fbdabbc0e253a8a854e795f358daaaba7cdba161b6b9b18563c22e0c942744",
@@ -6696,7 +6696,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1415
+    "line": 1533
   },
   {
     "id": "f1824e05d34dfb828a01ca1d2633b4c5b0db695ca4c5271ba26ae73c2c517f2a",
@@ -6707,7 +6707,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1433
+    "line": 1551
   },
   {
     "id": "fe46a8e0540b52c15eaf85b9092948fc3a0597c237200bdbbd9bd2fa8a6bb2e9",
@@ -6718,7 +6718,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 867
+    "line": 940
   },
   {
     "id": "68115f6ac5bc36fb0af36a0369e66afbd6e01b8cf2006dfd867b90696a45a411",
@@ -6729,7 +6729,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 465
+    "line": 500
   },
   {
     "id": "2556d087ae085504c52f23426d3cca8741cf49e12bb2243af697ce2333adba9d",
@@ -6740,7 +6740,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 820
+    "line": 893
   },
   {
     "id": "cef303b572c2a6810f9646e95b428a7934c42874c1ab5dfcaea24638b30a9983",
@@ -6751,7 +6751,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1756
+    "line": 1930
   },
   {
     "id": "2c8232d98cecc2f8c1670dcd7557b582b0cc0f518974a566473687d01b57b4de",
@@ -6762,7 +6762,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1160
+    "line": 1278
   },
   {
     "id": "dd0be10668e276f77f1ef79cd86139439d8c3b5353336bd4dc3b2958daab69ad",
@@ -6773,7 +6773,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1766
+    "line": 1940
   },
   {
     "id": "b4f554dda8e0f23b3a848c8de960ac7e311b47cb082927079fe944797aef1d4f",
@@ -6784,7 +6784,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 152
+    "line": 163
   },
   {
     "id": "c6ea4b573f2f1daaff1293063a3139c09587bc99f9f49c2568079863d3691138",
@@ -6795,7 +6795,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 145
+    "line": 150
   },
   {
     "id": "d38424353cbd5a98d558d960dfc7117f80b96fb48bc91098b331869c8a1220aa",
@@ -6806,7 +6806,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 421
+    "line": 456
   },
   {
     "id": "eb10b8c42034146f336dbe285570f06bca9f48bc459af26108edd22100353c25",
@@ -6817,7 +6817,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1140
+    "line": 1258
   },
   {
     "id": "77ab41ce8051b85946dbf8f5663a82f0401e05066bb7de2eaf05a207de7d37da",
@@ -6828,7 +6828,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1337
+    "line": 1455
   },
   {
     "id": "9b3ba22864f72d2b32b764d9324cd983375eec2ce800e31c01b963a14ea15493",
@@ -6839,7 +6839,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1182
+    "line": 1300
   },
   {
     "id": "f1fa02172937a6725db3355d7f2c092e0836defa83f1b9aad1f32c0f608d2b1b",
@@ -6850,7 +6850,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1764
+    "line": 1938
   },
   {
     "id": "0e5bda1c0a0e986f840e7b33a6bc00ca5fd1a609aa34da8b68688989bc59c112",
@@ -6861,7 +6861,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1701
+    "line": 1875
   },
   {
     "id": "958f433ae1008457cca9f5a0566804753c6d879768dda74fbd4176a63a72675b",
@@ -6872,7 +6872,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 348
+    "line": 383
   },
   {
     "id": "8fe47b7df693ebad929c814a294423b6b1dd874a738cfa8030c4839f418b63f8",
@@ -6883,7 +6883,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 350
+    "line": 385
   },
   {
     "id": "c27cc0bfc12c94097919a9db870df8f393fd915169da4b641b502a4f7990d865",
@@ -6894,7 +6894,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1806
+    "line": 1980
   },
   {
     "id": "1ce527074accf31dd8559788bed816524022752f95b89c005641f5f63ebdb605",
@@ -6905,7 +6905,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1663
+    "line": 1850
   },
   {
     "id": "38c871ccb485d5bdfd45dfe6f6cadeadd138f223dd3e59b1ff9ef721e0cf2bc2",
@@ -6916,7 +6916,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1749
+    "line": 1923
   },
   {
     "id": "0d6e5a62cea3b9d4bfda682b7d09594b66b3e1695b681923358f83ff81c58e7f",
@@ -6927,7 +6927,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1367
+    "line": 1485
   },
   {
     "id": "b64c06559076522aba1b29b52a9512ae5ba788d558d95e5ce79e5bfa6b3b430b",
@@ -6938,7 +6938,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 922
+    "line": 995
   },
   {
     "id": "9ca9b4e37be20db3d0b5250ddc50bbbf3097089f8412ccafd63360107577d74d",
@@ -6949,7 +6949,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1258
+    "line": 1376
   },
   {
     "id": "c335b64f20fb9fb821877c8dc679a99c20a652b29ffbfacc6863b7543880e145",
@@ -6960,7 +6960,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1683
+    "line": 1859
   },
   {
     "id": "a0f8095fa7f22c1cadee320a12f2922a1857daaff74ec9afe6f0fe10545748be",
@@ -6971,7 +6971,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1833
+    "line": 1996
   },
   {
     "id": "03a575f45a3e67a05a3894b3dbb256055cd98898f010b107a884417b2bf046cd",
@@ -6982,7 +6982,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 873
+    "line": 946
   },
   {
     "id": "d23aa450c07a4fd8074185e7bcbf7cf968ad71c09063a2ac0deb27946e2f1a64",
@@ -6993,7 +6993,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1157
+    "line": 1275
   },
   {
     "id": "cdec1d409c6a4ad3d375af67152591866d90b7e095d6421caee13158d20f6ce1",
@@ -7004,7 +7004,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 1664
+    "line": 1851
   },
   {
     "id": "8b56ffb939284f577c6a2f812f9080e5eeda836cb43412e023dbd18ef4fa7ccb",
@@ -7015,7 +7015,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1752
+    "line": 1926
   },
   {
     "id": "5f64ec5fbb79b9b90d6e06af406919c7d6b2daaa73be414714710b024114ba28",
@@ -7026,7 +7026,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 890
+    "line": 963
   },
   {
     "id": "0a014ef6ac009daaab6ca2f6cc6a007494a173ec6bb84c7ebd63083f43c567d2",
@@ -7037,7 +7037,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 822
+    "line": 895
   },
   {
     "id": "6af244cd14d0f12a860bdc3ccb050ec006b07de84a2def01d82dbd9602b88785",
@@ -7048,7 +7048,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 474
+    "line": 509
   },
   {
     "id": "bd2cfa97a6ed9d36ba8f021aa4f5125d4476138762d9fd73b2ea00fedfd706f5",
@@ -7059,7 +7059,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1340
+    "line": 1458
   },
   {
     "id": "0bcc94f48c3a38da0fde7a6831a5688c13bc162d11445e86b61892accc9e71dc",
@@ -7070,7 +7070,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1028
+    "line": 1143
   },
   {
     "id": "9a146b4de6d34a39dd15d6e2bb087085be164b59e4dba7364bf561961d8f5690",
@@ -7081,7 +7081,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1366
+    "line": 1484
   },
   {
     "id": "d0a3e77485269e354a1381cfccfc59eda0605cf036528378cb6af3676e4228ca",
@@ -7092,7 +7092,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 1072
+    "line": 1190
   },
   {
     "id": "814d5151af70ca74a1b05cf0aab9655c59ac7f7e96dc7b93f6012a37d8cdbf23",
@@ -7103,7 +7103,7 @@
     "detail": "'while' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 410
+    "line": 445
   },
   {
     "id": "fdfddffd5a57958e81534b2470e5ce400298048344d4ebef74544491676f64f5",
@@ -8346,7 +8346,7 @@
     "detail": "The method 'evaluate(float, float, float, float, float, float, float, float, float, float, float, Sample)' has a cognitive complexity of 23, current threshold is 15",
     "ceiling": 23,
     "count": 1,
-    "line": 397
+    "line": 406
   },
   {
     "id": "bad54d68e51445762473a6bb448dc30ff8b7d4bfeb4c076b018dbdf1bb8db294",
@@ -8357,7 +8357,7 @@
     "detail": "The method 'scatter(float, float, float, float, float, float, float, float, float, float, float, Sample)' has a cognitive complexity of 15, current threshold is 15",
     "ceiling": 15,
     "count": 1,
-    "line": 329
+    "line": 338
   },
   {
     "id": "00dfd400d64536a13d09cb7606d5db2e202ad3cd8a4df55c4fe8d14788450a4b",
@@ -8368,7 +8368,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 397
+    "line": 406
   },
   {
     "id": "9473666192f62ad76bef743b9caf5d00f5436513894906229e1c8a82c32f0759",
@@ -8379,7 +8379,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 237
+    "line": 246
   },
   {
     "id": "6b7c03d6a6de724103b636f3fcc461027eb5047f738de6c705d80549153900a2",
@@ -8390,7 +8390,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 290
+    "line": 299
   },
   {
     "id": "aafae6d52a94e64ccad88e5afc954e344dadbb0217fa0bcd8a1c80509ee8c172",
@@ -8401,7 +8401,7 @@
     "detail": "Avoid long parameter lists.",
     "ceiling": 1,
     "count": 1,
-    "line": 329
+    "line": 338
   },
   {
     "id": "fdd1a01e85f7b556b1213b38da9ed849133023985ca1853450a6e14f5a3b7a1e",
@@ -8412,7 +8412,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 266
+    "line": 275
   },
   {
     "id": "514eca67387bd4dc1549ed28bed6c2078f8904930fc246656f72b426dd74129e",
@@ -8423,7 +8423,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 365
+    "line": 374
   },
   {
     "id": "f84436db05be0b9f28930ba9c7caf6cbbf962da7cbc7caac419a6424f0908bd0",
@@ -8434,7 +8434,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 441
+    "line": 450
   },
   {
     "id": "fe7494aa39282477874e8d0922b07e061ed4946991b4547b555cf870d7aa8f12",
@@ -8445,7 +8445,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 411
+    "line": 420
   },
   {
     "id": "2dd03fc02807cccaf9c6f7a432b901554649dc708dacd6bb087ac9fca43f2711",
@@ -8456,7 +8456,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 443
+    "line": 452
   },
   {
     "id": "849af5953703317cab2fe0e464ca1680c102e56b210cde8773982b5757fba55e",
@@ -8467,7 +8467,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 477
+    "line": 486
   },
   {
     "id": "8f5eafb958776e47cadf09d674b928c2e633a04cc7ed74fd486ac45766e9c926",
@@ -8478,7 +8478,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 448
+    "line": 457
   },
   {
     "id": "503e5bbf98a23a0796bc65abc3290952f11abc620a43b600ca833904c9862bff",
@@ -8489,7 +8489,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 424
+    "line": 433
   },
   {
     "id": "24e968a9f03bbc783660679a1b279e2001f84bd21e0fa6e7fcec705ea93cacb9",
@@ -8500,7 +8500,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 437
+    "line": 446
   },
   {
     "id": "c13d71928f7f0185d8e14630f8b3188ab8bbed6ddc8c258ad47985664dbef91e",
@@ -8511,7 +8511,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 265
+    "line": 274
   },
   {
     "id": "93af5befea83a7426790e4c76f3a67316d956ea4d4332b439b1eaa783782d8f6",
@@ -8522,7 +8522,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 351
+    "line": 360
   },
   {
     "id": "f43c26fa1a8186c2bfb06670bcfd0bc7e78179ed681d8cc5cc6b1d8f0c8a7b16",
@@ -8533,7 +8533,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 2,
-    "line": 268
+    "line": 277
   },
   {
     "id": "49c8dd2b8fd609774da3797fc93bb0d62b6e493aa601fb31d6fc37a787a23fb8",
@@ -8544,7 +8544,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 230
+    "line": 239
   },
   {
     "id": "34833e4a18aa911bcbf74bf356d60c5a715b9957835543d3bae338b319440adf",
@@ -8555,7 +8555,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 393
+    "line": 402
   },
   {
     "id": "49e19dd28c59d117068756bb09bc90fb2206d9fce7f3576b30caedc8dc077aa9",
@@ -8566,7 +8566,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 345
+    "line": 354
   },
   {
     "id": "5516d6e1a9bed25f0b6868d6cf6301095993b053e65a2b256310294fef080899",
@@ -8577,7 +8577,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 93
+    "line": 102
   },
   {
     "id": "44641e39df9d131e43685005ccb20d632512df3182b9788cb140f4a81166b6d7",
@@ -8588,7 +8588,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 87
+    "line": 96
   },
   {
     "id": "b2027a1c4c94eb7732e708331701a3591b51304d3782faaf543bcb7caf6ae2fe",
@@ -8599,7 +8599,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 99
+    "line": 108
   },
   {
     "id": "34b7bf77d1d2bdfb6021cb1a91873f2fb419c6ac1782f0b223b3e0ab0b97ac57",
@@ -8610,7 +8610,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 81
+    "line": 90
   },
   {
     "id": "b3c6c3421d6e43c4f839970908464511de5371a0f820d56a0277f2cebc265b4a",
@@ -8621,7 +8621,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 88
+    "line": 97
   },
   {
     "id": "c664b8b09727d70eee8979c0d6fe04810cca9390fd841d9111677a742f4bb77b",
@@ -8632,7 +8632,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 94
+    "line": 103
   },
   {
     "id": "b8571eb6a8e7f6c6f6a689702cb90685278336d811d832406c42ea894e267603",
@@ -8643,7 +8643,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 100
+    "line": 109
   },
   {
     "id": "3886a2ce348fde57937ac2cd18e7d9bfd201212dade562577b0d5c394811dc3c",
@@ -8654,7 +8654,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 90
+    "line": 99
   },
   {
     "id": "0b011d31ce01e3e1c057fbd51c44d1ab4e2febcbc590a4dc6bf6923a00123d9a",
@@ -8665,7 +8665,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 96
+    "line": 105
   },
   {
     "id": "b2ad899d0d9ca65fed51349f830ca16fcd2048b7ad30cae95e5cd7f1faa622a8",
@@ -8676,7 +8676,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 79
+    "line": 88
   },
   {
     "id": "3af48005266ee768e3e548672ff5a1df5941bf707d1cc919002576f2f943ad1b",
@@ -8687,7 +8687,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 92
+    "line": 101
   },
   {
     "id": "bd992b78255451f1830310c1e7f6c631563bd0aefbb1a850fbef9cada49e1e95",
@@ -8698,7 +8698,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 412
+    "line": 421
   },
   {
     "id": "cd15ddaa6b0823ee82071b744d7da0a287b95bc8112ee54ef2b8a99347e498d4",
@@ -8709,7 +8709,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 414
+    "line": 423
   },
   {
     "id": "498ba0866ba89545854e2153143afbae79c74683cc6c24e72ba3e3cdf49b13f0",
@@ -8720,7 +8720,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 98
+    "line": 107
   },
   {
     "id": "8af6c9631a7bb1e825eaa8aa0f5db506403f200578735cdb64826c8445dcd17c",
@@ -8731,7 +8731,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 440
+    "line": 449
   },
   {
     "id": "6da621dbcab227d9ea5be6b8360830b05f7d6fb47ac0b9befa76ff55af127ddb",
@@ -8742,7 +8742,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 374
+    "line": 383
   },
   {
     "id": "bf39252e7bb97882698bae171b00a8b6c3a227cec8b05bd9fe056be97d77953a",
@@ -8753,7 +8753,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 476
+    "line": 485
   },
   {
     "id": "b20727763393b730dc6c750b38166b71ef957594192093939b2bbe939e661273",
@@ -8764,7 +8764,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 3,
-    "line": 250
+    "line": 259
   },
   {
     "id": "5209db48256695d680aa9428f34688651776376ffe25ad33fbebfd2fb146926b",
@@ -8775,7 +8775,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 428
+    "line": 437
   },
   {
     "id": "1495d582a2f60676d08fe3041d966d26b06728429b269b01115bb65d92fea862",
@@ -8786,7 +8786,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 454
+    "line": 463
   },
   {
     "id": "34a9fd955fae4c26c88dfab5aea1d0809f5d89611d343b573ac0685c96668bdc",
@@ -8797,7 +8797,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 85
+    "line": 94
   },
   {
     "id": "68263d6840b9edbd510767b5b0e6dc958a50651982c4ffd263f5053c2b4a3aac",
@@ -8808,7 +8808,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 83
+    "line": 92
   },
   {
     "id": "87b49d5806aff6bb5ed98d7da0da3d6a31972ba7701f1c972fef200135bbd2e5",
@@ -8819,7 +8819,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 478
+    "line": 487
   },
   {
     "id": "c9e217fb5503aaecfcdedb86eca5b4f8dcd3beb1a5c2402d04abc0f8433797ac",
@@ -8830,7 +8830,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 423
+    "line": 432
   },
   {
     "id": "b7c52315cb6c2eac83ed0b094461bdbdcf9d0003a423350f529323ed6bc06a06",
@@ -10480,7 +10480,7 @@
     "detail": "The method 'overlaps(float, float, float, float, float, float, float)' has a cognitive complexity of 19, current threshold is 15",
     "ceiling": 19,
     "count": 1,
-    "line": 43
+    "line": 63
   },
   {
     "id": "a8b61d96271800224613e9dfea090cd250c0a55f5724245bf2cbcd262744fe1f",
@@ -10491,7 +10491,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 75
+    "line": 131
   },
   {
     "id": "a6513f67c11588fca2736061a51c985f7c512cabe4ef918c5517b8b42d2c40bb",
@@ -10502,7 +10502,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 49
+    "line": 69
   },
   {
     "id": "fc505e6d7b0afab3d179b15e39b3da43b0ffa0fd3e7ad54b38d101f2ea06c0e7",
@@ -10513,7 +10513,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 57
+    "line": 77
   },
   {
     "id": "8ca41948ff186942b119fa877b9782a76199b1840937d1a9316110efeb8495c2",
@@ -10524,7 +10524,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 65
+    "line": 85
   },
   {
     "id": "647cfddc851c068192bb8b4f94627bab5f2b87138a002937b27c730c18dd0616",
@@ -10535,7 +10535,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 15
+    "line": 16
   },
   {
     "id": "5d99ea69a9ef7cbeaa6f05a9bed15a931cca07275d3ba3e23fac3c521c0f8a8e",
@@ -10546,7 +10546,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 14
+    "line": 15
   },
   {
     "id": "fbbcbe2cb1807bfee080b7923ebf1e09482368da50ec30b713b7a2fad67e24a2",
@@ -10557,7 +10557,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 45
+    "line": 65
   },
   {
     "id": "bd7c3965a9890aee4a01c2eca19439a284ca3646bfb7ea75288fb2aeb78208aa",
@@ -10568,7 +10568,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 152
+    "line": 209
   },
   {
     "id": "9e3c0ef525c20034f3dc8c52b727f5f22245911ef7dceb0ff50df2e285088185",
@@ -10579,7 +10579,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 153
+    "line": 210
   },
   {
     "id": "be5e8f9dbce346fb3d4adec357d9aa005fdacc1f21bd0f9208385c79be434585",
@@ -10590,7 +10590,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 154
+    "line": 211
   },
   {
     "id": "e95e40e16419cb1a56d3f4be7e32919690a9ca02965634bd7b2d963570e1b73d",
@@ -10601,7 +10601,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 52
+    "line": 72
   },
   {
     "id": "ffb60c8400b0d891f4b4f682d14c00d58c7b1b1ea8d4e2d929d4478ce47711b1",
@@ -10612,7 +10612,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 47
+    "line": 67
   },
   {
     "id": "392d8e81fd386529e007420a007889ffbf9c8053ab9ea1cec04ef6f3d4aa9f3b",
@@ -10623,7 +10623,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 55
+    "line": 75
   },
   {
     "id": "e8a8effd0e7493d98020c01f058f1a2aa000c5bc8e2d5ff6034d0f5a399ec746",
@@ -10634,7 +10634,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 63
+    "line": 83
   },
   {
     "id": "0a8f23deeeeb0efec3da5ffd5d30ee7cc3c58564e8b9ae83a6a01ba75e2243dc",
@@ -10670,17 +10670,6 @@
     "line": 25
   },
   {
-    "id": "1ef3567ac16a3a8e0a07e7f2b0f471eda6210c77fe274ea9f6b037d1b7f1b230",
-    "tool": "checkstyle",
-    "path": "src/engine/RenderSettings.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (!defaultMinimum",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 44
-  },
-  {
     "id": "70d61ba3c2bff08d32536b9273fa585fbb8c53d6a979cfcce6f21864f5b96f22",
     "tool": "checkstyle",
     "path": "src/engine/RenderSettings.java",
@@ -10689,7 +10678,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 39
+    "line": 45
   },
   {
     "id": "fbd42815f12cf915eab9718769e4f89fc9e82da687bb9db7aab34ea7b0adf23f",
@@ -10700,7 +10689,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 53
+    "line": 60
   },
   {
     "id": "ec8dfa665453e3f34f3fe2a27bbf49501754fd605f3d0cc5e57349a9da31d28f",
@@ -10711,7 +10700,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 51
+    "line": 58
   },
   {
     "id": "39899cd1bf1f627a042d3eecd4536223e134009f37f296373c0936ce4894c0b3",
@@ -10722,7 +10711,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 24
+    "line": 30
   },
   {
     "id": "f69ec44676476af48b05d89a60c293e67972559c8adca7e6d7865f9e857ed0ea",
@@ -10733,7 +10722,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 26
+    "line": 32
   },
   {
     "id": "b40c78c9bcf932b738c97785e48c2a5aa656cfad3f67be39cb12e96672432732",
@@ -10744,7 +10733,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 30
+    "line": 36
   },
   {
     "id": "db24692af56694b2111764b89a40f4fcc6dd2b66bd7c997d442f0510fab910b1",
@@ -10755,7 +10744,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 32
+    "line": 38
   },
   {
     "id": "2139a3c61c02fdfd0f1268a13b02b8ebd740e1c260358d210110a52ead10f0f6",
@@ -10766,7 +10755,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 37
+    "line": 43
   },
   {
     "id": "bcc18ae46e343c7dd32894c24f0ec4b467eb892292b11b6abc53409cfda01162",
@@ -10777,7 +10766,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 35
+    "line": 41
   },
   {
     "id": "04c7f650a0eddadd2e4a6a2e639dcd6d4af8ed03c56323447ea7bbc0fb27a02c",
@@ -10788,18 +10777,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 6
-  },
-  {
-    "id": "c422a17edd3a69b80ee9b316b0e474daa3350e563a6b37f4ad89a0800d5e1622",
-    "tool": "checkstyle",
-    "path": "src/engine/RenderView.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (width < 64 || width > 1600 || height < 64 || height > 1600)",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 8
+    "line": 9
   },
   {
     "id": "e9351e7a9a93184594c5ff19af4e1afa47c6b55907937f3f6cd7d71680e004bc",
@@ -12966,7 +12944,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 219
+    "line": 221
   },
   {
     "id": "e8ebea2e521bf458fd1944034531da8bfd38050f32160107a533e0d8a75e1f57",
@@ -12977,7 +12955,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 363
+    "line": 364
   },
   {
     "id": "4852ef58ed6d9d8c5e88d714c55beb0e7aaece71cfa2a7f14b16b3f681b3ba10",
@@ -12999,7 +12977,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 364
+    "line": 365
   },
   {
     "id": "033106775386973e78eda6f2e08707e24db50faf6820e19c3bbb239cb2fd466a",
@@ -13021,7 +12999,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 234
+    "line": 236
   },
   {
     "id": "bb22940483a77d548533195ec25fc34ab506379293a26287b6f5007e932ebb9f",
@@ -13032,7 +13010,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 322
+    "line": 323
   },
   {
     "id": "8c5812558dfdec787f266304e910aeb489feaf4fcd547c814a9fbf5ea3a8cfa0",
@@ -13054,7 +13032,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 499
+    "line": 500
   },
   {
     "id": "58c20a7360bf6397ea6294e7618be78e1d15b963501bff58655987a8d1a844fc",
@@ -13087,7 +13065,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 461
+    "line": 462
   },
   {
     "id": "c7c15fe97a8b8494783640d265606212d99731f75d785af8c2fa6cba06f939a1",
@@ -13098,7 +13076,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 459
+    "line": 460
   },
   {
     "id": "0c5833ccde98ea35d3b866e4dae2e22545e99454d504f588261eabc6cfed2031",
@@ -13131,7 +13109,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 413
+    "line": 414
   },
   {
     "id": "647397ef57625f749baf7f4f8f116e5f4374f5b91ba2a3a2fe5a1a1d45417e20",
@@ -13142,7 +13120,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 448
+    "line": 449
   },
   {
     "id": "10a0244b4de6f4835d5e27328aea25720b154a1205458b1e498925cd7a01bdb9",
@@ -13153,7 +13131,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 423
+    "line": 424
   },
   {
     "id": "07f1b3396510e46f7f4bfa50076ffbfff65d745fd07d913e71e76a558faf6002",
@@ -13164,7 +13142,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 458
+    "line": 459
   },
   {
     "id": "c68e62318935b3879bd937a2d0f113d13d0ceb628f9bd038d7ba214d78582b32",
@@ -13175,7 +13153,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 390
+    "line": 391
   },
   {
     "id": "b1b295432ad427b121f7a80a9f467f0187fe917cfec52927a75842c413f7f7db",
@@ -13197,18 +13175,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 378
-  },
-  {
-    "id": "7b08d53fa6a4981a46c66854cb0372c2fa134d158214d5346f0c549e7262d74b",
-    "tool": "checkstyle",
-    "path": "src/engine/ViewportState.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (width < 64 || width > 1600 || height < 64 || height > 1600)",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 2,
-    "line": 240
+    "line": 379
   },
   {
     "id": "171523dc38814bc69137e9a7a2c0341ff47044bc61ff95660bc09c5faf315369",
@@ -14935,7 +14902,7 @@
     "detail": "The method 'camera(String[])' has a cognitive complexity of 32, current threshold is 15",
     "ceiling": 32,
     "count": 1,
-    "line": 552
+    "line": 557
   },
   {
     "id": "ba52169f7091b3069e17021bcad3e6f8991c3e5d15c07db75537fe47082c327d",
@@ -14979,7 +14946,7 @@
     "detail": "The method 'camera(String[])' has a NCSS line count of 84.",
     "ceiling": 84,
     "count": 1,
-    "line": 552
+    "line": 557
   },
   {
     "id": "0b7b8d1b13697168aa321abbee7dd7bb6621b2aee41ffb5d08ad5b3dd1472b25",
@@ -15001,7 +14968,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 642
+    "line": 647
   },
   {
     "id": "49b57b04357029460cf6258e189944208a5791be25455d4c093e2f174db6a3e6",
@@ -15012,7 +14979,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 641
+    "line": 646
   },
   {
     "id": "6dec06e8c2130f7a92457050e38176cbc7a86aa2a1569e7d80db1f34044ad028",
@@ -15023,7 +14990,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 649
+    "line": 654
   },
   {
     "id": "36e0aced55f1284ed8c30ffdcb3c3b52def977d2103ca49fa7c01965439ab82c",
@@ -15034,7 +15001,7 @@
     "detail": "'else' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 737
+    "line": 742
   },
   {
     "id": "42aa72a3ccb69d5832d9b69690f415d4acd8e11c68d790e5954d61293b9f0885",
@@ -15056,7 +15023,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 762
+    "line": 767
   },
   {
     "id": "c76e1ae591b448cedca20e91578c0dd11410b59a061e8d59030dfe283f2b30dc",
@@ -15122,7 +15089,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 633
+    "line": 638
   },
   {
     "id": "20c6ced1b46f25d3ce62f1a975a199308b1bc601d3c6c6c0e6da27fb1cba401d",
@@ -15133,7 +15100,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 625
+    "line": 630
   },
   {
     "id": "477abadccaff91216da8379099e32cd646a30ed30e6a9f00da4720f9db3db636",
@@ -15144,7 +15111,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 703
+    "line": 708
   },
   {
     "id": "23fbb1d0851fd20bc8127331774c676952b31ddc83028f4f17c820aaf06416c2",
@@ -15166,7 +15133,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 773
+    "line": 778
   },
   {
     "id": "e1c6159e6d1a4e7d11f40150f2132ce65e039e83fcc4b1c9639e70cc5ac34dd6",
@@ -15177,7 +15144,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 599
+    "line": 604
   },
   {
     "id": "b51f40c6e8f59a6bea2105a5020a580231c3aff6d2fd7f8b2c198814ace52590",
@@ -15188,7 +15155,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 782
+    "line": 787
   },
   {
     "id": "d8c0f8bcbb726838f8b46e5b21e3d65034ed8babe46a05703143d8edbaa83807",
@@ -15199,7 +15166,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 768
+    "line": 773
   },
   {
     "id": "2a7f2ca9db0e7c0f94391a13d0b6b61d0421ffbc131f785407b9033ded8d2998",
@@ -15254,7 +15221,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 612
+    "line": 617
   },
   {
     "id": "969303f043d5a17db99b91fe4fe012fe99928170dbb14add2db459cdde682cce",
@@ -15298,7 +15265,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 736
+    "line": 741
   },
   {
     "id": "b04dc154c4503dbf5aab9068fab963894879a6bdf8e8112700a42e6ac43eb82a",
@@ -15309,7 +15276,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 648
+    "line": 653
   },
   {
     "id": "f228fc22f2bdb1ef6c24b7f38241c2c3b14bc7fc22f31ba61151957f5ae57876",
@@ -15320,7 +15287,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 640
+    "line": 645
   },
   {
     "id": "68615a3a8c30415b1a925772740168fa716dc0659408820085b703635c3a21cd",
@@ -15353,7 +15320,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 2,
-    "line": 578
+    "line": 583
   },
   {
     "id": "2a956a47b24ec41a8db9f704d86551e218a022311217c8e06d8d91448d5ff635",
@@ -15364,7 +15331,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 690
+    "line": 695
   },
   {
     "id": "611660e40472016210b6ff9a29acb6b9abf5c9a0404e0a3ac130c1339d5c5076",
@@ -15375,7 +15342,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 674
+    "line": 679
   },
   {
     "id": "d27ce1b2602ad78c53f155d4c05a5333178396d1a184f3e413fdf08a3a1b4a29",
@@ -15386,7 +15353,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 688
+    "line": 693
   },
   {
     "id": "7a6b5da73e90f2a8edf28f02418517bdd9b3ac4624803747ffd3b3f473406ed5",
@@ -15408,7 +15375,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 763
+    "line": 768
   },
   {
     "id": "4abde96c45557862ddeff77f71ed5441b3c8139fae7c5cb740f87fec4380385e",
@@ -15442,17 +15409,6 @@
     "ceiling": 1,
     "count": 1,
     "line": 345
-  },
-  {
-    "id": "580d9a94c6f8610e682b4d68f782cecb56dc8ecff4921edcddc26ec63de92d5d",
-    "tool": "checkstyle",
-    "path": "src/scenes/viewport/ViewportCommand.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (width < 64 || width > 1600 || height < 64 || height > 1600)",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 449
   },
   {
     "id": "cd0fbb380f9ba628d86fbf2db1ca57dbc080fc8b10650d8cb88dc3c797a9ff33",
@@ -16794,7 +16750,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 179
+    "line": 213
   },
   {
     "id": "b9b9e348a944f95cb613854ff57e639d1bf48bf4b8ef21f5f4453c3aa52fbfd6",
@@ -16805,7 +16761,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 261
+    "line": 295
   },
   {
     "id": "e5dd2ed143bd6c292f60aec759c0ebf0e45385b5ce62764195188a13386b351f",
@@ -16827,7 +16783,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 263
+    "line": 297
   },
   {
     "id": "7f0c0c10aba8487480855320f06c40db16eb0bb483ca7d9042b36408e7bcc4ff",

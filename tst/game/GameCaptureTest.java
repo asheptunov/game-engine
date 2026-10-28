@@ -37,6 +37,34 @@ public final class GameCaptureTest {
     }
 
     @Test
+    void fullHdNavigationRoundTripsAndRejectsOversizedEdits() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.fixedResolution(1920, 1080);
+        var saved = navigation.snapshot();
+        var file = root().resolve("navigation.properties.gz");
+        CaptureCodec.save(file, saved);
+        var restored = CaptureCodec.load(file, GameNavigation.State.class);
+        assertEquals(saved, restored);
+        var copy = new GameNavigation();
+        copy.restore(restored);
+        assertEquals(1920, copy.view().width());
+        assertEquals(1080, copy.view().height());
+        for (int[] size : new int[][] {{1921, 1080}, {1920, 1921}, {63, 1080}}) {
+            boolean rejected = false;
+            try {
+                copy.fixedResolution(size[0], size[1]);
+            } catch (IllegalArgumentException expected) {
+                rejected = true;
+            }
+            assertTrue(rejected);
+            assertEquals(1920, copy.view().width());
+            assertEquals(1080, copy.view().height());
+        }
+        assertEquals(1920, engine.RenderCapabilities.GPU.maximumDimension());
+        assertEquals(1920, engine.RenderCapabilities.CPU.maximumDimension());
+    }
+
+    @Test
     void fogQualitySettingsSurviveEditsAndOlderCapturesUseFull() throws Exception {
         var settings =
                 engine.RenderSettings.defaults()

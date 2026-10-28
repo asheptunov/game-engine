@@ -446,8 +446,13 @@ public final class ViewportCommand implements Command {
             throw new IllegalArgumentException("Resolution multiplier must be positive and finite");
         long width = Math.round(referenceWidth * factor),
                 height = Math.round(referenceHeight * factor);
-        if (width < 64 || width > 1600 || height < 64 || height > 1600)
-            throw new IllegalArgumentException("Scaled width and height must each be 64..1600");
+        if (width < 64
+                || width > engine.RenderView.MAX_DIMENSION
+                || height < 64
+                || height > engine.RenderView.MAX_DIMENSION) {
+            throw new IllegalArgumentException(
+                    "Scaled width and height must each be 64.." + engine.RenderView.MAX_DIMENSION);
+        }
         state.resolution((int) width, (int) height);
     }
 

@@ -61,8 +61,7 @@ public final class GameNavigation {
             range(width, 1, 16384, "Window width");
             range(height, 1, 16384, "Window height");
             if (fixedWidth != 0 || fixedHeight != 0) {
-                range(fixedWidth, 64, 1600, "Grid width");
-                range(fixedHeight, 64, 1600, "Grid height");
+                RenderView.validateDimensions(fixedWidth, fixedHeight);
             }
         }
     }
@@ -469,9 +468,7 @@ public final class GameNavigation {
     }
 
     public synchronized void fixedResolution(int width, int height) {
-        if (width < 64 || width > 1600 || height < 64 || height > 1600) {
-            throw new IllegalArgumentException("Fixed grid dimensions must be 64..1600");
-        }
+        RenderView.validateDimensions(width, height);
         fixedWidth = width;
         fixedHeight = height;
     }

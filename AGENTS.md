@@ -149,7 +149,7 @@ Eraser → Checkerboard → active scene → PerformanceOverlay → AwtViewer
   `view preset triangle` selects the original geometry with the new lighting model.
   Default tracing resolution follows the window aspect with a 1600-pixel long edge
   (1600×1000 for the 1440×900 window). `view resolution 800 500` sets width and height;
-  each must be 64..1600. `view resolution native`, `half`, `quarter`, or `0.5x` uses
+  each must be 64..1920. `view resolution native`, `half`, `quarter`, or `0.5x` uses
   the window dimensions as a fixed reference, rounding to nearest pixels. Out-of-range
   scales are rejected. The legacy `view resolution 400` still selects a square grid.
   Resolution changes leave the camera field of view unchanged; presets retain the grid.

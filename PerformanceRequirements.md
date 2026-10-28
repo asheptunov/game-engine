@@ -501,7 +501,8 @@ same publication does not count as a fresh frame. The historical
 45–47 ms of headless frame work at 1600x766 with its fastest tested settings, including
 roughly 11 ms of CPU conversion. These measurements exclude native window presentation
 and do not describe current combat performance. The present Swing repaint timer requests
-updates every 16 ms. Render dimensions currently cap at 1600 per axis.
+updates every 16 ms. The initial investigation found a 1600-pixel per-axis software limit;
+the subsequent 1080p delivery below raises it to 1920.
 
 **Scope and quality.** Optimize the existing Vulkan game backend and preserve the CPU
 reference, controls, captures, diagnostics, optics, fog and supported scene behavior.
@@ -576,23 +577,32 @@ submissions and image age separately. Native-window acceptance requires a human 
 **S1.1b — Standard render resolutions.** The player uses a 4K monitor and accepts lower
 internal rendering resolutions. In Escape → Render, a Render resolution dropdown offers
 360p (640x360), 480p (854x480), 540p (960x540), 720p HD (1280x720), 900p (1600x900),
-and Custom. Selecting a preset changes both dimensions together. Custom retains the current
+1080p (1920x1080), and Custom. Selecting a preset changes both dimensions together. Custom retains the current
 dimensions and allows editing the existing width/height controls. Merely opening or refreshing
 settings must not change resolution. Existing non-preset dimensions display Custom.
 Preset selection retains camera framing, optics, transport and existing adaptive-mode settings;
 CPU adaptive mode may sample below the selected requested size as before. The image is scaled
 to the game window; these options do not change the monitor mode or claim native 4K tracing.
-The UI states the existing 1600-pixel per-axis render limit. 1080p, 1440p and native 4K rendering
-require a separately verified limit increase during subsequent GPU work; they are not offered
-as working choices here. Automatic monitor-native sizing is not added by this selector.
+The UI states the shared 1920-pixel per-axis render limit. The former 1600 cap was inherited
+from the CPU viewport's software validation, not a hardware limit of the RTX 3080. Its exact
+original numeric rationale is not documented. The 1080p extension raises the engine, game
+navigation/capture, custom controls, console and launch-command bounds consistently while
+retaining existing default resolutions. Requests above 1920 per axis remain rejected before
+changing live state. Both CPU and GPU accept 1920x1080. 1440p and native 4K rendering still
+need a separately verified limit increase; automatic monitor-native sizing is not added.
 
 User test: launch `./game.ps1 -Backend gpu -Scene world`, press Escape, open Render, choose
-720p and then 900p, and resume movement. Inspect the rendered size and scene detail; camera
+720p and then 1080p, and resume movement. Inspect the rendered size and scene detail; camera
 framing and controls must remain intact. Choose Custom, edit width/height, reopen settings,
 then choose 540p. Custom dimensions must persist until explicitly replaced, and the selected
 preset must agree with the width/height fields. The same control is available for CPU.
 Automated settings tests cover all presets, initial Custom state, refresh without mutation,
 atomic paired dimensions and retained camera state; game and completion gates cover regressions.
+`./game.ps1 -Backend gpu -Width 1920 -Height 1080` also selects Full HD at launch.
+Verification includes real CPU/GPU 1080p publication, display conversion, held-image stability,
+restart and close, navigation capture round trips, and rejection of invalid dimensions.
+This increases available image detail; it does not claim 60 FPS at 1080p. At equal samples and
+depth, 1080p has 44% more pixels than 900p, so it normally requires more rendering work.
 
 **S1.3 user test and acceptance.** Select a 60 or 120 FPS budget in game settings, move
 through ordinary and expensive views, then stop. Show output size and actual internal

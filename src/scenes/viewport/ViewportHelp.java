@@ -214,7 +214,7 @@ final class ViewportHelp {
                             "Usage: view resolution <width> <height>\n"
                                 + "       view resolution native | half | quarter | <factor>x\n"
                                 + "       view resolution <size>\n"
-                                + "  Width and height: 64..1600 each. One size selects a square"
+                                + "  Width and height: 64..1920 each. One size selects a square"
                                 + " grid.\n"
                                 + "  Scales use window dimensions, rounded to nearest pixels.\n"
                                 + "  Changes sampling density, not camera field of view or window"
@@ -317,7 +317,7 @@ final class ViewportHelp {
                             "interactive min",
                             page(
                                     "interactive min <width> <height>",
-                                    "64..1600 per axis. Fit requested aspect above these bounds,"
+                                    "64..1920 per axis. Fit requested aspect above these bounds,"
                                             + " capped at requested resolution.")),
                     Map.entry(
                             "samples",
