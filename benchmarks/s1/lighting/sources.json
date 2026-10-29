@@ -1,0 +1,30 @@
+{
+  "commit": "2a3c90a48b2e3af4bac86f3127b775c07c7259a9",
+  "hash_format": "SHA-256 of committed Git blob bytes, with LF line endings",
+  "files": {
+    "assets/gpu/diffuse.comp": "556d595d4b558b54f4f1d75875ac55a80ef0f1a5c2cc66d6a1223d7b145f694a",
+    "assets/gpu/display.comp": "2aacb29f41d09599860608e0bd436119f67b7b2e197a61a136b34c38322b0fa5",
+    "assets/gpu/temporal.comp": "1ba6dec24b4dbdecfdb15026661f6cadb5fe4ed311601fb35059066fb194639b",
+    "gpu-check.ps1": "a35e31f99297c0db55e2af8cc79a8cb02696a46395b0aa8c03b3bbc56a0b1114",
+    "src/engine/RenderCapabilities.java": "8ab246607f06fbd5aceb21f1b47757b9398370d83ee4799773139cf2e41f409c",
+    "src/engine/RenderImage.java": "eee6074b1b064ad1dedc4c5ebf8d6c00d489675513edf9a8041e1e09af3d64cc",
+    "src/engine/RenderSettings.java": "21da20cbf5d17ccc21edfb164582cabd6816cc000feca4fb26daea3836b41335",
+    "src/game/CaptureCodec.java": "c8038318b2303defb7db4c26b2bed27d28b596154ce8191a2b452a4a70ac0998",
+    "src/game/GameRenderer.java": "372f97565fbacd78d0d9575023ea583274d3f343b3c7defa68a48e9d3b6ed794",
+    "src/game/GameSettingsPanel.java": "a3ed1882b9bd0a2fca70c625e9d72f0d6d7bd7b78e0d479d7fa43b381a4fcdaf",
+    "src/gpu/GpuKernel.java": "6ba09bbf6d1e4d1ac21ed12d296f71187881d7d639f00263be1501be6fdd08a9",
+    "src/gpu/GpuLighting.java": "ba4c5a7d2bad02e2da8c7c9491acd19acdb85ba54836981e8d94b778c5ca7f8d",
+    "src/gpu/GpuRenderSession.java": "50874e4c19ac4c1b3ab52a8d41660397126350f89b6186873831fd365b654597",
+    "src/gpu/GpuTemporal.java": "80644c08acbe58364b9506abc876a442341c3ebb28424ef459533843a638d526",
+    "src/gpu/GpuTemporalPass.java": "32783eee3ce18444bf4d06ba4779361be216ebd75366f1ffa37626b1e870783a",
+    "src/gpu/VulkanDevice.java": "ce45bcfdc6773eb09a7251b63434f60e8cc8de7a56788a571a7ca6db425e0601",
+    "tools/gpu/GpuUiCheck.java": "e3d15d44a1fa6adfc4cb1c241a04df852c0ae3f605a271f8484e069ce49297d8",
+    "tools/gpu/LightingCostBenchmark.java": "238ef8474ca4eb33e5da943ed574f147f3c411347a930aa1097698abbb41dd0c",
+    "tools/gpu/LightingQualityBenchmark.java": "1b4184e5113c62e7848187d13414af2cf5225e885bdf5a01842b80b97d73704b",
+    "tools/gpu/LightingQualityScene.java": "71bfd6c4a4e72c29eeab6525706c90e5ddba8c2ebf0be1a971b9765835a81a25",
+    "tools/gpu/LightingReconstructionCheck.java": "31573b876ac587ecb1637fd559c365c08b5f5a025348a4d6f4c05300a82a769c",
+    "tools/gpu/LightingRouteBenchmark.java": "a814c1fec5fbd5c2b7f0b440da1314ac4ecff01fc113f09ea789be7138e521e0",
+    "tools/gpu/ReconstructionBenchmark.java": "560e38f9a33cb89adcffeb84aa6ba8f49d3d89919a291ddcfedf70e0dc8a16b2",
+    "tst/game/GameCaptureTest.java": "88c136ae272d42d761482b81a14fe2da5ea87adac0682c899536a4f1282008bd"
+  }
+}

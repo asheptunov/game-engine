@@ -1,0 +1,49 @@
+PASS odd native grid retains rounded independent lighting grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS finite aperture suspends lighting scale
+PASS settings edits retain lighting scale
+PASS raw lighting estimator exact at 1 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS raw lighting estimator exact at 2 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS raw lighting estimator exact at 3 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS raw lighting estimator exact at 4 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS native visibility resolves sub-lighting-pixel target silhouettes
+PASS zero-fallback compact queue and sky reconstruction cover every native pixel
+PASS full-frame fallback queue spans multiple indirect dispatch rows without holes
+PASS raw/presentation dimensions remain distinct resident=false
+PASS native presentation supports exposure edits
+PASS scale edit preserves retained raw lease
+PASS scale edit cannot expose stale native packed pixels
+PASS detached packed dimensions survive presentation invalidation
+PASS two-thirds lighting keeps fixed native output
+PASS temporal off restores full native raw rendering
+PASS adaptive budget suspends separate lighting scale
+PASS split session retires
+PASS native reconstructed lease survives shutdown
+PASS raw/presentation dimensions remain distinct resident=true
+PASS native presentation supports exposure edits
+PASS resident copy retains native dimensions and pixels
+PASS scale edit preserves retained raw lease
+PASS scale edit cannot expose stale native packed pixels
+PASS detached packed dimensions survive presentation invalidation
+PASS two-thirds lighting keeps fixed native output
+PASS temporal off restores full native raw rendering
+PASS adaptive budget suspends separate lighting scale
+PASS split session retires
+PASS native reconstructed lease survives shutdown
+Native visibility / reduced lighting checks passed.

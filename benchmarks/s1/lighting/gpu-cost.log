@@ -1,0 +1,4 @@
+mode,medianGpuMs,medianReconstructionMs,medianVisibilityMs,surfaceReusePercent,skyReusePercent,fallbackPercent
+1.000000,39.5641,2.0060,0.0000,0.000,0.000,0.000
+0.500000,11.5849,0.4495,2.8436,92.480,3.499,4.021
+0.666667,19.5596,0.8909,3.0251,93.354,3.511,3.135

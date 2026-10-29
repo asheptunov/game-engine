@@ -1,0 +1,508 @@
+Pinned GPU dependencies verified (LWJGL 3.3.6, Windows x64).
+Engine-only build passed: C:\Users\andri\Documents\RayTracingEngine\out\game\classes
+Game build passed: C:\Users\andri\Documents\RayTracingEngine\out\game\classes
+GPU build passed.
+PASS incompatible Vulkan driver is unavailable hardware, not a conformance failure
+PASS unexpected resource failure remains an error, never a hardware skip
+PASS visible celestial disc matches CPU at hour 9
+PASS sun/moon visible at image center at hour 9
+PASS foreground geometry hides disc at hour 9
+PASS visible celestial disc matches CPU at hour 0
+PASS sun/moon visible at image center at hour 0
+PASS foreground geometry hides disc at hour 0
+DEVICE NVIDIA GeForce RTX 3080
+Direct RMSE=1.4798267527301113E-8 GPU ms=0.014752
+PASS depth-zero CPU/GPU radiance RMSE below 0.002
+PASS repeat dispatch exactly reproduces sample zero
+64 spp RMSE=2.8704342801870835E-5 GPU ms=0.030304
+PASS 64-spp landscape CPU/GPU radiance RMSE below 0.04
+PASS zero aperture preserves exact pinhole pixels with inactive focus edits
+DOF depth=0 focus=3.0 RMSE=4.761798629108089E-5
+PASS finite aperture matches CPU at depth 0 and focus 3.0
+PASS finite aperture changes the image
+DOF depth=0 focus=9.0 RMSE=2.971885015219533E-5
+PASS finite aperture matches CPU at depth 0 and focus 9.0
+PASS finite aperture changes the image
+DOF depth=2 focus=3.0 RMSE=6.632266185639565E-5
+PASS finite aperture matches CPU at depth 2 and focus 3.0
+PASS finite aperture changes the image
+DOF depth=2 focus=9.0 RMSE=1.3039815111068392E-5
+PASS finite aperture matches CPU at depth 2 and focus 9.0
+PASS finite aperture changes the image
+PASS lens single-sample session retires
+PASS lens one/eight-sample batches agree exactly
+PASS focus and aperture edits reset accumulation to the captured optics
+PASS lens edits preserve acquired image leases
+PASS returning to lens settings reproduces the original samples
+PASS closing aperture restores CPU-equivalent pinhole output
+PASS lens batch session retires
+PASS touching faces, center seams and transformed boxes match CPU
+PASS material edit retains geometry acceleration
+PASS material edit updates GPU radiance
+PASS inside opaque geometry matches CPU
+PASS equal-distance instances retain original order
+PASS held image unchanged across restart
+PASS pixels reject access after lease close
+PASS resume converges to requested target
+PASS unsupported depth rejected
+PASS single-sample session retires
+PASS one/eight-sample batches match exactly
+PASS resize publishes only the requested grid
+PASS paused session submits no GPU work
+PASS resized session retires
+PASS tiny triangle CPU/GPU comparison
+PASS double means retain constant radiance at the billion-sample limit
+PASS near-surface ray cutoff matches CPU
+PASS near-surface image matches CPU
+PASS sustained camera edits publish coherent previews
+PASS motion settles to exact captured-camera accumulation
+PASS moving session retires
+PASS device failure is retained as an explicit error
+PASS device failure retires native resources
+PASS initialization failure retains typed causal error
+PASS failed session retires
+PASS GPU owner and native resources retire after close
+GPU checks passed: 53
+PASS exact reference agreement: many hidden layers, near-first scene order
+PASS exact reference agreement: many hidden layers, far-first scene order
+PASS exact reference agreement: continuations and same-object shadows
+PASS exact reference agreement: coincident instances on this device
+PASS exact reference agreement: multiple glass entries/exits and reflections
+PASS exact reference agreement: camera inside glass and oblique exits
+PASS exact reference agreement: finite aperture through glass
+Traversal comparison checks passed.
+PASS raw equality with camera/object motion frame 0
+PASS raw equality with camera/object motion frame 1
+PASS raw equality with camera/object motion frame 2
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 3
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 4
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 5
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 6
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 7
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 8
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 9
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 10
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 11
+PASS history changes presentation across camera/object motion and reordered instances
+PASS raw progressive mean exact at 1 spp
+PASS raw progressive mean exact at 2 spp
+PASS raw progressive mean exact at 3 spp
+PASS raw progressive mean exact at 4 spp
+PASS raw progressive mean exact at 5 spp
+PASS raw progressive mean exact at 6 spp
+PASS raw progressive mean exact at 7 spp
+PASS raw progressive mean exact at 8 spp
+PASS unsupported settings restore exact raw output: GPU temporal: uniform sampling required
+PASS unsupported settings restore exact raw output: GPU temporal: full atmosphere required
+PASS unsupported settings restore exact raw output: GPU temporal: path depth must be positive
+PASS finite aperture restores exact raw output
+PASS history reset seeds current material after fallback
+PASS lighting change clears bright history
+PASS newly exposed floor rejects the occluding object's history
+PASS demodulation preserves black material channels
+PASS glass and sky retain exact raw pixels
+PASS grid resize replaces histories and publication dimensions
+PASS session exposes reconstructed image resident=false
+PASS raw and presentation are separate
+PASS exposure conversion reads reconstructed snapshot
+PASS held raw and presentation leases survive new publication
+PASS off restores raw immediately without stale packed output
+PASS off/on cannot revive old reconstruction revision
+PASS off/on cannot revive an old image even with an unchanged caller revision
+PASS converged same-view off/on with unchanged revision publishes a complete image
+PASS GPU owner closes
+PASS retained presentation survives session shutdown
+PASS session exposes reconstructed image resident=true
+PASS raw and presentation are separate
+PASS exposure conversion reads reconstructed snapshot
+PASS resident presentation copy available
+PASS resident copy contains reconstructed rather than raw pixels
+PASS held raw and presentation leases survive new publication
+PASS off restores raw immediately without stale packed output
+PASS off/on cannot revive old reconstruction revision
+PASS off/on cannot revive an old image even with an unchanged caller revision
+PASS converged same-view off/on with unchanged revision publishes a complete image
+PASS GPU owner closes
+PASS retained presentation survives session shutdown
+GPU reconstruction checks passed.
+PASS odd native grid retains rounded independent lighting grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS unsupported combination retains requested raw grid
+PASS finite aperture suspends lighting scale
+PASS settings edits retain lighting scale
+PASS raw lighting estimator exact at 1 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS raw lighting estimator exact at 2 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS raw lighting estimator exact at 3 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS raw lighting estimator exact at 4 spp
+PASS presentation has native dimensions
+PASS packed pixels match native reconstructed snapshot
+PASS native lighting reuse does not inflate fog-pass counters
+PASS native visibility resolves sub-lighting-pixel target silhouettes
+PASS zero-fallback compact queue and sky reconstruction cover every native pixel
+PASS full-frame fallback queue spans multiple indirect dispatch rows without holes
+PASS raw/presentation dimensions remain distinct resident=false
+PASS native presentation supports exposure edits
+PASS scale edit preserves retained raw lease
+PASS scale edit cannot expose stale native packed pixels
+PASS detached packed dimensions survive presentation invalidation
+PASS two-thirds lighting keeps fixed native output
+PASS temporal off restores full native raw rendering
+PASS adaptive budget suspends separate lighting scale
+PASS split session retires
+PASS native reconstructed lease survives shutdown
+PASS raw/presentation dimensions remain distinct resident=true
+PASS native presentation supports exposure edits
+PASS resident copy retains native dimensions and pixels
+PASS scale edit preserves retained raw lease
+PASS scale edit cannot expose stale native packed pixels
+PASS detached packed dimensions survive presentation invalidation
+PASS two-thirds lighting keeps fixed native output
+PASS temporal off restores full native raw rendering
+PASS adaptive budget suspends separate lighting scale
+PASS split session retires
+PASS native reconstructed lease survives shutdown
+Native visibility / reduced lighting checks passed.
+PASS offscreen game panel, refinement off/motion/on, fixed-grid control, lighting and focus lifecycle
+GPU NVIDIA GeForce RTX 3080 | fixed | execute 0.80 ms | transfer 0.14 ms | host 1.49 ms | prepare 0.00 ms | peak 201.0 MiB | primitive counters n/a | init 410.01 ms | max prepare 42.56 ms | fog build 0.00 ms | fog builds 0 | fog grid 1/1 requested 1/1 | fog primary 0.00 ms | fog reused 0 | lighting grid false requested false | grid build 0.00 ms | fog jitter false | display GPU packed | sampling uniform | raw GPU | reconstruction 0.00 ms | visibility 0.00 ms | lighting 960x600 output 960x600
+PASS depth=0 hour=6.0 referenceRMSE=0.0 max=0.0 cpuGpuRMSE=1.9789360703190396E-8 builds=0
+PASS depth=0 hour=7.0 referenceRMSE=4.0182469250625863E-7 max=8.634291589260101E-6 cpuGpuRMSE=3.9898165464383483E-7 builds=1
+PASS depth=0 hour=7.01 referenceRMSE=4.203908437140109E-7 max=8.521601557731628E-6 cpuGpuRMSE=4.2089584243252686E-7 builds=3
+PASS depth=0 hour=12.0 referenceRMSE=3.1148279291182316E-6 max=1.8644332885742188E-4 cpuGpuRMSE=1.848293560834778E-5 builds=5
+PASS depth=0 hour=17.8 referenceRMSE=2.581648056144248E-10 max=3.1082890927791595E-8 cpuGpuRMSE=2.572344283671281E-8 builds=7
+PASS depth=0 hour=18.1 referenceRMSE=0.0 max=0.0 cpuGpuRMSE=8.23608151118373E-9 builds=8
+PASS depth=2 hour=6.0 referenceRMSE=0.0 max=0.0 cpuGpuRMSE=2.453994673578811E-8 builds=0
+PASS depth=2 hour=7.0 referenceRMSE=3.8363048000619265E-7 max=5.505979061126709E-6 cpuGpuRMSE=1.3904573869982523E-4 builds=1
+PASS depth=2 hour=7.01 referenceRMSE=4.1048217088097937E-7 max=5.319714546203613E-6 cpuGpuRMSE=4.632830753590241E-7 builds=3
+PASS depth=2 hour=12.0 referenceRMSE=4.06264941504097E-6 max=1.9291043281555176E-4 cpuGpuRMSE=4.0849480186202695E-6 builds=5
+PASS depth=2 hour=17.8 referenceRMSE=2.649842464853269E-10 max=3.3352989703416824E-8 cpuGpuRMSE=7.737137647497457E-8 builds=7
+PASS depth=2 hour=18.1 referenceRMSE=0.0 max=0.0 cpuGpuRMSE=9.503174873958553E-9 builds=8
+depth=0 hour=7.0 divisor=2 rmse=2.185785260173185E-7 max=8.38213600218296E-6 outside=0 reused=1380
+depth=0 hour=7.0 divisor=4 rmse=4.211865701973076E-6 max=6.187334656715393E-4 outside=0 reused=550
+depth=0 hour=7.08 divisor=2 rmse=2.232552274120974E-7 max=8.035509381443262E-6 outside=0 reused=1417
+depth=0 hour=7.08 divisor=4 rmse=3.797262396704188E-7 max=8.323753718286753E-6 outside=0 reused=546
+depth=0 hour=12.0 divisor=2 rmse=5.430207627250376E-7 max=4.379451274871826E-5 outside=0 reused=46
+depth=0 hour=12.0 divisor=4 rmse=8.17712246962633E-7 max=9.148754179477692E-5 outside=0 reused=8
+depth=0 hour=17.8 divisor=2 rmse=9.383115181388569E-7 max=2.0712701370939612E-4 outside=0 reused=4057
+depth=0 hour=17.8 divisor=4 rmse=1.3979828382091396E-6 max=1.2396243982948363E-4 outside=0 reused=1654
+depth=2 hour=7.0 divisor=2 rmse=2.1681644124085767E-7 max=1.768302172422409E-5 outside=0 reused=1396
+depth=2 hour=7.0 divisor=4 rmse=5.727701086811667E-6 max=9.362250566482544E-4 outside=0 reused=566
+depth=2 hour=7.08 divisor=2 rmse=2.229620957502139E-7 max=1.9080936908721924E-5 outside=0 reused=1426
+depth=2 hour=7.08 divisor=4 rmse=3.96059713720021E-7 max=3.2396987080574036E-5 outside=0 reused=561
+depth=2 hour=12.0 divisor=2 rmse=5.56904755137811E-7 max=8.597970008850098E-5 outside=0 reused=47
+depth=2 hour=12.0 divisor=4 rmse=1.351389889447804E-6 max=1.896154135465622E-4 outside=0 reused=11
+depth=2 hour=17.8 divisor=2 rmse=4.040110962279751E-7 max=3.559887409210205E-5 outside=0 reused=4170
+depth=2 hour=17.8 divisor=4 rmse=1.8938002382802224E-6 max=1.300126314163208E-4 outside=0 reused=1688
+closed sunlight gap divisor=2 rmse=2.185785260173185E-7 max=8.38213600218296E-6 outside=0 reused=1380
+closed sunlight gap divisor=4 rmse=4.374946476351987E-6 max=3.876611590385437E-4 outside=0 reused=550
+camera movement divisor=2 rmse=2.9291720089978146E-7 max=8.4717757999897E-6 outside=0 reused=1027
+camera movement divisor=4 rmse=2.6866309964846756E-7 max=6.534100975841284E-6 outside=0 reused=179
+atmosphere without fog divisor=2 rmse=2.302024011002401E-7 max=8.371425792574883E-6 outside=0 reused=1374
+atmosphere without fog divisor=4 rmse=3.861629309712717E-7 max=8.233590051531792E-6 outside=0 reused=545
+air hour=6.0 haze=1.2 divisor=2 rmse=2.05547694980293E-8 max=1.0927760740742087E-6 outside=0 reused=3325
+air hour=6.0 haze=1.2 divisor=4 rmse=3.954778425384999E-6 max=1.7496943473815918E-4 outside=0 reused=1164
+air hour=6.0 haze=0.35 divisor=2 rmse=3.9168738657644137E-8 max=2.223096089437604E-6 outside=0 reused=2589
+air hour=6.0 haze=0.35 divisor=4 rmse=3.860991753669945E-6 max=1.7586443573236465E-4 outside=0 reused=867
+air hour=9.0 haze=1.2 divisor=2 rmse=2.380388558595036E-7 max=1.230055931955576E-5 outside=0 reused=1702
+air hour=9.0 haze=1.2 divisor=4 rmse=2.747043976640841E-7 max=1.4860183000564575E-5 outside=0 reused=520
+air 1080p divisor=2 rmse=5.206918400531379E-7 max=5.067884922027588E-5 outside=0 reused=1055238
+air 1080p divisor=4 rmse=9.48884393213027E-7 max=1.5208125114440918E-4 outside=0 reused=715250
+air 1080p depth 8 divisor=2 rmse=5.871268021599996E-7 max=9.885430335998535E-5 outside=0 reused=1056541
+air 1080p depth 8 divisor=4 rmse=9.923111856814546E-7 max=1.9991397857666016E-4 outside=0 reused=716501
+air hour=9.0 haze=0.35 divisor=2 rmse=2.685395162397234E-7 max=1.7892220057547092E-5 outside=0 reused=1031
+air hour=9.0 haze=0.35 divisor=4 rmse=3.159614002976226E-7 max=2.6224413886666298E-5 outside=0 reused=209
+air hour=12.0 haze=1.2 divisor=2 rmse=1.8876459409760588E-7 max=1.3387762010097504E-5 outside=0 reused=2403
+air hour=12.0 haze=1.2 divisor=4 rmse=1.5572919514234307E-6 max=2.2612512111663818E-4 outside=0 reused=669
+air hour=12.0 haze=0.35 divisor=2 rmse=2.416489675440955E-7 max=1.818058080971241E-5 outside=0 reused=1946
+air hour=12.0 haze=0.35 divisor=4 rmse=1.5588733830789843E-6 max=2.2320449352264404E-4 outside=0 reused=561
+air hour=17.8 haze=1.2 divisor=2 rmse=3.970884786928794E-8 max=1.713415258564055E-6 outside=0 reused=3674
+air hour=17.8 haze=1.2 divisor=4 rmse=1.6075352694494526E-6 max=1.4225207269191742E-4 outside=0 reused=1544
+air hour=17.8 haze=0.35 divisor=2 rmse=6.528892944940435E-8 max=2.933142241090536E-6 outside=0 reused=3665
+air hour=17.8 haze=0.35 divisor=4 rmse=1.35948274377626E-6 max=1.420099288225174E-4 outside=0 reused=1540
+PASS fog quality, odd dimensions, current lighting, exact fallback and session toggles
+depth=0 hour=7.0 divisor=1 rmse=3.105045364657591E-5 max=6.921403110027313E-4 outside=0 reused=0
+depth=0 hour=7.0 divisor=2 rmse=3.105118216264223E-5 max=6.921403110027313E-4 outside=0 reused=1380
+depth=0 hour=7.0 divisor=4 rmse=3.131030169151526E-5 max=6.921403110027313E-4 outside=0 reused=550
+depth=0 hour=7.08 divisor=1 rmse=3.5078817885354026E-5 max=5.485564470291138E-4 outside=0 reused=0
+depth=0 hour=7.08 divisor=2 rmse=3.507949307084665E-5 max=5.485564470291138E-4 outside=0 reused=1417
+depth=0 hour=7.08 divisor=4 rmse=3.508080396479533E-5 max=5.485564470291138E-4 outside=0 reused=546
+depth=0 hour=12.0 divisor=1 rmse=1.78936636714057E-5 max=1.4069676399230957E-4 outside=0 reused=0
+depth=0 hour=12.0 divisor=2 rmse=1.7905614216204992E-5 max=1.4069676399230957E-4 outside=0 reused=46
+depth=0 hour=12.0 divisor=4 rmse=1.7930869659527107E-5 max=2.0024552941322327E-4 outside=0 reused=8
+depth=0 hour=17.8 divisor=1 rmse=1.3710421280286712E-6 max=4.754588007926941E-5 outside=0 reused=0
+depth=0 hour=17.8 divisor=2 rmse=1.6569428466983054E-6 max=2.0712599507533014E-4 outside=0 reused=4057
+depth=0 hour=17.8 divisor=4 rmse=1.910791930425279E-6 max=1.239469856955111E-4 outside=0 reused=1654
+depth=2 hour=7.0 divisor=1 rmse=3.071545518651769E-5 max=6.944835186004639E-4 outside=0 reused=0
+depth=2 hour=7.0 divisor=2 rmse=3.07164771092111E-5 max=6.944835186004639E-4 outside=0 reused=1396
+depth=2 hour=7.0 divisor=4 rmse=3.121279956086313E-5 max=9.399428963661194E-4 outside=0 reused=566
+depth=2 hour=7.08 divisor=1 rmse=3.5503642460593455E-5 max=6.133615970611572E-4 outside=0 reused=0
+depth=2 hour=7.08 divisor=2 rmse=3.550463173800699E-5 max=6.133615970611572E-4 outside=0 reused=1426
+depth=2 hour=7.08 divisor=4 rmse=3.5506603174623335E-5 max=6.133615970611572E-4 outside=0 reused=561
+depth=2 hour=12.0 divisor=1 rmse=4.0795008564793275E-5 max=0.0019643306732177734 outside=0 reused=0
+depth=2 hour=12.0 divisor=2 rmse=4.079865418189217E-5 max=0.0019643306732177734 outside=0 reused=47
+depth=2 hour=12.0 divisor=4 rmse=4.0807096442125286E-5 max=0.0019643306732177734 outside=0 reused=11
+depth=2 hour=17.8 divisor=1 rmse=1.723984463393695E-6 max=6.681401282548904E-5 outside=0 reused=0
+depth=2 hour=17.8 divisor=2 rmse=1.7548702742499868E-6 max=6.681494414806366E-5 outside=0 reused=4170
+depth=2 hour=17.8 divisor=4 rmse=2.5122463650810346E-6 max=1.268722116947174E-4 outside=0 reused=1688
+closed sunlight gap divisor=1 rmse=2.5481042240539746E-5 max=5.004368722438812E-4 outside=0 reused=0
+closed sunlight gap divisor=2 rmse=2.548192998388472E-5 max=5.004368722438812E-4 outside=0 reused=1380
+closed sunlight gap divisor=4 rmse=2.583925455868137E-5 max=5.004368722438812E-4 outside=0 reused=550
+camera movement divisor=1 rmse=3.107713545869655E-5 max=5.729570984840393E-4 outside=0 reused=0
+camera movement divisor=2 rmse=3.107845409306696E-5 max=5.729570984840393E-4 outside=0 reused=1027
+camera movement divisor=4 rmse=3.107824867553083E-5 max=5.729570984840393E-4 outside=0 reused=179
+aperture divisor=1 rmse=3.008285277409505E-5 max=5.518794059753418E-4 outside=0 reused=0
+aperture divisor=2 rmse=3.008285277409505E-5 max=5.518794059753418E-4 outside=0 reused=0
+aperture divisor=4 rmse=3.008285277409505E-5 max=5.518794059753418E-4 outside=0 reused=0
+hazy air divisor=1 rmse=3.025750268130409E-5 max=6.871819496154785E-4 outside=0 reused=0
+hazy air divisor=2 rmse=3.02611126509548E-5 max=6.871819496154785E-4 outside=0 reused=754
+hazy air divisor=4 rmse=3.0271311021117086E-5 max=6.871819496154785E-4 outside=0 reused=238
+rotated colored fog divisor=1 rmse=2.5254128883775447E-5 max=8.364766836166382E-4 outside=0 reused=0
+rotated colored fog divisor=2 rmse=2.5254744447797626E-5 max=8.364766836166382E-4 outside=0 reused=1395
+rotated colored fog divisor=4 rmse=2.5256346889134947E-5 max=8.364766836166382E-4 outside=0 reused=562
+additional directional light divisor=1 rmse=3.105171657211669E-5 max=6.925761699676514E-4 outside=0 reused=0
+additional directional light divisor=2 rmse=3.10557935189022E-5 max=6.925761699676514E-4 outside=0 reused=1049
+additional directional light divisor=4 rmse=3.1310708045330615E-5 max=6.925761699676514E-4 outside=0 reused=356
+PASS fog quality, odd dimensions, current lighting, exact fallback and session toggles
+PASS fog jitter replay, sample/seed variation, full/half/quarter, off restoration, no-fog streams and leases
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS gpu requested image dimensions 800x501
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+backend,width,height,round,referenceMedianMs,bulkMedianMs
+gpu,800,501,0,5.1782,1.1781
+gpu,800,501,1,5.3222,1.2973
+gpu,800,501,2,5.2299,1.0636
+PASS closed lease rejected
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS cpu requested image dimensions 128x81
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+backend,width,height,round,referenceMedianMs,bulkMedianMs
+cpu,128,81,0,0.0945,0.0957
+cpu,128,81,1,0.0901,0.0895
+cpu,128,81,2,0.0902,0.0903
+PASS closed lease rejected
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS gpu requested image dimensions 1920x1080
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+PASS closed lease rejected
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS cpu requested image dimensions 1920x1080
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+PASS closed lease rejected
+PASS exact shader encoding exposure=0.0 pixels=131072
+PASS exact shader encoding exposure=0.125 pixels=131072
+PASS exact shader encoding exposure=1.0 pixels=131072
+PASS exact shader encoding exposure=4.0 pixels=131072
+PASS exact shader encoding exposure=100.0 pixels=131072
+PASS exact shader encoding exposure=3.4028235E38 pixels=131072
+exposure=1.0 differingPixels=0 maxChannelError=0
+exposure=0.0 differingPixels=0 maxChannelError=0
+exposure=0.125 differingPixels=0 maxChannelError=0
+exposure=4.0 differingPixels=0 maxChannelError=0
+exposure=100.0 differingPixels=0 maxChannelError=0
+exposure=0.125 differingPixels=0 maxChannelError=0
+exposure=1.0 differingPixels=0 maxChannelError=0
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T22-58-32.657177600Z-9b071e0d-5cf5-4626-8df7-875f15f8ff60
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T22-58-33.023877300Z-7ffe1af9-8b61-40ac-8cc4-95144b52d321
+PASS GPU snapshot/history captures and reload, resident=false
+PASS compact GPU display 1920x1080: pixels, exposure, raw snapshots, resize, three-slot leases, close
+Native presentation supported=true
+PASS compositor exact integer grids; linear shrink/fractional/letterbox/4K; alpha overlays
+PASS hidden AWT/JAWT swapchain 640x360, submitted=12
+PASS hidden AWT/JAWT swapchain 800x500, submitted=12
+PASS hidden AWT/JAWT swapchain 640x360, submitted=12
+PASS resident frames, repeated slot reuse, explicit download and retained close
+PASS UI patches, alpha, small windows and 100/125/200 percent DPI
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T22-58-38.827025200Z-9f11702d-be72-415a-906a-4f457b1b4579
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T22-58-39.321773200Z-9bc07f8b-b4c2-45ed-af88-fb219aa89615
+PASS GPU snapshot/history captures and reload, resident=true
+PASS 36 exact seeded RGB frames, translation/rotation/scale, materials/order, remove/add, 3 allocations/33 reuses, bounded memory
+PASS GPU adaptive policy, restoration, pause, toggle, exact pixels and leases
+PASS exact ownership transfer, sibling mutation isolation, 20 resizes, exposure fallback, restart, retained close
+PASS opaque/alpha, letterbox, odd sizes, clipped repaint and DPI equivalence
+Gradual falloff primary paths at 1080p: 793167
+PASS foveation exact center, all footprint pixels, odd/thin grids, accumulation, lens, fog fallback, toggles, packed pixels and leases
+1080p smooth paths: 1026000
+PASS smooth grid, exact core, accumulation, lens, fog, boundaries, toggles, packed pixels, leases and retirement
+4K paths default=4095564 strong=1778000
+PASS live slider UI and 4K shortcut
+PASS resolution 2560x1440 all control extremes, raw/packed and discrete coordinates
+PASS resolution 3840x2160 all control extremes, raw/packed and discrete coordinates
+Peak device bytes in check: 1022962160
+PASS live quality changes, default reproduction and leases
+PASS CPU/GPU agree for sunlight on leaf side -1
+PASS half-energy green sunlight on side -1
+PASS opaque material remains unchanged
+PASS CPU/GPU agree for sunlight on leaf side 1
+PASS half-energy green sunlight on side 1
+PASS opaque material remains unchanged
+PASS solid occluder blocks leaf backlighting
+PASS both hemispheres preserve sky energy with one continuation
+PASS CPU/GPU directional leaf angle 0.0
+PASS CPU/GPU directional leaf angle 0.4
+PASS CPU/GPU directional leaf angle 1.1
+PASS CPU/GPU stochastic directional transmission agrees
+leaf-opaque mean host frame 1.33ms
+leaf-transmission mean host frame 1.33ms
+PASS packed OFF 67x65 maximum byte error 0
+PASS native compositor OFF 67x65 maximum byte error 0
+COST 67x65 OFF median 0.006ms p95 0.007ms
+PASS packed SIMPLE 67x65 maximum byte error 0
+PASS native compositor SIMPLE 67x65 maximum byte error 0
+COST 67x65 SIMPLE median 0.020ms p95 0.021ms
+PASS packed OPTICAL 67x65 maximum byte error 0
+PASS native compositor OPTICAL 67x65 maximum byte error 0
+COST 67x65 OPTICAL median 0.020ms p95 0.020ms
+PASS packed OFF 480x300 maximum byte error 0
+PASS native compositor OFF 480x300 maximum byte error 0
+COST 480x300 OFF median 0.040ms p95 0.041ms
+PASS packed SIMPLE 480x300 maximum byte error 0
+PASS native compositor SIMPLE 480x300 maximum byte error 0
+COST 480x300 SIMPLE median 0.056ms p95 0.057ms
+PASS packed OPTICAL 480x300 maximum byte error 0
+PASS native compositor OPTICAL 480x300 maximum byte error 0
+COST 480x300 OPTICAL median 0.056ms p95 0.058ms
+PASS packed OFF 1920x1080 maximum byte error 0
+PASS native compositor OFF 1920x1080 maximum byte error 0
+COST 1920x1080 OFF median 0.515ms p95 0.516ms
+PASS packed SIMPLE 1920x1080 maximum byte error 0
+PASS native compositor SIMPLE 1920x1080 maximum byte error 0
+COST 1920x1080 SIMPLE median 0.600ms p95 0.974ms
+PASS packed OPTICAL 1920x1080 maximum byte error 0
+PASS native compositor OPTICAL 1920x1080 maximum byte error 0
+COST 1920x1080 OPTICAL median 0.560ms p95 0.906ms
+PASS packed OFF 3840x2160 maximum byte error 0
+PASS native compositor OFF 3840x2160 maximum byte error 0
+COST 3840x2160 OFF median 1.823ms p95 2.297ms
+PASS packed SIMPLE 3840x2160 maximum byte error 0
+PASS native compositor SIMPLE 3840x2160 maximum byte error 0
+COST 3840x2160 SIMPLE median 2.208ms p95 3.411ms
+PASS packed OPTICAL 3840x2160 maximum byte error 1
+PASS native compositor OPTICAL 3840x2160 maximum byte error 1
+COST 3840x2160 OPTICAL median 2.209ms p95 3.010ms
+PASS converged bloom toggles, retained frame, raw generation: cpu resident=false
+PASS converged bloom toggles, retained frame, raw generation: gpu resident=false
+PASS converged bloom toggles, retained frame, raw generation: gpu resident=true
