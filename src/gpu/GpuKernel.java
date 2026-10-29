@@ -74,6 +74,8 @@ final class GpuKernel implements AutoCloseable {
     final VulkanDevice gpu;
     final long initializationNanos;
     private final Runnable beforeDispatch;
+    // Comparison mode retains the original all-candidate traversal, including exact ties.
+    private final boolean referenceTraversal = Boolean.getBoolean("gpu.referenceTraversal");
     GpuScene scene;
     private WorldSnapshot compiledWorld;
     private long descriptorLayout;
@@ -273,10 +275,15 @@ final class GpuKernel implements AutoCloseable {
     }
 
     private long createVariant(long shader, int mode, MemoryStack stack, boolean gridLighting) {
-        var constant = VkSpecializationMapEntry.calloc(2, stack);
+        var constant = VkSpecializationMapEntry.calloc(3, stack);
         constant.get(0).constantID(0).offset(0).size(4);
         constant.get(1).constantID(1).offset(4).size(4);
-        var data = stack.malloc(8).putInt(0, mode).putInt(4, gridLighting ? 1 : 0);
+        constant.get(2).constantID(3).offset(8).size(4);
+        var data =
+                stack.malloc(12)
+                        .putInt(0, mode)
+                        .putInt(4, gridLighting ? 1 : 0)
+                        .putInt(8, referenceTraversal ? 1 : 0);
         var specialization = VkSpecializationInfo.calloc(stack).pMapEntries(constant).pData(data);
         var create = VkComputePipelineCreateInfo.calloc(1, stack);
         create.get(0)

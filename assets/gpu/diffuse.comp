@@ -29,6 +29,7 @@ layout(set=0,binding=10) uniform sampler3D lightingTexture;
 layout(rgba32f,set=0,binding=11) uniform writeonly image3D lightingImage;
 layout(constant_id=1) const bool useLightingGrid=false;
 layout(constant_id=0) const int dispatchMode=0; // full, sun table, coarse fog, reconstructed
+layout(constant_id=3) const bool referenceTraversal=false;
 const float BIAS = 0.001;
 const float PI = 3.14159265358979323846;
 uint64_t randomState;
@@ -48,7 +49,7 @@ bool nearest(vec3 o, vec3 d, int skipInstance, int skipFace, bool shadow, out Hi
     hit.triangleIndex = -1;
     rayQueryEXT query;
     rayQueryInitializeEXT(query, scene, 0, 255, o, 0.0001, d, 1e30);
-    // Do not commit candidates: deterministic ties must not depend on driver traversal order.
+    // Keep candidate filtering for source-face rejection and the CPU distance cutoff.
     while (rayQueryProceedEXT(query)) {
         if (rayQueryGetIntersectionTypeEXT(query, false) != gl_RayQueryCandidateIntersectionTriangleEXT) continue;
         int objectIndex = rayQueryGetIntersectionInstanceCustomIndexEXT(query, false);
@@ -65,6 +66,9 @@ bool nearest(vec3 o, vec3 d, int skipInstance, int skipFace, bool shadow, out Hi
         hit.triangleIndex = primitive;
         hit.face = face;
         if (shadow) return true;
+        // Let hardware prune farther geometry. Keep scene-order ties among returned candidates;
+        // reference mode visits every candidate, including ties a driver could prune.
+        if (!referenceTraversal) rayQueryConfirmIntersectionEXT(query);
         vec3 a = triangles[triangleIndex].xyz;
         vec3 b = triangles[triangleIndex+1].xyz;
         vec3 c = triangles[triangleIndex+2].xyz;

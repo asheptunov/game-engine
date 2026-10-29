@@ -15,6 +15,15 @@ import javax.swing.SwingUtilities;
 public final class PresentationBenchmark {
     public static void main(String[] args) throws Exception {
         System.out.println("round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent,minWidth,maxWidth,meanWidth,medianTraceMs,medianCopyMs");
+        if (java.util.Arrays.asList(args).contains("traversal")) {
+            for (int round = 0; round < 3; round++) {
+                for (boolean reference : new boolean[] {round % 2 == 0, round % 2 != 0}) {
+                    System.setProperty("gpu.referenceTraversal", Boolean.toString(reference));
+                    measure(round, true, 1, true);
+                }
+            }
+            return;
+        }
         if (java.util.Arrays.asList(args).contains("paint")) {
             for (int round = 0; round < 3; round++) {
                 for (boolean full : new boolean[]{round % 2 == 0, round % 2 != 0}) {
@@ -129,7 +138,7 @@ public final class PresentationBenchmark {
             if (Boolean.getBoolean("game.profileFrames")) collector.writeProfile(round, budget, session[0]);
             if (collector.intervals.isEmpty()) throw new AssertionError("No fresh paints");
             System.out.printf(Locale.ROOT, "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.1f,%.3f,%.3f%n", round,
-                    System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels")+"-clear-"+Boolean.getBoolean("game.fullPaintClear") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / (duration / 1e9),
+                    System.getProperty("gpu.referenceTraversal") != null ? "reference-traversal-"+Boolean.getBoolean("gpu.referenceTraversal") : System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels")+"-clear-"+Boolean.getBoolean("game.fullPaintClear") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / (duration / 1e9),
                     quantile(collector.intervals, .5), quantile(collector.intervals, .95),
                     quantile(collector.latencies, .95),quantile(collector.intervals,.99),quantile(collector.intervals,1),
                     100.0*collector.intervals.stream().filter(value->value>16.67).count()/collector.intervals.size(),
