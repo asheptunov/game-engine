@@ -27,6 +27,92 @@ public final class GameCaptureTest {
         return Files.createTempDirectory(Path.of("out"), "capture-test-");
     }
 
+    @Test
+    void displayWatchdogCapturesBlockedEventThreadWithoutWaitingForIt() throws Exception {
+        var started = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var reported = new java.util.concurrent.CountDownLatch(1);
+        var text = new java.util.concurrent.atomic.AtomicReference<String>();
+        try (var monitor =
+                new DisplayStallMonitor(
+                        () -> 10L,
+                        value -> {
+                            text.set(value);
+                            reported.countDown();
+                        })) {
+            javax.swing.SwingUtilities.invokeLater(
+                    () -> {
+                        started.countDown();
+                        try {
+                            release.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException interrupted) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+            assertTrue(started.await(2, TimeUnit.SECONDS));
+            assertTrue(reported.await(4, TimeUnit.SECONDS));
+            assertTrue(text.get().contains("AWT-EventQueue"));
+            assertTrue(text.get().contains("CountDownLatch.await"));
+        } finally {
+            release.countDown();
+        }
+        javax.swing.SwingUtilities.invokeAndWait(() -> {});
+    }
+
+    @Test
+    void displayWatchdogReportsStaleFramesEvenWhenUiKeepsPainting() throws Exception {
+        var reported = new java.util.concurrent.CountDownLatch(1);
+        try (var monitor = new DisplayStallMonitor(() -> 10L, text -> reported.countDown())) {
+            long deadline = System.nanoTime() + 4_000_000_000L;
+            while (reported.getCount() != 0 && System.nanoTime() < deadline) {
+                monitor.painted(10, true);
+                Thread.sleep(50);
+            }
+            assertEquals(0L, reported.getCount());
+        }
+    }
+
+    @Test
+    void animationArchiveSharesAssetsBeyond128States() throws Exception {
+        var directory = root();
+        var world = AdventureWorld.create().instances();
+        var scenes = new java.util.ArrayList<java.util.List<engine.SceneInstance>>();
+        var moving = world.getLast();
+        for (int i = 0; i < 160; i++) {
+            var scene = new java.util.ArrayList<>(world);
+            scene.set(
+                    scene.size() - 1,
+                    new engine.SceneInstance(
+                            moving.name(),
+                            moving.geometry(),
+                            new engine.Transform(new Vec3(i, 2, 3), Vec3.ZERO, new Vec3(1, 1, 1)),
+                            moving.material()));
+            scenes.add(java.util.List.copyOf(scene));
+        }
+        // Removal and reintroduction also change list length and slot identities.
+        scenes.add(world.subList(0, 2));
+        scenes.add(world);
+        CaptureScenes.save(directory, scenes, new CaptureCodec.Budget());
+        var restored = CaptureScenes.load(directory, scenes.size(), new CaptureCodec.Budget());
+        assertEquals(scenes.size(), restored.size());
+        for (int i = 0; i < scenes.size(); i++) {
+            assertEquals(scenes.get(i).size(), restored.get(i).size());
+            for (int j = 0; j < scenes.get(i).size(); j++) {
+                var expected = scenes.get(i).get(j);
+                var actual = restored.get(i).get(j);
+                assertEquals(expected.name(), actual.name());
+                assertEquals(expected.transform(), actual.transform());
+            }
+        }
+        assertTrue(restored.get(0).getFirst() == restored.get(159).getFirst());
+        assertTrue(restored.get(0).getLast().geometry() == restored.get(159).getLast().geometry());
+        var single = root();
+        CaptureScenes.save(single, java.util.List.of(world), new CaptureCodec.Budget());
+        assertTrue(
+                Files.size(directory.resolve("scenes.bin.gz"))
+                        < 3 * Files.size(single.resolve("scenes.bin.gz")));
+    }
+
     private static GameRenderer.Frame await(GameRenderer renderer) throws Exception {
         long deadline = System.nanoTime() + 10_000_000_000L;
         while (renderer.frame() == null && System.nanoTime() < deadline) {
@@ -34,6 +120,76 @@ public final class GameCaptureTest {
         }
         assertTrue(renderer.frame() != null);
         return renderer.frame();
+    }
+
+    @Test
+    void animationArchiveRejectsMissingDeltasAndOversizedLists() throws Exception {
+        var directory = root();
+        CaptureCodec.save(
+                directory.resolve("assets.properties.gz"),
+                CaptureScene.capture(java.util.List.of()));
+        for (int size : new int[] {1, Integer.MAX_VALUE, -1}) {
+            try (var output =
+                    new java.io.DataOutputStream(
+                            new java.util.zip.GZIPOutputStream(
+                                    Files.newOutputStream(directory.resolve("scenes.bin.gz"))))) {
+                output.writeInt(size);
+                output.writeBoolean(false);
+            }
+            boolean rejected = false;
+            try {
+                CaptureScenes.load(directory, 1, new CaptureCodec.Budget());
+            } catch (java.io.IOException expected) {
+                rejected = true;
+            }
+            assertTrue(rejected);
+        }
+    }
+
+    @Test
+    void legacyVersionOneSceneFilesStillLoad() throws Exception {
+        var directory = root();
+        var world = BlockWorld.gallery().snapshot();
+        var navigation = new GameNavigation();
+        GameCapture.Controls controls;
+        try (var renderer = new GameRenderer(navigation, world, "cpu")) {
+            controls = renderer.captureControls();
+        }
+        var state =
+                new GameCapture.State(
+                        0,
+                        new GameCapture.World(
+                                0, world.revision(), world.sky(), java.util.List.of()),
+                        controls,
+                        navigation.snapshot());
+        var manifest =
+                new GameCapture.Manifest(
+                        1, "legacy", "test", "cpu", "test", "test", 1, state, null, false);
+        CaptureCodec.save(directory.resolve("capture.properties"), manifest);
+        CaptureCodec.save(
+                directory.resolve("timeline.properties.gz"),
+                new GameCapture.Timeline(
+                        java.util.List.of(), java.util.List.of(), java.util.List.of(), 0));
+        CaptureCodec.save(
+                directory.resolve("scene-0.properties.gz"),
+                CaptureScene.capture(world.instances()));
+        var checksums = new java.util.ArrayList<String>();
+        for (String name :
+                java.util.List.of(
+                        "capture.properties", "timeline.properties.gz", "scene-0.properties.gz")) {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            checksums.add(
+                    java.util.HexFormat.of()
+                                    .formatHex(
+                                            digest.digest(
+                                                    Files.readAllBytes(directory.resolve(name))))
+                            + " "
+                            + name);
+        }
+        Files.write(directory.resolve("sha256.txt"), checksums);
+        var loaded = GameCapture.load(directory);
+        assertEquals(1, loaded.manifest().version());
+        assertEquals(world.instances(), loaded.scenes().getFirst());
     }
 
     @Test
@@ -299,9 +455,13 @@ public final class GameCaptureTest {
                         "cpu",
                         "test",
                         now,
-                        true);
+                        true,
+                        "No test display stalls.\n");
         long started = System.nanoTime();
         var folder = GameCapture.write(root(), pending);
+        assertEquals(
+                "No test display stalls.\n",
+                Files.readString(folder.resolve("display-stalls.txt")));
         var loaded = GameCapture.load(folder);
         assertTrue(CaptureReplay.replay(loaded).startsWith("PASS"));
         assertEquals(7500, loaded.timeline().motions().size());

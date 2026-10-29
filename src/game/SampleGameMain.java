@@ -24,6 +24,11 @@ public final class SampleGameMain {
 
     // Package-local launch seam for the separately compiled manual fault preview.
     static void launch(String[] args, GameRenderer.SessionFactory factory) {
+        // Set before AWT initializes: its Direct3D presentation can freeze while Vulkan
+        // tracing and Swing paints continue. Keep an explicit VM override for diagnostics.
+        if (System.getProperty("sun.java2d.d3d") == null) {
+            System.setProperty("sun.java2d.d3d", "false");
+        }
         String scene = args.length == 0 ? "world" : args[0];
         if (!scene.equals("world") && !scene.equals("landscape") && !scene.equals("gallery")) {
             throw new IllegalArgumentException("Scene must be world, landscape or gallery");
@@ -95,6 +100,7 @@ public final class SampleGameMain {
             navigation.speed(5);
             if (capture == null) {
                 renderer.enableShooter();
+                renderer.configure(s -> s.withBloom(engine.Bloom.OPTICAL));
             }
         }
         navigation.walking(true);
@@ -109,8 +115,15 @@ public final class SampleGameMain {
         var window = new JFrame("Sample game — " + scene);
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         window.setContentPane(panel);
-        window.pack();
-        window.setLocationByPlatform(true);
+        if (Boolean.getBoolean("game.windowed")) {
+            window.pack();
+            window.setLocationByPlatform(true);
+        } else {
+            // Borderless desktop fullscreen uses AWT logical coordinates (including HiDPI).
+            // Keep the desktop display mode and the renderer's independent tracing grid.
+            window.setUndecorated(true);
+            window.setBounds(window.getGraphicsConfiguration().getBounds());
+        }
         window.addWindowFocusListener(
                 new WindowAdapter() {
                     @Override

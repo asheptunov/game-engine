@@ -30,6 +30,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     private final profiling.FreshPaintRate freshPaints = new profiling.FreshPaintRate();
     private final GameSettingsPanel settingsPanel;
     private final GameDisplay nativeDisplay;
+    private final DisplayStallMonitor stallMonitor;
     private Robot pointer;
     private final java.util.Set<Integer> captureKeys = new java.util.HashSet<>();
     private String pointerError;
@@ -134,7 +135,13 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                     });
             renderer.devicePresentation();
         }
+        stallMonitor = new DisplayStallMonitor(this::latestPublication, renderer::displayStalls);
         timer.start();
+    }
+
+    private long latestPublication() {
+        var latest = renderer.frame();
+        return latest == null ? 0 : latest.publicationNanos();
     }
 
     private GameDisplay createNativeDisplay() {
@@ -455,6 +462,10 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     }
 
     private void markPresented(GameRenderer.Frame frame) {
+        if (frame != null) {
+            stallMonitor.painted(
+                    frame.publicationNanos(), navigation.captured() && navigation.active());
+        }
         renderer.displayed(frame);
         if (frame != null) {
             synchronized (freshPaints) {
@@ -580,6 +591,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
     }
 
     void releaseForFailure() {
+        stallMonitor.close();
         renderer.onFrameAvailable(null);
         if (nativeDisplay != null) {
             nativeDisplay.close();

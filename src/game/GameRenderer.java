@@ -169,7 +169,8 @@ public final class GameRenderer implements AutoCloseable {
                                 backend,
                                 cachedBackendStatus,
                                 now,
-                                history);
+                                history,
+                                displayStalls);
             }
         }
         captureStatus = "Saving " + (history ? "30-second history" : "snapshot") + "...";
@@ -361,6 +362,13 @@ public final class GameRenderer implements AutoCloseable {
     private final AtomicBoolean completionQueued = new AtomicBoolean();
     private volatile Frame frame;
     private volatile String error;
+    private volatile String displayStalls =
+            "No display stalls recorded by the in-process watchdog.\n";
+
+    void displayStalls(String value) {
+        displayStalls = value;
+    }
+
     private String cachedBackendStatus = "session initialized; no completed image";
     private long lastTick = System.nanoTime();
     private long converted = -1;

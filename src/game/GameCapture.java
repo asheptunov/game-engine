@@ -23,7 +23,7 @@ import javax.imageio.ImageIO;
 
 /** Public loader and data model for reproducible sample-game diagnostic captures. */
 public final class GameCapture {
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     public record Controls(
             RenderSettings settings,
@@ -111,9 +111,22 @@ public final class GameCapture {
             String backend,
             String device,
             long nanos,
-            boolean includeHistory) {}
+            boolean includeHistory,
+            String displayStalls) {}
 
     private GameCapture() {}
+
+    private static final class SceneTable {
+        final List<List<SceneInstance>> values = new ArrayList<>();
+        // Recorder snapshots retain immutable lists. Identity avoids rehashing every mesh for
+        // every motion checkpoint; equal distinct lists encode as inexpensive unchanged deltas.
+        final java.util.Map<List<SceneInstance>, Integer> indices =
+                new java.util.IdentityHashMap<>();
+
+        int size() {
+            return values.size();
+        }
+    }
 
     static Path write(Path root, Pending pending) throws IOException {
         Files.createDirectories(root);
@@ -128,7 +141,7 @@ public final class GameCapture {
                 "Export in progress; do not load until capture.properties exists and INCOMPLETE is"
                         + " removed.");
         var budget = new CaptureCodec.Budget();
-        var scenes = new ArrayList<List<SceneInstance>>();
+        var scenes = new SceneTable();
         var current =
                 state(
                         pending.nanos(),
@@ -175,12 +188,7 @@ public final class GameCapture {
                 pictures.add(saved);
             }
         }
-        for (int i = 0; i < scenes.size(); i++) {
-            CaptureCodec.save(
-                    directory.resolve("scene-" + i + ".properties.gz"),
-                    CaptureScene.capture(scenes.get(i)),
-                    budget);
-        }
+        CaptureScenes.save(directory, scenes.values, budget);
         var timeline = new Timeline(motions, states, pictures, pending.history().dropped());
         CaptureCodec.save(directory.resolve("timeline.properties.gz"), timeline, budget);
         var manifest =
@@ -199,6 +207,7 @@ public final class GameCapture {
                         pending.includeHistory());
         CaptureCodec.save(directory.resolve("capture.properties"), manifest, budget);
         Files.writeString(directory.resolve("summary.txt"), summary(manifest, timeline));
+        Files.writeString(directory.resolve("display-stalls.txt"), pending.displayStalls());
         writeHashes(directory);
         Files.delete(directory.resolve("INCOMPLETE"));
         return directory.toAbsolutePath();
@@ -209,11 +218,11 @@ public final class GameCapture {
             WorldSnapshot world,
             Controls controls,
             GameNavigation.State navigation,
-            List<List<SceneInstance>> scenes) {
+            SceneTable scenes) {
         return new State(nanos, world(world, scenes), controls, navigation);
     }
 
-    private static World world(WorldSnapshot world, List<List<SceneInstance>> scenes) {
+    private static World world(WorldSnapshot world, SceneTable scenes) {
         if (!world.legacyObjects().isEmpty()) {
             throw new IllegalArgumentException(
                     "Capture requires scene instances; legacy geometry is unsupported");
@@ -237,21 +246,21 @@ public final class GameCapture {
         return new World(scene(scenes, world.instances()), world.revision(), world.sky(), lights);
     }
 
-    private static int scene(List<List<SceneInstance>> scenes, List<SceneInstance> value) {
-        int index = scenes.indexOf(value);
-        if (index >= 0) {
+    private static int scene(SceneTable scenes, List<SceneInstance> value) {
+        var index = scenes.indices.get(value);
+        if (index != null) {
             return index;
         }
-        if (scenes.size() >= 128) {
-            throw new IllegalArgumentException(
-                    "Capture exceeds 128 distinct geometry states; save a shorter snapshot");
+        if (scenes.size() >= CaptureScenes.MAX_SCENES) {
+            throw new IllegalArgumentException("Capture exceeds bounded recorder scene capacity");
         }
-        scenes.add(value);
+        scenes.indices.put(value, scenes.size());
+        scenes.values.add(value);
         return scenes.size() - 1;
     }
 
     private static Display display(
-            GameRenderer.Frame frame, String name, Path directory, List<List<SceneInstance>> scenes)
+            GameRenderer.Frame frame, String name, Path directory, SceneTable scenes)
             throws IOException {
         if (frame == null) {
             return null;
@@ -288,21 +297,30 @@ public final class GameCapture {
         var budget = new CaptureCodec.Budget();
         var manifest =
                 CaptureCodec.load(directory.resolve("capture.properties"), Manifest.class, budget);
-        if (manifest.version() != VERSION) {
+        if (manifest.version() < 1 || manifest.version() > VERSION) {
             throw new IOException("Unsupported capture version " + manifest.version());
         }
-        if (manifest.sceneCount() < 1 || manifest.sceneCount() > 128) {
+        if (manifest.sceneCount() < 1 || manifest.sceneCount() > CaptureScenes.MAX_SCENES) {
             throw new IOException("Invalid scene count");
         }
         var scenes = new ArrayList<List<SceneInstance>>();
-        for (int i = 0; i < manifest.sceneCount(); i++) {
-            requireChecked(checkedFiles, "scene-" + i + ".properties.gz");
-            scenes.add(
-                    CaptureCodec.load(
-                                    directory.resolve("scene-" + i + ".properties.gz"),
-                                    CaptureScene.class,
-                                    budget)
-                            .restore());
+        if (manifest.version() == 2) {
+            requireChecked(checkedFiles, "assets.properties.gz");
+            requireChecked(checkedFiles, "scenes.bin.gz");
+            scenes.addAll(CaptureScenes.load(directory, manifest.sceneCount(), budget));
+        } else {
+            if (manifest.sceneCount() > 128) {
+                throw new IOException("Invalid legacy scene count");
+            }
+            for (int i = 0; i < manifest.sceneCount(); i++) {
+                requireChecked(checkedFiles, "scene-" + i + ".properties.gz");
+                scenes.add(
+                        CaptureCodec.load(
+                                        directory.resolve("scene-" + i + ".properties.gz"),
+                                        CaptureScene.class,
+                                        budget)
+                                .restore());
+            }
         }
         var timeline =
                 CaptureCodec.load(

@@ -53,12 +53,24 @@ public record CaptureScene(List<Shape> shapes, List<Surface> surfaces, List<Inst
             String name, int shape, int surface, Vec3 position, Vec3 rotation, Vec3 scale) {}
 
     static CaptureScene capture(List<SceneInstance> source) {
-        var geometry = new java.util.IdentityHashMap<GeometryData, Integer>();
-        var material = new java.util.HashMap<Material, Integer>();
-        var shapes = new ArrayList<Shape>();
-        var surfaces = new ArrayList<Surface>();
-        var instances = new ArrayList<Instance>();
-        for (var instance : source) {
+        var catalog = new Catalog();
+        var instances = source.stream().map(catalog::capture).toList();
+        return new CaptureScene(catalog.shapes, catalog.surfaces, instances);
+    }
+
+    /** Asset identity spans every animation frame in one capture. */
+    static final class Catalog {
+        private final java.util.IdentityHashMap<GeometryData, Integer> geometry =
+                new java.util.IdentityHashMap<>();
+        private final java.util.HashMap<Material, Integer> material = new java.util.HashMap<>();
+        private final List<Shape> shapes = new ArrayList<>();
+        private final List<Surface> surfaces = new ArrayList<>();
+
+        CaptureScene assets() {
+            return new CaptureScene(shapes, surfaces, List.of());
+        }
+
+        Instance capture(SceneInstance instance) {
             int shape =
                     geometry.computeIfAbsent(
                             instance.geometry(),
@@ -74,16 +86,14 @@ public record CaptureScene(List<Shape> shapes, List<Surface> surfaces, List<Inst
                                 return surfaces.size() - 1;
                             });
             var transform = instance.transform();
-            instances.add(
-                    new Instance(
-                            instance.name(),
-                            shape,
-                            surface,
-                            transform.position,
-                            transform.rotation,
-                            transform.scale));
+            return new Instance(
+                    instance.name(),
+                    shape,
+                    surface,
+                    transform.position,
+                    transform.rotation,
+                    transform.scale);
         }
-        return new CaptureScene(shapes, surfaces, instances);
     }
 
     public List<SceneInstance> restore() {
