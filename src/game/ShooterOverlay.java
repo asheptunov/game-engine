@@ -43,6 +43,7 @@ final class ShooterOverlay {
                 28,
                 height - 124);
         draw.drawString(status.action(), 204, height - 96);
+        draw.drawString(navigation.stance() + "  |  C crouch / Z prone", 28, height - 155);
         if (status.hitTime() > 0) {
             draw.setColor(new Color(255, 210, 100));
             draw.drawLine(cx - 10, cy - 10, cx - 4, cy - 4);

@@ -47,6 +47,91 @@ public final class ShooterGameTest {
     }
 
     @Test
+    void lowerProfileReducesDetectionAndShotRevealsPosition() {
+        var standing = new ShooterGame(List.of(floor()));
+        var prone = new ShooterGame(List.of(floor()));
+        prone.playerHeight(.65f);
+        var camera =
+                camera(-2, 1.7f)
+                        .transformed(
+                                new Transform(new Vec3(0, 0, -25), Vec3.ZERO, new Vec3(1, 1, 1)));
+        advance(standing, camera, 3.05);
+        advance(prone, camera, 3.05);
+        assertTrue(standing.tracers().stream().anyMatch(t -> !t.player()));
+        assertTrue(prone.tracers().isEmpty());
+        prone.fire(camera);
+        advance(prone, camera, 2.5);
+        assertTrue(prone.tracers().stream().anyMatch(t -> !t.player()));
+    }
+
+    @Test
+    void weaponSnapshotRestoresSwayAndRecoilExactly() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.combat(true);
+        navigation.capture();
+        navigation.recoil();
+        navigation.advance(.12);
+        var state = navigation.snapshot();
+        var path =
+                java.nio.file.Files.createTempFile(
+                        java.nio.file.Path.of("out/game"), "weapon-", ".properties");
+        CaptureCodec.save(path, state);
+        var restored = new GameNavigation();
+        restored.restore(CaptureCodec.load(path, GameNavigation.State.class));
+        assertEquals(navigation.view(), restored.view());
+        navigation.advance(.05);
+        restored.advance(.05);
+        assertEquals(navigation.view(), restored.view());
+        java.nio.file.Files.delete(path);
+    }
+
+    @Test
+    void detailedPatrolsShareMeshesAndAnimateTheirHitBounds() {
+        var game = new ShooterGame(List.of(floor()));
+        var initial = game.instances();
+        assertTrue(initial.stream().filter(i -> i.name().contains("camo")).count() >= 100);
+        game.advance(.2, camera(50, 30), true);
+        var moving = game.instances();
+        assertEquals(initial.size(), moving.size());
+        for (int i = 0; i < initial.size(); i++) {
+            assertTrue(initial.get(i).geometry() == moving.get(i).geometry());
+        }
+        assertFalse(initial.equals(moving));
+    }
+
+    @Test
+    void foliageConcealsButDoesNotStopShotsAndPatrolsAreDispersed() {
+        var leaves = box("Foliage test", new Vec3(-2, 1, 5), new Vec3(30, 3, .05f));
+        var game = new ShooterGame(List.of(floor(), leaves));
+        var targets = game.status().targets();
+        assertTrue(targets.getLast().feet().z() - targets.getFirst().feet().z() >= 80);
+        assertTrue(Math.abs(targets.getLast().feet().x()) >= 25);
+        var camera = camera(-2, 1.75f);
+        advance(game, camera, 3.05);
+        assertTrue(game.tracers().stream().noneMatch(t -> !t.player()));
+        game.reset();
+        game.fire(camera);
+        game.advance(.15, camera, true);
+        assertEquals(1, game.status().kills());
+    }
+
+    @Test
+    void recoilAndSwayOnlyAdvanceDuringCapturedActivePlay() {
+        var navigation = new GameNavigation();
+        navigation.combat(true);
+        navigation.capture();
+        var before = navigation.view().camera();
+        navigation.recoil();
+        assertTrue(navigation.view().camera().forward().y() > before.forward().y());
+        navigation.advance(.1);
+        assertFalse(before.equals(navigation.view().camera()));
+        navigation.release();
+        assertEquals(before, navigation.view().camera());
+        navigation.advance(.25);
+        assertEquals(before, navigation.view().camera());
+    }
+
+    @Test
     void headshotTravelsThenKillsAndRemovesBody() {
         var game = new ShooterGame(List.of(floor()));
         var camera = camera(-2, 1.75f);
@@ -136,7 +221,7 @@ public final class ShooterGameTest {
         var scoped = navigation.view().camera();
         assertEquals(0f, scoped.aperture());
         assertTrue(
-                Math.abs(before.sensor().edge2().length() / scoped.sensor().edge2().length() - 1)
+                Math.abs(before.sensor().edge2().length() / scoped.sensor().edge2().length() - 1.5)
                         < .0001);
         navigation.scopeFocus(2);
         assertTrue(navigation.view().camera().focus() > 25);

@@ -28,8 +28,14 @@ public final class CapsuleCollision {
     }
 
     private final List<Face> faces;
+    private final PrimitiveBvh hierarchy;
 
     public CapsuleCollision(List<SceneInstance> instances) {
+        this(instances, true);
+    }
+
+    /** The linear path is retained for collision equivalence measurements. */
+    public CapsuleCollision(List<SceneInstance> instances, boolean accelerated) {
         var result = new ArrayList<Face>();
         for (var instance : instances) {
             if (!(instance.geometry() instanceof PolygonMesh mesh)) {
@@ -52,32 +58,99 @@ public final class CapsuleCollision {
             }
         }
         faces = List.copyOf(result);
+        var bounds = new PrimitiveBvh.Bounds[faces.size()];
+        for (int i = 0; i < bounds.length; i++) {
+            bounds[i] = new PrimitiveBvh.Bounds();
+            bounds[i].include(faces.get(i).low);
+            bounds[i].include(faces.get(i).high);
+        }
+        hierarchy = accelerated && bounds.length > 16 ? new PrimitiveBvh(bounds) : null;
     }
 
     /** Feet are the capsule bottom; height includes both hemispheres. Returns deepest contact. */
     public Contact contact(Vec3 feet, float radius, float height) {
-        Contact contact = null;
-        var bottom = feet.add(new Vec3(0, radius, 0));
-        var top = feet.add(new Vec3(0, height - radius, 0));
-        for (var face : faces) {
-            if (feet.x() + radius < face.low.x()
-                    || feet.x() - radius > face.high.x()
-                    || feet.z() + radius < face.low.z()
-                    || feet.z() - radius > face.high.z()
-                    || feet.y() + height < face.low.y()
-                    || feet.y() > face.high.y()) {
-                continue;
+        var query = new ContactQuery(feet, radius, height);
+        if (hierarchy == null) {
+            for (int i = 0; i < faces.size(); i++) {
+                query.consider(i);
+            }
+        } else {
+            for (int i = 0; i < hierarchy.nodes.length; ) {
+                var node = hierarchy.nodes[i];
+                var b = node.bounds;
+                if (!query.overlaps(b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ)) {
+                    i = node.escape;
+                    continue;
+                }
+                if (node.leaf()) {
+                    query.leaf(node);
+                }
+                i++;
+            }
+        }
+        return query.contact;
+    }
+
+    /** Query-local winner preserves original face order for equal penetration depths. */
+    private final class ContactQuery {
+        private final Vec3 feet;
+        private final Vec3 bottom;
+        private final Vec3 top;
+        private final float radius;
+        private final float height;
+        private Contact contact;
+        private int bestIndex = Integer.MAX_VALUE;
+
+        ContactQuery(Vec3 feet, float radius, float height) {
+            this.feet = feet;
+            this.radius = radius;
+            this.height = height;
+            bottom = feet.add(new Vec3(0, radius, 0));
+            top = feet.add(new Vec3(0, height - radius, 0));
+        }
+
+        boolean overlaps(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+            return feet.x() + radius >= minX
+                    && feet.x() - radius <= maxX
+                    && feet.z() + radius >= minZ
+                    && feet.z() - radius <= maxZ
+                    && feet.y() + height >= minY
+                    && feet.y() <= maxY;
+        }
+
+        void leaf(PrimitiveBvh.Node node) {
+            for (int i = node.from; i < node.to; i++) {
+                consider(hierarchy.order[i]);
+            }
+        }
+
+        void consider(int index) {
+            var face = faces.get(index);
+            if (!overlaps(
+                    face.low.x(),
+                    face.low.y(),
+                    face.low.z(),
+                    face.high.x(),
+                    face.high.y(),
+                    face.high.z())) {
+                return;
             }
             var delta = separation(bottom, top, face);
             float distance = delta.length();
             float depth = radius - distance;
-            if (depth <= 0 || (contact != null && depth <= contact.depth())) {
-                continue;
+            if (depth <= 0 || !wins(depth, index)) {
+                return;
             }
             var normal = distance > 1e-6f ? delta.scale(1 / distance) : face.normal;
             contact = new Contact(normal, depth);
+            bestIndex = index;
         }
-        return contact;
+
+        boolean wins(float depth, int index) {
+            return contact == null
+                    || depth > contact.depth()
+                    || (depth == contact.depth() && index < bestIndex);
+        }
     }
 
     private static Vec3 separation(Vec3 bottom, Vec3 top, Face face) {

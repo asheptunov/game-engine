@@ -197,6 +197,33 @@ public final class ScopeOpticsTest {
     }
 
     @Test
+    void patrolScopeCanCrossPlayerSightWithoutInvalidGlass() {
+        var camera = new GameNavigation().view().camera();
+        var pose = RifleMesh.firstPersonPose(camera);
+        var player = RifleMesh.firstPerson(camera, 0);
+        var overlapping = new ArrayList<>(player);
+        overlapping.addAll(RifleMesh.instances("patrol/0/rifle/", pose, 0));
+        var settings = RenderSettings.defaults().withPathDepth(8);
+        var view = new RenderView(camera, 64, 64);
+        assertTrue(
+                !RenderCapabilities.GPU
+                        .issues(
+                                new WorldSnapshot(0, overlapping, List.of(), List.of()),
+                                view,
+                                settings)
+                        .isEmpty());
+        var safe = new ArrayList<>(player);
+        var patrol = RifleMesh.patrolInstances("patrol/0/rifle/", pose, 0);
+        safe.addAll(patrol);
+        assertTrue(patrol.stream().noneMatch(part -> part.material().clearGlass()));
+        assertEquals(3L, player.stream().filter(part -> part.material().clearGlass()).count());
+        assertTrue(
+                RenderCapabilities.GPU
+                        .issues(new WorldSnapshot(1, safe, List.of(), List.of()), view, settings)
+                        .isEmpty());
+    }
+
+    @Test
     void gpuRejectsNestedGlassAndAcceptsScope() {
         var camera = new GameNavigation().view().camera();
         var parts = ScopeMesh.instances("scope/", Transform.IDENTITY);

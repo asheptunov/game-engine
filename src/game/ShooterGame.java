@@ -1,7 +1,6 @@
 package game;
 
 import engine.Camera;
-import engine.Material;
 import engine.RayQuery;
 import engine.SceneDocument;
 import engine.SceneInstance;
@@ -18,9 +17,6 @@ import java.util.Set;
 public final class ShooterGame {
     static final double STEP = 1.0 / 120;
     static final float MUZZLE_SPEED = 180;
-    private static final Material UNIFORM =
-            new Material("Patrol uniform", new Vec3(.45f, .16f, .09f));
-    private static final Material SKIN = new Material("Patrol head", new Vec3(.65f, .45f, .3f));
 
     public enum Region {
         HEAD(100),
@@ -83,6 +79,7 @@ public final class ShooterGame {
         Vec3 feet;
         int health = 100;
         double attack;
+        double gait;
 
         Enemy(int id, Vec3 feet) {
             this.id = id;
@@ -109,6 +106,14 @@ public final class ShooterGame {
     record Part(Region region, Vec3 center, Vec3 half) {}
 
     private final SpatialQuery scenery;
+    private final SpatialQuery sight;
+    private float playerHeight = 1.8f;
+    private double revealedUntil;
+
+    public synchronized void playerHeight(float height) {
+        playerHeight = Math.clamp(height, .65f, 1.8f);
+    }
+
     private final List<Enemy> enemies = new ArrayList<>();
     private final List<Bullet> bullets = new ArrayList<>();
     private int health = 100;
@@ -124,30 +129,35 @@ public final class ShooterGame {
     private String hit = "";
 
     public ShooterGame(List<SceneInstance> instances) {
-        var document = new SceneDocument();
         scenery =
-                SpatialQuery.prepare(
-                        document.transact(
-                                edit -> {
-                                    for (var instance : instances) {
-                                        var node =
-                                                edit.createNode(
-                                                        instance.name(),
-                                                        null,
-                                                        instance.transform());
-                                        var geometry =
-                                                edit.createGeometry(
-                                                        instance.name(), instance.geometry());
-                                        var material =
-                                                edit.createMaterial(
-                                                        instance.name(), instance.material());
-                                        edit.assignGeometry(node, geometry, material);
-                                    }
-                                }));
+                prepare(
+                        instances.stream()
+                                .filter(value -> !value.name().startsWith("Foliage "))
+                                .toList());
+        sight = prepare(instances);
         reset();
     }
 
+    private static SpatialQuery prepare(List<SceneInstance> instances) {
+        var document = new SceneDocument();
+        return SpatialQuery.prepare(
+                document.transact(
+                        edit -> {
+                            for (var instance : instances) {
+                                var node =
+                                        edit.createNode(
+                                                instance.name(), null, instance.transform());
+                                var geometry =
+                                        edit.createGeometry(instance.name(), instance.geometry());
+                                var material =
+                                        edit.createMaterial(instance.name(), instance.material());
+                                edit.assignGeometry(node, geometry, material);
+                            }
+                        }));
+    }
+
     public synchronized void reset() {
+        revealedUntil = 0;
         health = 100;
         rounds = 5;
         reserve = 30;
@@ -163,8 +173,8 @@ public final class ShooterGame {
         tracers.clear();
         enemies.clear();
         for (int id = 0; id < 5; id++) {
-            float x = (id % 2 == 0 ? -1 : 1) * (2 + id);
-            float z = 10 + id * 8;
+            float x = (id % 2 == 0 ? -1 : 1) * (2 + id * 7);
+            float z = 10 + id * 20;
             enemies.add(new Enemy(id, new Vec3(x, ground(x, z), z)));
         }
     }
@@ -187,6 +197,7 @@ public final class ShooterGame {
         if (health == 0 || cooldown > 0 || rounds == 0) {
             return false;
         }
+        revealedUntil = time + 5;
         rounds--;
         cooldown = 1.25;
         // Fire from the visible barrel and zero the bore at 25 metres along the crosshair ray.
@@ -296,6 +307,7 @@ public final class ShooterGame {
                 enemy.home.x()
                         + (float) (Math.sin(time * .45 + enemy.id) - Math.sin(enemy.id)) * 1.8f;
         float y = ((int) (time / STEP) % 12 == 0) ? ground(x, enemy.home.z()) : enemy.feet.y();
+        enemy.gait += Math.abs(x - enemy.feet.x()) * 5;
         enemy.feet = new Vec3(x, y, enemy.home.z());
         enemy.attack -= STEP;
         if (enemy.attack > 0) {
@@ -307,7 +319,11 @@ public final class ShooterGame {
                 camera.eye().add(new Vec3((float) Math.sin(time * 2 + enemy.id) * .65f, -.35f, 0));
         var delta = aim.sub(muzzle);
         float distance = delta.length();
-        if (distance < 2 || distance > 65 || blocked(muzzle, delta, distance) < distance) {
+        float detection = time < revealedUntil ? 110 : 25 + 40 * (playerHeight - .65f) / 1.15f;
+        if (distance < 2
+                || distance > detection
+                || sight.nearest(new RayQuery(muzzle, delta, .001f, distance, Set.of()))
+                        .isPresent()) {
             return;
         }
         // Compensate gravity for the estimated flight time; deterministic aim error allows dodging.
@@ -339,8 +355,8 @@ public final class ShooterGame {
                     segmentBox(
                                     bullet.position,
                                     delta,
-                                    camera.eye().add(new Vec3(0, -.65f, 0)),
-                                    new Vec3(.28f, .85f, .28f))
+                                    camera.eye().add(new Vec3(0, .15f - playerHeight * .5f, 0)),
+                                    new Vec3(.28f, playerHeight * .5f, .28f))
                             * distance;
             if (along < nearest) {
                 trail(bullet, bullet.position.add(delta.scale(along / distance)));
@@ -375,7 +391,7 @@ public final class ShooterGame {
             if (enemy.health == 0) {
                 continue;
             }
-            for (var part : parts(enemy.feet)) {
+            for (var part : animatedParts(enemy)) {
                 float along = segmentBox(origin, delta, part.center, part.half) * length;
                 if (along < nearest) {
                     nearest = along;
@@ -414,7 +430,32 @@ public final class ShooterGame {
                         Region.LEG, feet.add(new Vec3(.16f, .39f, 0)), new Vec3(.12f, .39f, .15f)));
     }
 
-    /** Fraction along a swept segment, or infinity for a miss; boxes match rendered body parts. */
+    private static List<Part> animatedParts(Enemy enemy) {
+        var result = new ArrayList<Part>();
+        for (var part : parts(enemy.feet)) {
+            if (part.region == Region.HEAD || part.region == Region.TORSO) {
+                result.add(part);
+                continue;
+            }
+            float side = part.center.x() < enemy.feet.x() ? -1 : 1;
+            float stride = (float) Math.sin(enemy.gait) * side;
+            float swing = stride * (part.region == Region.LEG ? .13f : -.06f);
+            var half = new Vec3(part.half.x(), part.half.y() * .52f, part.half.z());
+            result.add(
+                    new Part(
+                            part.region,
+                            part.center.add(new Vec3(0, part.half.y() * .48f, swing * .35f)),
+                            half));
+            result.add(
+                    new Part(
+                            part.region,
+                            part.center.add(new Vec3(0, -part.half.y() * .48f, swing)),
+                            half));
+        }
+        return result;
+    }
+
+    /** Fraction along a swept segment, or infinity for a miss; boxes bound rounded body parts. */
     static float segmentBox(Vec3 origin, Vec3 delta, Vec3 center, Vec3 half) {
         float low = 0;
         float high = 1;
@@ -446,16 +487,15 @@ public final class ShooterGame {
                 continue;
             }
             int index = 0;
-            for (var part : parts(enemy.feet)) {
-                result.add(
-                        box(
-                                "patrol/" + enemy.id + "/" + index++,
-                                part.center,
-                                part.half,
-                                part.region == Region.HEAD ? SKIN : UNIFORM));
+            for (var part : animatedParts(enemy)) {
+                if (part.region != Region.HEAD) {
+                    PatrolMesh.uniform(
+                            result, "patrol/" + enemy.id + "/" + index++, part.center, part.half);
+                }
             }
+            PatrolMesh.detail(result, "patrol/" + enemy.id + "/kit/", enemy.feet, enemy.gait);
             result.addAll(
-                    RifleMesh.instances(
+                    RifleMesh.patrolInstances(
                             "patrol/" + enemy.id + "/rifle/",
                             new Transform(
                                     enemy.feet.add(new Vec3(.22f, 1.23f, -.15f)),
@@ -464,10 +504,5 @@ public final class ShooterGame {
                             0));
         }
         return List.copyOf(result);
-    }
-
-    private static SceneInstance box(String name, Vec3 center, Vec3 half, Material material) {
-        return new SceneInstance(
-                name, SceneInstance.box(), new Transform(center, Vec3.ZERO, half), material);
     }
 }

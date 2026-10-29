@@ -17,7 +17,7 @@ final class ScopeMesh {
     static final float EYE_RELIEF = .072537f;
     static final float AXIS_Y = .115f;
     private static final int SIDES = 128;
-    private static final int RINGS = 64;
+    private static final int RINGS = 128;
     private static final Material GLASS =
             new Material(
                     "Scope glass", new Vec3(1, 1, 1), Material.Kind.DIELECTRIC, 1.5f, Vec3.ZERO);

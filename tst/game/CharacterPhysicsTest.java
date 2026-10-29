@@ -36,6 +36,37 @@ public final class CharacterPhysicsTest {
         return box("Floor", new Vec3(0, -1, 0), new Vec3(100, 1, 100));
     }
 
+    @Test
+    void acceleratedForestContactsMatchLinearTraversalExactly() {
+        var solids =
+                AdventureWorld.create().instances().stream()
+                        .filter(instance -> !instance.name().startsWith("Foliage "))
+                        .toList();
+        var accelerated = new CapsuleCollision(solids);
+        var linear = new CapsuleCollision(solids, false);
+        var random = new java.util.Random(421);
+        for (int i = 0; i < 3000; i++) {
+            var feet =
+                    new Vec3(
+                            random.nextFloat(-40, 40),
+                            random.nextFloat(-3, 5),
+                            random.nextFloat(-15, 115));
+            float height = new float[] {.65f, 1.2f, 1.8f}[i % 3];
+            assertEquals(
+                    linear.contact(feet, .28f, height), accelerated.contact(feet, .28f, height));
+        }
+        var a = new CharacterBody(new Vec3(0, 3, -8));
+        var b = new CharacterBody(new Vec3(0, 3, -8));
+        for (int i = 0; i < 1200; i++) {
+            float height = i < 400 ? 1.8f : i < 800 ? .65f : 1.2f;
+            a.stance(height);
+            b.stance(height);
+            a.step(accelerated, 0, i < 600 ? 5 : -5, i == 300);
+            b.step(linear, 0, i < 600 ? 5 : -5, i == 300);
+            assertEquals(b.snapshot(), a.snapshot());
+        }
+    }
+
     private static CharacterBody settled(CapsuleCollision world) {
         var body = new CharacterBody(new Vec3(0, 3, 0));
         for (int i = 0; i < 240; i++) {
@@ -43,6 +74,60 @@ public final class CharacterPhysicsTest {
         }
         assertTrue(body.grounded());
         return body;
+    }
+
+    @Test
+    void stanceTransitionsMoveContinuouslyAndWaitForHeadroom() {
+        var open = new CapsuleCollision(List.of(floor()));
+        var body = settled(open);
+        body.stance(.65f);
+        body.step(open, 3, 0, false);
+        assertTrue(body.height() < 1.8f && body.height() > 1.7f);
+        for (int i = 0; i < 120; i++) {
+            body.step(open, 3, 0, false);
+        }
+        assertEquals(.65f, body.height());
+        assertTrue(body.feet().x() > .5f);
+        assertTrue(body.velocity().x() < 1);
+        var low =
+                new CapsuleCollision(
+                        List.of(
+                                floor(),
+                                box("roof", new Vec3(0, 1.25f, 0), new Vec3(20, .1f, 20))));
+        body.stance(1.8f);
+        for (int i = 0; i < 120; i++) {
+            body.step(low, 0, 0, false);
+        }
+        assertTrue(body.height() < 1.15f);
+        assertTrue(body.feet().y() < .01f);
+        for (int i = 0; i < 120; i++) {
+            body.step(open, 0, 0, false);
+        }
+        assertEquals(1.8f, body.height());
+        assertTrue(body.feet().y() < .01f);
+    }
+
+    @Test
+    void stanceKeysToggleWithoutRepeatAndRestoreMidTransition() {
+        var navigation = new GameNavigation();
+        navigation.collision(new CapsuleCollision(List.of(floor())));
+        navigation.walking(true);
+        navigation.capture();
+        var crouch = KeyInput.press(KeyCode.C, Modifiers.NONE);
+        navigation.key(crouch);
+        navigation.key(crouch);
+        assertEquals("CROUCHED", navigation.stance());
+        navigation.advance(.1);
+        var state = navigation.snapshot();
+        navigation.advance(.1);
+        var after = navigation.snapshot();
+        navigation.restore(state);
+        navigation.advance(.1);
+        assertEquals(after, navigation.snapshot());
+        navigation.key(KeyInput.press(KeyCode.Z, Modifiers.NONE));
+        assertEquals("PRONE", navigation.stance());
+        navigation.reset();
+        assertEquals("STANDING", navigation.stance());
     }
 
     @Test
@@ -183,7 +268,12 @@ public final class CharacterPhysicsTest {
 
     @Test
     void valleyGroundAndRuinsWall() {
-        var world = new CapsuleCollision(AdventureWorld.create().instances());
+        // Match the game: leaves conceal without becoming solid movement obstacles.
+        var world =
+                new CapsuleCollision(
+                        AdventureWorld.create().instances().stream()
+                                .filter(instance -> !instance.name().startsWith("Foliage "))
+                                .toList());
         var body = new CharacterBody(new Vec3(0, 2.4f, -6));
         for (int i = 0; i < 240; i++) {
             body.step(world, 0, 0, false);

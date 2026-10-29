@@ -43,10 +43,12 @@ public final class GameNavigation {
             int height,
             int fixedWidth,
             int fixedHeight,
-            java.util.List<KeyCode> held) {
+            java.util.List<KeyCode> held,
+            WeaponState weapon) {
         public State {
             held = java.util.List.copyOf(held);
             java.util.Objects.requireNonNull(body);
+            java.util.Objects.requireNonNull(weapon);
             range(position.x(), -Float.MAX_VALUE, Float.MAX_VALUE, "Position X");
             range(position.y(), -Float.MAX_VALUE, Float.MAX_VALUE, "Position Y");
             range(position.z(), -Float.MAX_VALUE, Float.MAX_VALUE, "Position Z");
@@ -88,7 +90,8 @@ public final class GameNavigation {
                 height,
                 fixedWidth,
                 fixedHeight,
-                java.util.List.copyOf(held));
+                java.util.List.copyOf(held),
+                new WeaponState(combat, weaponTime, recoil));
     }
 
     public synchronized void restore(State state) {
@@ -117,6 +120,9 @@ public final class GameNavigation {
         fixedHeight = state.fixedHeight();
         held.clear();
         held.addAll(state.held());
+        combat = state.weapon().combat();
+        weaponTime = state.weapon().time();
+        recoil = state.weapon().recoil();
         view().camera().validated();
     }
 
@@ -157,6 +163,39 @@ public final class GameNavigation {
     private float focus = 5;
     private boolean autofocus;
     private boolean scoped;
+    private boolean combat;
+    private double weaponTime;
+    private double recoil;
+
+    public record WeaponState(boolean combat, double time, double recoil) {
+        public WeaponState {
+            range(time, 0, Double.MAX_VALUE, "Weapon time");
+            range(recoil, 0, .07, "Recoil radians");
+        }
+    }
+
+    synchronized void combat(boolean value) {
+        combat = value;
+    }
+
+    public synchronized void recoil() {
+        recoil = Math.min(.07, recoil + .035 * stability());
+    }
+
+    public synchronized String stance() {
+        return character.targetHeight() == .65f
+                ? "PRONE"
+                : character.targetHeight() == 1.2f ? "CROUCHED" : "STANDING";
+    }
+
+    synchronized float bodyHeight() {
+        return walking ? character.height() : engine.CharacterBody.HEIGHT;
+    }
+
+    private float stability() {
+        return .3f + .7f * (bodyHeight() - .65f) / 1.15f;
+    }
+
     private final AimMotion aimMotion = new AimMotion();
 
     public synchronized float aimAmount() {
@@ -206,6 +245,8 @@ public final class GameNavigation {
         scoped = false;
         aimMotion.reset();
         captured = false;
+        recoil = 0;
+        weaponTime = 0;
         held.clear();
         jumpPending = false;
         physicsRemainder = 0;
@@ -241,11 +282,22 @@ public final class GameNavigation {
         }
         if (input.pressed()) {
             boolean fresh = held.add(input.key());
-            if (fresh && walking && input.key() == KeyCode.SPACE) {
-                jumpPending = true;
+            if (fresh && walking) {
+                walkingKey(input.key());
             }
         } else {
             held.remove(input.key());
+        }
+    }
+
+    private void walkingKey(KeyCode key) {
+        if (key == KeyCode.C || key == KeyCode.Z) {
+            float height = key == KeyCode.C ? 1.2f : .65f;
+            character.stance(
+                    character.targetHeight() == height ? engine.CharacterBody.HEIGHT : height);
+            jumpPending = false;
+        } else if (key == KeyCode.SPACE) {
+            jumpPending = true;
         }
     }
 
@@ -253,6 +305,8 @@ public final class GameNavigation {
         scoped = false;
         aimMotion.reset();
         focusRevision++;
+        recoil = 0;
+        weaponTime = 0;
         position = SPAWN;
         character.teleport(position);
         jumpPending = false;
@@ -293,7 +347,7 @@ public final class GameNavigation {
 
     /** Seconds of elapsed wall time, capped after a stall to avoid a large teleport. */
     synchronized void advanceAim(double seconds) {
-        if (active && captured) {
+        if (active && captured && Double.isFinite(seconds) && seconds >= 0) {
             aimMotion.advance(seconds, scoped);
         }
     }
@@ -318,6 +372,13 @@ public final class GameNavigation {
         }
         if (!Double.isFinite(seconds) || seconds < 0) {
             return;
+        }
+        if (combat) {
+            weaponTime += Math.min(.25, seconds);
+        }
+        recoil *= Math.exp(-Math.min(.25, seconds) * 9);
+        if (recoil < .000001) {
+            recoil = 0;
         }
         if (walking) {
             advanceCharacter(seconds);
@@ -479,15 +540,27 @@ public final class GameNavigation {
 
     public synchronized RenderView view() {
         float aspect = (float) width / height;
+        double sway = combat && captured ? .0018 * stability() : 0;
+        boolean moving = axis(KeyCode.W, KeyCode.S) != 0 || axis(KeyCode.D, KeyCode.A) != 0;
+        sway *= moving ? 2.5 : 1;
+        double viewYaw = yaw + sway * Math.sin(weaponTime * 1.7);
+        double viewPitch =
+                Math.clamp(
+                        pitch + recoil + sway * .7 * Math.sin(weaponTime * 2.3),
+                        -PITCH_LIMIT,
+                        PITCH_LIMIT);
         var forward =
                 new Vec3(
-                        (float) (Math.sin(yaw) * Math.cos(pitch)),
-                        (float) Math.sin(pitch),
-                        (float) (Math.cos(yaw) * Math.cos(pitch)));
-        var right = new Vec3((float) Math.cos(yaw), 0, (float) -Math.sin(yaw));
+                        (float) (Math.sin(viewYaw) * Math.cos(viewPitch)),
+                        (float) Math.sin(viewPitch),
+                        (float) (Math.cos(viewYaw) * Math.cos(viewPitch)));
+        var right = new Vec3((float) Math.cos(viewYaw), 0, (float) -Math.sin(viewYaw));
         var up = forward.cross(right);
         // Sensor one unit ahead; field of view is vertical.
-        float sensorHeight = (float) (2 * Math.tan(Math.toRadians(fov / 2)));
+        // Aim framing gives the physical scope 50% more pixels across at full aim.
+        // The glass still supplies its own optical magnification; hip-fire FOV is unchanged.
+        float sensorHeight =
+                (float) (2 * Math.tan(Math.toRadians(fov / 2))) * (1 - aimMotion.amount() / 3);
         var horizontal = right.scale(sensorHeight * aspect);
         var vertical = up.scale(sensorHeight);
         var origin = position.add(forward).sub(horizontal.scale(.5f)).sub(vertical.scale(.5f));

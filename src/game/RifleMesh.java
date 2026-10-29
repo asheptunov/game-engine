@@ -20,13 +20,26 @@ final class RifleMesh {
     private static final Material RUBBER =
             new Material("Rubber and recesses", new Vec3(.018f, .022f, .025f));
     private static final Material EDGE = new Material("Machined edges", new Vec3(.24f, .29f, .32f));
+    private static final Material PATROL_LENS =
+            new Material("Patrol scope coating", new Vec3(.025f, .065f, .075f));
     private static final List<SceneInstance> BODY = build();
     private static final List<SceneInstance> BOLT = bolt();
+    private static final List<SceneInstance> HANDS = hands();
 
     private RifleMesh() {}
 
     static List<SceneInstance> instances(String prefix, Transform pose, double cycle) {
         return instances(prefix, pose, cycle, 25);
+    }
+
+    /**
+     * Only the player's sight needs optical transport. Patrol lenses can cross the player's rifle
+     * during close encounters, which the GPU's disjoint glass model cannot represent.
+     */
+    static List<SceneInstance> patrolInstances(String prefix, Transform pose, double cycle) {
+        return instances(prefix, pose, cycle).stream()
+                .map(part -> part.material().clearGlass() ? part.withMaterial(PATROL_LENS) : part)
+                .toList();
     }
 
     private static List<SceneInstance> instances(
@@ -81,11 +94,23 @@ final class RifleMesh {
     }
 
     static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown, float aim) {
-        return instances(
-                "player/rifle/",
-                firstPersonPose(camera, aim),
-                cooldown,
-                aim > 0 ? camera.focus() : 25);
+        var result =
+                new ArrayList<>(
+                        instances(
+                                "player/rifle/",
+                                firstPersonPose(camera, aim),
+                                cooldown,
+                                aim > 0 ? camera.focus() : 25));
+        var pose = firstPersonPose(camera, aim);
+        for (var part : HANDS) {
+            result.add(
+                    new SceneInstance(
+                            "player/rifle/" + part.name(),
+                            part.geometry(),
+                            Transform.compose(pose, part.transform()),
+                            part.material()));
+        }
+        return List.copyOf(result);
     }
 
     static Vec3 muzzle(engine.Camera camera, float aim) {
@@ -126,6 +151,26 @@ final class RifleMesh {
                     EDGE, new Vec3(0, .061f, -.14f + index * .035f), new Vec3(.028f, .003f, .004f));
         }
         return model.finish("body/");
+    }
+
+    private static List<SceneInstance> hands() {
+        var result = new ArrayList<SceneInstance>();
+        // Sleeves follow the rifle through aim, crouch and prone camera transitions.
+        PatrolMesh.uniform(
+                result,
+                "sleeve/support",
+                new Vec3(-.065f, -.18f, .14f),
+                new Vec3(.065f, .075f, .22f));
+        PatrolMesh.uniform(
+                result,
+                "sleeve/trigger",
+                new Vec3(.12f, -.22f, -.28f),
+                new Vec3(.065f, .085f, .18f));
+        var hands = new Builder();
+        hands.box(STOCK, new Vec3(-.03f, -.08f, .25f), new Vec3(.055f, .045f, .08f));
+        hands.box(STOCK, new Vec3(.065f, -.10f, -.13f), new Vec3(.04f, .06f, .06f));
+        result.addAll(hands.finish("gloves/"));
+        return List.copyOf(result);
     }
 
     private static List<SceneInstance> bolt() {

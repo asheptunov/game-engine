@@ -280,6 +280,7 @@ public final class GameRenderer implements AutoCloseable {
     public synchronized void enableShooter() {
         if (shooter == null) {
             shooter = new ShooterGame(world.instances());
+            navigation.combat(true);
             settings = settings.withPathDepth(Math.max(8, settings.pathDepth()));
         }
     }
@@ -449,6 +450,7 @@ public final class GameRenderer implements AutoCloseable {
                             navigation.advanceAim((now - previousTick[0]) / 1e9);
                         }
                         if (combat != null) {
+                            combat.playerHeight(navigation.bodyHeight());
                             combat.advance(
                                     (now - previousTick[0]) / 1e9,
                                     navigation.view().camera(),
