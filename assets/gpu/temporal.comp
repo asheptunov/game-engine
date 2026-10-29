@@ -1,0 +1,80 @@
+#version 460
+layout(local_size_x=8, local_size_y=8) in;
+layout(set=0,binding=0,std430) readonly buffer Raw { vec4 raw[]; };
+layout(set=0,binding=1,std430) readonly buffer Guide { vec4 guide[]; };
+layout(set=0,binding=2,std430) readonly buffer PreviousGuide { vec4 previousGuide[]; };
+layout(set=0,binding=3,std430) readonly buffer History { vec4 history[]; };
+layout(set=0,binding=4,std430) writeonly buffer NextHistory { vec4 nextHistory[]; };
+layout(set=0,binding=5,std430) writeonly buffer Presented { vec4 presented[]; };
+layout(set=0,binding=6,std430) readonly buffer Motion { vec4 motion[]; };
+layout(push_constant) uniform Settings { uint width, height, samples, valid; };
+
+// Guides contain world position/identity, local normal/eligibility, previous world position,
+// primary throughput, primary atmospheric radiance, and world normal/pixel footprint.
+vec3 lighting(uint p) { return max(vec3(0),(raw[p].xyz-guide[p*6+4].xyz)/max(guide[p*6+3].xyz,vec3(.01))); }
+bool similar(uint p, uint q) {
+    return guide[p*6].w==guide[q*6].w && guide[q*6+1].w>0
+        && dot(guide[p*6+5].xyz,guide[q*6+5].xyz)>.95
+        && abs(dot(guide[q*6].xyz-guide[p*6].xyz,guide[p*6+5].xyz))<guide[p*6+5].w*.2+.001;
+}
+bool correspondence(uint p,uint q) {
+    vec3 expected=guide[p*6+2].xyz;
+    float footprint=length(expected-motion[1].xyz)*motion[5].x;
+    return previousGuide[q*6].w==guide[p*6].w && previousGuide[q*6+1].w>0
+        && dot(previousGuide[q*6+1].xyz,guide[p*6+1].xyz)>.98
+        && distance(previousGuide[q*6].xyz,expected)<max(.002,footprint*2);
+}
+void main() {
+    uvec2 xy=gl_GlobalInvocationID.xy;
+    if(xy.x>=width || xy.y>=height) return;
+    uint p=xy.y*width+xy.x;
+    if(guide[p*6+1].w==0) {
+        nextHistory[p]=vec4(0); presented[p]=raw[p]; return;
+    }
+    vec3 current=lighting(p), lo=current, hi=current;
+    // Filter illumination only; remodulation preserves the current surface's texture.
+    vec3 total=current*4; float weight=4;
+    for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++) {
+        ivec2 at=ivec2(xy)+ivec2(x,y);
+        if(any(lessThan(at,ivec2(0))) || at.x>=int(width) || at.y>=int(height) || (x==0&&y==0)) continue;
+        uint q=uint(at.y)*width+uint(at.x);
+        if(!similar(p,q)) continue;
+        vec3 value=lighting(q); lo=min(lo,value); hi=max(hi,value);
+        total+=value; weight+=1;
+    }
+    // Spatial bias vanishes as the raw estimator converges.
+    current=mix(current,total/weight,1.0/float(samples));
+    float count=float(samples);
+    if(valid!=0 && guide[p*6+2].w>0) {
+        vec3 ray=guide[p*6+2].xyz-motion[1].xyz;
+        vec3 a=motion[3].xyz,b=motion[4].xyz,n=cross(a,b);
+        float denominator=dot(ray,n);
+        float distanceToPlane=dot(motion[2].xyz-motion[1].xyz,n);
+        if(denominator*distanceToPlane>0) {
+            vec3 point=motion[1].xyz+ray*(distanceToPlane/denominator)-motion[2].xyz;
+            float aa=dot(a,a),ab=dot(a,b),bb=dot(b,b),det=aa*bb-ab*ab;
+            vec2 uv=vec2(dot(point,a)*bb-dot(point,b)*ab,dot(point,b)*aa-dot(point,a)*ab)/det;
+            vec2 coord=uv*vec2(width,height)-.5;
+            ivec2 base=ivec2(floor(coord)); vec2 f=fract(coord);
+            bool accepted=all(greaterThanEqual(base,ivec2(0))) && base.x+1<int(width) && base.y+1<int(height)
+                && length(uv-(vec2(xy)+.5)/vec2(width,height))<.15;
+            vec4 old=vec4(0);
+            if(accepted) for(uint dy=0;dy<2;dy++) for(uint dx=0;dx<2;dx++) {
+                uint q=(uint(base.y)+dy)*width+uint(base.x)+dx;
+                accepted=accepted && correspondence(p,q);
+                old+=history[q]*(dx==0?1-f.x:f.x)*(dy==0?1-f.y:f.y);
+            }
+            if(accepted && old.w>0) {
+                vec3 clamped=clamp(old.xyz,lo,hi);
+                float fresh=max(.2,float(samples)/(float(samples)+min(8.,old.w)));
+                current=mix(clamped,current,fresh);
+                count=min(8.,old.w+float(samples));
+            }
+        }
+    }
+    nextHistory[p]=vec4(current,min(8.,count));
+    vec3 factor=guide[p*6+3].xyz;
+    // Near-black channels cannot be demodulated reliably; preserve their exact raw estimate.
+    presented[p]=vec4(mix(raw[p].xyz,guide[p*6+4].xyz+factor*current,
+        greaterThanEqual(factor,vec3(.01))),raw[p].w);
+}

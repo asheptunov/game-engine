@@ -254,6 +254,36 @@ public final class GameSettingsPanel extends JPanel {
         return Math.abs(settings.interactiveMillis() - 1000. / 120) < .001 ? 2 : 3;
     }
 
+    private void temporalControls(JPanel panel) {
+        check(
+                panel,
+                "Temporal reconstruction",
+                () -> renderer.settings().temporal(),
+                value -> renderer.configure(s -> s.withTemporal(value, s.temporalRevision() + 1)),
+                support(engine.RenderCapabilities.Feature.TEMPORAL_RECONSTRUCTION));
+        if (renderer.capabilities() == engine.RenderCapabilities.GPU) {
+            panel.add(
+                    new JLabel(
+                            "<html>Diffuse lighting reconstruction; requires a pinhole"
+                                    + " camera,<br>uniform sampling and Full atmosphere"
+                                    + " quality.</html>"));
+            button(
+                    panel,
+                    "Set up GPU reconstruction",
+                    () -> {
+                        navigation.optics(0, navigation.focus());
+                        renderer.configure(
+                                s ->
+                                        s.withFoveated(false)
+                                                .withFogDownsample(1)
+                                                .withPathDepth(Math.max(1, s.pathDepth()))
+                                                .withTemporal(true, s.temporalRevision() + 1));
+                    });
+        } else {
+            panel.add(new JLabel("Finite aperture disables temporal reuse."));
+        }
+    }
+
     private JPanel renderControls() {
         var panel = page();
         heading(
@@ -281,6 +311,7 @@ public final class GameSettingsPanel extends JPanel {
         frameBudget(panel);
         bloomControls(panel);
         centerDetailControls(panel);
+        temporalControls(panel);
         number(
                 panel,
                 "Width (pixels)",
@@ -964,14 +995,7 @@ public final class GameSettingsPanel extends JPanel {
                 () -> renderer.settings().acceleration(),
                 value -> renderer.configure(s -> s.withAcceleration(value)),
                 support(engine.RenderCapabilities.Feature.OPTIONAL_ACCELERATION));
-        heading(panel, "CPU temporal reconstruction");
-        check(
-                panel,
-                "Temporal reconstruction",
-                () -> renderer.settings().temporal(),
-                value -> renderer.configure(s -> s.withTemporal(value, s.temporalRevision() + 1)),
-                support(engine.RenderCapabilities.Feature.TEMPORAL_RECONSTRUCTION));
-        panel.add(new JLabel("Finite aperture disables temporal reuse."));
+        heading(panel, "CPU temporal motion budget");
         check(
                 panel,
                 "Temporal motion budget",

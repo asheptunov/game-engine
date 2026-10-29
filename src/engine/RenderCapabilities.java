@@ -108,10 +108,10 @@ public enum RenderCapabilities {
                                     ATMOSPHERE,
                                     LOCAL_FOG,
                                     ADAPTIVE_RESOLUTION,
-                                    DEPTH_OF_FIELD ->
+                                    DEPTH_OF_FIELD,
+                                    TEMPORAL_RECONSTRUCTION ->
                             null;
-                    case TEMPORAL_RECONSTRUCTION, TEMPORAL_BUDGET ->
-                            "GPU does not implement temporal reconstruction or budgets";
+                    case TEMPORAL_BUDGET -> "GPU does not implement CPU temporal batch budgets";
                     case WORKER_CONTROL, TILE_CONTROL ->
                             "GPU scheduling is device-managed; CPU workers and tiles do not apply";
                     case OPTIONAL_ACCELERATION -> "GPU requires acceleration";

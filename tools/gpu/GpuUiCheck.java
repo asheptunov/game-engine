@@ -122,6 +122,20 @@ public final class GpuUiCheck {
             });
             var image=new BufferedImage(960,600,BufferedImage.TYPE_INT_RGB);
             SwingUtilities.invokeAndWait(()->{
+                navigation.optics(.04f,9);
+                renderer.configure(s->s.withFoveated(true));
+                var setup=(javax.swing.JButton)find(holder[0],"Set up GPU reconstruction");
+                if(setup==null) throw new AssertionError("Missing GPU reconstruction setup");
+                setup.doClick();
+                if(navigation.aperture()!=0 || renderer.settings().foveated()
+                        || renderer.settings().fogDownsample()!=1 || !renderer.settings().temporal())
+                    throw new AssertionError("GPU reconstruction setup did not apply compatible settings");
+            });
+            awaitSamples(renderer,frame->frame.camera().aperture()==0 && frame.context()!=null
+                    && frame.context().settings().temporal() && frame.samples()>=4);
+            SwingUtilities.invokeAndWait(()->((javax.swing.JCheckBox)find(holder[0],"Temporal reconstruction")).doClick());
+            awaitSamples(renderer,frame->frame.context()!=null && !frame.context().settings().temporal());
+            SwingUtilities.invokeAndWait(()->{
                 var graphics=image.createGraphics();
                 try {layout(holder[0]);holder[0].paint(graphics);} finally {graphics.dispose();}
             });

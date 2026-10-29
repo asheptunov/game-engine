@@ -561,6 +561,35 @@ void resolveSmooth(uvec2 xy) {
     pixels[xy.y*grid.x+xy.x]=vec4(total>0?sum/total:vec3(means[reference].xyz),0);
 }
 
+layout(constant_id=4) const bool temporalGuides = false;
+layout(set=0,binding=15,std430) buffer TemporalGuides { vec4 temporalGuide[]; };
+layout(set=0,binding=16,std430) readonly buffer TemporalMotion { vec4 temporalMotion[]; };
+
+void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 light, vec3 transmission) {
+    uint g=pixel*6u;
+    for(uint i=0;i<6;i++) temporalGuide[g+i]=vec4(0);
+    if(!found) return;
+    uint m=8u+uint(hit.instanceIndex)*4u;
+    if(temporalMotion[m+3].x==0) return;
+    float material=instances[hit.instanceIndex*4+1].w;
+    if(material>0) return;
+    vec3 point=o+d*hit.t;
+    vec4 local=vec4(hit.localPoint,1);
+    vec3 previous=vec3(dot(temporalMotion[m],local),dot(temporalMotion[m+1],local),dot(temporalMotion[m+2],local));
+    vec3 normal=dot(hit.normal,d)<0?hit.normal:-hit.normal;
+    vec3 localNormal=dot(hit.normal,d)<0?hit.localNormal:-hit.localNormal;
+    float planeDistance=abs(dot(origin.xyz-eye.xyz,normalize(cross(edge1.xyz,edge2.xyz))));
+    float footprint=hit.t*max(length(edge1.xyz)/float(grid.x),length(edge2.xyz)/float(grid.y))/planeDistance;
+    // Directional leaves do not factor into color times lighting; retain unit demodulation.
+    vec3 color=material==-2?vec3(1):reflectance(hit);
+    temporalGuide[g]=vec4(point,temporalMotion[m+3].x);
+    temporalGuide[g+1]=vec4(localNormal,1);
+    temporalGuide[g+2]=vec4(previous,temporalMotion[m+3].y);
+    temporalGuide[g+3]=vec4(transmission*color,0);
+    temporalGuide[g+4]=vec4(light,0);
+    temporalGuide[g+5]=vec4(normal,footprint);
+}
+
 void main() {
     if(dispatchMode==1) { buildFogSun(); return; }
     if(dispatchMode==5) { buildLightingGrid(); return; }
@@ -645,6 +674,7 @@ void main() {
             radiance += weight*light;
             weight *= transmission;
         }
+        if (temporalGuides && depth==0) writeTemporalGuide(pixel,found,hit,o,d,radiance,weight);
         if (!found) {
             vec3 environment = mix(nadir.xyz,zenith.xyz,clamp((d.y+1)*0.5,0,1));
             // Camera presentation only: direct lighting already accounts for this source.

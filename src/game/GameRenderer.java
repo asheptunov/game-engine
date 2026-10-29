@@ -909,7 +909,9 @@ public final class GameRenderer implements AutoCloseable {
                     "The physical scope requires path depth 8 or higher");
         }
         capabilities.validate(world, navigation.view(), next);
-        if (settings.bloom() != next.bloom()) {
+        if (settings.bloom() != next.bloom()
+                || settings.temporal() != next.temporal()
+                || settings.temporalRevision() != next.temporalRevision()) {
             converted = -1;
         }
         settings = next;

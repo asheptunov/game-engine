@@ -10,6 +10,9 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/TraversalCheck.java') 'out/gpu/traversal-compile.log' 'Traversal comparison compilation failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.TraversalCheck') 'out/gpu/traversal-check.log' 'Traversal comparison checks failed'
 
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/ReconstructionCheck.java','tools/gpu/ReconstructionBenchmark.java') 'out/gpu/reconstruction-compile.log' 'Reconstruction check compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.ReconstructionCheck') 'out/gpu/reconstruction-check.log' 'GPU reconstruction checks failed'
+
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.GpuUiCheck') 'out/gpu/ui-check.log' 'GPU game-panel verification failed'
 
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.FogSunCheck') 'out/gpu/fog-sun-check.log' 'Fog cache verification failed'
