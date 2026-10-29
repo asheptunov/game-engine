@@ -1,0 +1,9 @@
+device=NVIDIA GeForce RTX 3080; vendor=4318; driverVersion=2585198592; apiVersion=4211039
+capture=out/game/captures/2026-10-28T23-02-50.137238100Z-cda17c85-0df9-4815-8468-de81c266aba8 camera=Camera[eye=Vec3[x=13.204447, y=3.4706283, z=18.727865], sensor=Rect[origin=Vec3[x=12.634004, y=2.8382125, z=20.01685], edge1=Vec3[x=1.8915533, y=0.0, z=-0.79750717], edge2=Vec3[x=0.025108349, y=1.1528904, z=0.059552796]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=5.0, aperture=0.0, height=0.0, rememberedAperture=0.0] settings=RenderSettings[pathDepth=8, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=16, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=8.333, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0, fogDownsample=1, fogLightingGrid=false, fogJitter=false, foveated=true, smoothFoveation=false, foveationQuality=FoveationQuality[centerFraction=0.5, edgeSpacing=6], bloom=OFF]
+round,sampling,medianGpuMs,p95GpuMs,medianHostMs,p95HostMs
+0,false,9.776480,11.442400,12.046500,13.538100
+0,true,6.189952,7.595872,7.766900,9.171300
+1,true,6.189024,7.551264,7.762200,9.112500
+1,false,9.426080,11.266592,11.458500,13.093700
+2,false,9.387968,10.758720,11.114100,12.554600
+2,true,6.217536,7.582528,7.714100,9.106300

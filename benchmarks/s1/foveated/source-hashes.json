@@ -1,0 +1,13 @@
+{
+  "src/engine/RenderSettings.java": "5d2b8a62f4611f746c833bb1c38f1c5462e010bd57aefd65e10e60ee1692b7ff",
+  "src/gpu/GpuKernel.java": "b45a18f6b7e51f043a721b3c3220abca4e867c5a2269350ff29cc7bdf985bb88",
+  "src/gpu/GpuFoveation.java": "8c9cc8e3e501906e6f4c806602e011b51fe741bb1727765db228c14ce42c4638",
+  "src/gpu/GpuRenderSession.java": "bb6441c5130a0a1780d33a8c71d01d643ac4d9c27bf9e01a066ddc06fced3d4e",
+  "assets/gpu/diffuse.comp": "18972222a40db9d5b2982547b5341dec18c587d0995ec2f9705248f278ca4f38",
+  "src/game/GameSettingsPanel.java": "218c928af6f7824504b1306f78e5b306dcb8af14c5e11b94d701faae23ff7dda",
+  "src/game/CaptureCodec.java": "ae66e2753c0686cdc58290c72503590848a5e117e6736334b056160c745c2fe3",
+  "tools/gpu/PresentationBenchmark.java": "99a28079be8a3a69cb5aca1cfcc55a793c37266dac542e5fddd45cd08a49fe41",
+  "tools/gpu/FoveatedCost.java": "c48c4eaa21ff77365ae5c86c753928746d1d9ca53d2a6d7389b6a8b7a3cc57fa",
+  "tools/gpu/FoveatedCheck.java": "2122e8fb084df77866b22e80941b545d7c9c272656228d554b66c4c0d31d27f9",
+  "tools/gpu/FoveatedPreview.java": "5da80ae54ef9cb39bceaa5d18031801cc57833969e4337a7e91a619d1d54478d"
+}

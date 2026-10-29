@@ -1,0 +1,5 @@
+depth=0 hour=7.0 divisor=2 rmse=3.4069581863456185E-4 max=0.01564020663499832 outside=0 reused=6304
+depth=0 hour=7.0 divisor=4 rmse=2.5924550964114896E-4 max=0.017869848757982254 outside=1 reused=2830
+Exception in thread "main" java.lang.AssertionError: Fog reconstruction exceeds radiance quality budget
+	at gpu.FogResolutionCheck.compare(FogResolutionCheck.java:74)
+	at gpu.FogResolutionCheck.main(FogResolutionCheck.java:27)

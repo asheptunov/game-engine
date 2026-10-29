@@ -40,7 +40,7 @@ A6: Choosing how to split geometry by estimating the resulting ray-test cost. Sm
 
 Q7: Define disocclusion
 
-A8: A previously hidden surface becoming visible, such as the wall revealed when you move past a sphere. The previous image has no valid sample of that newly visible patch, so temporal reuse must reject unrelated old pixels there and gather new information.
+A7: A previously hidden surface becoming visible, such as the wall revealed when you move past a sphere. The previous image has no valid sample of that newly visible patch, so temporal reuse must reject unrelated old pixels there and gather new information.
 
 Q9: Define MIS
 
@@ -92,7 +92,7 @@ A18: IOR means index of refraction. Our glass transmission weight includes `(inc
 
 Q19: in the Adaptive sampling technique, how could you know that a pixel is noisy to spend more time on it? conversely, how can you know that a region is converged? don't you send a uniform # of rays per pixel? or is this some heuristic, like how much is a pixel changing per sample with no scene changes, and keep rendering the ones with high variance?
 
-A19: Yes, that is the idea, with statistical safeguards. Today we send the same number of primary path samples per pixel, although paths can use different numbers of rays. Adaptive sampling would track each pixel's sample count, mean, and variance. For independent samples, uncertainty in the mean is estimated by `sqrt(variance / count)`. Pixels above an error threshold get more work; quieter ones get less. This estimates convergence rather than proving it: several dark samples can miss a rare bright path. Require a minimum sample count and periodic revisits, and validate the stopping policy for bias. Scene changes invalidate the statistics. Looking only at the latest change in the average is unreliable because that change naturally shrinks as the count grows.
+A19: Yes, that is the idea, with statistical safeguards. Uniform rendering sends the same number of primary path samples per pixel, although paths can use different numbers of rays. The experimental GPU Center detail option instead shares a path across small peripheral pixel blocks, with gradual density transitions away from the center. Its optional Smooth mode traces a grid with continuously increasing spacing and reconstructs the image from nearby samples on compatible surfaces. Both patterns are fixed at a given resolution; neither measures noise or convergence. Adaptive sampling would track each pixel's sample count, mean, and variance. For independent samples, uncertainty in the mean is estimated by `sqrt(variance / count)`. Pixels above an error threshold get more work; quieter ones get less. This estimates convergence rather than proving it: several dark samples can miss a rare bright path. Require a minimum sample count and periodic revisits, and validate the stopping policy for bias. Scene changes invalidate the statistics. Looking only at the latest change in the average is unreliable because that change naturally shrinks as the count grows.
 
 Q20: what is "stratified or low-discrepancy sampling"? how does it reduce noise?
 

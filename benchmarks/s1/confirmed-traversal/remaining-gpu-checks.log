@@ -1,0 +1,231 @@
+depth=0 hour=7.0 divisor=1 rmse=3.105045364657591E-5 max=6.921403110027313E-4 outside=0 reused=0
+depth=0 hour=7.0 divisor=2 rmse=3.394316757990521E-4 max=0.01564302295446396 outside=0 reused=6300
+depth=0 hour=7.0 divisor=4 rmse=2.612316987505498E-4 max=0.0178694911301136 outside=1 reused=2830
+Exception in thread "main" java.lang.AssertionError: Lighting grid exceeds radiance quality budget
+	at gpu.FogGridCheck.compare(FogGridCheck.java:73)
+	at gpu.FogGridCheck.main(FogGridCheck.java:27)
+FAILED: Fog lighting grid verification failed with exit code 1
+PASS fog jitter replay, sample/seed variation, full/half/quarter, off restoration, no-fog streams and leases
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS gpu requested image dimensions 800x501
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+backend,width,height,round,referenceMedianMs,bulkMedianMs
+gpu,800,501,0,5.4886,1.0516
+gpu,800,501,1,5.6776,1.2152
+gpu,800,501,2,5.4930,1.0209
+PASS closed lease rejected
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS cpu requested image dimensions 128x81
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+backend,width,height,round,referenceMedianMs,bulkMedianMs
+cpu,128,81,0,0.0921,0.0915
+cpu,128,81,1,0.0905,0.0892
+cpu,128,81,2,0.0901,0.0893
+PASS closed lease rejected
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS gpu requested image dimensions 1920x1080
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+PASS closed lease rejected
+PASS numeric edge and orientation 0 exposure=0.0
+PASS numeric edge and orientation 1 exposure=0.0
+PASS numeric edge and orientation 2 exposure=0.0
+PASS numeric edge and orientation 3 exposure=0.0
+PASS numeric edge and orientation 0 exposure=0.125
+PASS numeric edge and orientation 1 exposure=0.125
+PASS numeric edge and orientation 2 exposure=0.125
+PASS numeric edge and orientation 3 exposure=0.125
+PASS numeric edge and orientation 0 exposure=1.0
+PASS numeric edge and orientation 1 exposure=1.0
+PASS numeric edge and orientation 2 exposure=1.0
+PASS numeric edge and orientation 3 exposure=1.0
+PASS numeric edge and orientation 0 exposure=100.0
+PASS numeric edge and orientation 1 exposure=100.0
+PASS numeric edge and orientation 2 exposure=100.0
+PASS numeric edge and orientation 3 exposure=100.0
+PASS image publication
+PASS image lease
+PASS cpu requested image dimensions 1920x1080
+PASS exact RGB exposure=0.0
+PASS exact RGB exposure=0.125
+PASS exact RGB exposure=1.0
+PASS exact RGB exposure=4.0
+PASS exact RGB exposure=100.0
+PASS invalid destination rejected
+PASS replacement publication
+PASS held image remains stable after replacement
+PASS interrupted conversion restores interrupt flag
+PASS interrupted conversion finishes all rows
+PASS closed lease rejected
+PASS exact shader encoding exposure=0.0 pixels=131072
+PASS exact shader encoding exposure=0.125 pixels=131072
+PASS exact shader encoding exposure=1.0 pixels=131072
+PASS exact shader encoding exposure=4.0 pixels=131072
+PASS exact shader encoding exposure=100.0 pixels=131072
+PASS exact shader encoding exposure=3.4028235E38 pixels=131072
+exposure=1.0 differingPixels=0 maxChannelError=0
+exposure=0.0 differingPixels=0 maxChannelError=0
+exposure=0.125 differingPixels=0 maxChannelError=0
+exposure=4.0 differingPixels=0 maxChannelError=0
+exposure=100.0 differingPixels=0 maxChannelError=0
+exposure=0.125 differingPixels=0 maxChannelError=0
+exposure=1.0 differingPixels=0 maxChannelError=0
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T15-43-46.685046300Z-6fc2e6c5-301f-427b-8f43-6f7eb77530ef
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T15-43-46.956048400Z-181e890d-4076-4796-93b9-4064af88e027
+PASS GPU snapshot/history captures and reload, resident=false
+PASS compact GPU display 1920x1080: pixels, exposure, raw snapshots, resize, three-slot leases, close
+Native presentation supported=true
+PASS compositor exact integer grids; linear shrink/fractional/letterbox/4K; alpha overlays
+PASS hidden AWT/JAWT swapchain 640x360, submitted=12
+PASS hidden AWT/JAWT swapchain 800x500, submitted=12
+PASS hidden AWT/JAWT swapchain 640x360, submitted=12
+PASS resident frames, repeated slot reuse, explicit download and retained close
+PASS UI patches, alpha, small windows and 100/125/200 percent DPI
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T15-43-52.239074300Z-36f76cd6-bc49-4288-bdbf-5cedf6340644
+Saved capture: C:\Users\andri\Documents\RayTracingEngine\out\gpu\compact-captures\2026-10-29T15-43-52.534073500Z-59b783d1-58c4-48e8-aade-f65906a52220
+PASS GPU snapshot/history captures and reload, resident=true
+PASS 36 exact seeded RGB frames, translation/rotation/scale, materials/order, remove/add, 3 allocations/33 reuses, bounded memory
+PASS GPU adaptive policy, restoration, pause, toggle, exact pixels and leases
+PASS exact ownership transfer, sibling mutation isolation, 20 resizes, exposure fallback, restart, retained close
+PASS opaque/alpha, letterbox, odd sizes, clipped repaint and DPI equivalence
+Gradual falloff primary paths at 1080p: 793167
+PASS foveation exact center, all footprint pixels, odd/thin grids, accumulation, lens, fog fallback, toggles, packed pixels and leases
+1080p smooth paths: 1026000
+PASS smooth grid, exact core, accumulation, lens, fog, boundaries, toggles, packed pixels, leases and retirement
+4K paths default=4095564 strong=1778000
+PASS live slider UI and 4K shortcut
+PASS resolution 2560x1440 all control extremes, raw/packed and discrete coordinates
+PASS resolution 3840x2160 all control extremes, raw/packed and discrete coordinates
+Peak device bytes in check: 1022961776
+PASS live quality changes, default reproduction and leases
+PASS CPU/GPU agree for sunlight on leaf side -1
+PASS half-energy green sunlight on side -1
+PASS opaque material remains unchanged
+PASS CPU/GPU agree for sunlight on leaf side 1
+PASS half-energy green sunlight on side 1
+PASS opaque material remains unchanged
+PASS solid occluder blocks leaf backlighting
+PASS both hemispheres preserve sky energy with one continuation
+PASS CPU/GPU directional leaf angle 0.0
+PASS CPU/GPU directional leaf angle 0.4
+PASS CPU/GPU directional leaf angle 1.1
+PASS CPU/GPU stochastic directional transmission agrees
+leaf-opaque mean host frame 1.08ms
+leaf-transmission mean host frame 1.10ms
+PASS packed OFF 67x65 maximum byte error 0
+PASS native compositor OFF 67x65 maximum byte error 0
+COST 67x65 OFF median 0.006ms p95 0.007ms
+PASS packed SIMPLE 67x65 maximum byte error 0
+PASS native compositor SIMPLE 67x65 maximum byte error 0
+COST 67x65 SIMPLE median 0.020ms p95 0.020ms
+PASS packed OPTICAL 67x65 maximum byte error 0
+PASS native compositor OPTICAL 67x65 maximum byte error 0
+COST 67x65 OPTICAL median 0.020ms p95 0.020ms
+PASS packed OFF 480x300 maximum byte error 0
+PASS native compositor OFF 480x300 maximum byte error 0
+COST 480x300 OFF median 0.040ms p95 0.041ms
+PASS packed SIMPLE 480x300 maximum byte error 0
+PASS native compositor SIMPLE 480x300 maximum byte error 0
+COST 480x300 SIMPLE median 0.056ms p95 0.057ms
+PASS packed OPTICAL 480x300 maximum byte error 0
+PASS native compositor OPTICAL 480x300 maximum byte error 0
+COST 480x300 OPTICAL median 0.055ms p95 0.056ms
+PASS packed OFF 1920x1080 maximum byte error 0
+PASS native compositor OFF 1920x1080 maximum byte error 0
+COST 1920x1080 OFF median 0.515ms p95 0.516ms
+PASS packed SIMPLE 1920x1080 maximum byte error 0
+PASS native compositor SIMPLE 1920x1080 maximum byte error 0
+COST 1920x1080 SIMPLE median 0.564ms p95 0.627ms
+PASS packed OPTICAL 1920x1080 maximum byte error 0
+PASS native compositor OPTICAL 1920x1080 maximum byte error 0
+COST 1920x1080 OPTICAL median 0.563ms p95 0.567ms
+PASS packed OFF 3840x2160 maximum byte error 0
+PASS native compositor OFF 3840x2160 maximum byte error 0
+COST 3840x2160 OFF median 1.818ms p95 2.317ms
+PASS packed SIMPLE 3840x2160 maximum byte error 0
+PASS native compositor SIMPLE 3840x2160 maximum byte error 0
+COST 3840x2160 SIMPLE median 2.206ms p95 2.803ms
+PASS packed OPTICAL 3840x2160 maximum byte error 1
+PASS native compositor OPTICAL 3840x2160 maximum byte error 1
+COST 3840x2160 OPTICAL median 2.205ms p95 3.013ms
+PASS converged bloom toggles, retained frame, raw generation: cpu resident=false
+PASS converged bloom toggles, retained frame, raw generation: gpu resident=false
+PASS converged bloom toggles, retained frame, raw generation: gpu resident=true
+Remaining GPU checks failures: 1

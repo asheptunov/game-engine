@@ -1,0 +1,6 @@
+{
+  "src/gpu/GpuFoveation.java": "4b2bb6c62861f6488b57c5e3e658399e08ada25ce03e6b7912cc58795d265f2d",
+  "assets/gpu/diffuse.comp": "a12be80ce2f6a2a05f43a4d73f97176f1a92ba85f5c03a55a6216eac94f9d5ba",
+  "tools/gpu/FoveatedCheck.java": "dd4bba90ada3fbb3cca88e2928d9f9ddd1f13bba2a1a8d93a405e09f203b07de",
+  "tools/gpu/FoveatedCost.java": "c48c4eaa21ff77365ae5c86c753928746d1d9ca53d2a6d7389b6a8b7a3cc57fa"
+}

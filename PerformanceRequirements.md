@@ -465,6 +465,9 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1f | Play the Swing game with less 4K background-paint overhead at unchanged image quality | S1.1e; correlated frame profiling | Implemented; paint equivalence and GPU/game/completion gates passed; three adaptive pairs improve; human check pending |
 | S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | Existing GPU rendering and presentation | In progress: S1.3a provides adaptive grids with existing spatial scaling; temporal reconstruction remains pending |
 | S1.3a | Select a 60/120 FPS movement budget, then recover the selected resolution when still | S1.1c; S1.4b | Implemented and automatically verified; player reports substantially smoother movement; detailed quality and minimum-FPS acceptance remain pending |
+| S1.3b | Try center-weighted GPU sampling to preserve aiming detail while reducing peripheral ray work | GPU game renderer; optional compatibility with S1.3a | Gradual transitions implemented and verified; player reports a substantial improvement, with residual stringy boundaries |
+| S1.3c | Compare continuous-spacing reconstruction against the existing Center detail mode | S1.3b GPU controls | Implemented and automatically verified; measured 8.65 ms GPU versus 6.92 ms for S1.3b and 13.02 ms uniform in the captured scene; human quality acceptance pending |
+| S1.3d | Adjust center priority live and try 1440p or 4K with aggressive falloff | S1.3c GPU reconstruction | Implemented and device/UI verified; full validation recorded in the linked report; human visual acceptance pending |
 | S1.4 | Play combat, atmosphere and fog scenes with fewer frame-time spikes at the selected quality | S1.2; measured remaining bottlenecks | Proposed; specific optimization selected from evidence |
 | S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
 | S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
@@ -751,19 +754,20 @@ structure when combat objects move; both presentation paths use it.
 **S1.1b — Standard render resolutions.** The player uses a 4K monitor and accepts lower
 internal rendering resolutions. In Escape → Render, a Render resolution dropdown offers
 360p (640x360), 480p (854x480), 540p (960x540), 720p HD (1280x720), 900p (1600x900),
-1080p (1920x1080), and Custom. Selecting a preset changes both dimensions together. Custom retains the current
+1080p (1920x1080), 1440p QHD (2560x1440), 4K UHD (3840x2160), and Custom. Selecting a preset changes both dimensions together. Custom retains the current
 dimensions and allows editing the existing width/height controls. Merely opening or refreshing
 settings must not change resolution. Existing non-preset dimensions display Custom.
 Preset selection retains camera framing, optics, transport and existing adaptive-mode settings;
 CPU adaptive mode may sample below the selected requested size as before. The image is scaled
-to the game window; these options do not change the monitor mode or claim native 4K tracing.
-The UI states the shared 1920-pixel per-axis render limit. The former 1600 cap was inherited
-from the CPU viewport's software validation, not a hardware limit of the RTX 3080. Its exact
-original numeric rationale is not documented. The 1080p extension raises the engine, game
-navigation/capture, custom controls, console and launch-command bounds consistently while
-retaining existing default resolutions. Requests above 1920 per axis remain rejected before
-changing live state. Both CPU and GPU accept 1920x1080. 1440p and native 4K rendering still
-need a separately verified limit increase; automatic monitor-native sizing is not added.
+to the game window; these options do not change the monitor mode. S1.3d adds actual 4K
+tracing, although adaptive mode can still lower the internal grid during movement.
+The current shared per-axis render limit is 3840. The original 1600 cap came from CPU
+viewport validation rather than an RTX 3080 hardware limit. The first extension raised it
+to 1920 for 1080p; S1.3d subsequently verifies 2560×1440 and 3840×2160 GPU rendering and
+raises shared engine, game navigation/capture, custom controls, console and launch bounds.
+Requests above 3840 per axis are rejected before changing live state. CPU dimensions use
+the same validation but high-resolution CPU performance is not established. Automatic
+monitor-native sizing is not added; presets explicitly select the internal rendering grid.
 
 User test: launch `./game.ps1 -Backend gpu -Scene world`, press Escape, open Render, choose
 720p and then 1080p, and resume movement. Inspect the rendered size and scene detail; camera
@@ -839,6 +843,177 @@ and 60 FPS. Stop moving and confirm displayed size returns to 1920x1080 after th
 period and a completed job. Switch to Fixed during movement, pause/resume, change the
 requested resolution and reopen settings. The selected settings must persist, framing must
 stay fixed, and full-resolution stationary refinement must remain available.
+
+**S1.3b - Optional center-weighted spatial sampling (October 28).** The player requested
+an experiment that concentrates detail around the middle of the screen. Escape → Render →
+**Center detail (experimental)** enables fixed foveation on the GPU: a full-density central
+ellipse, 2×2 pixel footprints in the middle band, and 4×4 footprints toward the edges. Each
+footprint traces one primary path per pass and shares its linear-radiance estimate across
+those pixels. This reduces spatial detail rather than merely reducing repeated samples at
+otherwise independent pixels. The HUD remains at presentation resolution. There is no eye
+tracking or temporal reconstruction. The initial trial used hard density bands; the follow-up
+below replaces their abrupt boundaries with gradual changes in sampling density.
+
+The mode is off by default. At a fixed 1920×1080 grid, the central ellipse is approximately
+960 pixels wide and 540 high. The initial 8×8-tile implementation traced 655,680 primary
+paths per pass, 31.62% of the uniform grid's 2,073,600; the gradual-transition version uses
+793,167 paths, 38.25%. The total number of continuation and
+shadow rays still depends on the scene. GPU work is packed into a compact location list so
+coarse regions do not leave most execution lanes idle. That list is cached until the internal
+grid changes and built outside the input monitor. Raw snapshots, GPU display and captures
+contain the same reconstructed full-grid image. Changing the mode resets accumulation and
+adaptive cost estimates; retained images remain stable. Older captures default to uniform
+sampling. CPU rendering stays uniform and its checkbox is disabled.
+
+First try 1080p with **Fixed resolution** and Full atmosphere, then toggle Center detail while
+looking at the same ruins scene. The center must match uniform rendering at the same grid and sample count;
+peripheral silhouettes and noise will be blockier. Move, turn, stop, change resolution, inspect
+a capture, and turn the option off. Off must restore uniform detail. Stationary refinement
+reduces noise but does not remove the coarse peripheral footprints. A 60/120 FPS budget can
+still reduce the entire grid; the center is full density relative to that actual grid, not a
+promise of native detail. Stopping restores the selected grid while foveation remains enabled.
+The mode uses Full primary atmosphere/fog integration and temporarily ignores the selected
+Half/Quarter atmosphere reconstruction setting; turning it off restores that setting.
+
+Verification covers exact central pixels, all peripheral footprint writes including partial
+tiles, odd/thin grids and 1080p, progressive samples, finite aperture, fog fallback, compact
+versus sparse dispatch equality, mode toggles, raw/packed agreement, retained leases and close.
+Capture tests check setting preservation and old-file compatibility. GPU, game and completion
+gates passed. A separate 64-sample static comparison preserves the full-resolution center
+exactly; a uniformly half-resolution image loses detail there. One-sample previews also show
+visible changes in noise granularity at the density bands. The player confirmed the speedup
+and supplied a noisy one-sample capture exposing these bands; overall quality acceptance is pending.
+
+For the initial hard-band version, three alternating 10-second ruins/combat/Full-atmosphere comparisons at fixed 1080p improved
+median fresh paints/s across runs from 45.7 to 71.4. p95 intervals remain 26–29 ms with the
+mode enabled, so this does not establish a minimum 60 FPS. With the 120 FPS budget enabled,
+median throughput instead fell from 112.9 to 97.7 while mean internal widths increased. This
+first version is an optional center-detail tradeoff, not a recommended replacement for uniform
+adaptive rendering. Measurements use a 4K offscreen Swing panel and exclude window submission
+and scanout. [The foveation report](benchmarks/s1/foveated/README.md) records paired results,
+images, limitations and reproduction commands. Those live timing results are historical and
+have not been rerun for gradual transitions. Improving the adaptive budget policy remains deferred.
+
+**Gradual-transition follow-up.** The player's capture
+`out/game/captures/2026-10-28T23-02-50.137238100Z-cda17c85-0df9-4815-8468-de81c266aba8`
+shows abrupt noise-size boundaries on the ruins pillars. With the same Center detail control,
+the renderer now chooses a stable density for each 4×4 screen-space tile. Within the normalized
+central ellipse (radius ≤0.5), every pixel remains independent. Between radii 0.5 and 0.7,
+a smooth probability curve gradually replaces 1×1 footprints with 2×2 footprints. Between
+0.75 and 0.95, it replaces 2×2 with 4×4. Radius is computed after mapping each screen axis
+to −1..1, so radius 1 reaches the midpoint of each screen edge. A deterministic tile hash
+spreads changes spatially; it never changes with camera pose, frame or sample number.
+The chosen pattern remains fixed until the internal resolution changes, preserving accumulation.
+There is no added blur or blending across object boundaries. Coarse noise and irregular patches
+can remain; this is gradual average density, not continuously sized ray footprints or denoising.
+
+User acceptance: relaunch `./game.ps1 -Backend gpu`, select 1080p, Fixed resolution and Full
+atmosphere, then enable Escape → Render → Center detail (experimental). Inspect the pillars
+and shadows while moving and stopped. The crisp central area must remain; the former rings
+should become less conspicuous without distracting fixed patches. Off restores uniform sampling.
+Replay the supplied displayed state at one sample for a controlled image comparison. Automated
+checks must protect the central ellipse, verify the smooth radial proportions and complete
+nonoverlapping footprints, preserve deterministic accumulation, and pass the existing GPU lifecycle
+checks. A provisional cost limit is fewer than 42% of uniform primary paths at 1080p. Compare
+isolated GPU time against the hard-band version and uniform rendering; do not infer live FPS
+from that measurement. See [follow-up evidence](benchmarks/s1/foveated/falloff/README.md).
+Continuous reconstruction is trialed separately in S1.3c; S1.3b remains available as the fallback.
+
+**S1.3c - Continuous-spacing center detail.** The player found the gradual block-density
+transitions much better but could still see stringy boundaries and requested a continuous
+falloff experiment. Escape → Render now provides **Smooth center detail (experimental)**
+as a separate, default-off checkbox. It takes effect only while **Center detail (experimental)**
+is enabled. Disabling Smooth selects S1.3b again; disabling Center detail restores
+uniform sampling while retaining the Smooth preference. CPU rendering stays uniform.
+Both flags survive capture round trips; missing flags in older captures default to false.
+
+The new grid stretches continuously along each screen axis. At the default settings, the central half of each axis
+retains ordinary pixel-center locations, creating an approximately 960×540 sharp rectangle
+at 1080p. Outside it, spacing rises continuously from one to six pixels through a smoothstep
+curve. This is separable horizontal/vertical falloff rather than concentric elliptical rings.
+Each lattice location traces one jittered path per pass and accumulates its own mean. No
+1×1/2×2/4×4 classification or randomized patch selection is used in Smooth mode.
+
+A second GPU pass reconstructs the full output image with a positive tent filter whose width
+matches in both screen directions. Matching widths avoids stretching noise into strings when
+the lattice spacing differs horizontally and vertically. The filter uses the nearest sampled
+surface as its reference and rejects neighbors with a different object, incompatible normal
+or sufficiently different depth. These guides come from the existing primary rays, not an
+additional full-resolution surface pass. Unchanged full-density central pixels must match
+uniform tracing exactly. The sparse periphery is an approximation: filtering can soften detail,
+miss thin objects, or leave edge artifacts; it is not a promise of invisible transitions.
+
+The grid and reverse lookup tables depend only on internal dimensions. Reconstruction reads
+completed means and guides after a GPU memory barrier and writes every output pixel before
+raw capture or display conversion. Mode changes reset accumulation and adaptive cost estimates;
+old image leases remain stable. Full atmosphere/fog integration remains in force. Existing
+adaptive resolution may shrink the entire grid, so full center detail is relative to the actual
+grid, not necessarily the selected stationary resolution. No temporal-history reuse is added.
+
+User test: relaunch `./game.ps1 -Backend gpu`, select 1080p, Fixed resolution and Full atmosphere,
+then enable both Center detail and Smooth center detail. Compare by toggling only Smooth while
+viewing the captured ruins pillars, trees, weapon edges and shadows. Inspect both motion and
+stationary refinement. Judge whether the more continuous noise transition outweighs added
+softness and cost; the accepted block-density version remains available throughout this trial.
+
+Automated acceptance covers monotonic symmetric coordinates, complete edge coverage, exact
+central pixels at odd/thin grids and 1080p, progressive accumulation and finite aperture,
+Full fog fallback, incompatible-surface color rejection, raw/packed agreement, mode toggles,
+retained image leases and owner retirement. Capture tests cover both settings and old-file
+compatibility. Benchmark all three modes against the same captured displayed state and report
+GPU execution including reconstruction separately from host completion; do not infer live FPS.
+The provisional ray-count ceiling is 55% of uniform at 1080p. The implementation uses 1,026,000
+paths (49.48%), compared with S1.3b's 793,167 (38.25%). GPU time and visual evidence are recorded
+in the [continuous-spacing report](benchmarks/s1/foveated/smooth/README.md). A radial/isotropic
+sampling lattice, full-resolution guides, advanced denoising and adaptive-policy retuning remain
+outside this trial. Human acceptance remains separate from automated correctness.
+
+**S1.3d - Live center priority and 1440p/4K.** The player requested stronger falloff,
+controls that can change while the game runs, and higher resolutions for a 4K experiment.
+Escape → Render retains both Center detail switches and adds two sliders for Smooth mode:
+**Sharp center (%)**, 10–75, default 50, is the fraction of each screen axis that remains
+at full density; **Edge spacing (pixels)**, 2–16, default 6, controls the outer sample spacing.
+A smaller center and larger spacing reduce peripheral work. The interpolation curve remains
+smooth; these controls do not reintroduce discrete rings. Slider values apply on release or
+a keyboard step, without restarting the game. Refresh must not overwrite a drag or change
+settings. Active quality edits invalidate accumulation and adaptive cost estimates; inactive
+quality preferences are retained without altering uniform or discrete sampling.
+
+**4K strong falloff** is a GPU-only shortcut that selects 3840×2160, enables both Center
+detail switches, selects a 25% center and 12-pixel outer spacing, and turns the FPS budget
+to Fixed resolution. At 4K this protects roughly 960×540 central pixels and traces 1,778,000
+primary paths per pass, 21.44% of uniform 4K's 8,294,400. Normal 1440p and 4K resolution
+presets retain the current quality and adaptive settings. The previous 50%/6-pixel quality
+remains the default and reproduces the previous lattice. Both new values survive capture
+round trips; older captures load 50% and 6. Invalid/nonfinite settings are rejected.
+
+Higher resolution requires 12-bit coordinates in the discrete location list and portable
+multi-row dispatch for linear tracing/display work exceeding 65,535 workgroups. Raw/display
+output, partial dispatch tails and central detail must remain correct at 2560×1440 and
+3840×2160, including the strongest/weakest supported quality settings. Allocation and
+layout rebuilding stay on the GPU owner thread; old image leases remain valid during edits.
+Actual 4K output still incurs full-size means, reconstruction, transfer and presentation costs.
+A lower ray count is not a promise of 60 or 120 FPS. Native GPU presentation remains its
+separate existing option; selecting 4K does not switch presenters.
+
+User test: relaunch `./game.ps1 -Backend gpu`, open Escape → Render and choose **4K strong
+falloff**. Confirm the width/height fields show 3840×2160 and the budget is Fixed. Move around
+the ruins; inspect the aiming area, weapon silhouette, trees and peripheral blur. Adjust the
+sliders, release them, and verify the new quality appears without a restart. Try the 1440p
+preset, then restore 4K. Toggle Smooth off to recover the previous discrete mode, or Center
+detail off for uniform rendering. Existing 60/120 FPS budgets still reduce the entire grid;
+automatic peripheral-only budget adaptation is deferred until the player chooses useful
+quality bounds. This milestone delivers manual runtime control first.
+
+Automated acceptance includes preset framing/refresh behavior, slider release semantics,
+read-only refresh, the shortcut, validation and capture compatibility, exact aiming-center
+pixels, raw/packed agreement across all 4K rows, compact/sparse location agreement, dynamic
+quality invalidation, restoration of the default lattice, retained leases and owner retirement.
+The GPU, game and completion gates remain required. Measure the same captured camera at
+1440p and 4K with uniform, default Smooth and strong Smooth settings, including reconstruction
+and packed transfer. Report device memory evidence and distinguish isolated GPU/host time
+from live presentation FPS. See [higher-resolution evidence](benchmarks/s1/foveated/high-resolution/README.md).
+Human performance and visual acceptance at 4K remain pending.
 
 **S1.1e - Transfer GPU display-image ownership to Swing (October 28).** The GPU already
 reads packed display pixels into a Java array. Previously, `GameRenderer.copyImage` allocated

@@ -1,0 +1,7 @@
+round,pacing,freshPaintsPerSecond,medianIntervalMs,p95IntervalMs,p95CopyToPaintMs,p99IntervalMs,maxIntervalMs,over16msPercent,minWidth,maxWidth,meanWidth,medianTraceMs,medianCopyMs
+0,budget-0-copy-false-clear-false-foveated-true,66.200,12.909,28.755,19.913,34.690,47.514,39.032,1920,1920,1920.0,7.430,0.017
+0,budget-0-copy-false-clear-false-foveated-false,45.700,19.587,33.662,15.678,42.779,52.162,62.939,1920,1920,1920.0,14.378,0.013
+1,budget-0-copy-false-clear-false-foveated-false,46.200,18.472,34.740,15.327,43.329,48.152,60.521,1920,1920,1920.0,14.502,0.008
+1,budget-0-copy-false-clear-false-foveated-true,73.200,11.537,26.034,17.447,30.345,36.224,33.242,1920,1920,1920.0,7.049,0.007
+2,budget-0-copy-false-clear-false-foveated-true,71.400,13.030,26.100,20.268,32.479,44.759,33.380,1920,1920,1920.0,7.289,0.010
+2,budget-0-copy-false-clear-false-foveated-false,45.300,19.302,33.783,14.893,43.602,50.420,62.832,1920,1920,1920.0,14.508,0.010

@@ -1,0 +1,4 @@
+smooth=false spp=1 changedChannels=11 rawRmse=9.08251249941e-12 rawMax=1.95577740669e-08 displayChannels=0 displayMax=0
+smooth=false spp=16 changedChannels=29 rawRmse=5.15827430406e-06 rawMax=0.0100124180317 displayChannels=8 displayMax=2
+smooth=true spp=1 changedChannels=39 rawRmse=2.07482032527e-12 rawMax=1.39698386192e-09 displayChannels=0 displayMax=0
+smooth=true spp=16 changedChannels=35 rawRmse=8.66817186795e-07 rawMax=0.00180824846029 displayChannels=4 displayMax=1

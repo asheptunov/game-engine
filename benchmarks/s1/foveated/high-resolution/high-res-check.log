@@ -1,0 +1,6 @@
+4K paths default=4095564 strong=1778000
+PASS live slider UI and 4K shortcut
+PASS resolution 2560x1440 all control extremes, raw/packed and discrete coordinates
+PASS resolution 3840x2160 all control extremes, raw/packed and discrete coordinates
+Peak device bytes in check: 1022961776
+PASS live quality changes, default reproduction and leases

@@ -1,0 +1,12 @@
+{
+  "src/gpu/GpuSmoothFoveation.java": "bba2c97c274b30e733e0fea92bef4ac43e07bcc39a2d59d9ee0b5f30ea13ff24",
+  "src/gpu/GpuKernel.java": "63c9bd7b5f53fb52b4c02701fd546c99d51ff118150bb3610031c83ff7db03bb",
+  "src/gpu/GpuRenderSession.java": "4560cde183da28b0ae76462efdeaec8d6d75cd5bf2dfeeb94de4b140f8acdcc8",
+  "assets/gpu/diffuse.comp": "8d6d25eedc992bffe4162352a1767a2d4eea68a445742a96e4dcdc98c1c132d0",
+  "src/engine/RenderSettings.java": "08fc975ce29da14cf9478b747645742c6077da99ddde8e7cf6c0773644577487",
+  "src/game/GameSettingsPanel.java": "bd29cd840034951bdebc9a9fbd8a9777f7c2d5f4657e19abb0db5dab84359833",
+  "src/game/CaptureCodec.java": "c5e08ee2c1cb170ae7cacd4753ae645d720fee5ddc6e45c5ee61184932922df7",
+  "tools/gpu/SmoothFoveationCapture.java": "6a3ebba8eed6c336472fb2ff3e7af1169452fdc10d8e6950acd797f518a03f1c",
+  "tools/gpu/SmoothFoveationCheck.java": "3bb4015b392d9984accc82d12e135ac24fbc924676d7f0f1e3062714c350451c",
+  "tst/game/GameCaptureTest.java": "d14cff7d9676006b7804d258760b5ce0fa18da23013f2bf15c075b87cefcf379"
+}

@@ -1,0 +1,9 @@
+scene,stage,sampling,gpuMs,hostMs
+forest,before,uniform,61.830112,63.491
+forest,before,smooth,38.842528,40.6426
+forest,after,uniform,30.020096,31.7452
+forest,after,smooth,19.267264,20.8846
+ruins,before,uniform,10.454432,12.5529
+ruins,before,smooth,6.59152,8.1969
+ruins,after,uniform,9.42608,11.4585
+ruins,after,smooth,6.189952,7.7622

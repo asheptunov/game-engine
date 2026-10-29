@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-29",
+  "baseCommit": "984d5ac969276e906c8e113edc57b8a4ae6d6022",
+  "workingTree": "Existing uncommitted game/GPU work included. Base commit alone does not reproduce these measurements.",
+  "gpu": "NVIDIA GeForce RTX 3080 12288 MiB",
+  "driver": "616.92",
+  "java": "OpenJDK 23.0.1 preview",
+  "sourceSha256": {
+    "assets/gpu/diffuse.comp": "1924325eb24e95691dca1f37e5d85bf25e22e41f1dc38acc4ab133a108ed597c",
+    "src/gpu/GpuKernel.java": "2c66979ec11316a046d5aa3cf43db7eb9e56c201101d4132093a51724295273e",
+    "tools/gpu/TraversalBenchmark.java": "03162847801dacc3945782e0e89eecc8114f222f2156f3ae3cceaf91ed050df5",
+    "tools/gpu/TraversalCheck.java": "b92fc1cb12ad5b99366011a536c5e09918fe0af57a7ba0f8704a7250989d8c2a",
+    "tools/gpu/TraversalCaptureComparison.java": "a2a10f16f43e83cc00e21a8347833e85176c1140fa45d94e10a84373ae8c176a",
+    "tools/gpu/PresentationBenchmark.java": "0bc5d5287c11e7a67f2a136c74ec8e64a561418dca8b902050a5038a7163565c",
+    "gpu-check.ps1": "c43674c5e5d9236af44696549ed9201daca5fc99fe60229ab4b66f515920dfb1",
+    "out/traversal/baseline-source/diffuse.comp": "ec739ad226556fea6c6644918eae87a942463f59807f54aefeefc45b1047e007",
+    "out/traversal/baseline-source/GpuKernel.java": "1f4c26f9b61c19f2392825ecf14fd4d3368fe76fc126b0fc21d305b755ae0fb7"
+  },
+  "captureChecksums": {
+    "out/game/captures/2026-10-29T13-51-40.663364200Z-0c27bbc2-e5b3-472e-b5ac-0ab6028da370": "721345469e737a0fc7cddf94b97e46fc160bd8372d450d845db7332729e05ff6 assets.properties.gz\n1ee00e3a105f3caffd36df8397af2eefad99c5ea57d9711bcc1c43e36fd062d0 capture.properties\n93d25e311bae83a79ab13cc7fdc500edeccadcac3037cfb13a7a9b2591524b3f display-stalls.txt\nca1619b267e04acdca3e100c14366969749113b299f13d70748eab59f01b7318 displayed.png\nadb715f621abc1f420c88defb29a82b3f348b0ca397e6ba36ca65f56233e8412 scenes.bin.gz\nd4894feb9bc96c1a339adad3228e43092faff674f0fc275b99bf28e63004b638 summary.txt\n560110057c609005e3c8c044feb6fc7aa86af8d2b5a16429b7f5898a4f36b6f6 timeline.properties.gz\n",
+    "out/game/captures/2026-10-28T23-02-50.137238100Z-cda17c85-0df9-4815-8468-de81c266aba8": "1f91cdb3bc3bd524a9a87a6bfb60027c0b0622059e5a379d97ebccfb55554634 capture.properties\n21043a285d508b86a4ad9db8ecfec0c46ee5a29f5994054292124a499841feda displayed.png\n0a9aeec83ff867d809e333a73540a4dd88c559188a5866a593cbc9404a91572a scene-0.properties.gz\n7feb98d0870e0641c677bcc68bfc5df4bb8fffb4cc7525c1ebc6311359c8c7a9 scene-1.properties.gz\nabf671d1493ab13706ddca98f7930af2126ef1cde6d5a1419478aae014aef1cb summary.txt\nc1c6f0f6f21364dc8ca90b4672467ce2c0412a5a18e904cadcf23e414c1d2c46 timeline.properties.gz\n"
+  }
+}

@@ -1,0 +1,6 @@
+depth=0 hour=7.0 divisor=1 rmse=3.105045364657591E-5 max=6.921403110027313E-4 outside=0 reused=0
+depth=0 hour=7.0 divisor=2 rmse=3.394316757990521E-4 max=0.01564302295446396 outside=0 reused=6300
+depth=0 hour=7.0 divisor=4 rmse=2.612316987505498E-4 max=0.0178694911301136 outside=1 reused=2830
+Exception in thread "main" java.lang.AssertionError: Lighting grid exceeds radiance quality budget
+	at gpu.FogGridCheck.compare(FogGridCheck.java:73)
+	at gpu.FogGridCheck.main(FogGridCheck.java:27)

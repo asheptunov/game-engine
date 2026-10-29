@@ -1,0 +1,8 @@
+PASS exact reference agreement: many hidden layers, near-first scene order
+PASS exact reference agreement: many hidden layers, far-first scene order
+PASS exact reference agreement: continuations and same-object shadows
+PASS exact reference agreement: coincident instances on this device
+PASS exact reference agreement: multiple glass entries/exits and reflections
+PASS exact reference agreement: camera inside glass and oblique exits
+PASS exact reference agreement: finite aperture through glass
+Traversal comparison checks passed.
