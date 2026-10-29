@@ -770,11 +770,12 @@ public final class GameRenderer implements AutoCloseable {
         }
         int[] packed = image.displayBloom() == mode ? image.takeDisplayPixels(exposure) : null;
         if (packed != null) {
-            return wrapDisplayPixels(packed, image.width(), image.height());
+            return wrapDisplayPixels(packed, image.displayWidth(), image.displayHeight());
         }
-        var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
+        var source = image.presentationPixels();
+        var result = new BufferedImage(source.width(), source.height(), BufferedImage.TYPE_INT_RGB);
         bloomFilter.copy(
-                image.presentationPixels(),
+                source,
                 ((DataBufferInt) result.getRaster().getDataBuffer()).getData(),
                 exposure,
                 mode);
@@ -796,14 +797,15 @@ public final class GameRenderer implements AutoCloseable {
                         ? null
                         : image.takeDisplayPixels(exposure);
         if (owned != null) {
-            return wrapDisplayPixels(owned, image.width(), image.height());
+            return wrapDisplayPixels(owned, image.displayWidth(), image.displayHeight());
         }
-        var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
+        var source = image.presentationPixels();
+        var result = new BufferedImage(source.width(), source.height(), BufferedImage.TYPE_INT_RGB);
         var pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
         if (mode == engine.Bloom.OFF && image.displayBloom() == mode) {
-            image.presentationPixels().copyDisplayTo(pixels, exposure);
+            source.copyDisplayTo(pixels, exposure);
         } else {
-            new engine.Bloom.Filter().copy(image.presentationPixels(), pixels, exposure, mode);
+            new engine.Bloom.Filter().copy(source, pixels, exposure, mode);
         }
         return result;
     }
@@ -911,7 +913,8 @@ public final class GameRenderer implements AutoCloseable {
         capabilities.validate(world, navigation.view(), next);
         if (settings.bloom() != next.bloom()
                 || settings.temporal() != next.temporal()
-                || settings.temporalRevision() != next.temporalRevision()) {
+                || settings.temporalRevision() != next.temporalRevision()
+                || settings.lightingScale() != next.lightingScale()) {
             converted = -1;
         }
         settings = next;

@@ -31,7 +31,9 @@ public final class GpuRenderSession implements RenderSession {
             engine.FoveationQuality foveationQuality,
             boolean temporal,
             long temporalRevision,
-            long temporalEpoch) {}
+            long temporalEpoch,
+            double lightingScale,
+            RenderView presentationView) {}
 
     private static final class Slot {
         volatile float[] pixels;
@@ -49,6 +51,7 @@ public final class GpuRenderSession implements RenderSession {
         int readers;
         boolean writing;
         RenderView view;
+        RenderView presentationView;
         long generation;
         long captured;
         long finished;
@@ -159,7 +162,9 @@ public final class GpuRenderSession implements RenderSession {
                             effectiveQuality(nextSettings),
                             nextSettings.temporal(),
                             nextSettings.temporalRevision(),
-                            temporalEpoch);
+                            temporalEpoch,
+                            nextSettings.lightingScale(),
+                            nextView);
             resolution.observe(nextView, System.nanoTime());
             if (!nextKey.equals(key)) {
                 generation++;
@@ -176,7 +181,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextSettings.fogJitter() == settings.fogJitter()
                                 && sameSampling(nextSettings, settings)
                                 && nextSettings.temporal() == settings.temporal()
-                                && nextSettings.temporalRevision() == settings.temporalRevision();
+                                && nextSettings.temporalRevision() == settings.temporalRevision()
+                                && nextSettings.lightingScale() == settings.lightingScale();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -206,6 +212,8 @@ public final class GpuRenderSession implements RenderSession {
         if (settings != null
                 && (settings.temporal() != nextSettings.temporal()
                         || settings.temporalRevision() != nextSettings.temporalRevision()
+                        || settings.lightingScale() != nextSettings.lightingScale()
+                        || settings.interactive() != nextSettings.interactive()
                         || view.camera().aperture() != nextView.camera().aperture()
                         || !sameSampling(settings, nextSettings)
                         || settings.fogDownsample() != nextSettings.fogDownsample())) {
@@ -240,7 +248,9 @@ public final class GpuRenderSession implements RenderSession {
             return;
         }
         long now = System.nanoTime();
-        var sampledView = resolution.choose(view, settings, now);
+        var presentationView =
+                GpuLighting.enabled(view, settings) ? view : resolution.choose(view, settings, now);
+        var sampledView = GpuLighting.sampled(presentationView, settings);
         long target = settings.sampleTarget() == 0 ? 1_000_000_000L : settings.sampleTarget();
         if (latest != null
                 && latest.generation == generation
@@ -261,6 +271,7 @@ public final class GpuRenderSession implements RenderSession {
         }
         var destination = available;
         destination.writing = true;
+        destination.presentationView = presentationView;
         preparePresentation(destination);
         running = true;
         activeGeneration = generation;
@@ -279,7 +290,9 @@ public final class GpuRenderSession implements RenderSession {
                         key.foveationQuality(),
                         key.temporal(),
                         key.temporalRevision(),
-                        key.temporalEpoch());
+                        key.temporalEpoch(),
+                        key.lightingScale(),
+                        presentationView);
         var capturedSettings =
                 settings.interactive() && resolution.moving(now)
                         ? settings.withSamplesPerBatch(1)
@@ -478,9 +491,15 @@ public final class GpuRenderSession implements RenderSession {
                                             samplingLabel(capturedSettings))
                                     + String.format(
                                             java.util.Locale.ROOT,
-                                            " | %s | reconstruction %.2f ms",
-                                            kernel.temporal.label,
-                                            kernel.reconstructionNanos / 1e6);
+                                            " | %s | reconstruction %.2f ms | visibility %.2f ms |"
+                                                    + " lighting %dx%d output %dx%d",
+                                            lightingLabel(capturedSettings),
+                                            kernel.reconstructionNanos / 1e6,
+                                            kernel.visibilityNanos / 1e6,
+                                            capturedView.width(),
+                                            capturedView.height(),
+                                            destination.presentationView.width(),
+                                            destination.presentationView.height());
                 } else {
                     cancelled++;
                     accumulatedKey = null;
@@ -504,15 +523,23 @@ public final class GpuRenderSession implements RenderSession {
         return settings.interactive() ? "adaptive" : "fixed";
     }
 
+    private String lightingLabel(RenderSettings capturedSettings) {
+        return capturedSettings.lightingScale() < 1 && capturedSettings.interactive()
+                ? kernel.temporal.label + "; lighting scale inactive: fixed resolution required"
+                : kernel.temporal.label;
+    }
+
     private static void prepareDestination(Slot destination, RenderView capturedView) {
         destination.shownPixels = null;
         int length = capturedView.width() * capturedView.height() * 3;
+        int displayCount =
+                destination.presentationView.width() * destination.presentationView.height();
         if (destination.snapshot != null) {
             destination.pixels = null;
             if (destination.deviceOnly) {
                 destination.packed = null;
-            } else if (destination.packed == null || destination.packed.length != length / 3) {
-                destination.packed = new int[length / 3];
+            } else if (destination.packed == null || destination.packed.length != displayCount) {
+                destination.packed = new int[displayCount];
             }
         } else if (destination.pixels == null || destination.pixels.length != length) {
             destination.pixels = new float[length];
@@ -604,7 +631,8 @@ public final class GpuRenderSession implements RenderSession {
                             destination.packed,
                             destination.snapshot,
                             destination.exposure,
-                            destination.reconstructed ? destination.presentation : null));
+                            destination.reconstructed ? destination.presentation : null,
+                            capturedKey.presentationView()));
             accumulatedSamples++;
             synchronized (this) {
                 if (closed
@@ -806,13 +834,15 @@ public final class GpuRenderSession implements RenderSession {
     private engine.DevicePixels deviceCopy(Slot slot) {
         return onOwner(
                 () -> {
+                    boolean reconstructed = canPresent(slot);
+                    var copiedView = reconstructed ? slot.presentationView : slot.view;
                     var image =
                             new GpuDevicePixels(
                                     this,
                                     kernel.gpu,
-                                    canPresent(slot) ? slot.presentation : slot.snapshot,
-                                    slot.view.width(),
-                                    slot.view.height());
+                                    reconstructed ? slot.presentation : slot.snapshot,
+                                    copiedView.width(),
+                                    copiedView.height());
                     displayFrames.add(image);
                     return image;
                 });
@@ -1017,6 +1047,18 @@ public final class GpuRenderSession implements RenderSession {
         }
 
         @Override
+        public int displayWidth() {
+            open();
+            return slot.presentationView.width();
+        }
+
+        @Override
+        public int displayHeight() {
+            open();
+            return slot.presentationView.height();
+        }
+
+        @Override
         public RgbPixels rawPixels() {
             open();
             return this;
@@ -1031,11 +1073,11 @@ public final class GpuRenderSession implements RenderSession {
         private final RgbPixels presentationReader =
                 new RgbPixels() {
                     public int width() {
-                        return Lease.this.width();
+                        return slot.presentationView.width();
                     }
 
                     public int height() {
-                        return Lease.this.height();
+                        return slot.presentationView.height();
                     }
 
                     public float value(int channel, int x, int y) {

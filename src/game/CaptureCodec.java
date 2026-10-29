@@ -155,6 +155,7 @@ final class CaptureCodec {
 
     private static void defaultRenderSettings(Properties p, String key) {
         p.putIfAbsent(key + ".bloom", "OFF");
+        p.putIfAbsent(key + ".lightingScale", "1.0");
         p.putIfAbsent(key + ".fogDownsample", "1");
         p.putIfAbsent(key + ".fogLightingGrid", "false");
         p.putIfAbsent(key + ".fogJitter", "false");

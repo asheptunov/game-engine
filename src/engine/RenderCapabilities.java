@@ -26,6 +26,7 @@ public enum RenderCapabilities {
         ADAPTIVE_RESOLUTION,
         TEMPORAL_RECONSTRUCTION,
         TEMPORAL_BUDGET,
+        LIGHTING_RECONSTRUCTION,
         WORKER_CONTROL,
         TILE_CONTROL,
         OPTIONAL_ACCELERATION,
@@ -94,6 +95,9 @@ public enum RenderCapabilities {
     public Support support(Feature feature) {
         Objects.requireNonNull(feature);
         if (this == CPU) {
+            if (feature == Feature.LIGHTING_RECONSTRUCTION) {
+                return new Support(false, "Separate lighting resolution requires GPU rendering");
+            }
             return SUPPORTED;
         }
         String reason =
@@ -109,7 +113,8 @@ public enum RenderCapabilities {
                                     LOCAL_FOG,
                                     ADAPTIVE_RESOLUTION,
                                     DEPTH_OF_FIELD,
-                                    TEMPORAL_RECONSTRUCTION ->
+                                    TEMPORAL_RECONSTRUCTION,
+                                    LIGHTING_RECONSTRUCTION ->
                             null;
                     case TEMPORAL_BUDGET -> "GPU does not implement CPU temporal batch budgets";
                     case WORKER_CONTROL, TILE_CONTROL ->
@@ -163,6 +168,10 @@ public enum RenderCapabilities {
         }
         require(Feature.ADAPTIVE_RESOLUTION, settings.interactive(), "settings.interactive");
         require(Feature.TEMPORAL_RECONSTRUCTION, settings.temporal(), "settings.temporal");
+        require(
+                Feature.LIGHTING_RECONSTRUCTION,
+                settings.lightingScale() != 1,
+                "settings.lightingScale");
         require(Feature.TEMPORAL_BUDGET, settings.temporalBudget(), "settings.temporalBudget");
         require(Feature.OPTIONAL_ACCELERATION, !settings.acceleration(), "settings.acceleration");
     }

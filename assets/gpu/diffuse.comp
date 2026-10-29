@@ -565,10 +565,84 @@ layout(constant_id=4) const bool temporalGuides = false;
 layout(set=0,binding=15,std430) buffer TemporalGuides { vec4 temporalGuide[]; };
 layout(set=0,binding=16,std430) readonly buffer TemporalMotion { vec4 temporalMotion[]; };
 
+layout(constant_id=5) const bool reconstructLighting = false;
+layout(push_constant) uniform NativeView { uint nativeWidth, nativeHeight, reserved0, reserved1; };
+layout(set=0,binding=17,std430) writeonly buffer NativeOutput { vec4 nativeOutput[]; };
+layout(set=0,binding=18,std430) readonly buffer FilteredLighting { vec4 filteredLighting[]; };
+layout(set=0,binding=19,std430) buffer LightingAlbedo { vec4 lightingAlbedo[]; };
+layout(set=0,binding=20,std430) buffer NativeFallback { vec4 nativeFallback[]; };
+// Count, indirect dispatch x/y/z, then native pixel indices. At most one entry per output pixel.
+layout(set=0,binding=21,std430) buffer FallbackQueue { uint fallbackQueue[]; };
+
+// A primary miss still needs native visibility, but atmospheric radiance varies slowly within
+// a lighting pixel. Reuse only other misses and evaluate the visible sun disc at the native ray.
+bool reconstructSky(vec3 direction, vec2 position, out vec3 result) {
+    vec2 low=position*vec2(grid.xy)/vec2(nativeWidth,nativeHeight)-.5;
+    ivec2 base=ivec2(floor(low));
+    vec3 environment=mix(nadir.xyz,zenith.xyz,clamp((direction.y+1)*.5,0,1));
+    if(dot(direction,discDirection.xyz)>=discDirection.w) environment=discRadiance.xyz;
+    vec3 total=vec3(0); float weight=0;
+    for(int y=0;y<2;y++) for(int x=0;x<2;x++) {
+        ivec2 cell=base+ivec2(x,y);
+        if(any(lessThan(cell,ivec2(0))) || any(greaterThanEqual(cell,ivec2(grid.xy)))) continue;
+        uint g=(uint(cell.y)*grid.x+uint(cell.x))*6u;
+        if(temporalGuide[g].w!=-1) continue;
+        vec2 tent=max(vec2(0),1-abs(vec2(cell)-low));
+        float w=tent.x*tent.y;
+        total+=(temporalGuide[g+4].xyz+temporalGuide[g+3].xyz*environment)*w;
+        weight+=w;
+    }
+    if(weight<.01) return false;
+    result=total/weight;
+    return true;
+}
+
+// Native pixel-center visibility selects compatible low-grid illumination. No cross-surface color
+// interpolation is allowed; unsupported or uncovered surfaces trace their own complete path.
+bool reconstructSurface(Hit hit, vec3 direction, vec3 point, vec2 position, out vec3 result) {
+    if(instances[hit.instanceIndex*4+1].w>0) return false;
+    float identity=temporalMotion[8u+uint(hit.instanceIndex)*4u+3u].x;
+    if(identity==0) return false;
+    vec3 normal=dot(hit.normal,direction)<0?hit.normal:-hit.normal;
+    vec3 color=instances[hit.instanceIndex*4+1].w==-2?vec3(1):reflectance(hit);
+    vec2 low=position*vec2(grid.xy)/vec2(nativeWidth,nativeHeight)-.5;
+    ivec2 base=ivec2(floor(low));
+    vec3 total=vec3(0); float weight=0;
+    for(int y=-1;y<=2;y++) for(int x=-1;x<=2;x++) {
+        ivec2 cell=base+ivec2(x,y);
+        if(any(lessThan(cell,ivec2(0))) || any(greaterThanEqual(cell,ivec2(grid.xy)))) continue;
+        uint q=uint(cell.y)*grid.x+uint(cell.x), g=q*6u;
+        if(temporalGuide[g].w!=identity || temporalGuide[g+1].w==0
+            || dot(temporalGuide[g+5].xyz,normal)<.98) continue;
+        vec3 delta=temporalGuide[g].xyz-point;
+        float footprint=temporalGuide[g+5].w;
+        if(abs(dot(delta,normal))>max(.001,footprint*.12) || length(delta)>footprint*2.5) continue;
+        vec3 sourceColor=lightingAlbedo[q].xyz;
+        if(any(lessThan(sourceColor,vec3(.01)))) continue;
+        vec2 offset=vec2(cell)-low;
+        float w=exp(-dot(offset,offset));
+        // Primary atmosphere remains separate; multiply by current native surface color only.
+        vec3 fog=temporalGuide[g+4].xyz;
+        vec3 estimate=fog+max(vec3(0),filteredLighting[q].xyz-fog)*color/sourceColor;
+        total+=estimate*w; weight+=w;
+    }
+    if(weight<.01) return false;
+    result=total/weight;
+    return true;
+}
+
 void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 light, vec3 transmission) {
     uint g=pixel*6u;
     for(uint i=0;i<6;i++) temporalGuide[g+i]=vec4(0);
-    if(!found) return;
+    if(reconstructLighting) lightingAlbedo[pixel]=vec4(1);
+    if(!found) {
+        if(reconstructLighting) {
+            temporalGuide[g].w=-1;
+            temporalGuide[g+3]=vec4(transmission,0);
+            temporalGuide[g+4]=vec4(light,0);
+        }
+        return;
+    }
     uint m=8u+uint(hit.instanceIndex)*4u;
     if(temporalMotion[m+3].x==0) return;
     float material=instances[hit.instanceIndex*4+1].w;
@@ -582,6 +656,7 @@ void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 li
     float footprint=hit.t*max(length(edge1.xyz)/float(grid.x),length(edge2.xyz)/float(grid.y))/planeDistance;
     // Directional leaves do not factor into color times lighting; retain unit demodulation.
     vec3 color=material==-2?vec3(1):reflectance(hit);
+    if(reconstructLighting) lightingAlbedo[pixel]=vec4(color,1);
     temporalGuide[g]=vec4(point,temporalMotion[m+3].x);
     temporalGuide[g+1]=vec4(localNormal,1);
     temporalGuide[g+2]=vec4(previous,temporalMotion[m+3].y);
@@ -591,10 +666,26 @@ void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 li
 }
 
 void main() {
+    if(dispatchMode==9) {
+        if(gl_LocalInvocationIndex==0) {
+            uint groups=(fallbackQueue[0]+63u)/64u;
+            fallbackQueue[1]=min(groups,65535u);
+            fallbackQueue[2]=max(1u,(groups+65534u)/65535u);
+            fallbackQueue[3]=1;
+        }
+        return;
+    }
     if(dispatchMode==1) { buildFogSun(); return; }
     if(dispatchMode==5) { buildLightingGrid(); return; }
     if(dispatchMode==2) { buildPrimaryFog(); return; }
     uvec2 xy = gl_GlobalInvocationID.xy;
+    uvec2 imageSize=(dispatchMode==7 || dispatchMode==8)?uvec2(nativeWidth,nativeHeight):grid.xy;
+    if(dispatchMode==8) {
+        uint index=(gl_WorkGroupID.y*gl_NumWorkGroups.x+gl_WorkGroupID.x)*64u+gl_LocalInvocationIndex;
+        if(index>=fallbackQueue[0]) return;
+        uint pixel=fallbackQueue[4u+index];
+        xy=uvec2(pixel%nativeWidth,pixel/nativeWidth);
+    }
     if (dispatchMode==6) { resolveSmooth(xy); return; }
     if(dispatchMode==4) {
         if (xy.x<grid.x && xy.y<grid.y) resolvePrimaryFog(xy);
@@ -624,9 +715,9 @@ void main() {
     if (useFoveation && fogMeta.z==2 && rate>1u) {
         if (any(notEqual(xy%rate,uvec2(0)))) return;
     }
-    if (any(greaterThanEqual(xy,grid.xy))) return;
-    uvec2 footprint=min(uvec2(rate),grid.xy-xy);
-    uint pixel = xy.y*grid.x+xy.x;
+    if (any(greaterThanEqual(xy,imageSize))) return;
+    uvec2 footprint=min(uvec2(rate),imageSize-xy);
+    uint pixel = xy.y*imageSize.x+xy.x;
     uint accumulationPixel=continuousSampling?smoothIndex:pixel;
     uint64_t seed = (uint64_t(sampling.x)<<32) | uint64_t(grid.w);
     randomState = mix64(seed) ^ mix64(uint64_t(pixel)+0x632be59bd9b4e019UL) ^ mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
@@ -635,7 +726,8 @@ void main() {
     vec3 o = eye.xyz;
     vec2 samplePosition=continuousSampling ? smoothCenter-.5*smoothSize+vec2(u,v)*smoothSize
                                  : vec2(xy)+vec2(u,v)*vec2(footprint);
-    vec3 d = normalize(origin.xyz + edge1.xyz*(samplePosition.x/float(grid.x)) + edge2.xyz*(samplePosition.y/float(grid.y))-o);
+    if(dispatchMode==7 || dispatchMode==8) samplePosition=vec2(xy)+.5;
+    vec3 d = normalize(origin.xyz + edge1.xyz*(samplePosition.x/float(imageSize.x)) + edge2.xyz*(samplePosition.y/float(imageSize.y))-o);
     if (eye.w > 0) {
         // Independent aperture domain preserves the transport stream, including depth zero.
         uint64_t transportState = randomState;
@@ -656,6 +748,17 @@ void main() {
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
+        if(dispatchMode==7 && depth==0) {
+            vec3 reconstructed;
+            bool reused=found ? reconstructSurface(hit,d,o+d*hit.t,samplePosition,reconstructed)
+                              : reconstructSky(d,samplePosition,reconstructed);
+            if(reused) {
+                nativeOutput[pixel]=vec4(reconstructed,found?1:2); return;
+            }
+            uint index=atomicAdd(fallbackQueue[0],1u);
+            fallbackQueue[4u+index]=pixel;
+            return;
+        }
         if (continuousSampling && depth==0) {
             smoothGuides[smoothIndex*2u]=vec4(found?hit.normal:vec3(0),found?hit.t:0);
             smoothGuides[smoothIndex*2u+1u]=vec4(float(hit.instanceIndex),0,0,0);
@@ -753,6 +856,13 @@ void main() {
         if (leaf && randomValue()<.5) n=-n;
         o = p+n*BIAS;
         d = cosineDirection(n);
+    }
+    if(dispatchMode==8) {
+        vec4 previous=nativeFallback[pixel];
+        float count=previous.w+1;
+        vec3 mean=previous.xyz+(radiance-previous.xyz)/count;
+        nativeFallback[pixel]=vec4(mean,count);
+        nativeOutput[pixel]=vec4(mean,0); return;
     }
     if(dispatchMode==3) { pixels[pixel]=vec4(radiance,0); return; }
     dvec3 mean = sampling.y == 0 ? dvec3(radiance) : means[accumulationPixel].xyz+(dvec3(radiance)-means[accumulationPixel].xyz)/double(sampling.y+1);

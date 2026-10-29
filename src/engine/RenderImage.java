@@ -15,12 +15,23 @@ public interface RenderImage extends AutoCloseable {
 
     /**
      * Transfer an independent, caller-owned packed display array in top-down 0x00RRGGBB order. Its
-     * dimensions match presentationPixels(). The caller may modify or retain it after lease close.
-     * Raw pixels, samples and other leases remain unchanged. Returns null when unavailable; callers
-     * then use presentationPixels().copyDisplayTo(). Invoke on the lease's owner thread.
+     * dimensions are displayWidth()/displayHeight(), captured independently of later mode changes.
+     * The caller may modify or retain it after lease close. Raw pixels, samples and other leases
+     * remain unchanged. Returns null when unavailable; callers then use
+     * presentationPixels().copyDisplayTo(). Invoke on the lease's owner thread.
      */
     default int[] takeDisplayPixels(float exposure) {
         return null;
+    }
+
+    /** Captured dimensions of an optional packed display array. */
+    default int displayWidth() {
+        return width();
+    }
+
+    /** Captured dimensions of an optional packed display array. */
+    default int displayHeight() {
+        return height();
     }
 
     /** Bloom mode baked into an optional packed display cache; raw radiance is unchanged. */

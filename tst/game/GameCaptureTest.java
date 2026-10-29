@@ -224,6 +224,7 @@ public final class GameCaptureTest {
     void fogQualitySettingsSurviveEditsAndOlderCapturesUseFull() throws Exception {
         var settings =
                 engine.RenderSettings.defaults()
+                        .withLightingScale(.5)
                         .withFoveated(true)
                         .withSmoothFoveation(true)
                         .withFoveationQuality(new engine.FoveationQuality(.25, 12))
@@ -248,11 +249,13 @@ public final class GameCaptureTest {
         assertEquals(4, settings.fogDownsample());
         assertTrue(settings.fogLightingGrid());
         assertTrue(settings.fogJitter());
+        assertEquals(.5, settings.lightingScale());
         Path file = root().resolve("settings.properties");
         CaptureCodec.save(file, settings);
         assertEquals(settings, CaptureCodec.load(file, engine.RenderSettings.class));
         var old =
                 Files.readString(file)
+                        .replace("data.lightingScale=0.5", "")
                         .replace("data.fogDownsample=4", "")
                         .replace("data.fogLightingGrid=true", "")
                         .replace("data.fogJitter=true", "")
@@ -264,6 +267,7 @@ public final class GameCaptureTest {
         Files.writeString(file, old);
         assertEquals(
                 settings.withFogDownsample(1)
+                        .withLightingScale(1)
                         .withFogLightingGrid(false)
                         .withFogJitter(false)
                         .withFoveated(false)

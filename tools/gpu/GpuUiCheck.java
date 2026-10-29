@@ -133,6 +133,17 @@ public final class GpuUiCheck {
             });
             awaitSamples(renderer,frame->frame.camera().aperture()==0 && frame.context()!=null
                     && frame.context().settings().temporal() && frame.samples()>=4);
+            SwingUtilities.invokeAndWait(()->{
+                var lighting=(javax.swing.JComboBox<?>)find(holder[0],"lightingResolution");
+                if(lighting==null) throw new AssertionError("Missing lighting resolution control");
+                lighting.setSelectedIndex(2);
+                if(renderer.settings().lightingScale()!=.5 || renderer.settings().interactive())
+                    throw new AssertionError("Half lighting did not select fixed reconstruction");
+            });
+            awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().lightingScale()==.5
+                    && frame.samples()>=4);
+            if(renderer.frame().image().getWidth()!=960 || renderer.frame().image().getHeight()!=600)
+                throw new AssertionError("Game conversion lost native output dimensions");
             SwingUtilities.invokeAndWait(()->((javax.swing.JCheckBox)find(holder[0],"Temporal reconstruction")).doClick());
             awaitSamples(renderer,frame->frame.context()!=null && !frame.context().settings().temporal());
             SwingUtilities.invokeAndWait(()->{

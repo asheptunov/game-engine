@@ -279,9 +279,58 @@ public final class GameSettingsPanel extends JPanel {
                                                 .withPathDepth(Math.max(1, s.pathDepth()))
                                                 .withTemporal(true, s.temporalRevision() + 1));
                     });
+            lightingResolution(panel);
         } else {
             panel.add(new JLabel("Finite aperture disables temporal reuse."));
         }
+    }
+
+    private void lightingResolution(JPanel panel) {
+        var selector = new JComboBox<>(new String[] {"Full", "Two thirds", "Half"});
+        row(panel, "Lighting resolution (experimental)", selector);
+        selector.setName("lightingResolution");
+        selector.setToolTipText("Half and Two thirds enable reconstruction and Fixed resolution.");
+        selector.addActionListener(
+                event -> {
+                    if (!refreshing) {
+                        double scale =
+                                switch (selector.getSelectedIndex()) {
+                                    case 1 -> 2. / 3;
+                                    case 2 -> .5;
+                                    default -> 1;
+                                };
+                        if (scale == 1) {
+                            renderer.configure(s -> s.withLightingScale(1));
+                        } else {
+                            navigation.optics(0, navigation.focus());
+                            renderer.configure(
+                                    s ->
+                                            s.withLightingScale(scale)
+                                                    .withFoveated(false)
+                                                    .withFogDownsample(1)
+                                                    .withPathDepth(Math.max(1, s.pathDepth()))
+                                                    .withTemporal(true, s.temporalRevision() + 1)
+                                                    .withInteractive(
+                                                            false,
+                                                            s.interactiveMillis(),
+                                                            s.minimumWidth(),
+                                                            s.minimumHeight()));
+                        }
+                    }
+                });
+        refreshers.add(
+                () ->
+                        selector.setSelectedIndex(
+                                renderer.settings().lightingScale() == 1
+                                        ? 0
+                                        : renderer.settings().lightingScale() > .6 ? 1 : 2));
+        panel.add(
+                new JLabel(
+                        "<html>Lower lighting resolution keeps output-size surface"
+                                + " outlines.<br>Uses a pinhole camera and Full atmosphere quality."
+                                + "<br>Sets Movement frame budget to Fixed resolution."
+                                + "<br>Changing those settings suspends the selected"
+                                + " lighting scale.</html>"));
     }
 
     private JPanel renderControls() {
