@@ -64,11 +64,13 @@ public record WorldSnapshot(
                         .anyMatch(
                                 instance ->
                                         instance.material().kind() != Material.Kind.DIFFUSE
+                                                && instance.material().kind()
+                                                        != Material.Kind.THIN_LEAF
                                                 && !instance.material().clearGlass())) {
             throw new RenderCapabilities.UnsupportedInput(
                     "world.lights/sky with world.instances.material",
-                    "Directional lights and sky require diffuse or ideal clear glass; mirror,"
-                            + " rough/absorbing glass and volume transport are unsupported");
+                    "Directional lights and sky require diffuse, thin leaf or ideal clear glass;"
+                        + " mirror, rough/absorbing glass and volume transport are unsupported");
         }
     }
 

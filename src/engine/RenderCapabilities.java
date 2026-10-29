@@ -184,14 +184,16 @@ public enum RenderCapabilities {
         for (var object : world.instances()) {
             var material = object.material();
             if (!(object.geometry() instanceof PolygonMesh)
-                    || (material.kind() != Material.Kind.DIFFUSE && !material.clearGlass())
+                    || (material.kind() != Material.Kind.DIFFUSE
+                            && material.kind() != Material.Kind.THIN_LEAF
+                            && !material.clearGlass())
                     || material.roughness() != 0
                     || material.emissive()
                     || material.scattering() != 0) {
                 throw new UnsupportedInput(
                         "world.instances[" + object.name() + "]",
-                        "GPU requires diffuse or ideal clear-glass polygon geometry without"
-                                + " roughness, emission or scattering");
+                        "GPU requires diffuse, thin-leaf or ideal clear-glass polygon geometry"
+                                + " without roughness, emission or scattering");
             }
         }
     }

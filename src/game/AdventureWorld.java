@@ -20,8 +20,8 @@ public final class AdventureWorld {
 
     public static WorldSnapshot create() {
         var objects = new ArrayList<SceneInstance>();
-        var grass = new Material("Meadow", new Vec3(.28f, .42f, .13f));
-        var stone = new Material("Weathered limestone", new Vec3(.52f, .49f, .40f));
+        var grass = new Material("Moss and forest litter", new Vec3(.12f, .16f, .065f));
+        var stone = new Material("Moss-stained limestone", new Vec3(.31f, .34f, .25f));
         var bark = new Material("Pine bark", new Vec3(.23f, .12f, .06f));
         var needles = new Material("Pine needles", new Vec3(.08f, .24f, .12f));
         for (int x = -80; x < 80; x += 20) {
@@ -31,41 +31,17 @@ public final class AdventureWorld {
                                 "Meadow " + x + "," + z, terrain(x, z), Transform.IDENTITY, grass));
             }
         }
-        var trunk = tapered(8, .65f);
-        var crown = tapered(10, 0);
-        var rock = tapered(7, .45f);
         var random = new Random(72641);
-        for (int index = 0; index < 90; index++) {
-            float x = random.nextFloat() * 140 - 70;
-            float z = random.nextFloat() * 140 - 30;
-            // Leave a winding meadow corridor and the ruins clearing open for exploration.
-            if (Math.abs(x - 9 * Math.sin(z * .035)) < 9 || (x > 8 && x < 32 && z > 15 && z < 40)) {
-                continue;
-            }
-            float y = height(x, z);
-            float size = 3 + random.nextFloat() * 3;
-            add(
-                    objects,
-                    "Trunk " + index,
-                    trunk,
-                    bark,
-                    new Vec3(x, y, z),
-                    new Vec3(.4f, size, .4f));
-            for (int tier = 0; tier < 3; tier++) {
-                float radius = size * (.55f - tier * .12f);
-                add(
-                        objects,
-                        "Crown " + index + "/" + tier,
-                        crown,
-                        needles,
-                        new Vec3(x, y + size * (.4f + tier * .3f), z),
-                        new Vec3(radius, size * .8f, radius));
-            }
-        }
+        forest(objects, bark, needles, random);
+        var rock = tapered(7, .45f);
         for (int index = 0; index < 36; index++) {
             float x = random.nextFloat() * 130 - 65;
             float z = random.nextFloat() * 130 - 25;
             float size = .7f + random.nextFloat() * 2;
+            if (Math.abs(x - 9 * Math.sin(z * .035)) < size + 2
+                    || (Math.abs(x) < size + 1.5f && z > -10 && z < 18)) {
+                continue;
+            }
             add(
                     objects,
                     "Boulder " + index,
@@ -87,7 +63,75 @@ public final class AdventureWorld {
                     new Vec3(x, height(x, z), z),
                     new Vec3(.8f, index % 3 == 0 ? 3 : 6, .8f));
         }
+        OvergrownRuins.populate(objects);
+        Foliage.populate(objects);
         return WorldSnapshot.of(objects, List.of());
+    }
+
+    private static void forest(
+            List<SceneInstance> objects, Material bark, Material needles, Random random) {
+        var trunk = tapered(12, .55f);
+        var broadleaf =
+                new Material("Jungle canopy", new Vec3(.24f, .56f, .14f), Material.Kind.THIN_LEAF)
+                        .withLeaf(Foliage.optics(.35f));
+        for (int index = 0; index < 380; index++) {
+            float x = random.nextFloat() * 140 - 70;
+            float z = random.nextFloat() * 140 - 30;
+            if (clearRoute(x, z)) {
+                continue;
+            }
+            float y = height(x, z);
+            float size = 6 + random.nextFloat() * 6;
+            add(
+                    objects,
+                    "Trunk " + index,
+                    trunk,
+                    bark,
+                    new Vec3(x, y, z),
+                    new Vec3(.35f + size * .025f, size, .35f + size * .025f));
+            if (index % 4 == 0) {
+                pineCrown(objects, needles, index, new Vec3(x, y, z), size);
+            } else {
+                for (int tier = 0; tier < 2; tier++) {
+                    float radius = (4.5f - tier) + random.nextFloat() * 1.5f;
+                    add(
+                            objects,
+                            "Foliage Canopy " + index + "/" + tier,
+                            Foliage.CANOPY,
+                            broadleaf,
+                            new Vec3(x + tier * 1.2f, y + size * (.68f + tier * .22f), z),
+                            new Vec3(radius, 3, radius));
+                }
+                if (index % 3 == 0) {
+                    Foliage.hanging(
+                            objects,
+                            "tree " + index,
+                            new Vec3(x + 2, y + size * .7f, z),
+                            size * .5f);
+                }
+            }
+        }
+    }
+
+    private static boolean clearRoute(float x, float z) {
+        return Math.abs(x - 9 * Math.sin(z * .035)) < 2.5
+                || (Math.abs(x) < 1.5f && z > -10 && z < 18)
+                || (x > 11 && x < 29 && z > 19 && z < 37)
+                || OvergrownRuins.insideBuilding(x, z);
+    }
+
+    private static void pineCrown(
+            List<SceneInstance> objects, Material needles, int index, Vec3 base, float size) {
+        for (int tier = 0; tier < 3; tier++) {
+            float radius = size * (.5f - tier * .10f);
+            add(
+                    objects,
+                    "Foliage Crown " + index + "/" + tier,
+                    Foliage.PINE,
+                    needles,
+                    base.add(new Vec3(0, size * (.35f + tier * .25f), 0)),
+                    new Vec3(radius, size * .65f, radius));
+        }
     }
 
     private static void add(

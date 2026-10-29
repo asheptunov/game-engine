@@ -480,9 +480,18 @@ public final class GameRenderer implements AutoCloseable {
         if (!meshes && navigation.walking()) {
             navigation.walking(false);
         }
-        navigation.collision(meshes ? new engine.CapsuleCollision(value.instances()) : null);
+        navigation.collision(
+                meshes
+                        ? new engine.CapsuleCollision(
+                                value.instances().stream()
+                                        .filter(instance -> !instance.name().startsWith("Foliage "))
+                                        .toList())
+                        : null);
         collisionInstances = value.instances();
-        navigation.collisionSource(collisionInstances);
+        navigation.collisionSource(
+                collisionInstances.stream()
+                        .filter(instance -> !instance.name().startsWith("Foliage "))
+                        .toList());
     }
 
     /** Coalesce completion signals; all session work stays on the existing game owner. */

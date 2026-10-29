@@ -143,16 +143,23 @@ final class GpuScene implements AutoCloseable {
                     materials,
                     object.material().color(),
                     meshes.get(object.geometry()).firstTriangle());
+            var leaf = object.material().leaf();
+            if (leaf != null) {
+                append(materials, new Vec3(-1, 0, 0), -2);
+                append(materials, leaf.tint(), leaf.thicknessMm());
+                append(
+                        materials,
+                        new Vec3(leaf.transmission(), leaf.forwardFraction(), leaf.exponent()),
+                        0);
+                continue;
+            }
             var binding = object.material().textures();
             for (Texture2D texture :
                     binding == null
                             ? new Texture2D[3]
                             : new Texture2D[] {binding.top(), binding.bottom(), binding.sides()}) {
                 if (texture == null) {
-                    append(
-                            materials,
-                            new Vec3(-1, 0, 0),
-                            object.material().clearGlass() ? object.material().ior() : 0);
+                    append(materials, new Vec3(-1, 0, 0), surfaceTag(object.material()));
                     continue;
                 }
                 int offset =
@@ -162,6 +169,14 @@ final class GpuScene implements AutoCloseable {
         }
         instances = floats(materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
         textures = floats(texels, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    }
+
+    /** Shader material tag: positive IOR for glass, -1 for thin leaves, zero for opaque diffuse. */
+    private static float surfaceTag(engine.Material material) {
+        if (material.clearGlass()) {
+            return material.ior();
+        }
+        return material.kind() == engine.Material.Kind.THIN_LEAF ? -1 : 0;
     }
 
     private static int appendTexture(List<Float> texels, Texture2D texture) {

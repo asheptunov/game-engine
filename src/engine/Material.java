@@ -13,7 +13,50 @@ public record Material(
         Vec3 emission,
         float scattering,
         float anisotropy,
-        CubeTextures textures) {
+        CubeTextures textures,
+        LeafOptics leaf) {
+    /** Compatibility constructor: existing diffuse sheets keep their original half/half model. */
+    @SuppressWarnings("PMD.ExcessiveParameterList") // Preserve the existing material constructor.
+    public Material(
+            String name,
+            Vec3 color,
+            Kind kind,
+            float ior,
+            Vec3 absorption,
+            float roughness,
+            Vec3 emission,
+            float scattering,
+            float anisotropy,
+            CubeTextures textures) {
+        this(
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                textures,
+                null);
+    }
+
+    public Material withLeaf(LeafOptics value) {
+        return new Material(
+                name,
+                color,
+                Kind.THIN_LEAF,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                0,
+                anisotropy,
+                null,
+                java.util.Objects.requireNonNull(value));
+    }
+
     /** Preserve the existing nine-argument public API for engine consumers. */
     @SuppressWarnings("PMD.ExcessiveParameterList")
     public Material(
@@ -49,7 +92,8 @@ public record Material(
                 emission,
                 scattering,
                 anisotropy,
-                value);
+                value,
+                leaf);
     }
 
     public Material(
@@ -66,7 +110,9 @@ public record Material(
     public enum Kind {
         DIFFUSE,
         MIRROR,
-        DIELECTRIC
+        DIELECTRIC,
+        /** Thin diffuse sheet: half of the surviving light scatters into each hemisphere. */
+        THIN_LEAF
     }
 
     public Material(String name, Vec3 color, Kind kind) {
@@ -82,6 +128,9 @@ public record Material(
     }
 
     public Material {
+        if (leaf != null && kind != Kind.THIN_LEAF) {
+            throw new IllegalArgumentException("Leaf optics require thin-leaf material");
+        }
         if (textures != null && kind != Kind.DIFFUSE) {
             throw new IllegalArgumentException("Cube textures require a diffuse material");
         }
@@ -121,7 +170,8 @@ public record Material(
                 emission,
                 next == Kind.DIELECTRIC ? scattering : 0,
                 anisotropy,
-                textures);
+                textures,
+                next == Kind.THIN_LEAF ? leaf : null);
     }
 
     public Material withColor(Vec3 next) {
@@ -135,7 +185,8 @@ public record Material(
                 emission,
                 scattering,
                 anisotropy,
-                textures);
+                textures,
+                leaf);
     }
 
     public Material withIor(float next) {
@@ -149,7 +200,8 @@ public record Material(
                 emission,
                 scattering,
                 anisotropy,
-                textures);
+                textures,
+                leaf);
     }
 
     public Material withAbsorption(Vec3 next) {
@@ -163,7 +215,8 @@ public record Material(
                 emission,
                 scattering,
                 anisotropy,
-                textures);
+                textures,
+                leaf);
     }
 
     public Material withRoughness(float next) {
@@ -177,7 +230,8 @@ public record Material(
                 emission,
                 scattering,
                 anisotropy,
-                textures);
+                textures,
+                leaf);
     }
 
     public Material withEmission(Vec3 next) {
@@ -191,7 +245,8 @@ public record Material(
                 next,
                 scattering,
                 anisotropy,
-                textures);
+                textures,
+                leaf);
     }
 
     public Material withScattering(float next) {
@@ -205,7 +260,8 @@ public record Material(
                 emission,
                 next,
                 anisotropy,
-                textures);
+                textures,
+                leaf);
     }
 
     public Material withAnisotropy(float next) {
@@ -219,7 +275,8 @@ public record Material(
                 emission,
                 scattering,
                 next,
-                textures);
+                textures,
+                leaf);
     }
 
     public boolean emissive() {
@@ -227,8 +284,17 @@ public record Material(
     }
 
     public boolean delta(float incident, float exit) {
-        return kind != Kind.DIFFUSE
-                && (roughness == 0 || kind == Kind.DIELECTRIC && incident == exit);
+        return !diffuseSurface() && (roughness == 0 || kind == Kind.DIELECTRIC && incident == exit);
+    }
+
+    /** Diffuse reflection, optionally paired with thin-sheet diffuse transmission. */
+    public boolean diffuseSurface() {
+        return kind == Kind.DIFFUSE || kind == Kind.THIN_LEAF;
+    }
+
+    /** Cosine times the diffuse lobe weight; cosine is relative to the viewer-facing normal. */
+    public float diffuseCosine(float cosine) {
+        return kind == Kind.THIN_LEAF ? .5f * Math.abs(cosine) : Math.max(0, cosine);
     }
 
     /**
@@ -237,6 +303,12 @@ public record Material(
      */
     public static final class Sample {
         public float dx, dy, dz, red, green, blue, probability;
+        float inDx;
+        float inDy;
+        float inDz;
+        float nx;
+        float ny;
+        float nz;
         public Kind event;
         public boolean transmitted;
         public boolean delta;
@@ -270,7 +342,29 @@ public record Material(
             out.probability = 1;
             return;
         }
-        // Cosine-weighted hemisphere: f*cos/pdf = reflectance.
+        if (leaf != null) {
+            out.inDx = dx;
+            out.inDy = dy;
+            out.inDz = dz;
+            out.nx = nx;
+            out.ny = ny;
+            out.nz = nz;
+            leaf.sample(u, v, color, out);
+            return;
+        }
+        float hemisphereProbability = 1;
+        if (kind == Kind.THIN_LEAF) {
+            // Reuse and remap one uniform variate; no extra rays or random dimensions.
+            out.transmitted = u < .5f;
+            u = out.transmitted ? u * 2 : (u - .5f) * 2;
+            hemisphereProbability = .5f;
+            if (out.transmitted) {
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+            }
+        }
+        // Cosine-weighted hemisphere: f*cos/pdf = total surviving RGB fraction.
         float r = (float) Math.sqrt(u), phi = (float) (2 * Math.PI * v);
         float a = r * (float) Math.cos(phi), b = r * (float) Math.sin(phi);
         float c = (float) Math.sqrt(Math.max(0, 1 - u));
@@ -289,7 +383,7 @@ public record Material(
         out.dx = tx * a + (ny * tz - nz * ty) * b + nx * c;
         out.dy = ty * a + (nz * tx - nx * tz) * b + ny * c;
         out.dz = tz * a + (nx * ty - ny * tx) * b + nz * c;
-        out.probability = c / (float) Math.PI;
+        out.probability = hemisphereProbability * c / (float) Math.PI;
     }
 
     /**
@@ -348,7 +442,7 @@ public record Material(
             float v,
             float branch,
             Sample out) {
-        if (kind == Kind.DIFFUSE || delta(incident, exit)) {
+        if (diffuseSurface() || delta(incident, exit)) {
             if (kind == Kind.DIELECTRIC)
                 sampleDielectric(dx, dy, dz, nx, ny, nz, incident, exit, branch, out);
             else sample(dx, dy, dz, nx, ny, nz, u, v, out);
@@ -419,13 +513,8 @@ public record Material(
         out.red = out.green = out.blue = out.probability = 0;
         float ci = -(dx * nx + dy * ny + dz * nz), co = ox * nx + oy * ny + oz * nz;
         if (ci <= 0 || co == 0 || delta(incident, exit)) return;
-        if (kind == Kind.DIFFUSE) {
-            if (co < 0) return;
-            float f = co / (float) Math.PI;
-            out.red = color.x() * f;
-            out.green = color.y() * f;
-            out.blue = color.z() * f;
-            out.probability = f;
+        if (diffuseSurface()) {
+            evaluateDiffuse(ci, co, dx * ox + dy * oy + dz * oz, out);
             return;
         }
         boolean transmit = co < 0;
@@ -475,6 +564,18 @@ public record Material(
         out.green = f * (kind == Kind.MIRROR ? color.y() : 1);
         out.blue = f * (kind == Kind.MIRROR ? color.z() : 1);
         out.probability = p;
+    }
+
+    private void evaluateDiffuse(float ci, float co, float alignment, Sample out) {
+        if (leaf != null) {
+            leaf.evaluate(ci, co, alignment, color, out);
+            return;
+        }
+        float f = diffuseCosine(co) / (float) Math.PI;
+        out.red = color.x() * f;
+        out.green = color.y() * f;
+        out.blue = color.z() * f;
+        out.probability = f;
     }
 
     private static float smith(float cosine, float a2) {

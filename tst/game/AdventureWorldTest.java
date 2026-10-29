@@ -32,6 +32,18 @@ public final class AdventureWorldTest {
         var world = AdventureWorld.create();
         assertEquals(world, AdventureWorld.create());
         assertTrue(world.instances().size() > 200);
+        assertTrue(
+                world.instances().stream().filter(i -> i.name().startsWith("Foliage ")).count()
+                        > 2500);
+        assertTrue(
+                world.instances().stream().filter(i -> i.name().startsWith("Trunk ")).count()
+                        > 280);
+        assertTrue(
+                world.instances().stream()
+                        .anyMatch(i -> i.name().startsWith("Abandoned station 2/")));
+        assertTrue(
+                world.instances().stream()
+                        .anyMatch(i -> i.name().startsWith("Foliage vine column")));
         var names = new HashSet<String>();
         for (var instance : world.instances()) {
             assertTrue(names.add(instance.name()));

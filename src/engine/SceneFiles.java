@@ -394,6 +394,16 @@ public final class SceneFiles {
                 f(m.scattering()),
                 "anisotropy",
                 f(m.anisotropy()));
+        if (m.leaf() != null) {
+            var leaf = m.leaf();
+            w.writeAttribute("leaf-transmission", f(leaf.transmission()));
+            w.writeAttribute("leaf-red", f(leaf.tint().x()));
+            w.writeAttribute("leaf-green", f(leaf.tint().y()));
+            w.writeAttribute("leaf-blue", f(leaf.tint().z()));
+            w.writeAttribute("leaf-thickness-mm", f(leaf.thicknessMm()));
+            w.writeAttribute("leaf-forward", f(leaf.forwardFraction()));
+            w.writeAttribute("leaf-exponent", f(leaf.exponent()));
+        }
         w.writeEndElement();
     }
 
@@ -717,7 +727,14 @@ public final class SceneFiles {
                     "emission-green",
                     "emission-blue",
                     "scattering",
-                    "anisotropy");
+                    "anisotropy",
+                    "leaf-transmission",
+                    "leaf-red",
+                    "leaf-green",
+                    "leaf-blue",
+                    "leaf-thickness-mm",
+                    "leaf-forward",
+                    "leaf-exponent");
             empty(e);
             var id = materialId(e);
             var label = label(e);
@@ -744,6 +761,22 @@ public final class SceneFiles {
                                     number(e, "emission-blue")),
                             number(e, "scattering"),
                             number(e, "anisotropy"));
+            if (e.hasAttribute("leaf-transmission")) {
+                if (kind != Material.Kind.THIN_LEAF) {
+                    throw format("Leaf optics require thin_leaf");
+                }
+                m =
+                        m.withLeaf(
+                                new LeafOptics(
+                                        number(e, "leaf-transmission"),
+                                        new Vec3(
+                                                number(e, "leaf-red"),
+                                                number(e, "leaf-green"),
+                                                number(e, "leaf-blue")),
+                                        number(e, "leaf-thickness-mm"),
+                                        number(e, "leaf-forward"),
+                                        number(e, "leaf-exponent")));
+            }
             result.add(new MaterialAsset(id, label, 0, m));
         }
         return result;

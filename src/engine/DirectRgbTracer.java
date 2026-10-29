@@ -1211,26 +1211,20 @@ public final class DirectRgbTracer implements AutoCloseable {
                                 : mediumCount < 2
                                         ? 1
                                         : media[mediumCount - 2].primitives[0].material.ior();
-                if (material.kind() == Material.Kind.DIFFUSE) {
-                    light(hit, lights, lighting, medium);
-                    sunlight(hit, lighting);
-                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
-                } else if (!material.delta(incident, exit)) {
-                    roughPointLight(
-                            hit,
-                            lights,
-                            lighting,
-                            medium,
-                            media,
-                            mediumCount,
-                            dx,
-                            dy,
-                            dz,
-                            incident,
-                            exit,
-                            evaluation);
-                    addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
-                }
+                surfaceLighting(
+                        hit,
+                        lights,
+                        lighting,
+                        medium,
+                        media,
+                        mediumCount,
+                        dx,
+                        dy,
+                        dz,
+                        incident,
+                        exit,
+                        evaluation);
+                addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
                 if (!material.delta(incident, exit) && emitters.length > 0) {
                     areaLight(
                             hit,
@@ -1253,7 +1247,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                     break;
                 }
                 float sign = hit.frontFace ? 1 : -1;
-                float nx = hit.nx * sign, ny = hit.ny * sign, nz = hit.nz * sign;
+                float nx = hit.nx * sign;
+                float ny = hit.ny * sign;
+                float nz = hit.nz * sign;
                 if (material.kind() == Material.Kind.DIELECTRIC) {
                     if (material.delta(incident, exit))
                         material.sampleDielectric(
@@ -1297,7 +1293,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                             dx, dy, dz, nx, ny, nz, sampler.next(), sampler.next(), scattering);
                 applyTexture(scattering);
                 if (scattering.red + scattering.green + scattering.blue == 0) break;
-                if (material.kind() != Material.Kind.DIFFUSE && !scattering.delta) roughEvents++;
+                if (!material.diffuseSurface() && !scattering.delta) {
+                    roughEvents++;
+                }
                 previousDelta = scattering.delta;
                 previousPdf = scattering.probability;
                 if (!(scattering.transmitted && scattering.delta && incident == exit))
@@ -1503,7 +1501,7 @@ public final class DirectRgbTracer implements AutoCloseable {
                 Material current,
                 PreparedObject[] media,
                 int count) {
-            return !transmission
+            return !transmission || hit.primitive.material.kind() != Material.Kind.DIELECTRIC
                     ? current
                     : hit.frontFace
                             ? hit.primitive.material
@@ -1577,6 +1575,47 @@ public final class DirectRgbTracer implements AutoCloseable {
             }
         }
 
+        @SuppressWarnings(
+                "PMD.ExcessiveParameterList") // Existing worker-local transport scratch and scalar
+        // ray inputs.
+        private void surfaceLighting(
+                Hit hit,
+                PointLight[] lights,
+                float[] lighting,
+                Material medium,
+                PreparedObject[] media,
+                int mediumCount,
+                float dx,
+                float dy,
+                float dz,
+                float incident,
+                float exit,
+                Material.Sample evaluation) {
+            var material = hit.primitive.material;
+            lighting[0] = lighting[1] = lighting[2] = 0;
+            if (material.diffuseSurface() && material.leaf() == null) {
+                light(hit, lights, lighting, medium);
+                sunlight(hit, lighting);
+            } else if (!material.delta(incident, exit)) {
+                roughPointLight(
+                        hit,
+                        lights,
+                        lighting,
+                        medium,
+                        media,
+                        mediumCount,
+                        dx,
+                        dy,
+                        dz,
+                        incident,
+                        exit,
+                        evaluation);
+                if (material.leaf() != null) {
+                    leafSunlight(hit, lighting, dx, dy, dz, evaluation);
+                }
+            }
+        }
+
         private void roughPointLight(
                 Hit hit,
                 PointLight[] lights,
@@ -1633,11 +1672,95 @@ public final class DirectRgbTracer implements AutoCloseable {
             }
         }
 
+        /** Evaluate the thin-sheet BSDF toward each directional source at the actual hit point. */
+        private void leafSunlight(
+                Hit hit, float[] rgb, float dx, float dy, float dz, Material.Sample evaluation) {
+            var air = snapshot.sky().atmosphere();
+            if (air != null) {
+                AtmosphereTransport.sunlight(air, hit.y, airScratch);
+                leafSun(hit, rgb, dx, dy, dz, air.solarDirection(), 1, 1, 1, evaluation);
+            }
+            for (var sun : snapshot.sunlight()) {
+                java.util.Arrays.fill(airScratch.sunlight, 1);
+                if (air != null) {
+                    AtmosphereTransport.sourceTransmission(
+                            air, hit.y, sun.direction().y(), airScratch);
+                }
+                leafSun(
+                        hit,
+                        rgb,
+                        dx,
+                        dy,
+                        dz,
+                        sun.direction(),
+                        sun.color().x() * sun.strength(),
+                        sun.color().y() * sun.strength(),
+                        sun.color().z() * sun.strength(),
+                        evaluation);
+            }
+        }
+
+        @SuppressWarnings(
+                "PMD.ExcessiveParameterList") // Scalar ray/light inputs avoid hot-path allocations.
+        private void leafSun(
+                Hit hit,
+                float[] rgb,
+                float dx,
+                float dy,
+                float dz,
+                Vec3 direction,
+                float red,
+                float green,
+                float blue,
+                Material.Sample evaluation) {
+            float sign = hit.frontFace ? 1 : -1;
+            float nx = hit.nx * sign;
+            float ny = hit.ny * sign;
+            float nz = hit.nz * sign;
+            hit.primitive.material.evaluate(
+                    dx,
+                    dy,
+                    dz,
+                    direction.x(),
+                    direction.y(),
+                    direction.z(),
+                    nx,
+                    ny,
+                    nz,
+                    1,
+                    1,
+                    evaluation);
+            if (evaluation.red + evaluation.green + evaluation.blue == 0) {
+                return;
+            }
+            float offset =
+                    nx * direction.x() + ny * direction.y() + nz * direction.z() < 0 ? -BIAS : BIAS;
+            shadowRays++;
+            if (occluded(
+                    hit.x + nx * offset,
+                    hit.y + ny * offset,
+                    hit.z + nz * offset,
+                    direction.x(),
+                    direction.y(),
+                    direction.z(),
+                    Float.POSITIVE_INFINITY,
+                    hit.primitive,
+                    null)) {
+                shadowsOccluded++;
+                return;
+            }
+            fogSun(hit.x, hit.y, hit.z, direction.x(), direction.y(), direction.z());
+            rgb[0] += evaluation.red * red * airScratch.sunlight[0];
+            rgb[1] += evaluation.green * green * airScratch.sunlight[1];
+            rgb[2] += evaluation.blue * blue * airScratch.sunlight[2];
+        }
+
         private boolean canContinue(
                 int depth, Material material, float red, float green, float blue) {
             return depth < snapshot.depth()
                     && red + green + blue > 0
                     && (material.kind() == Material.Kind.DIELECTRIC
+                            || material.leaf() != null
                             || material.color().x() * red
                                             + material.color().y() * green
                                             + material.color().z() * blue
@@ -1683,6 +1806,8 @@ public final class DirectRgbTracer implements AutoCloseable {
                 var direction = air.solarDirection();
                 fogSun(hit.x, hit.y, hit.z, direction.x(), direction.y(), direction.z());
                 float cosine = nx * direction.x() + ny * direction.y() + nz * direction.z();
+                float offset = cosine < 0 ? -BIAS : BIAS;
+                cosine = hit.primitive.material.diffuseCosine(cosine);
                 if (cosine > 0
                         && (airScratch.sunlight[0]
                                         + airScratch.sunlight[1]
@@ -1690,9 +1815,9 @@ public final class DirectRgbTracer implements AutoCloseable {
                                 > 0) {
                     shadowRays++;
                     if (!occluded(
-                            hit.x + nx * BIAS,
-                            hit.y + ny * BIAS,
-                            hit.z + nz * BIAS,
+                            hit.x + nx * offset,
+                            hit.y + ny * offset,
+                            hit.z + nz * offset,
                             direction.x(),
                             direction.y(),
                             direction.z(),
@@ -1732,14 +1857,16 @@ public final class DirectRgbTracer implements AutoCloseable {
             for (var sun : snapshot.sunlight()) {
                 var direction = sun.direction();
                 float cosine = nx * direction.x() + ny * direction.y() + nz * direction.z();
+                float offset = cosine < 0 ? -BIAS : BIAS;
+                cosine = hit.primitive.material.diffuseCosine(cosine);
                 if (cosine <= 0 || sun.strength() == 0) {
                     continue;
                 }
                 shadowRays++;
                 if (occluded(
-                        hit.x + nx * BIAS,
-                        hit.y + ny * BIAS,
-                        hit.z + nz * BIAS,
+                        hit.x + nx * offset,
+                        hit.y + ny * offset,
+                        hit.z + nz * offset,
                         direction.x(),
                         direction.y(),
                         direction.z(),
@@ -1780,7 +1907,9 @@ public final class DirectRgbTracer implements AutoCloseable {
         private void light(Hit hit, PointLight[] lights, float[] rgb, Material medium) {
             float red = 0, green = 0, blue = 0;
             float sign = hit.frontFace ? 1 : -1;
-            float nx = hit.nx * sign, ny = hit.ny * sign, nz = hit.nz * sign;
+            float nx = hit.nx * sign;
+            float ny = hit.ny * sign;
+            float nz = hit.nz * sign;
             for (var light : lights) {
                 float lx = light.position().x() - hit.x;
                 float ly = light.position().y() - hit.y;
@@ -1792,12 +1921,14 @@ public final class DirectRgbTracer implements AutoCloseable {
                 ly /= distance;
                 lz /= distance;
                 float cosine = nx * lx + ny * ly + nz * lz;
+                float offset = cosine < 0 ? -BIAS : BIAS;
+                cosine = hit.primitive.material.diffuseCosine(cosine);
                 if (cosine <= 0) continue;
                 shadowRays++;
                 if (!visible(
-                        hit.x + nx * BIAS,
-                        hit.y + ny * BIAS,
-                        hit.z + nz * BIAS,
+                        hit.x + nx * offset,
+                        hit.y + ny * offset,
+                        hit.z + nz * offset,
                         lx,
                         ly,
                         lz,

@@ -85,6 +85,7 @@ bool nearest(vec3 o, vec3 d, int skipInstance, int skipFace, bool shadow, out Hi
 }
 vec3 reflectance(Hit hit) {
     int base = hit.instanceIndex * 4;
+    if (instances[base+1].w == -2) return instances[base].xyz;
     vec3 n = hit.localNormal, p = hit.localPoint;
     vec2 uv;
     int faceTexture;
@@ -110,6 +111,42 @@ vec3 cosineDirection(vec3 n) {
     float r = sqrt(u), phi = 2*PI*v;
     vec3 tangent = abs(n.z) < 0.999 ? normalize(vec3(-n.y,n.x,0)) : normalize(vec3(0,-n.z,n.y));
     return tangent*(r*cos(phi)) + cross(n,tangent)*(r*sin(phi)) + n*sqrt(1-u);
+}
+
+// Same finite-width reciprocal thin-sheet BSDF as engine.LeafOptics.
+vec3 leafResponse(int instanceIndex, vec3 incoming, vec3 outgoing, vec3 n, vec3 color, out float pdf) {
+    vec4 tint=instances[instanceIndex*4+2];
+    vec3 optics=instances[instanceIndex*4+3].xyz;
+    float ci=-dot(n,incoming), co=dot(n,outgoing);
+    pdf=0;
+    if(ci<=0 || co==0) return vec3(0);
+    if(co>0) { pdf=(1-optics.x)*co/PI; return color*pdf; }
+    float alignment=dot(incoming,outgoing);
+    float power=alignment>0 ? pow(alignment,optics.z) : 0;
+    float diffuse=(1-optics.y)/PI, lobe=optics.y*power/(2*PI);
+    pdf=optics.x*(-co*diffuse+(optics.z+1)*lobe);
+    float thickness=tint.w*.5*(1/max(.02,ci)+1/max(.02,-co));
+    return optics.x*(-co)*(diffuse+(optics.z+2)*lobe)*pow(tint.xyz,vec3(thickness));
+}
+vec3 sampleLeaf(int instanceIndex, vec3 incoming, vec3 n, vec3 color, out vec3 outgoing) {
+    vec3 optics=instances[instanceIndex*4+3].xyz;
+    float u=randomValue(), v=randomValue();
+    bool transmit=u<optics.x;
+    float local=transmit ? u/optics.x : (u-optics.x)/(1-optics.x);
+    bool forward=transmit && local<optics.y;
+    vec3 axis=n;
+    float cosine;
+    if(forward) { cosine=pow(local/optics.y,1/(optics.z+1)); axis=incoming; }
+    else {
+        if(transmit) { local=(local-optics.y)/(1-optics.y); axis=-n; }
+        cosine=sqrt(max(0,1-local));
+    }
+    vec3 tangent=abs(axis.z)<.999 ? normalize(vec3(-axis.y,axis.x,0)) : normalize(vec3(0,-axis.z,axis.y));
+    float sine=sqrt(max(0,1-cosine*cosine));
+    outgoing=tangent*(sine*cos(2*PI*v))+cross(axis,tangent)*(sine*sin(2*PI*v))+axis*cosine;
+    float pdf;
+    vec3 response=leafResponse(instanceIndex,incoming,outgoing,n,color,pdf);
+    return transmit!=(dot(n,outgoing)<0) || pdf==0 ? vec3(0) : response/pdf;
 }
 
 float airHeight(float h, float mu, float t) {
@@ -445,8 +482,9 @@ bool reconstructedFog(vec2 coordinate,vec3 d,bool found,Hit hit,out vec3 light,o
         minimumLight=min(minimumLight,a.xyz);maximumLight=max(maximumLight,a.xyz);
         light+=weight*a.xyz;transmission+=weight*t.xyz;total+=weight;
     }
-    // Keep direct integration near unresolved depth/shadow edges.
-    if(total<.999 || any(greaterThan(maximumLight-minimumLight,vec3(.005)+minimumLight*.02))) return false;
+    // Dense foliage can hide narrow light shafts between coarse samples. Use a
+    // conservative spread threshold to integrate shadow edges at full resolution.
+    if(total<.999 || any(greaterThan(maximumLight-minimumLight,vec3(.00001)+minimumLight*.001))) return false;
     light/=total;transmission/=total;
     return true;
 }
@@ -642,30 +680,47 @@ void main() {
             continue;
         }
         vec3 color = reflectance(hit);
+        // Negative material tag denotes a thin diffuse leaf, not a glass volume.
+        bool leaf = glassIor < 0;
+        float responsePdf;
+        vec3 response=glassIor == -2 ? leafResponse(hit.instanceIndex,d,sunDirection.xyz,n,color,responsePdf) : vec3(0);
         float cosine = dot(n,sunDirection.xyz);
+        vec3 sunNormal = cosine < 0 ? -n : n;
+        cosine = leaf ? .5*abs(cosine) : max(0,cosine);
         if (cosine>0 && any(greaterThan(sunRadiance.xyz,vec3(0)))) {
             Hit obstruction;
-            if (!nearest(p+n*BIAS,sunDirection.xyz,hit.instanceIndex,hit.face,true,obstruction)) {
+            if (!nearest(p+sunNormal*BIAS,sunDirection.xyz,hit.instanceIndex,hit.face,true,obstruction)) {
                 vec3 direct=sunRadiance.xyz;
                 if (airMapping.x>0) {
                     vec2 optical;
                     direct *= airOptical(airAltitude(p.y),sunDirection.y,optical) ? exp(-airExtinction(optical)) : vec3(0);
                 }
-                radiance += weight*color*direct*fogTransmission(p,sunDirection.xyz)*(cosine/PI);
+                radiance += weight*(glassIor == -2 ? response : color*(cosine/PI))*direct*fogTransmission(p,sunDirection.xyz);
             }
         }
         if (airMapping.x>0) {
             float solarCosine=dot(n,solarDirection.xyz);
+            vec3 solarNormal=solarCosine<0 ? -n : n;
+            solarCosine=leaf ? .5*abs(solarCosine) : max(0,solarCosine);
             vec3 sunlight=airSun(p.y);
             if (solarCosine>0 && any(greaterThan(sunlight,vec3(0)))) {
                 Hit obstruction;
-                if (!nearest(p+n*BIAS,solarDirection.xyz,hit.instanceIndex,hit.face,true,obstruction))
-                    radiance += weight*color*sunlight*fogTransmission(p,solarDirection.xyz)*(solarCosine/PI);
+                if (!nearest(p+solarNormal*BIAS,solarDirection.xyz,hit.instanceIndex,hit.face,true,obstruction))
+                    radiance += weight*(glassIor == -2 ? leafResponse(hit.instanceIndex,d,solarDirection.xyz,n,color,responsePdf) : color*(solarCosine/PI))*sunlight*fogTransmission(p,solarDirection.xyz);
             }
         }
         if (depth == grid.z) break;
+        if (glassIor == -2) {
+            vec3 outgoing;
+            weight *= sampleLeaf(hit.instanceIndex,d,n,color,outgoing);
+            if(all(equal(weight,vec3(0)))) break;
+            o=p+n*(dot(n,outgoing)<0 ? -BIAS : BIAS);
+            d=outgoing;
+            continue;
+        }
         weight *= color;
         if (all(equal(weight,vec3(0)))) break;
+        if (leaf && randomValue()<.5) n=-n;
         o = p+n*BIAS;
         d = cosineDirection(n);
     }
