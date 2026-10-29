@@ -21,6 +21,7 @@ final class GpuTemporal implements AutoCloseable {
 
     private final VulkanDevice gpu;
     private GpuTemporalPass pass;
+    GpuNrd nrd;
     private final VulkanDevice.Buffer[] guides = new VulkanDevice.Buffer[2];
     private final VulkanDevice.Buffer[] history = new VulkanDevice.Buffer[2];
     VulkanDevice.Buffer motion;
@@ -66,6 +67,16 @@ final class GpuTemporal implements AutoCloseable {
         if (settings.pathDepth() == 0) {
             return "GPU temporal: path depth must be positive";
         }
+        if (settings.denoiser() == engine.Denoiser.NRD_RELAX
+                && Math.abs(
+                                view.camera()
+                                        .sensor()
+                                        .edge1()
+                                        .normalized()
+                                        .dot(view.camera().sensor().edge2().normalized()))
+                        > 1e-4f) {
+            return "NRD: orthogonal sensor axes required";
+        }
         return null;
     }
 
@@ -78,22 +89,41 @@ final class GpuTemporal implements AutoCloseable {
 
     boolean prepare(
             WorldSnapshot nextWorld, RenderView nextView, RenderSettings next, long sample) {
+        boolean useNrd = next.denoiser() == engine.Denoiser.NRD_RELAX;
         label = fallback(nextView, next);
         active = label == null;
         if (!active) {
             motion.mapped.putFloat(0, 0);
+            motion.mapped.putFloat(96, 0);
+            if (nrd != null) {
+                nrd.close();
+                nrd = null;
+            }
             reset();
             return false;
         }
-        label = "GPU diffuse temporal";
+        label = useNrd ? "NRD RELAX diffuse" : "GPU diffuse temporal";
+        if (!useNrd && nrd != null) {
+            nrd.close();
+            nrd = null;
+        }
         prepareImages(nextView);
         long now = System.nanoTime();
-        if (sample == 0 || world == null) {
-            beginView(nextWorld, nextView, next, now);
+        if (sample == 0 || world == null || useNrd) {
+            beginView(nextWorld, nextView, next, now, sample);
         }
         lastFrame = now;
         valid &= now - priorFrame < 500_000_000L;
         writeMotion(nextWorld, nextView);
+        motion.mapped.putFloat(96, useNrd ? 1 : 0);
+        if (useNrd) {
+            if (nrd == null) {
+                nrd = new GpuNrd(gpu);
+                valid = false;
+            }
+            nrd.prepare(nextView, priorView, valid);
+            motion.mapped.putInt(100, nrd.frameIndex);
+        }
         return true; // The trace descriptor must follow the guide ping-pong and motion buffer.
     }
 
@@ -123,7 +153,11 @@ final class GpuTemporal implements AutoCloseable {
     }
 
     private void beginView(
-            WorldSnapshot nextWorld, RenderView nextView, RenderSettings next, long now) {
+            WorldSnapshot nextWorld,
+            RenderView nextView,
+            RenderSettings next,
+            long now,
+            long sample) {
         // Identities are stored as exactly representable floats in GPU guides.
         if (nextIdentity > 8_000_000) {
             reset();
@@ -134,7 +168,11 @@ final class GpuTemporal implements AutoCloseable {
                         && compatible(nextWorld, nextView, next)
                         && now - lastFrame < 500_000_000L;
         // Repeated sample zero of the identical scene is the same estimator, not fresh history.
-        valid &= world != null && (!world.equals(nextWorld) || !view.equals(nextView));
+        valid &=
+                world != null
+                        && (next.denoiser() == engine.Denoiser.NRD_RELAX && sample > 0
+                                || !world.equals(nextWorld)
+                                || !view.equals(nextView));
         priorView = view;
         priorFrame = lastFrame;
         priorSurfaces = surfaces;
@@ -221,6 +259,7 @@ final class GpuTemporal implements AutoCloseable {
                 && view.height() == nextView.height()
                 && world.sky().equals(nextWorld.sky())
                 && world.lights().equals(nextWorld.lights())
+                && settings.denoiser() == next.denoiser()
                 && settings.seed() == next.seed()
                 && settings.pathDepth() == next.pathDepth()
                 && settings.restartRevision() == next.restartRevision()
@@ -257,9 +296,18 @@ final class GpuTemporal implements AutoCloseable {
         return guides[current];
     }
 
-    VulkanDevice.Buffer record(VulkanDevice.Buffer raw, int width, int height, long sample) {
+    VulkanDevice.Buffer record(
+            VulkanDevice.Buffer raw,
+            VulkanDevice.Buffer albedo,
+            int width,
+            int height,
+            long sample) {
         if (!active) {
             return raw;
+        }
+        if (nrd != null) {
+            nrd.record(raw, guide(), albedo, presented);
+            return presented;
         }
         pass.record(
                 new VulkanDevice.Buffer[] {
@@ -298,6 +346,10 @@ final class GpuTemporal implements AutoCloseable {
     public void close() {
         releaseImages();
         motion.close();
+        if (nrd != null) {
+            nrd.close();
+            nrd = null;
+        }
         if (pass != null) {
             pass.close();
         }

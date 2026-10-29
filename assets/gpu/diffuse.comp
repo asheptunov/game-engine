@@ -573,6 +573,8 @@ layout(set=0,binding=19,std430) buffer LightingAlbedo { vec4 lightingAlbedo[]; }
 layout(set=0,binding=20,std430) buffer NativeFallback { vec4 nativeFallback[]; };
 // Count, indirect dispatch x/y/z, then native pixel indices. At most one entry per output pixel.
 layout(set=0,binding=21,std430) buffer FallbackQueue { uint fallbackQueue[]; };
+// One unaccumulated path per pixel for NRD; raw progressive means remain separate.
+layout(set=0,binding=22,std430) writeonly buffer NrdFresh { vec4 nrdFresh[]; };
 
 // A primary miss still needs native visibility, but atmospheric radiance varies slowly within
 // a lighting pixel. Reuse only other misses and evaluate the visible sun disc at the native ray.
@@ -719,6 +721,7 @@ void main() {
     uvec2 footprint=min(uvec2(rate),imageSize-xy);
     uint pixel = xy.y*imageSize.x+xy.x;
     uint accumulationPixel=continuousSampling?smoothIndex:pixel;
+    bool nrd = temporalGuides && temporalMotion[6].x > 0;
     uint64_t seed = (uint64_t(sampling.x)<<32) | uint64_t(grid.w);
     randomState = mix64(seed) ^ mix64(uint64_t(pixel)+0x632be59bd9b4e019UL) ^ mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
     float u = grid.z == 0 ? 0.5 : randomValue();
@@ -726,7 +729,7 @@ void main() {
     vec3 o = eye.xyz;
     vec2 samplePosition=continuousSampling ? smoothCenter-.5*smoothSize+vec2(u,v)*smoothSize
                                  : vec2(xy)+vec2(u,v)*vec2(footprint);
-    if(dispatchMode==7 || dispatchMode==8) samplePosition=vec2(xy)+.5;
+    if(dispatchMode==7 || dispatchMode==8 || nrd) samplePosition=vec2(xy)+.5;
     vec3 d = normalize(origin.xyz + edge1.xyz*(samplePosition.x/float(imageSize.x)) + edge2.xyz*(samplePosition.y/float(imageSize.y))-o);
     if (eye.w > 0) {
         // Independent aperture domain preserves the transport stream, including depth zero.
@@ -745,9 +748,11 @@ void main() {
         d = normalize(d*distance-pupil);
     }
     vec3 radiance = vec3(0), weight = vec3(1);
+    float firstBounceDistance=65504;
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
+        if(nrd && depth==1) firstBounceDistance=found?min(hit.t,65504):65504;
         if(dispatchMode==7 && depth==0) {
             vec3 reconstructed;
             bool reused=found ? reconstructSurface(hit,d,o+d*hit.t,samplePosition,reconstructed)
@@ -864,6 +869,7 @@ void main() {
         nativeFallback[pixel]=vec4(mean,count);
         nativeOutput[pixel]=vec4(mean,0); return;
     }
+    if(nrd) nrdFresh[pixel]=vec4(radiance,firstBounceDistance);
     if(dispatchMode==3) { pixels[pixel]=vec4(radiance,0); return; }
     dvec3 mean = sampling.y == 0 ? dvec3(radiance) : means[accumulationPixel].xyz+(dvec3(radiance)-means[accumulationPixel].xyz)/double(sampling.y+1);
     means[accumulationPixel] = dvec4(mean,0);

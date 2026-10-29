@@ -225,6 +225,7 @@ public final class GameCaptureTest {
         var settings =
                 engine.RenderSettings.defaults()
                         .withLightingScale(.5)
+                        .withDenoiser(engine.Denoiser.NRD_RELAX)
                         .withFoveated(true)
                         .withSmoothFoveation(true)
                         .withFoveationQuality(new engine.FoveationQuality(.25, 12))
@@ -256,6 +257,7 @@ public final class GameCaptureTest {
         var old =
                 Files.readString(file)
                         .replace("data.lightingScale=0.5", "")
+                        .replace("data.denoiser=NRD_RELAX", "")
                         .replace("data.fogDownsample=4", "")
                         .replace("data.fogLightingGrid=true", "")
                         .replace("data.fogJitter=true", "")
@@ -268,6 +270,7 @@ public final class GameCaptureTest {
         assertEquals(
                 settings.withFogDownsample(1)
                         .withLightingScale(1)
+                        .withDenoiser(engine.Denoiser.BUILT_IN)
                         .withFogLightingGrid(false)
                         .withFogJitter(false)
                         .withFoveated(false)

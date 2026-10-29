@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.30)
+project(RayTracingNrdBridge LANGUAGES CXX)
+if(NOT NRD_SOURCE_DIR)
+    message(FATAL_ERROR "NRD_SOURCE_DIR must point to the pinned NRD source")
+endif()
+add_library(rte_nrd SHARED bridge.cpp)
+target_compile_features(rte_nrd PRIVATE cxx_std_17)
+target_include_directories(rte_nrd PRIVATE "${NRD_SOURCE_DIR}/Include")
+target_link_libraries(rte_nrd PRIVATE "${NRD_SOURCE_DIR}/_Bin/Release/NRD.lib")
+set_target_properties(rte_nrd PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../out/nrd/runtime")
+add_custom_command(TARGET rte_nrd POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NRD_SOURCE_DIR}/_Bin/Release/NRD.dll" "$<TARGET_FILE_DIR:rte_nrd>/NRD.dll")

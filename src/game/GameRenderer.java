@@ -831,6 +831,10 @@ public final class GameRenderer implements AutoCloseable {
         return capabilities;
     }
 
+    public engine.RenderCapabilities.Support denoiserSupport(engine.Denoiser denoiser) {
+        return session.denoiserSupport(denoiser);
+    }
+
     public boolean adaptiveSupported() {
         return capabilities
                 .support(engine.RenderCapabilities.Feature.ADAPTIVE_RESOLUTION)
@@ -911,10 +915,15 @@ public final class GameRenderer implements AutoCloseable {
                     "The physical scope requires path depth 8 or higher");
         }
         capabilities.validate(world, navigation.view(), next);
+        var denoiser = denoiserSupport(next.denoiser());
+        if (next.temporal() && !denoiser.supported()) {
+            throw new IllegalArgumentException(denoiser.reason());
+        }
         if (settings.bloom() != next.bloom()
                 || settings.temporal() != next.temporal()
                 || settings.temporalRevision() != next.temporalRevision()
-                || settings.lightingScale() != next.lightingScale()) {
+                || settings.lightingScale() != next.lightingScale()
+                || settings.denoiser() != next.denoiser()) {
             converted = -1;
         }
         settings = next;

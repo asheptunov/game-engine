@@ -27,6 +27,7 @@ public enum RenderCapabilities {
         TEMPORAL_RECONSTRUCTION,
         TEMPORAL_BUDGET,
         LIGHTING_RECONSTRUCTION,
+        NRD_DENOISING,
         WORKER_CONTROL,
         TILE_CONTROL,
         OPTIONAL_ACCELERATION,
@@ -95,6 +96,9 @@ public enum RenderCapabilities {
     public Support support(Feature feature) {
         Objects.requireNonNull(feature);
         if (this == CPU) {
+            if (feature == Feature.NRD_DENOISING) {
+                return new Support(false, "NRD requires GPU rendering");
+            }
             if (feature == Feature.LIGHTING_RECONSTRUCTION) {
                 return new Support(false, "Separate lighting resolution requires GPU rendering");
             }
@@ -114,6 +118,7 @@ public enum RenderCapabilities {
                                     ADAPTIVE_RESOLUTION,
                                     DEPTH_OF_FIELD,
                                     TEMPORAL_RECONSTRUCTION,
+                                    NRD_DENOISING,
                                     LIGHTING_RECONSTRUCTION ->
                             null;
                     case TEMPORAL_BUDGET -> "GPU does not implement CPU temporal batch budgets";
@@ -166,6 +171,10 @@ public enum RenderCapabilities {
             throw new UnsupportedInput(
                     "settings.pathDepth", id + " supports depth 0.." + maximumDepth);
         }
+        require(
+                Feature.NRD_DENOISING,
+                settings.denoiser() != Denoiser.BUILT_IN,
+                "settings.denoiser");
         require(Feature.ADAPTIVE_RESOLUTION, settings.interactive(), "settings.interactive");
         require(Feature.TEMPORAL_RECONSTRUCTION, settings.temporal(), "settings.temporal");
         require(

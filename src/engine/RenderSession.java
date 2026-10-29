@@ -9,6 +9,17 @@ public interface RenderSession extends AutoCloseable {
 
     void request();
 
+    /**
+     * Runtime availability for an optional filter; never initializes a device or native library.
+     */
+    default RenderCapabilities.Support denoiserSupport(Denoiser denoiser) {
+        return new RenderCapabilities.Support(
+                denoiser == Denoiser.BUILT_IN,
+                denoiser == Denoiser.BUILT_IN
+                        ? "Built-in filter available"
+                        : "NRD requires GPU rendering");
+    }
+
     /** Prefer device-resident publications; unsupported backends reject enabling it. */
     default void devicePresentation(boolean enabled) {
         if (enabled) {

@@ -38,10 +38,19 @@ public final class LightingRouteBenchmark {
         var navigation = new GameNavigation();
         navigation.active(false);
         int height = mode.endsWith("540") ? 540 : mode.endsWith("720") ? 720 : 1080;
-        if (!Set.of("raw1080", "temporal1080", "temporal720", "temporal540", "split540", "split720")
+        if (!Set.of(
+                        "raw1080",
+                        "temporal1080",
+                        "temporal720",
+                        "temporal540",
+                        "split540",
+                        "split720",
+                        "nrd1080",
+                        "nrd540",
+                        "nrdsplit540")
                 .contains(mode))
             throw new IllegalArgumentException("Unknown lighting benchmark mode: " + mode);
-        boolean split = mode.startsWith("split");
+        boolean split = mode.contains("split");
         navigation.fixedResolution(split ? 1920 : height * 16 / 9, split ? 1080 : height);
         navigation.pose(new Vec3(0, 2.4f, -6), 0, -.08);
         navigation.optics(0, 12);
@@ -66,7 +75,11 @@ public final class LightingRouteBenchmark {
             renderer.atmosphereEnabled(true);
             renderer.configure(
                     s ->
-                            s.withPathDepth(8)
+                            s.withDenoiser(
+                                            mode.startsWith("nrd")
+                                                    ? engine.Denoiser.NRD_RELAX
+                                                    : engine.Denoiser.BUILT_IN)
+                                    .withPathDepth(8)
                                     .withSamplesPerBatch(1)
                                     .withSampleTarget(0)
                                     .withInteractive(false, 1000. / 120, 0, 0)

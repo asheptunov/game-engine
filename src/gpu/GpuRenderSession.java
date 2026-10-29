@@ -33,7 +33,8 @@ public final class GpuRenderSession implements RenderSession {
             long temporalRevision,
             long temporalEpoch,
             double lightingScale,
-            RenderView presentationView) {}
+            RenderView presentationView,
+            engine.Denoiser denoiser) {}
 
     private static final class Slot {
         volatile float[] pixels;
@@ -144,6 +145,12 @@ public final class GpuRenderSession implements RenderSession {
     @Override
     public void update(WorldSnapshot nextWorld, RenderView nextView, RenderSettings nextSettings) {
         GpuKernel.validate(nextWorld, nextView, nextSettings);
+        if (nextSettings.temporal()
+                && nextSettings.denoiser() == engine.Denoiser.NRD_RELAX
+                && !GpuNrdLibrary.available()) {
+            throw new IllegalStateException(
+                    "NRD runtime is missing; run ./setup-nrd.ps1 or choose Built-in diffuse");
+        }
         synchronized (this) {
             checkOpen();
             updateTemporalEpoch(nextView, nextSettings);
@@ -164,7 +171,8 @@ public final class GpuRenderSession implements RenderSession {
                             nextSettings.temporalRevision(),
                             temporalEpoch,
                             nextSettings.lightingScale(),
-                            nextView);
+                            nextView,
+                            nextSettings.denoiser());
             resolution.observe(nextView, System.nanoTime());
             if (!nextKey.equals(key)) {
                 generation++;
@@ -182,7 +190,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && sameSampling(nextSettings, settings)
                                 && nextSettings.temporal() == settings.temporal()
                                 && nextSettings.temporalRevision() == settings.temporalRevision()
-                                && nextSettings.lightingScale() == settings.lightingScale();
+                                && nextSettings.lightingScale() == settings.lightingScale()
+                                && nextSettings.denoiser() == settings.denoiser();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -191,6 +200,7 @@ public final class GpuRenderSession implements RenderSession {
             if (settings != null
                     && (settings.paused() != nextSettings.paused()
                             || settings.sampleTarget() != nextSettings.sampleTarget()
+                            || settings.denoiser() != nextSettings.denoiser()
                             || settings.interactive() != nextSettings.interactive()
                             || !sameSampling(settings, nextSettings))) {
                 epoch++;
@@ -204,6 +214,16 @@ public final class GpuRenderSession implements RenderSession {
     }
 
     @Override
+    public engine.RenderCapabilities.Support denoiserSupport(engine.Denoiser denoiser) {
+        boolean available = denoiser == engine.Denoiser.BUILT_IN || GpuNrdLibrary.available();
+        return new engine.RenderCapabilities.Support(
+                available,
+                available
+                        ? "Denoiser runtime available"
+                        : "Run ./setup-nrd.ps1 to install the optional NRD runtime");
+    }
+
+    @Override
     public synchronized void invalidate() {
         checkOpen();
     }
@@ -213,6 +233,7 @@ public final class GpuRenderSession implements RenderSession {
                 && (settings.temporal() != nextSettings.temporal()
                         || settings.temporalRevision() != nextSettings.temporalRevision()
                         || settings.lightingScale() != nextSettings.lightingScale()
+                        || settings.denoiser() != nextSettings.denoiser()
                         || settings.interactive() != nextSettings.interactive()
                         || view.camera().aperture() != nextView.camera().aperture()
                         || !sameSampling(settings, nextSettings)
@@ -292,7 +313,8 @@ public final class GpuRenderSession implements RenderSession {
                         key.temporalRevision(),
                         key.temporalEpoch(),
                         key.lightingScale(),
-                        presentationView);
+                        presentationView,
+                        key.denoiser());
         var capturedSettings =
                 settings.interactive() && resolution.moving(now)
                         ? settings.withSamplesPerBatch(1)

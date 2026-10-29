@@ -279,10 +279,43 @@ public final class GameSettingsPanel extends JPanel {
                                                 .withPathDepth(Math.max(1, s.pathDepth()))
                                                 .withTemporal(true, s.temporalRevision() + 1));
                     });
+            denoiser(panel);
             lightingResolution(panel);
         } else {
             panel.add(new JLabel("Finite aperture disables temporal reuse."));
         }
+    }
+
+    private void denoiser(JPanel panel) {
+        var selector =
+                new JComboBox<>(new String[] {"Built-in diffuse", "NRD RELAX (experimental)"});
+        row(panel, "Denoiser", selector);
+        selector.setName("denoiser");
+        selector.setToolTipText("NRD requires the optional runtime from setup-nrd.ps1.");
+        selector.addActionListener(
+                event -> {
+                    if (!refreshing) {
+                        navigation.optics(0, navigation.focus());
+                        renderer.configure(
+                                s ->
+                                        s.withDenoiser(
+                                                        selector.getSelectedIndex() == 0
+                                                                ? engine.Denoiser.BUILT_IN
+                                                                : engine.Denoiser.NRD_RELAX)
+                                                .withFoveated(false)
+                                                .withFogDownsample(1)
+                                                .withPathDepth(Math.max(1, s.pathDepth()))
+                                                .withTemporal(true, s.temporalRevision() + 1));
+                    }
+                });
+        refreshers.add(
+                () -> {
+                    selector.setSelectedIndex(
+                            renderer.settings().denoiser() == engine.Denoiser.BUILT_IN ? 0 : 1);
+                    var support = renderer.denoiserSupport(engine.Denoiser.NRD_RELAX);
+                    selector.setEnabled(support.supported() || selector.getSelectedIndex() != 0);
+                    selector.setToolTipText(support.reason());
+                });
     }
 
     private void lightingResolution(JPanel panel) {

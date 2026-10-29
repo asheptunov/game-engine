@@ -144,6 +144,18 @@ public final class GpuUiCheck {
                     && frame.samples()>=4);
             if(renderer.frame().image().getWidth()!=960 || renderer.frame().image().getHeight()!=600)
                 throw new AssertionError("Game conversion lost native output dimensions");
+            if(java.nio.file.Files.isRegularFile(java.nio.file.Path.of("out/nrd/runtime/Release/rte_nrd.dll"))) {
+                SwingUtilities.invokeAndWait(()->{
+                    var denoiser=(javax.swing.JComboBox<?>)find(holder[0],"denoiser");
+                    if(denoiser==null) throw new AssertionError("Missing denoiser selector");
+                    denoiser.setSelectedIndex(1);
+                    if(renderer.settings().denoiser()!=engine.Denoiser.NRD_RELAX) throw new AssertionError("NRD selection failed");
+                });
+                awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().denoiser()==engine.Denoiser.NRD_RELAX && frame.samples()>=4);
+                if(!renderer.backendStatus().contains("NRD RELAX")) throw new AssertionError("NRD did not run in the game");
+                SwingUtilities.invokeAndWait(()->((javax.swing.JComboBox<?>)find(holder[0],"denoiser")).setSelectedIndex(0));
+                awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().denoiser()==engine.Denoiser.BUILT_IN);
+            }
             SwingUtilities.invokeAndWait(()->((javax.swing.JCheckBox)find(holder[0],"Temporal reconstruction")).doClick());
             awaitSamples(renderer,frame->frame.context()!=null && !frame.context().settings().temporal());
             SwingUtilities.invokeAndWait(()->{
@@ -165,6 +177,27 @@ public final class GpuUiCheck {
             } finally {
                 if(holder[0]!=null) SwingUtilities.invokeAndWait(holder[0]::close);
             }
+        }
+        missingDenoiserRuntime();
+    }
+
+    private static void missingDenoiserRuntime() throws Exception {
+        var navigation=new GameNavigation();navigation.fixedResolution(96,80);navigation.active(false);
+        // The CPU session deliberately reports no NRD runtime while the UI exposes GPU controls.
+        var hooks=new GameRenderer.RuntimeHooks(new GameDiagnostics(), failure->{},
+                (world,view,settings,backend)->engine.RenderEngine.openSession(world,view,settings,"cpu"));
+        try(var renderer=new GameRenderer(navigation,BlockWorld.landscape().snapshot(),"gpu",GameRenderer::copyImage,hooks)) {
+            SwingUtilities.invokeAndWait(()->{
+                var panel=new GameSettingsPanel(navigation,renderer);panel.refresh();
+                var selector=(javax.swing.JComboBox<?>)find(panel,"denoiser");
+                if(selector==null || selector.isEnabled()) throw new AssertionError("Unavailable NRD remained selectable");
+            });
+            var before=renderer.settings();boolean rejected=false;
+            try {renderer.configure(s->s.withDenoiser(engine.Denoiser.NRD_RELAX).withTemporal(true,1));}
+            catch(IllegalArgumentException expected) {rejected=true;}
+            if(!rejected || !renderer.settings().equals(before) || renderer.error()!=null)
+                throw new AssertionError("Missing NRD was not rejected atomically before rendering");
+            System.out.println("PASS unavailable NRD is disabled and cannot break the running renderer");
         }
     }
 

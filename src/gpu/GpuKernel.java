@@ -175,8 +175,8 @@ final class GpuKernel implements AutoCloseable {
 
     private void createPipeline() {
         try (var stack = MemoryStack.stackPush()) {
-            var bindings = VkDescriptorSetLayoutBinding.calloc(22, stack);
-            for (int i = 0; i < 22; i++) {
+            var bindings = VkDescriptorSetLayoutBinding.calloc(23, stack);
+            for (int i = 0; i < 23; i++) {
                 bindings.get(i)
                         .binding(i)
                         .descriptorCount(1)
@@ -272,7 +272,7 @@ final class GpuKernel implements AutoCloseable {
             }
             var sizes = VkDescriptorPoolSize.calloc(4, stack);
             sizes.get(0).type(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR).descriptorCount(1);
-            sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(19);
+            sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(20);
             sizes.get(2)
                     .type(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .descriptorCount(1);
@@ -428,7 +428,7 @@ final class GpuKernel implements AutoCloseable {
         changed |= prepareImages(view);
         changed |= prepareSampling(settings);
         changed |= temporal.prepare(world, view, settings, sample);
-        changed |= lighting.prepare(view, outputView);
+        changed |= lighting.prepare(view, outputView, temporal.nrd != null);
         if (presentation != null) {
             presentation.prepare(gpu, outputView.width() * outputView.height());
         }
@@ -508,7 +508,7 @@ final class GpuKernel implements AutoCloseable {
         var snapshot = destination.snapshot();
         var presentation = destination.presentation();
         vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 6);
-        var shown = temporal.record(output, width, height, sample);
+        var shown = temporal.record(output, lighting.albedo, width, height, sample);
         vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 7);
         vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 8);
         if (lighting.active) {
@@ -644,7 +644,7 @@ final class GpuKernel implements AutoCloseable {
     }
 
     private long mainPipeline(RenderSettings settings) {
-        if (lighting.active) {
+        if (lighting.active || temporal.nrd != null) {
             return reconstructionPipelines[lightingGrid ? 1 : 0];
         }
         if (temporal.active) {
@@ -970,7 +970,7 @@ final class GpuKernel implements AutoCloseable {
 
     private void bind() {
         try (var stack = MemoryStack.stackPush()) {
-            var writes = VkWriteDescriptorSet.calloc(22, stack);
+            var writes = VkWriteDescriptorSet.calloc(23, stack);
             var acceleration =
                     VkWriteDescriptorSetAccelerationStructureKHR.calloc(stack)
                             .sType$Default()
@@ -1052,7 +1052,8 @@ final class GpuKernel implements AutoCloseable {
                         temporal.active ? temporal.presented : output,
                         lighting.albedo,
                         lighting.fallbackMeans,
-                        lighting.fallbackQueue
+                        lighting.fallbackQueue,
+                        temporal.nrd != null ? temporal.nrd.fresh : output
                     };
             for (int i = 0; i < temporalBuffers.length; i++) {
                 var info =
@@ -1098,6 +1099,21 @@ final class GpuKernel implements AutoCloseable {
                 (19 + engine.AtmosphereTable.FLOATS / 4) * 16 + 12,
                 settings.smoothFoveation() ? smoothFoveation.count : foveation.count);
         long seed = cameraSeed(settings.seed(), camera);
+        if (temporal.nrd != null) {
+            // Scene motion decorrelates noise even with a fixed camera. The key is captured world
+            // data, never job order or denoiser history, so captures and revisited views reproduce.
+            long sceneSeed = mix(world.revision());
+            for (var instance : world.instances()) {
+                var transform = instance.transform();
+                sceneSeed ^=
+                        mix(
+                                instance.name().hashCode()
+                                        ^ vectorHash(transform.position)
+                                        ^ mix(vectorHash(transform.rotation))
+                                        ^ mix(vectorHash(transform.scale)));
+            }
+            seed = mix(seed ^ sceneSeed);
+        }
         parameters
                 .mapped
                 .putInt(128, width)

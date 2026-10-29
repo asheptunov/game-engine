@@ -30,7 +30,7 @@ if ($RecordProfile) {
     $profilePath = Join-Path $profiles ((Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N') + '.jfr')
     $profileArguments = @('-XX:FlightRecorderOptions=stackdepth=128', ('"-XX:StartFlightRecording=name=game,settings=profile,duration=' + $ProfileSeconds + 's,maxsize=128m,dumponexit=true,filename=' + $profilePath + '"'))
 }
-$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList (@("--enable-preview") + $profileArguments + @($nativeArgument, $windowArgument, ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) + $captureArgument) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
+$process = Start-Process -FilePath (Join-Path $jdk "javaw.exe") -WindowStyle Hidden -ArgumentList (@("--enable-preview", "--enable-native-access=ALL-UNNAMED") + $profileArguments + @($nativeArgument, $windowArgument, ('"-XX:ErrorFile=' + $jvmError + '"'), ('"-Dgame.jvmErrorFile=' + $jvmError + '"'), "-cp", ('"' + $classPath + '"'), "game.SampleGameMain", $Scene.ToLowerInvariant(), $Backend.ToLowerInvariant(), $Width, $Height) + $captureArgument) -WorkingDirectory $repository -RedirectStandardOutput (Join-Path $output "game-stdout.log") -RedirectStandardError $stderr -PassThru
 Start-Sleep -Milliseconds 750
 if ($process.HasExited) { throw "Sample game exited during startup; inspect $stderr" }
 Write-Output "Sample game started (PID $($process.Id)). Errors: $stderr"

@@ -55,11 +55,11 @@ final class GpuLighting implements AutoCloseable {
                         (int) Math.round(output.height() * settings.lightingScale())));
     }
 
-    boolean prepare(RenderView input, RenderView presentation) {
+    boolean prepare(RenderView input, RenderView presentation, boolean nrd) {
         width = presentation.width();
         height = presentation.height();
         active = input.width() != width || input.height() != height;
-        long colorBytes = active ? (long) input.width() * input.height() * 16 : 16;
+        long colorBytes = active || nrd ? (long) input.width() * input.height() * 16 : 16;
         long outputBytes = active ? (long) width * height * 16 : 16;
         boolean changed = albedo.size != colorBytes || output.size != outputBytes;
         if (albedo.size != colorBytes) {

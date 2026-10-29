@@ -197,7 +197,16 @@ final class VulkanDevice implements AutoCloseable {
                             .pEnabledFeatures(
                                     VkPhysicalDeviceFeatures.calloc(stack)
                                             .shaderFloat64(true)
-                                            .shaderInt64(true))
+                                            .shaderInt64(true)
+                                            .shaderStorageImageExtendedFormats(
+                                                    query.features()
+                                                            .shaderStorageImageExtendedFormats())
+                                            .shaderStorageImageReadWithoutFormat(
+                                                    query.features()
+                                                            .shaderStorageImageReadWithoutFormat())
+                                            .shaderStorageImageWriteWithoutFormat(
+                                                    query.features()
+                                                            .shaderStorageImageWriteWithoutFormat()))
                             .ppEnabledExtensionNames(extensionNames);
             check(vkCreateDevice(physical, create, null, pointer), "create device");
             device = new VkDevice(pointer.get(0), physical, create);

@@ -1,0 +1,46 @@
+#version 460
+layout(local_size_x=8,local_size_y=8) in;
+layout(push_constant) uniform Conversion { uvec4 sizeAndMode; vec4 eye; vec4 forward; };
+layout(set=0,binding=0,std430) readonly buffer Raw {vec4 raw[];};
+layout(set=0,binding=1,std430) readonly buffer Guides {vec4 guide[];};
+layout(set=0,binding=2,std430) readonly buffer Albedo {vec4 albedo[];};
+layout(set=0,binding=3,std430) readonly buffer Fresh {vec4 fresh[];};
+layout(set=0,binding=4,std430) writeonly buffer Presented {vec4 presented[];};
+layout(set=0,binding=5,rgba32f) uniform image2D motionImage;
+layout(set=0,binding=6,rgb10_a2) uniform image2D normalImage;
+layout(set=0,binding=7,r32f) uniform image2D depthImage;
+layout(set=0,binding=8,rgba16f) uniform image2D radianceImage;
+layout(set=0,binding=9,r8) uniform image2D confidenceImage;
+layout(set=0,binding=10,rgba16f) uniform image2D denoisedImage;
+
+// NRD 4.18's R10G10B10A2 normal encoding stores the normal hemisphere in roughness's sign.
+vec4 packNormal(vec3 normal) {
+    normal/=abs(normal.x)+abs(normal.y)+abs(normal.z);
+    return vec4((normal.x+normal.y+1)*.5,(normal.y-normal.x+1)*.5,normal.z<0?0:1,0);
+}
+
+void main() {
+    uvec2 pixel=gl_GlobalInvocationID.xy;
+    if(any(greaterThanEqual(pixel,sizeAndMode.xy))) return;
+    uint index=pixel.y*sizeAndMode.x+pixel.x, g=index*6;
+    // Tracing stores bottom-up rows; NRD samples top-down textures.
+    ivec2 texel=ivec2(pixel.x,sizeAndMode.y-1-pixel.y);
+    float surfaceDepth=dot(guide[g].xyz-eye.xyz,forward.xyz);
+    bool eligible=guide[g+1].w>0 && surfaceDepth>0 && surfaceDepth<100000
+        && all(greaterThanEqual(albedo[index].xyz,vec3(.01)));
+    if(sizeAndMode.z==0) {
+        float depth=eligible?surfaceDepth:1e6;
+        vec3 motion=eligible?guide[g+2].xyz-guide[g].xyz:vec3(0);
+        vec3 normal=eligible?guide[g+5].xyz:vec3(0,0,1);
+        vec3 signal=eligible?max(vec3(0),fresh[index].xyz-guide[g+4].xyz)/albedo[index].xyz:vec3(0);
+        imageStore(motionImage,texel,vec4(motion,0));
+        imageStore(normalImage,texel,packNormal(normal));
+        imageStore(depthImage,texel,vec4(depth));
+        imageStore(radianceImage,texel,vec4(min(signal,vec3(65504)),min(fresh[index].w,65504)));
+        imageStore(confidenceImage,texel,vec4(eligible?guide[g+2].w:0));
+    } else {
+        vec3 result=raw[index].xyz;
+        if(eligible) result=guide[g+4].xyz+imageLoad(denoisedImage,texel).xyz*albedo[index].xyz;
+        presented[index]=vec4(result,0);
+    }
+}
