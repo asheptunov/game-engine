@@ -4565,17 +4565,6 @@
     "line": 286
   },
   {
-    "id": "dbcb48c961074979bde4f7dfafcff458a507336a38d6f492da0c699bc309220d",
-    "tool": "pmd",
-    "path": "src/engine/Camera.java",
-    "rule": "CognitiveComplexity",
-    "anchor": "Camera: The method 'checked(Camera)' has a cognitive complexity of <metric>, current threshold is 15",
-    "detail": "The method 'checked(Camera)' has a cognitive complexity of 15, current threshold is 15",
-    "ceiling": 15,
-    "count": 1,
-    "line": 241
-  },
-  {
     "id": "88f9193eba4303331b1a75f7da057c891811c82f8f9dde240f2c22375c5e2175",
     "tool": "checkstyle",
     "path": "src/engine/Camera.java",
@@ -4584,7 +4573,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 304
+    "line": 327
   },
   {
     "id": "4d38c8b780acaf56e7cf7b4f68f62067c2495a3418f07a84243f3093e2926ffd",
@@ -4595,7 +4584,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 339
+    "line": 362
   },
   {
     "id": "4173e0b84d1991437bc23e794bf2cf72b644115c78a22a6aa6e54cd07e197687",
@@ -4606,7 +4595,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 370
+    "line": 393
   },
   {
     "id": "b5e669d484caab92ca476d6ceb2a6c1c30a064f681153676d3e05f9a83772431",
@@ -4617,7 +4606,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 347
+    "line": 370
   },
   {
     "id": "5be8532cd84e9836bff7e3928ee2e2ff50d7d5123ff5ad95a5f67e9bb2b88ac9",
@@ -4628,7 +4617,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 2,
-    "line": 341
+    "line": 364
   },
   {
     "id": "67979c6509361ec28259cb4ba4c5e4b05549d0a215b8032ff1a5700b20b5b916",
@@ -4639,7 +4628,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 299
+    "line": 322
   },
   {
     "id": "358f306f10b70f305c0e74ee00984e1ef855ec569121d89b7e2aaa8df518107f",
@@ -4661,7 +4650,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 261
+    "line": 284
   },
   {
     "id": "d100ff30192018e826bc4112777db05b49bac6005d83ff79386d170c7cf0cdf3",
@@ -4672,7 +4661,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 262
+    "line": 285
   },
   {
     "id": "2165608325d12494e030594e53b34178cfbd422f787886c31e324ed07ad27c53",
@@ -4683,7 +4672,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 243
+    "line": 267
   },
   {
     "id": "f676d29c583431e014bee80ef9b07e412944c6eed0c2bc9d506ca2bd69d1177b",
@@ -4705,7 +4694,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 192
+    "line": 216
   },
   {
     "id": "b0a2cbcde1779b0c733bc9011e2a5094dd89ce27d31e491e9c45c0db1f85fa01",
@@ -4716,7 +4705,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 266
+    "line": 289
   },
   {
     "id": "5cee989a292d277e5f0166c1ad06a5954a9c61c99cef81756e5df67fbe55f2b2",
@@ -4727,7 +4716,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 224
+    "line": 248
   },
   {
     "id": "91769fbbc2e842990edb5b42348bad4a5102834148a14d4d3b698f82e54c3b23",
@@ -4738,7 +4727,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 233
+    "line": 257
   },
   {
     "id": "7ef6fed8d5b52ea66fae267cc74cc9f9f93c7010d334a48dc87ab876230a8e46",
@@ -4749,18 +4738,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 177
-  },
-  {
-    "id": "cbd18e7f6f590a7e60d987f376d5b65d7f00c478c54c1966d3f69f0ed42d4dfd",
-    "tool": "checkstyle",
-    "path": "src/engine/Camera.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (d <= 0",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 149
+    "line": 201
   },
   {
     "id": "4a7d30da2067b2a2960c334c734e1e903323bafe564a0b3c5c7aa09282d5f19e",
@@ -4771,7 +4749,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 194
+    "line": 218
   },
   {
     "id": "59caafc21b4c77896a6e86686bb6ecaa9fe70ac7082f72d498d228831e01e2b6",
@@ -4793,7 +4771,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 206
+    "line": 230
   },
   {
     "id": "493a0ae20414c8da0f0999946aab8e1035f8ce1cdf47e712aa0243b1d3d5d5e3",
@@ -4804,7 +4782,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 190
+    "line": 214
   },
   {
     "id": "568d15a755616c510533c2e514790d0e6ae00a5f79d8b6a974fbc998808a2cb1",
@@ -4815,7 +4793,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 166
+    "line": 190
   },
   {
     "id": "972486dda013fc8ecfe5674ed2e040648bea628f294c29b4111de90833032169",
@@ -4826,7 +4804,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 165
+    "line": 189
   },
   {
     "id": "faf455a79d9c544f91369bf05b26799d0e7e18b4c89e025447b7d7e0de8a0a9d",
@@ -4837,7 +4815,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 168
+    "line": 192
   },
   {
     "id": "01d6e277d30abc868a08cb34fb0092c86e1d49df14891cdcbda0a74d1d6f1a4a",
@@ -4881,7 +4859,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 180
+    "line": 204
   },
   {
     "id": "8a2190aabd4ecb82eddb0e8e3772bddc8c5b7cbc4d3ab324f7375ff7a9ff068d",
@@ -4892,7 +4870,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 226
+    "line": 250
   },
   {
     "id": "3960b34851ff985e8ca519b7bff0d980b902c211c0a251e5938bfa4e398152bb",
@@ -4914,7 +4892,7 @@
     "detail": "The method 'resolve(FocusTargetSource, Camera, Scene, long, long, LongSupplier)' has a cognitive complexity of 30, current threshold is 15",
     "ceiling": 30,
     "count": 1,
-    "line": 74
+    "line": 76
   },
   {
     "id": "57d9c90044da6b70827b9e163c96accdccd8856dd57f46a688d1afab68c581fd",
@@ -4925,7 +4903,7 @@
     "detail": "Each variable declaration must be in its own statement.",
     "ceiling": 1,
     "count": 1,
-    "line": 72
+    "line": 74
   },
   {
     "id": "580ada85b3fd54ba70c0100f0e36504e093fa284b50e37e9d76af8ad7782c0a1",
@@ -4947,7 +4925,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 168
+    "line": 200
   },
   {
     "id": "5bad43ff4b30306a61394dd682a9b305504070758a6527652d86e18e88af57af",
@@ -4958,7 +4936,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 111
+    "line": 128
   },
   {
     "id": "8c00b2807e8036417ed0f53c17e8a35e624ae5bc0c6234f27e81b857d62008bf",
@@ -4969,7 +4947,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 98
+    "line": 109
   },
   {
     "id": "699877fe0f2632c910e3bdc04afc5bc289114c01cf92eba44305cd753296ce74",
@@ -4991,7 +4969,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 84
+    "line": 86
   },
   {
     "id": "f58fa7e0b7934bb594fccbfea968a2ed6cf92a6df0d66d275806bd07c8d5e0e1",
@@ -5005,17 +4983,6 @@
     "line": 29
   },
   {
-    "id": "f6f0749c85d9692cecf1d89546293ec87ee31c80b84d4758c61b4380d5e22f53",
-    "tool": "checkstyle",
-    "path": "src/engine/CameraFocus.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (!object.overlaps(ray.ox, ray.oy, ray.oz, ray.dx, ray.dy, ray.dz, nearest))",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 95
-  },
-  {
     "id": "071524504fe6a7c48d18cc707885869e5c89a55063b226e07a1d03fe39e1d874",
     "tool": "checkstyle",
     "path": "src/engine/CameraFocus.java",
@@ -5024,7 +4991,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 116
+    "line": 135
   },
   {
     "id": "5e0893a25a9144461dc2c02225359841e87d83a854c5ff82f891857fa84a7ca6",
@@ -5035,7 +5002,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 110
+    "line": 127
   },
   {
     "id": "762ea116da900bf53582b8366d0b882c3900c4ea1bc7505f51f0835eb36182f6",
@@ -5049,17 +5016,6 @@
     "line": 34
   },
   {
-    "id": "7025f5d678c3b09f3360d3686aac8cbe371e1fcec58863e2d211b4fb804b886f",
-    "tool": "checkstyle",
-    "path": "src/engine/CameraFocus.java",
-    "rule": "NeedBracesCheck",
-    "anchor": "if (prior.isPresent()) next.add(prior.get());",
-    "detail": "'if' construct must use '{}'s.",
-    "ceiling": 1,
-    "count": 1,
-    "line": 187
-  },
-  {
     "id": "ad4ff033a3cbe7490694f4363a327c661e361ab67d89a8e38d05a05dd4cc3684",
     "tool": "checkstyle",
     "path": "src/engine/CameraFocus.java",
@@ -5068,7 +5024,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 211
+    "line": 244
   },
   {
     "id": "f962eac3a7d10155b5872cddbdc56c182799009a716952b4f3cd217d1ed12ffc",
@@ -5079,7 +5035,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 166
+    "line": 198
   },
   {
     "id": "35619590cf55ebce5f31ecb065600b7e58c2bde341e4a0a89816edfdc3afd9d8",
@@ -5090,7 +5046,7 @@
     "detail": "'if' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 118
+    "line": 137
   },
   {
     "id": "411ce780e5fac71c75e6c6fc5658f1e8eba5c611bb5ac4dc346b3f83d0a6a781",
@@ -18785,7 +18741,7 @@
     "detail": "The method 'finiteAutofocusCapturedPreviewsSettleRestoreGridAndConverge()' has a cognitive complexity of 19, current threshold is 15",
     "ceiling": 19,
     "count": 1,
-    "line": 143
+    "line": 177
   },
   {
     "id": "a95fe1f772ddff5aebb08dda09bbce586fcee8a53059c8d69feac6fa8099f880",
@@ -18796,7 +18752,7 @@
     "detail": "The method 'finiteAutofocusCapturedPreviewsSettleRestoreGridAndConverge()' has a NCSS line count of 65.",
     "ceiling": 65,
     "count": 1,
-    "line": 143
+    "line": 177
   },
   {
     "id": "73020bdeda96355116a5afb7d3f6603429cc362e11d3a4ecdc7639ebb133f2c3",
@@ -18807,7 +18763,7 @@
     "detail": "'for' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 108
+    "line": 142
   },
   {
     "id": "7127770e4621841360b0b30033d5b0448f79859bc940056d991d9b6847e573cb",
@@ -18818,7 +18774,7 @@
     "detail": "'while' construct must use '{}'s.",
     "ceiling": 1,
     "count": 1,
-    "line": 289
+    "line": 323
   },
   {
     "id": "eff5b468de3e2157e19e4d5dc5514c6b655d5688fc06277d884e609efe4c7f1a",

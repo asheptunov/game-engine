@@ -30,7 +30,7 @@ try {
     Write-StyleUtf8 $compileLog ($stdout.Result + $stderr.Result)
     if ($process.ExitCode -ne 0) { throw "Game test compilation failed: $compileLog" }
 } finally { $process.Dispose() }
-foreach ($suite in @("game.ScopeOpticsTest", "game.RifleMeshTest", "game.ShooterGameTest", "game.SampleGameTest", "engine.CubeTextureTest", "engine.SunSkyTest", "game.GameLightingTest", "game.GameLandscapeTest", "game.AdventureWorldTest", "engine.AtmospherePathTest", "game.AtmosphereNumerics", "game.AtmosphereLifecycleTest", "game.FogNumerics", "game.FogSunTableTest", "game.CharacterPhysicsTest", "game.GameCaptureTest")) {
+foreach ($suite in @("game.CameraPrecisionTest", "game.ScopeOpticsTest", "game.RifleMeshTest", "game.ShooterGameTest", "game.SampleGameTest", "engine.CubeTextureTest", "engine.SunSkyTest", "game.GameLightingTest", "game.GameLandscapeTest", "game.AdventureWorldTest", "engine.AtmospherePathTest", "game.AtmosphereNumerics", "game.AtmosphereLifecycleTest", "game.FogNumerics", "game.FogSunTableTest", "game.CharacterPhysicsTest", "game.GameCaptureTest")) {
     $name = if ($suite -eq "game.SampleGameTest") { "tests.log" } elseif ($suite -eq "engine.CubeTextureTest") { "texture-tests.log" } elseif ($suite -eq "engine.SunSkyTest") { "sun-sky-tests.log" } elseif ($suite -eq "game.GameLightingTest") { "lighting-tests.log" } elseif ($suite -eq "game.GameLandscapeTest") { "landscape-tests.log" } elseif ($suite -eq "game.AdventureWorldTest") { "adventure-tests.log" } else { "$suite.log" }
     $log = Join-Path (Join-Path $repository $OutputDirectory) $name
     $code = Invoke-StyleJava @("--enable-preview", "-Djava.awt.headless=true", "-cp", $classes, $suite) $log

@@ -284,6 +284,10 @@ public final class GameRenderer implements AutoCloseable {
         }
     }
 
+    private synchronized engine.WorldSnapshot focusWorld() {
+        return world;
+    }
+
     public ShooterGame shooter() {
         return shooter;
     }
@@ -414,7 +418,7 @@ public final class GameRenderer implements AutoCloseable {
         updateCollision(world);
         captureDiagnostics(navigation.view(), null, "session initialization pending");
         session = hooks.factory().open(world, navigation.view(), settings, backend);
-        autofocus = new GameAutofocus(navigation, world);
+        autofocus = new GameAutofocus(navigation, this::focusWorld);
         executor =
                 Executors.newSingleThreadScheduledExecutor(
                         runnable -> {

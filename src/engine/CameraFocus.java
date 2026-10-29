@@ -68,6 +68,8 @@ public final class CameraFocus {
     private record Entry(SceneInstance instance, PreparedObject prepared, Subject subject) {}
 
     private List<Entry> cache = List.of();
+    private Map<GeometryData, PreparedObject> geometryCache = new IdentityHashMap<>();
+    private final Camera.RaySample localRay = new Camera.RaySample();
     private Scene cachedScene;
     long preparations, queries, primitiveTests, queryNanos;
 
@@ -92,24 +94,41 @@ public final class CameraFocus {
             for (var entry : cache) {
                 float before = nearest;
                 var object = entry.prepared();
-                if (!object.overlaps(ray.ox, ray.oy, ray.oz, ray.dx, ray.dy, ray.dz, nearest))
+                localRay(entry.instance().transform(), ray);
+                if (!object.overlaps(
+                        localRay.ox,
+                        localRay.oy,
+                        localRay.oz,
+                        localRay.dx,
+                        localRay.dy,
+                        localRay.dz,
+                        nearest)) {
                     continue;
+                }
                 if (object.bvh == null) {
                     for (var primitive : object.primitives)
-                        nearest = distance(primitive, ray, nearest);
+                        nearest = distance(primitive, localRay, nearest);
                 } else {
                     var bvh = object.bvh;
                     int i = 0;
                     while (i < bvh.nodes.length) {
                         var node = bvh.nodes[i];
                         if (!node.bounds.overlaps(
-                                ray.ox, ray.oy, ray.oz, ray.dx, ray.dy, ray.dz, nearest)) {
+                                localRay.ox,
+                                localRay.oy,
+                                localRay.oz,
+                                localRay.dx,
+                                localRay.dy,
+                                localRay.dz,
+                                nearest)) {
                             i = node.escape;
                             continue;
                         }
                         if (node.leaf())
                             for (int p = node.from; p < node.to; p++)
-                                nearest = distance(object.primitives[bvh.order[p]], ray, nearest);
+                                nearest =
+                                        distance(
+                                                object.primitives[bvh.order[p]], localRay, nearest);
                         i++;
                     }
                 }
@@ -162,6 +181,19 @@ public final class CameraFocus {
         return d > 0 && d < nearest ? d : nearest;
     }
 
+    /** Preserve world-ray distance under nonuniform scale: never normalize the local direction. */
+    private void localRay(Transform t, Camera.RaySample world) {
+        float x = world.ox - t.position.x();
+        float y = world.oy - t.position.y();
+        float z = world.oz - t.position.z();
+        localRay.ox = (t.a * x + t.d * y + t.g * z) / t.scale.x();
+        localRay.oy = (t.b * x + t.e * y + t.h * z) / t.scale.y();
+        localRay.oz = (t.c * x + t.f * y + t.i * z) / t.scale.z();
+        localRay.dx = (t.a * world.dx + t.d * world.dy + t.g * world.dz) / t.scale.x();
+        localRay.dy = (t.b * world.dx + t.e * world.dy + t.h * world.dz) / t.scale.y();
+        localRay.dz = (t.c * world.dx + t.f * world.dy + t.i * world.dz) / t.scale.z();
+    }
+
     private void prepare(Scene scene) {
         if (scene.equals(cachedScene)) return;
         var instances = new ArrayList<>(scene.instances());
@@ -172,28 +204,29 @@ public final class CameraFocus {
                             PreparedGeometry.canonical(scene.objects().get(i)),
                             Transform.IDENTITY,
                             new Material("focus", new Vec3(1, 1, 1))));
+        var nextGeometry = new IdentityHashMap<GeometryData, PreparedObject>();
         var next = new ArrayList<Entry>(instances.size());
         for (var instance : instances) {
-            var prior =
-                    cache.stream()
-                            .filter(
-                                    e ->
-                                            e.instance().name().equals(instance.name())
-                                                    && e.instance().geometry()
-                                                            == instance.geometry()
-                                                    && e.instance().transform()
-                                                            == instance.transform())
-                            .findFirst();
-            if (prior.isPresent()) next.add(prior.get());
-            else {
-                next.add(
-                        new Entry(
-                                instance,
-                                new PreparedObject(instance),
-                                new Subject(instance.name(), instance.geometry())));
+            var geometry = instance.geometry();
+            var prepared = nextGeometry.get(geometry);
+            if (prepared == null) {
+                prepared = geometryCache.get(geometry);
+            }
+            if (prepared == null) {
+                prepared =
+                        new PreparedObject(
+                                new SceneInstance(
+                                        "focus",
+                                        geometry,
+                                        Transform.IDENTITY,
+                                        new Material("focus", new Vec3(1, 1, 1))));
                 preparations++;
             }
+            nextGeometry.put(geometry, prepared);
+            next.add(new Entry(instance, prepared, new Subject(instance.name(), geometry)));
         }
+        // Keep only this scene's assets; animation updates reuse their object-local BVHs.
+        geometryCache = nextGeometry;
         cache = List.copyOf(next);
         cachedScene = scene;
     }

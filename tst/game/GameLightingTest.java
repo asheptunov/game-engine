@@ -128,6 +128,62 @@ public final class GameLightingTest {
     }
 
     @Test
+    void autofocusUsesLiveTargetsAndIgnoresFirstPersonWeapon() throws Exception {
+        var navigation = new GameNavigation();
+        navigation.pose(new math.Vec3(0, 0, -6), 0, 0);
+        navigation.optics(.1f, 2);
+        var scenery =
+                new BlockWorld(List.of(new BlockWorld.Block(0, 0, 4, BlockWorld.Type.STONE)))
+                        .snapshot();
+        var current = new java.util.concurrent.atomic.AtomicReference<>(scenery);
+        try (var autofocus = new GameAutofocus(navigation, current::get)) {
+            navigation.autofocus(true);
+            awaitFocus(navigation, 9.5f);
+            var target =
+                    new engine.SceneInstance(
+                            "patrol/1/0",
+                            engine.SceneInstance.box(),
+                            new engine.Transform(
+                                    math.Vec3.ZERO, math.Vec3.ZERO, new math.Vec3(.5f, .5f, .5f)),
+                            new engine.Material("target", new math.Vec3(1, 1, 1)));
+            var weapon =
+                    new engine.SceneInstance(
+                            "player/rifle/test",
+                            target.geometry(),
+                            new engine.Transform(
+                                    new math.Vec3(0, 0, -5),
+                                    math.Vec3.ZERO,
+                                    new math.Vec3(.2f, .2f, .2f)),
+                            target.material());
+            current.set(focusWorld(scenery, target, weapon));
+            awaitFocus(navigation, 5.5f);
+            target =
+                    target.withTransform(
+                            new engine.Transform(
+                                    new math.Vec3(0, 0, -3),
+                                    math.Vec3.ZERO,
+                                    new math.Vec3(.5f, .5f, .5f)));
+            current.set(focusWorld(scenery, target, weapon));
+            awaitFocus(navigation, 2.5f);
+            current.set(scenery);
+            awaitFocus(navigation, 9.5f);
+        }
+    }
+
+    private static WorldSnapshot focusWorld(
+            WorldSnapshot scenery, engine.SceneInstance target, engine.SceneInstance weapon) {
+        var instances = new java.util.ArrayList<>(scenery.instances());
+        instances.add(target);
+        instances.add(weapon);
+        return new WorldSnapshot(
+                scenery.revision() + 1,
+                instances,
+                scenery.legacyObjects(),
+                scenery.lights(),
+                scenery.sky());
+    }
+
+    @Test
     void autofocusRejectsResultsFromOldModeAndOldView() {
         var navigation = new GameNavigation();
         navigation.pose(new math.Vec3(0, 0, -6), 0, 0);

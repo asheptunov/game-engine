@@ -15,6 +15,40 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class FocusLifecycleTest {
     @Test
+    void animatedInstancesReuseLocalGeometryAndPreserveWorldDistances() {
+        var resolver = new CameraFocus();
+        var geometry = PolygonMesh.approximateSphere(new AnalyticSphere(Vec3.ZERO, 1), 32);
+        var material = new Material("target", new Vec3(1, 1, 1));
+        var camera =
+                new Camera(
+                        new Vec3(0, 0, -3),
+                        new engine.objects.Rect(
+                                new Vec3(-.5f, -.5f, -2), new Vec3(1, 0, 0), new Vec3(0, 1, 0)));
+        for (int frame = 0; frame < 30; frame++) {
+            var transform =
+                    new Transform(
+                            new Vec3(0, 0, 5 + frame * .1f),
+                            new Vec3(15, frame * 3, 8),
+                            new Vec3(.7f, 1.3f, 1.8f));
+            var instance = new SceneInstance("animated", geometry, transform, material);
+            var scene =
+                    new CameraFocus.Scene(java.util.List.of(instance), java.util.List.of(), frame);
+            var result = resolver.resolve(FocusTargetSource.CENTER, camera, scene, 0, 0, () -> 0);
+            var reference = new PreparedObject(instance);
+            float expected = Float.POSITIVE_INFINITY;
+            for (var primitive : reference.primitives) {
+                float distance = primitive.distance(0, 0, -3, 0, 0, 1);
+                if (distance > 0) {
+                    expected = Math.min(expected, distance);
+                }
+            }
+            assertNull(result.error());
+            assertTrue(Math.abs(expected - result.distance()) < 2e-5);
+            assertEquals(1L, resolver.preparations);
+        }
+    }
+
+    @Test
     void slowQueriesBoundedLatestSourceCloseAndStrictOneShot() throws Exception {
         var f = FocusControllerTest.fixture();
         var entered = new CountDownLatch(1);

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 final class GameAutofocus implements AutoCloseable {
     private final GameNavigation navigation;
     private final CameraFocus resolver = new CameraFocus();
-    private final CameraFocus.Scene scene;
+    private final java.util.function.Supplier<WorldSnapshot> world;
     private final ScheduledExecutorService executor;
     private CameraFocus.Subject candidate;
     private long candidateSince;
@@ -20,8 +20,12 @@ final class GameAutofocus implements AutoCloseable {
     private long last;
 
     GameAutofocus(GameNavigation navigation, WorldSnapshot world) {
+        this(navigation, () -> world);
+    }
+
+    GameAutofocus(GameNavigation navigation, java.util.function.Supplier<WorldSnapshot> world) {
         this.navigation = navigation;
-        scene = new CameraFocus.Scene(world.instances(), world.legacyObjects(), world.revision());
+        this.world = world;
         executor =
                 Executors.newSingleThreadScheduledExecutor(
                         runnable -> {
@@ -44,6 +48,7 @@ final class GameAutofocus implements AutoCloseable {
             camera = navigation.view().camera();
             epoch = navigation.focusRevision();
         }
+        var scene = focusScene(world.get());
         long now = System.nanoTime();
         var result =
                 resolver.resolve(
@@ -78,6 +83,17 @@ final class GameAutofocus implements AutoCloseable {
         if (!navigation.acceptFocus(result, next)) {
             candidate = null;
         }
+    }
+
+    // First-person weapon geometry must not steal focus from the aimed-at world surface.
+    static CameraFocus.Scene focusScene(WorldSnapshot world) {
+        return new CameraFocus.Scene(
+                world.instances().stream()
+                        .filter(instance -> !instance.name().startsWith("player/rifle/"))
+                        .toList(),
+                world.legacyObjects(),
+                // Scene equality checks geometry; lighting revisions must not rebuild query data.
+                0);
     }
 
     @Override

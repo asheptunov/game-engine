@@ -144,13 +144,37 @@ public record Camera(
     }
 
     private void standard() {
-        var offset = center().sub(eye);
-        float d = planeDistance();
+        // Subtract the eye before summing the half-edges. Summing in world-space floats
+        // loses small offsets as the camera moves away from the origin.
+        var origin = sensor.origin();
+        var a = sensor.edge1();
+        var b = sensor.edge2();
+        double x = (double) origin.x() - eye.x() + .5 * a.x() + .5 * b.x();
+        double y = (double) origin.y() - eye.y() + .5 * a.y() + .5 * b.y();
+        double z = (double) origin.z() - eye.z() + .5 * a.z() + .5 * b.z();
+        var normal = forward();
+        double d = x * normal.x() + y * normal.y() + z * normal.z();
+        double lateralX = x - normal.x() * d;
+        double lateralY = y - normal.y() * d;
+        double lateralZ = z - normal.z() * d;
+        double error = Math.sqrt(lateralX * lateralX + lateralY * lateralY + lateralZ * lateralZ);
         if (d <= 0
-                || Math.abs(sensor.edge1().normalized().dot(sensor.edge2().normalized())) > 1e-5
-                || offset.sub(forward().scale(d)).length() > Math.max(1, d) * 1e-5)
+                || Math.abs(a.normalized().dot(b.normalized())) > 1e-5
+                || error > Math.max(1, d) * 1e-5 + centeringRoundoff()) {
             throw new IllegalArgumentException(
                     "This off-center/skewed camera cannot be converted; reset camera first");
+        }
+    }
+
+    private double centeringRoundoff() {
+        // The stored float origin may come from eye + forward - half-width - half-height.
+        // Allow two representable coordinate steps per axis for that rounding, rather
+        // than loosening the angular/skew test or accepting arbitrary off-center planes.
+        var origin = sensor.origin();
+        double x = Math.max(Math.ulp(eye.x()), Math.ulp(origin.x()));
+        double y = Math.max(Math.ulp(eye.y()), Math.ulp(origin.y()));
+        double z = Math.max(Math.ulp(eye.z()), Math.ulp(origin.z()));
+        return 2 * Math.sqrt(x * x + y * y + z * z);
     }
 
     public Camera withMode(String name) {
@@ -251,11 +275,10 @@ public record Camera(
                 || p.origin().add(p.edge2()).equals(p.origin())
                 || !finite(c.eye.add(c.forward().scale(c.focus)))
                 || c.eye.add(c.forward().scale(c.focus)).equals(c.eye)
-                || c.aperture > 0
-                        && (!finite(c.eye.add(p.edge1().normalized().scale(c.aperture)))
-                                || c.eye.add(p.edge1().normalized().scale(c.aperture))
-                                        .equals(c.eye)))
+                || c.aperture > 0 && !finite(c.eye.add(p.edge1().normalized().scale(c.aperture))))
             throw new IllegalArgumentException("Camera geometry is not numerically representable");
+        // Tiny pupils may round back to the eye as an animated aperture closes. That
+        // is a valid pinhole limit; reject nonfinite or degenerate rays, not zero offsets.
         var compiled = c.compile();
         var ray = new RaySample();
         for (float u : new float[] {0, 1})
