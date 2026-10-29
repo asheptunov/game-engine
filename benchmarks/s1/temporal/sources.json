@@ -1,0 +1,13 @@
+{
+  "commit": "c63a3a0fc5667ce8ba9dc75d4d8c5c1b9ae85ab4",
+  "hash_format": "SHA-256 of committed Git blob bytes, with LF line endings",
+  "files": {
+    "assets/gpu/diffuse.comp": "0e5a8bf42b03307dc32a5aa72f3bf53a681cd73f1ff18fe79bac4c46dc7199dd",
+    "assets/gpu/temporal.comp": "1ba6dec24b4dbdecfdb15026661f6cadb5fe4ed311601fb35059066fb194639b",
+    "src/gpu/GpuTemporal.java": "80644c08acbe58364b9506abc876a442341c3ebb28424ef459533843a638d526",
+    "src/gpu/GpuTemporalPass.java": "32783eee3ce18444bf4d06ba4779361be216ebd75366f1ffa37626b1e870783a",
+    "src/gpu/GpuKernel.java": "b86789e9e490879004d40b09924cd89e1b698f5c0c5bb1bba00f437e3664bfe8",
+    "src/gpu/GpuRenderSession.java": "fac4ac901da440d5be1485a56fb9a2f61086f83306d96047dbcd54c32835c40e",
+    "tools/gpu/ReconstructionBenchmark.java": "560e38f9a33cb89adcffeb84aa6ba8f49d3d89919a291ddcfedf70e0dc8a16b2"
+  }
+}

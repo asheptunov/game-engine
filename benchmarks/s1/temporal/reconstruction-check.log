@@ -1,0 +1,63 @@
+PASS raw equality with camera/object motion frame 0
+PASS raw equality with camera/object motion frame 1
+PASS raw equality with camera/object motion frame 2
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 3
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 4
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 5
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 6
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 7
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 8
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 9
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 10
+PASS previous surface positions follow translated/rotated object despite instance reorder
+PASS raw equality with camera/object motion frame 11
+PASS history changes presentation across camera/object motion and reordered instances
+PASS raw progressive mean exact at 1 spp
+PASS raw progressive mean exact at 2 spp
+PASS raw progressive mean exact at 3 spp
+PASS raw progressive mean exact at 4 spp
+PASS raw progressive mean exact at 5 spp
+PASS raw progressive mean exact at 6 spp
+PASS raw progressive mean exact at 7 spp
+PASS raw progressive mean exact at 8 spp
+PASS unsupported settings restore exact raw output: GPU temporal: uniform sampling required
+PASS unsupported settings restore exact raw output: GPU temporal: full atmosphere required
+PASS unsupported settings restore exact raw output: GPU temporal: path depth must be positive
+PASS finite aperture restores exact raw output
+PASS history reset seeds current material after fallback
+PASS lighting change clears bright history
+PASS newly exposed floor rejects the occluding object's history
+PASS demodulation preserves black material channels
+PASS glass and sky retain exact raw pixels
+PASS grid resize replaces histories and publication dimensions
+PASS session exposes reconstructed image resident=false
+PASS raw and presentation are separate
+PASS exposure conversion reads reconstructed snapshot
+PASS held raw and presentation leases survive new publication
+PASS off restores raw immediately without stale packed output
+PASS off/on cannot revive old reconstruction revision
+PASS off/on cannot revive an old image even with an unchanged caller revision
+PASS converged same-view off/on with unchanged revision publishes a complete image
+PASS GPU owner closes
+PASS retained presentation survives session shutdown
+PASS session exposes reconstructed image resident=true
+PASS raw and presentation are separate
+PASS exposure conversion reads reconstructed snapshot
+PASS resident presentation copy available
+PASS resident copy contains reconstructed rather than raw pixels
+PASS held raw and presentation leases survive new publication
+PASS off restores raw immediately without stale packed output
+PASS off/on cannot revive old reconstruction revision
+PASS off/on cannot revive an old image even with an unchanged caller revision
+PASS converged same-view off/on with unchanged revision publishes a complete image
+PASS GPU owner closes
+PASS retained presentation survives session shutdown
+GPU reconstruction checks passed.

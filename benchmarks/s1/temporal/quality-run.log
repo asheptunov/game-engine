@@ -1,0 +1,12 @@
+device=NVIDIA GeForce RTX 3080; vendor=4318; driverVersion=2585198592; apiVersion=4211039
+camera=Camera[eye=Vec3[x=-20.475605, y=2.614678, z=43.884098], sensor=Rect[origin=Vec3[x=-19.549866, y=2.198773, z=45.048943], edge1=Vec3[x=0.2824314, y=0.0, z=-2.0332792], edge2=Vec3[x=-0.17671807, y=1.1408336, z=-0.024546916]], projection=PERSPECTIVE, mode=PERSPECTIVE, focus=14.612777, aperture=0.0, height=0.0, rememberedAperture=0.0] settings=RenderSettings[pathDepth=8, seed=1, restartRevision=0, samplesPerBatch=1, sampleTarget=0, paused=false, acceleration=true, workers=14, tileSize=16, temporal=false, temporalRevision=0, interactive=false, interactiveMillis=8.333, minimumWidth=0, minimumHeight=0, temporalBudget=false, motionSamples=1, motionScale=1.0, fogDownsample=1, fogLightingGrid=false, fogJitter=false, foveated=false, smoothFoveation=true, foveationQuality=FoveationQuality[centerFraction=0.22, edgeSpacing=2], bloom=OFF]
+costGrid=1920x1080
+round,temporal,medianGpuMs,p95GpuMs,medianReconstructionMs,medianHostMs,peakMiB
+0,true,29.9978,32.6819,2.0449,33.9573,677.4
+0,false,27.6460,30.0766,0.0000,29.3054,677.4
+1,false,28.0976,30.4798,0.0000,29.7979,677.4
+1,true,31.7324,33.6806,2.1955,34.3030,677.4
+2,true,31.0086,32.6085,1.9651,33.5708,677.4
+2,false,28.0300,30.7043,0.0000,29.8246,677.4
+motion display-space MSE: raw 0.00188484, temporal 0.00097097, reduction 48.49%
+spatial-only MSE 0.00102401, temporal improvement over spatial 5.18%
