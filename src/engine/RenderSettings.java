@@ -22,8 +22,98 @@ public record RenderSettings(
         double motionScale,
         int fogDownsample,
         boolean fogLightingGrid,
-        boolean fogJitter) {
+        boolean fogJitter,
+        boolean foveated,
+        boolean smoothFoveation,
+        FoveationQuality foveationQuality,
+        Bloom bloom) {
+    /** Source compatibility for callers predating presentation bloom. */
+    @SuppressWarnings("PMD.ExcessiveParameterList")
+    public RenderSettings(
+            int pathDepth,
+            long seed,
+            long restartRevision,
+            int samplesPerBatch,
+            long sampleTarget,
+            boolean paused,
+            boolean acceleration,
+            int workers,
+            int tileSize,
+            boolean temporal,
+            long temporalRevision,
+            boolean interactive,
+            double interactiveMillis,
+            int minimumWidth,
+            int minimumHeight,
+            boolean temporalBudget,
+            int motionSamples,
+            double motionScale,
+            int fogDownsample,
+            boolean fogLightingGrid,
+            boolean fogJitter,
+            boolean foveated,
+            boolean smoothFoveation,
+            FoveationQuality foveationQuality) {
+        this(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                Bloom.OFF);
+    }
+
+    public RenderSettings withBloom(Bloom value) {
+        return new RenderSettings(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                value);
+    }
+
     public RenderSettings {
+        java.util.Objects.requireNonNull(bloom, "Bloom mode");
+        java.util.Objects.requireNonNull(foveationQuality, "Foveation quality");
         if (fogDownsample != 1 && fogDownsample != 2 && fogDownsample != 4) {
             throw new IllegalArgumentException("Fog downsample must be 1, 2 or 4");
         }
@@ -83,7 +173,11 @@ public record RenderSettings(
                 1,
                 1,
                 false,
-                false);
+                false,
+                false,
+                false,
+                FoveationQuality.defaults(),
+                Bloom.OFF);
     }
 
     public RenderSettings withPathDepth(int value) {
@@ -108,7 +202,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withSeed(long value) {
@@ -133,7 +231,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withRestartRevision(long value) {
@@ -158,7 +260,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withSamplesPerBatch(int value) {
@@ -183,7 +289,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withSampleTarget(long value) {
@@ -208,7 +318,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withPaused(boolean value) {
@@ -233,7 +347,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withWorkers(int value) {
@@ -258,7 +376,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withTileSize(int value) {
@@ -283,7 +405,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withAcceleration(boolean value) {
@@ -308,7 +434,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withTemporal(boolean value, long revision) {
@@ -333,7 +463,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withInteractive(
@@ -359,7 +493,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     public RenderSettings withTemporalBudget(boolean value, int samples, double scale) {
@@ -384,7 +522,11 @@ public record RenderSettings(
                 scale,
                 fogDownsample,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     /** GPU primary-ray fog quality; CPU and unsupported views retain direct integration. */
@@ -410,7 +552,11 @@ public record RenderSettings(
                 motionScale,
                 value,
                 fogLightingGrid,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     /** Optional GPU world-space lighting coefficients; CPU retains direct evaluation. */
@@ -436,7 +582,11 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 value,
-                fogJitter);
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
     }
 
     /** GPU stratified fog sampling; CPU retains its reference integration. */
@@ -462,6 +612,100 @@ public record RenderSettings(
                 motionScale,
                 fogDownsample,
                 fogLightingGrid,
-                value);
+                value,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
+    }
+
+    /** GPU center-weighted spatial sampling; CPU retains uniform sampling. */
+    public RenderSettings withFoveated(boolean value) {
+        return new RenderSettings(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                value,
+                smoothFoveation,
+                foveationQuality,
+                bloom);
+    }
+
+    /** Smooth GPU reconstruction, active only when center detail is enabled. */
+    public RenderSettings withSmoothFoveation(boolean value) {
+        return new RenderSettings(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                foveated,
+                value,
+                foveationQuality,
+                bloom);
+    }
+
+    /** Live smooth sampling controls; ignored by uniform and discrete sampling. */
+    public RenderSettings withFoveationQuality(FoveationQuality value) {
+        return new RenderSettings(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                value,
+                bloom);
     }
 }

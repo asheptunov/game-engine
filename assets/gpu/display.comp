@@ -25,7 +25,7 @@ uint encode(float value) {
     return srgb[min(65535u,uint(floor(double(scaled)+0.5)))];
 }
 void main() {
-    uint index=gl_GlobalInvocationID.x;
+    uint index=(gl_WorkGroupID.y*gl_NumWorkGroups.x+gl_WorkGroupID.x)*64u+gl_LocalInvocationIndex;
     uint lane=gl_LocalInvocationID.x;
     uint count=width*height;
     reused[lane]=0;

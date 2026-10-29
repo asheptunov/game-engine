@@ -42,6 +42,13 @@ final class CaptureCodec {
 
     static final class Budget {
         private int remaining = MAX_BYTES;
+
+        void consume(long bytes) throws IOException {
+            if (bytes < 0 || bytes > remaining) {
+                throw new IOException("Decoded capture exceeds 96 MiB");
+            }
+            remaining -= (int) bytes;
+        }
     }
 
     static <T> T load(Path path, Class<T> schema) throws IOException {
@@ -111,14 +118,16 @@ final class CaptureCodec {
             return List.copyOf(values);
         }
         var clazz = (Class<?>) type;
+        defaultCharacterState(p, key, clazz);
         if (!clazz.isRecord()) {
             return scalar(value, clazz);
         }
         // Version-one captures predating the optional GPU quality control use the reference path.
         if (clazz == engine.RenderSettings.class) {
-            p.putIfAbsent(key + ".fogDownsample", "1");
-            p.putIfAbsent(key + ".fogLightingGrid", "false");
-            p.putIfAbsent(key + ".fogJitter", "false");
+            defaultRenderSettings(p, key);
+        }
+        if (clazz == engine.Material.class) {
+            p.putIfAbsent(key + ".leaf", "null");
         }
         var components = clazz.getRecordComponents();
         var types = new Class<?>[components.length];
@@ -129,6 +138,33 @@ final class CaptureCodec {
                     read(p, key + "." + components[i].getName(), components[i].getGenericType());
         }
         return clazz.getDeclaredConstructor(types).newInstance(values);
+    }
+
+    private static void defaultCharacterState(Properties p, String key, Class<?> clazz) {
+        if (clazz == GameNavigation.State.class && !p.containsKey(key + ".weapon")) {
+            p.setProperty(key + ".weapon", "record");
+            p.setProperty(key + ".weapon.combat", "false");
+            p.setProperty(key + ".weapon.time", "0");
+            p.setProperty(key + ".weapon.recoil", "0");
+        }
+        if (clazz == engine.CharacterBody.State.class) {
+            p.putIfAbsent(key + ".height", "1.8");
+            p.putIfAbsent(key + ".targetHeight", "1.8");
+        }
+    }
+
+    private static void defaultRenderSettings(Properties p, String key) {
+        p.putIfAbsent(key + ".bloom", "OFF");
+        p.putIfAbsent(key + ".fogDownsample", "1");
+        p.putIfAbsent(key + ".fogLightingGrid", "false");
+        p.putIfAbsent(key + ".fogJitter", "false");
+        p.putIfAbsent(key + ".foveated", "false");
+        p.putIfAbsent(key + ".smoothFoveation", "false");
+        if (!p.containsKey(key + ".foveationQuality")) {
+            p.setProperty(key + ".foveationQuality", "record");
+            p.setProperty(key + ".foveationQuality.centerFraction", "0.5");
+            p.setProperty(key + ".foveationQuality.edgeSpacing", "6");
+        }
     }
 
     private static Object scalar(String value, Class<?> type) {

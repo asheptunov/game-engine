@@ -24,6 +24,15 @@ public final class PresentationBenchmark {
             }
             return;
         }
+        if (java.util.Arrays.asList(args).contains("foveated")) {
+            for (int round=0;round<3;round++) {
+                for (boolean enabled : new boolean[]{round%2==0,round%2!=0}) {
+                    System.setProperty("game.benchmarkFoveated",Boolean.toString(enabled));
+                    measure(round,true,1,true);
+                }
+            }
+            return;
+        }
         if (java.util.Arrays.asList(args).contains("paint")) {
             for (int round = 0; round < 3; round++) {
                 for (boolean full : new boolean[]{round % 2 == 0, round % 2 != 0}) {
@@ -101,6 +110,7 @@ public final class PresentationBenchmark {
         try (var renderer = new GameRenderer(navigation, airDivisor>0 ? AdventureWorld.create() : BlockWorld.landscape().snapshot(),
                 "gpu", GameRenderer::copyImage, hooks)) {
             if(combat) renderer.enableShooter();
+            renderer.configure(s -> s.withFoveated(Boolean.getBoolean("game.benchmarkFoveated")));
             int budget = Integer.getInteger("game.benchmarkBudget", 0);
             if (budget > 0) renderer.configure(s -> s.withInteractive(true, 1000. / budget, 0, 0));
             if(airDivisor>0) {
@@ -138,7 +148,7 @@ public final class PresentationBenchmark {
             if (Boolean.getBoolean("game.profileFrames")) collector.writeProfile(round, budget, session[0]);
             if (collector.intervals.isEmpty()) throw new AssertionError("No fresh paints");
             System.out.printf(Locale.ROOT, "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.1f,%.3f,%.3f%n", round,
-                    System.getProperty("gpu.referenceTraversal") != null ? "reference-traversal-"+Boolean.getBoolean("gpu.referenceTraversal") : System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels")+"-clear-"+Boolean.getBoolean("game.fullPaintClear") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / (duration / 1e9),
+                    System.getProperty("gpu.referenceTraversal") != null ? "reference-traversal-"+Boolean.getBoolean("gpu.referenceTraversal") : System.getProperty("game.benchmarkBudget") != null ? "budget-"+budget+"-copy-"+Boolean.getBoolean("game.copyDisplayPixels")+"-clear-"+Boolean.getBoolean("game.fullPaintClear")+"-foveated-"+Boolean.getBoolean("game.benchmarkFoveated") : airDivisor>0 ? "air-divisor-"+airDivisor+(Boolean.getBoolean("game.rebuildGpuTlas") ? "-allocate" : "-reuse")+(Boolean.getBoolean("game.timerCombatSubmission") ? "-timer" : "-immediate") : immediate ? "fresh-image" : "timer-16ms", collector.count / (duration / 1e9),
                     quantile(collector.intervals, .5), quantile(collector.intervals, .95),
                     quantile(collector.latencies, .95),quantile(collector.intervals,.99),quantile(collector.intervals,1),
                     100.0*collector.intervals.stream().filter(value->value>16.67).count()/collector.intervals.size(),
@@ -201,7 +211,7 @@ public final class PresentationBenchmark {
             }
             var directory = java.nio.file.Path.of(System.getProperty("game.profileDirectory", "out/performance/frame-profile"));
             java.nio.file.Files.createDirectories(directory);
-            try (var writer = java.nio.file.Files.newBufferedWriter(directory.resolve("round-" + round + "-budget-" + budget + "-clear-" + Boolean.getBoolean("game.fullPaintClear") + ".csv"))) {
+            try (var writer = java.nio.file.Files.newBufferedWriter(directory.resolve("round-" + round + "-budget-" + budget + "-clear-" + Boolean.getBoolean("game.fullPaintClear") + "-foveated-" + Boolean.getBoolean("game.benchmarkFoveated") + ".csv"))) {
                 writer.write("elapsedMs,width,height,intervalMs,queueMs,paintMs,pickupMs,copyMs,copyToPaintMs,captureToPaintMs,batchSamples,hostMs,prepareMs,gpuExecuteMs,gpuTransferMs,submitWaitMs,readbackMs\n");
                 for (var paint : paints) {
                     var frame = paint;

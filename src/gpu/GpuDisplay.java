@@ -15,7 +15,6 @@ import static org.lwjgl.vulkan.VK10.vkAllocateDescriptorSets;
 import static org.lwjgl.vulkan.VK10.vkCmdBindDescriptorSets;
 import static org.lwjgl.vulkan.VK10.vkCmdBindPipeline;
 import static org.lwjgl.vulkan.VK10.vkCmdCopyBuffer;
-import static org.lwjgl.vulkan.VK10.vkCmdDispatch;
 import static org.lwjgl.vulkan.VK10.vkCmdFillBuffer;
 import static org.lwjgl.vulkan.VK10.vkCmdPushConstants;
 import static org.lwjgl.vulkan.VK10.vkCreateComputePipelines;
@@ -250,7 +249,7 @@ final class GpuDisplay implements AutoCloseable {
                     null);
             var push = stack.malloc(12).putInt(0, width).putInt(4, height).putFloat(8, exposure);
             vkCmdPushConstants(gpu.command, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, push);
-            vkCmdDispatch(gpu.command, (width * height + 63) / 64, 1, 1);
+            GpuDispatch.linear(gpu.command, width * height);
         }
     }
 

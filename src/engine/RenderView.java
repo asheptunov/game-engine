@@ -3,7 +3,7 @@ package engine;
 /** Immutable camera and sensor-grid input. */
 public record RenderView(Camera camera, int width, int height) {
     public static final int MIN_DIMENSION = 64;
-    public static final int MAX_DIMENSION = 1920;
+    public static final int MAX_DIMENSION = 3840;
 
     public RenderView {
         if (camera == null) throw new IllegalArgumentException("Missing camera");

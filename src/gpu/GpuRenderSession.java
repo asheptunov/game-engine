@@ -25,7 +25,10 @@ public final class GpuRenderSession implements RenderSession {
             long restart,
             int fogDownsample,
             boolean fogLightingGrid,
-            boolean fogJitter) {}
+            boolean fogJitter,
+            boolean foveated,
+            boolean smoothFoveation,
+            engine.FoveationQuality foveationQuality) {}
 
     private static final class Slot {
         volatile float[] pixels;
@@ -134,7 +137,10 @@ public final class GpuRenderSession implements RenderSession {
                         nextSettings.restartRevision(),
                         nextSettings.fogDownsample(),
                         nextSettings.fogLightingGrid(),
-                        nextSettings.fogJitter());
+                        nextSettings.fogJitter(),
+                        nextSettings.foveated(),
+                        nextSettings.foveated() && nextSettings.smoothFoveation(),
+                        effectiveQuality(nextSettings));
         synchronized (this) {
             checkOpen();
             resolution.observe(nextView, System.nanoTime());
@@ -150,7 +156,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextSettings.restartRevision() == settings.restartRevision()
                                 && nextSettings.fogDownsample() == settings.fogDownsample()
                                 && nextSettings.fogLightingGrid() == settings.fogLightingGrid()
-                                && nextSettings.fogJitter() == settings.fogJitter();
+                                && nextSettings.fogJitter() == settings.fogJitter()
+                                && sameSampling(nextSettings, settings);
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -159,7 +166,8 @@ public final class GpuRenderSession implements RenderSession {
             if (settings != null
                     && (settings.paused() != nextSettings.paused()
                             || settings.sampleTarget() != nextSettings.sampleTarget()
-                            || settings.interactive() != nextSettings.interactive())) {
+                            || settings.interactive() != nextSettings.interactive()
+                            || !sameSampling(settings, nextSettings))) {
                 epoch++;
                 resolution.reset();
             }
@@ -233,7 +241,10 @@ public final class GpuRenderSession implements RenderSession {
                         key.restart(),
                         key.fogDownsample(),
                         key.fogLightingGrid(),
-                        key.fogJitter());
+                        key.fogJitter(),
+                        key.foveated(),
+                        key.smoothFoveation(),
+                        key.foveationQuality());
         var capturedSettings =
                 settings.interactive() && resolution.moving(now)
                         ? settings.withSamplesPerBatch(1)
@@ -260,6 +271,32 @@ public final class GpuRenderSession implements RenderSession {
                 destination.snapshot = new GpuKernel.Snapshot();
             }
         }
+    }
+
+    private static engine.FoveationQuality effectiveQuality(RenderSettings value) {
+        return value.foveated() && value.smoothFoveation()
+                ? value.foveationQuality()
+                : engine.FoveationQuality.defaults();
+    }
+
+    private static boolean sameSampling(RenderSettings first, RenderSettings second) {
+        return first.foveated() == second.foveated()
+                && (!first.foveated()
+                        || (first.smoothFoveation() == second.smoothFoveation()
+                                && effectiveQuality(first).equals(effectiveQuality(second))));
+    }
+
+    private static String samplingLabel(RenderSettings settings) {
+        if (!settings.foveated()) {
+            return "uniform";
+        }
+        return settings.smoothFoveation()
+                ? "smooth center "
+                        + Math.round(settings.foveationQuality().centerFraction() * 100)
+                        + "% / "
+                        + settings.foveationQuality().edgeSpacing()
+                        + "px"
+                : "center weighted";
     }
 
     // Called under the session monitor; records only scalar metadata, never image storage.
@@ -359,7 +396,7 @@ public final class GpuRenderSession implements RenderSession {
                                         + " build %.2f ms | fog builds %d | fog grid 1/%d requested"
                                         + " 1/%d | fog primary %.2f ms | fog reused %d | lighting"
                                         + " grid %b requested %b | grid build %.2f ms | fog jitter"
-                                        + " %b | display %s",
+                                        + " %b | display %s | sampling %s",
                                     kernel.gpu.name,
                                     resolutionLabel(capturedSettings),
                                     kernel.executeNanos / 1e6,
@@ -381,9 +418,8 @@ public final class GpuRenderSession implements RenderSession {
                                     capturedSettings.fogJitter(),
                                     destination.deviceOnly
                                             ? "GPU resident"
-                                            : destination.packed == null
-                                                    ? "CPU RGB"
-                                                    : "GPU packed");
+                                            : destination.packed == null ? "CPU RGB" : "GPU packed",
+                                    samplingLabel(capturedSettings));
                 } else {
                     cancelled++;
                     accumulatedKey = null;

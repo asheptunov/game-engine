@@ -46,3 +46,12 @@ Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt
 
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/GamePaintCheck.java') 'out/gpu/game-paint-compile.log' 'Game paint compilation failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.GamePaintCheck') 'out/gpu/game-paint-check.log' 'Game paint equivalence checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/FoveatedCheck.java') 'out/gpu/foveated-compile.log' 'Foveated compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.FoveatedCheck') 'out/gpu/foveated-check.log' 'Foveated sampling checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/SmoothFoveationCheck.java') 'out/gpu/smooth-foveation-compile.log' 'Smooth foveation compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.SmoothFoveationCheck') 'out/gpu/smooth-foveation-check.log' 'Smooth foveation checks failed'
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/HighResolutionCheck.java') 'out/gpu/high-resolution-compile.log' 'High-resolution compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.HighResolutionCheck') 'out/gpu/high-resolution-check.log' 'High-resolution checks failed'

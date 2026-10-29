@@ -467,7 +467,9 @@ public final class GameLightingTest {
                             {960, 540},
                             {1280, 720},
                             {1600, 900},
-                            {1920, 1080}
+                            {1920, 1080},
+                            {2560, 1440},
+                            {3840, 2160}
                         };
                         for (int i = 0; i < sizes.length; i++) {
                             selector.setSelectedIndex(i);
@@ -475,10 +477,10 @@ public final class GameLightingTest {
                             assertEquals(sizes[i][1], navigation.view().height());
                             assertEquals(camera, navigation.view().camera());
                         }
-                        selector.setSelectedIndex(6);
+                        selector.setSelectedIndex(8);
                         editor.refresh();
                         assertEquals("Custom", selector.getSelectedItem().toString());
-                        assertEquals(1920, navigation.view().width());
+                        assertEquals(3840, navigation.view().width());
                         setNumber(editor, "Width (pixels)", 1008);
                         setNumber(editor, "Height (pixels)", 672);
                         assertEquals(1008, navigation.view().width());

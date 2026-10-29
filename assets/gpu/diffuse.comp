@@ -27,6 +27,10 @@ layout(std430,set=0,binding=8) buffer PrimaryFog { vec4 primaryFog[]; };
 layout(std430,set=0,binding=9) buffer FogGuides { vec4 fogGuides[]; };
 layout(set=0,binding=10) uniform sampler3D lightingTexture;
 layout(rgba32f,set=0,binding=11) uniform writeonly image3D lightingImage;
+layout(set=0,binding=12) readonly buffer SampleLocations { uint locations[]; };
+layout(set=0,binding=13) readonly buffer SmoothLayout { uint smoothLayout[]; };
+layout(set=0,binding=14) buffer SmoothGuides { vec4 smoothGuides[]; };
+layout(constant_id=2) const bool useFoveation=false;
 layout(constant_id=1) const bool useLightingGrid=false;
 layout(constant_id=0) const int dispatchMode=0; // full, sun table, coarse fog, reconstructed
 layout(constant_id=3) const bool referenceTraversal=false;
@@ -463,20 +467,108 @@ void resolvePrimaryFog(uvec2 xy) {
     dvec3 mean=sampling.y==0?dvec3(radiance):means[pixel].xyz+(dvec3(radiance)-means[pixel].xyz)/double(sampling.y+1);
     means[pixel]=dvec4(mean,0);pixels[pixel]=vec4(vec3(mean),reused?1:0);
 }
+// Sparse diagnostic reference for the CPU-generated compact location list.
+// Keep the fixed hash and radial probability identical to GpuFoveation.rate.
+uint spatialRate(uvec2 tile) {
+    if (!useFoveation) return 1u;
+    vec2 center=min(vec2(tile)+vec2(2),vec2(grid.xy)-vec2(.5));
+    float radius=length(center/vec2(grid.xy)*2-1);
+    uint h=(tile.x/4u)*0x1f123bb5u ^ (tile.y/4u)*0x5f356495u;
+    h^=h>>16u; h*=0x7feb352du; h^=h>>15u; h*=0x846ca68bu; h^=h>>16u;
+    float threshold=float(h>>8u)/16777216.;
+    return radius<.7 ? (threshold<smoothstep(.5,.7,radius)?2u:1u)
+                      : (threshold<smoothstep(.75,.95,radius)?4u:2u);
+}
+
+float smoothPosition(uint offset, uint index) {
+    return uintBitsToFloat(smoothLayout[offset+index]);
+}
+float smoothExtent(uint offset, uint index, uint count) {
+    // The outermost sample is the center of the edge pixel; keep its jitter in bounds.
+    if (index==0u || index+1u==count) return 1.;
+    float center=smoothPosition(offset,index);
+    return min(center-smoothPosition(offset,index-1u),smoothPosition(offset,index+1u)-center);
+}
+bool compatibleSmooth(uint reference, uint candidate) {
+    vec4 a=smoothGuides[reference*2u], b=smoothGuides[candidate*2u];
+    if (smoothGuides[reference*2u+1u].x!=smoothGuides[candidate*2u+1u].x) return false;
+    if (a.w==0 && b.w==0) return true;
+    return dot(a.xyz,b.xyz)>.9 && abs(a.w-b.w)<max(.02,.03*max(a.w,b.w));
+}
+void resolveSmooth(uvec2 xy) {
+    if (any(greaterThanEqual(xy,grid.xy))) return;
+    uvec2 size=uvec2(smoothLayout[0],smoothLayout[1]);
+    vec2 coordinate=vec2(smoothPosition(smoothLayout[2],xy.x),smoothPosition(smoothLayout[3],xy.y));
+    uvec2 lower=uvec2(coordinate);
+    uvec2 closest=uvec2(round(coordinate));
+    uint reference=closest.y*size.x+closest.x;
+    vec2 extent=vec2(smoothExtent(4u,closest.x,size.x),smoothExtent(4u+size.x,closest.y,size.y));
+    // Match the filter width in both screen axes. Otherwise a 1x6 lattice would
+    // stretch noise into strings even though its spacing changes continuously.
+    float support=max(extent.x,extent.y);
+    ivec2 reach=ivec2(ceil(vec2(support)/extent));
+    ivec2 first=max(ivec2(0),ivec2(lower)-reach);
+    ivec2 last=min(ivec2(size)-1,ivec2(lower)+reach+1);
+    vec2 target=vec2(xy)+.5;
+    vec3 sum=vec3(0); float total=0;
+    for (int y=first.y;y<=last.y;y++) for (int x=first.x;x<=last.x;x++) {
+        uint sampleIndex=uint(y)*size.x+uint(x);
+        vec2 position=vec2(smoothPosition(4u,uint(x)),smoothPosition(4u+size.x,uint(y)));
+        vec2 tent=max(vec2(0),vec2(1)-abs(position-target)/support);
+        float weight=tent.x*tent.y;
+        if (weight>0 && compatibleSmooth(reference,sampleIndex)) {
+            sum+=vec3(means[sampleIndex].xyz)*weight; total+=weight;
+        }
+    }
+    pixels[xy.y*grid.x+xy.x]=vec4(total>0?sum/total:vec3(means[reference].xyz),0);
+}
+
 void main() {
     if(dispatchMode==1) { buildFogSun(); return; }
     if(dispatchMode==5) { buildLightingGrid(); return; }
     if(dispatchMode==2) { buildPrimaryFog(); return; }
     uvec2 xy = gl_GlobalInvocationID.xy;
-    if (xy.x >= grid.x || xy.y >= grid.y) return;
-    if(dispatchMode==4) { resolvePrimaryFog(xy); return; }
+    if (dispatchMode==6) { resolveSmooth(xy); return; }
+    if(dispatchMode==4) {
+        if (xy.x<grid.x && xy.y<grid.y) resolvePrimaryFog(xy);
+        return;
+    }
+    uint rate=1u;
+    bool continuousSampling=useFoveation && fogMeta.z==3;
+    uint smoothIndex=0u;
+    vec2 smoothCenter=vec2(0), smoothSize=vec2(1);
+    if (continuousSampling) {
+        smoothIndex=(gl_WorkGroupID.y*gl_NumWorkGroups.x+gl_WorkGroupID.x)*64u+gl_LocalInvocationIndex;
+        if (smoothIndex>=uint(fogMeta.w)) return;
+        uvec2 size=uvec2(smoothLayout[0],smoothLayout[1]);
+        uvec2 cell=uvec2(smoothIndex%size.x,smoothIndex/size.x);
+        smoothCenter=vec2(smoothPosition(4u,cell.x),smoothPosition(4u+size.x,cell.y));
+        smoothSize=vec2(smoothExtent(4u,cell.x,size.x),smoothExtent(4u+size.x,cell.y,size.y));
+        xy=uvec2(smoothCenter);
+    } else if (useFoveation && fogMeta.z==1) {
+        uint index=(gl_WorkGroupID.y*gl_NumWorkGroups.x+gl_WorkGroupID.x)*64u+gl_LocalInvocationIndex;
+        if (index>=uint(fogMeta.w)) return;
+        uint location=locations[index];
+        xy=uvec2(location&4095u,(location>>12u)&4095u);
+        rate=1u<<(location>>24u);
+    } else if (useFoveation) {
+        rate=spatialRate((xy/4u)*4u);
+    }
+    if (useFoveation && fogMeta.z==2 && rate>1u) {
+        if (any(notEqual(xy%rate,uvec2(0)))) return;
+    }
+    if (any(greaterThanEqual(xy,grid.xy))) return;
+    uvec2 footprint=min(uvec2(rate),grid.xy-xy);
     uint pixel = xy.y*grid.x+xy.x;
+    uint accumulationPixel=continuousSampling?smoothIndex:pixel;
     uint64_t seed = (uint64_t(sampling.x)<<32) | uint64_t(grid.w);
     randomState = mix64(seed) ^ mix64(uint64_t(pixel)+0x632be59bd9b4e019UL) ^ mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
     float u = grid.z == 0 ? 0.5 : randomValue();
     float v = grid.z == 0 ? 0.5 : randomValue();
     vec3 o = eye.xyz;
-    vec3 d = normalize(origin.xyz + edge1.xyz*((float(xy.x)+u)/float(grid.x)) + edge2.xyz*((float(xy.y)+v)/float(grid.y))-o);
+    vec2 samplePosition=continuousSampling ? smoothCenter-.5*smoothSize+vec2(u,v)*smoothSize
+                                 : vec2(xy)+vec2(u,v)*vec2(footprint);
+    vec3 d = normalize(origin.xyz + edge1.xyz*(samplePosition.x/float(grid.x)) + edge2.xyz*(samplePosition.y/float(grid.y))-o);
     if (eye.w > 0) {
         // Independent aperture domain preserves the transport stream, including depth zero.
         uint64_t transportState = randomState;
@@ -497,6 +589,10 @@ void main() {
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
+        if (continuousSampling && depth==0) {
+            smoothGuides[smoothIndex*2u]=vec4(found?hit.normal:vec3(0),found?hit.t:0);
+            smoothGuides[smoothIndex*2u+1u]=vec4(float(hit.instanceIndex),0,0,0);
+        }
         if(dispatchMode==3 && depth==0) {
             fogGuides[pixel*2]=vec4(found?hit.normal:vec3(0),found?hit.t:0);
             fogGuides[pixel*2+1]=vec4(float(hit.instanceIndex),0,0,0);
@@ -574,7 +670,13 @@ void main() {
         d = cosineDirection(n);
     }
     if(dispatchMode==3) { pixels[pixel]=vec4(radiance,0); return; }
-    dvec3 mean = sampling.y == 0 ? dvec3(radiance) : means[pixel].xyz+(dvec3(radiance)-means[pixel].xyz)/double(sampling.y+1);
-    means[pixel] = dvec4(mean,0);
-    pixels[pixel] = vec4(vec3(mean),0);
+    dvec3 mean = sampling.y == 0 ? dvec3(radiance) : means[accumulationPixel].xyz+(dvec3(radiance)-means[accumulationPixel].xyz)/double(sampling.y+1);
+    means[accumulationPixel] = dvec4(mean,0);
+    if (continuousSampling) return;
+    // Replicate this footprint's linear-radiance estimate. The full-size raw snapshot and
+    // packed display agree; the HUD is drawn later at presentation resolution.
+    if (!useFoveation) { pixels[pixel]=vec4(vec3(mean),0); return; }
+    for (uint by=0;by<footprint.y;by++) for (uint bx=0;bx<footprint.x;bx++) {
+        pixels[(xy.y+by)*grid.x+xy.x+bx]=vec4(vec3(mean),0);
+    }
 }

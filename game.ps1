@@ -1,6 +1,6 @@
 param([switch]$NoBuild, [ValidateSet('world', 'landscape', 'gallery')][string]$Scene = 'world',
     [ValidateSet('cpu','gpu')][string]$Backend = 'cpu',
-    [ValidateRange(0,1920)][int]$Width = 0, [ValidateRange(0,1920)][int]$Height = 0, [string]$Capture = "",
+    [ValidateRange(0,3840)][int]$Width = 0, [ValidateRange(0,3840)][int]$Height = 0, [string]$Capture = "",
     [switch]$NativePresentation)
 $ErrorActionPreference = "Stop"
 $repository = $PSScriptRoot
@@ -8,7 +8,7 @@ $output = Join-Path $repository "out/game"
 $classes = Join-Path $output "classes"
 if (-not $NoBuild -or -not (Test-Path (Join-Path $classes "game/SampleGameMain.class"))) { & (Join-Path $repository "game-build.ps1") }
 $jdk = if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin/javaw.exe"))) { Join-Path $env:JAVA_HOME "bin" } else { "C:/Users/andri/.jdks/openjdk-23.0.1/bin" }
-if (($Width -eq 0) -ne ($Height -eq 0) -or ($Width -ne 0 -and ($Width -lt 64 -or $Height -lt 64))) { throw 'Supply both Width and Height, each 64..1920, or omit both' }
+if (($Width -eq 0) -ne ($Height -eq 0) -or ($Width -ne 0 -and ($Width -lt 64 -or $Height -lt 64))) { throw 'Supply both Width and Height, each 64..3840, or omit both' }
 $classPath = $classes
 if ($Backend -eq 'gpu') {
     if (-not $NoBuild) { & (Join-Path $repository 'gpu-build.ps1') -NoGameBuild }

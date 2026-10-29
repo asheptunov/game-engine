@@ -86,6 +86,10 @@ final class GpuKernel implements AutoCloseable {
     private long fogReconstructPipeline;
     private long fogResolvePipeline;
     private long lightingBuildPipeline;
+    private final long[] foveatedPipelines = new long[2];
+    private final GpuFoveation foveation = new GpuFoveation();
+    private final GpuSmoothFoveation smoothFoveation = new GpuSmoothFoveation();
+    private long smoothResolvePipeline;
     private final long[] lightingPipelines = new long[5];
     private long descriptorPool;
     private long descriptorSet;
@@ -160,8 +164,8 @@ final class GpuKernel implements AutoCloseable {
 
     private void createPipeline() {
         try (var stack = MemoryStack.stackPush()) {
-            var bindings = VkDescriptorSetLayoutBinding.calloc(12, stack);
-            for (int i = 0; i < 12; i++) {
+            var bindings = VkDescriptorSetLayoutBinding.calloc(15, stack);
+            for (int i = 0; i < 15; i++) {
                 bindings.get(i)
                         .binding(i)
                         .descriptorCount(1)
@@ -226,11 +230,14 @@ final class GpuKernel implements AutoCloseable {
             }
             try {
                 pipeline = createVariant(shader, 0, stack);
+                foveatedPipelines[0] = createVariant(shader, 0, stack, false, true);
+                foveatedPipelines[1] = createVariant(shader, 0, stack, true, true);
                 fogSunPipeline = createVariant(shader, 1, stack);
                 fogPrimaryPipeline = createVariant(shader, 2, stack);
                 fogReconstructPipeline = createVariant(shader, 3, stack);
                 fogResolvePipeline = createVariant(shader, 4, stack);
                 lightingBuildPipeline = createVariant(shader, 5, stack);
+                smoothResolvePipeline = createVariant(shader, 6, stack, false, true);
                 for (int mode : new int[] {0, 2, 3, 4}) {
                     lightingPipelines[mode] = createVariant(shader, mode, stack, true);
                 }
@@ -239,7 +246,7 @@ final class GpuKernel implements AutoCloseable {
             }
             var sizes = VkDescriptorPoolSize.calloc(4, stack);
             sizes.get(0).type(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR).descriptorCount(1);
-            sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(9);
+            sizes.get(1).type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).descriptorCount(12);
             sizes.get(2)
                     .type(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .descriptorCount(1);
@@ -275,15 +282,22 @@ final class GpuKernel implements AutoCloseable {
     }
 
     private long createVariant(long shader, int mode, MemoryStack stack, boolean gridLighting) {
-        var constant = VkSpecializationMapEntry.calloc(3, stack);
+        return createVariant(shader, mode, stack, gridLighting, false);
+    }
+
+    private long createVariant(
+            long shader, int mode, MemoryStack stack, boolean gridLighting, boolean foveated) {
+        var constant = VkSpecializationMapEntry.calloc(4, stack);
         constant.get(0).constantID(0).offset(0).size(4);
         constant.get(1).constantID(1).offset(4).size(4);
-        constant.get(2).constantID(3).offset(8).size(4);
+        constant.get(2).constantID(2).offset(8).size(4);
+        constant.get(3).constantID(3).offset(12).size(4);
         var data =
-                stack.malloc(12)
+                stack.malloc(16)
                         .putInt(0, mode)
                         .putInt(4, gridLighting ? 1 : 0)
-                        .putInt(8, referenceTraversal ? 1 : 0);
+                        .putInt(8, foveated ? 1 : 0)
+                        .putInt(12, referenceTraversal ? 1 : 0);
         var specialization = VkSpecializationInfo.calloc(stack).pMapEntries(constant).pData(data);
         var create = VkComputePipelineCreateInfo.calloc(1, stack);
         create.get(0)
@@ -324,6 +338,7 @@ final class GpuKernel implements AutoCloseable {
         prepareDisplay(view, packed, snapshot);
         boolean changed = prepareScene(world);
         changed |= prepareImages(view);
+        changed |= prepareSampling(settings);
         if (snapshot == null && readback == null) {
             readback = gpu.buffer(output.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
         }
@@ -376,13 +391,7 @@ final class GpuKernel implements AutoCloseable {
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 5);
             buildPrimaryFog();
             vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 4);
-            vkCmdBindPipeline(
-                    gpu.command,
-                    VK_PIPELINE_BIND_POINT_COMPUTE,
-                    fogDownsample == 1
-                            ? lightingVariant(pipeline, 0)
-                            : lightingVariant(fogReconstructPipeline, 3));
-            vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
+            dispatchMain(settings);
             resolvePrimaryFog();
             if (packed != null) {
                 display.encode(output, width, height, exposure);
@@ -424,6 +433,80 @@ final class GpuKernel implements AutoCloseable {
         }
         readbackNanos = System.nanoTime() - readbackStart;
         hostNanos = System.nanoTime() - start;
+    }
+
+    private boolean prepareSampling(RenderSettings settings) {
+        boolean changed =
+                foveation.prepare(
+                        gpu, width, height, settings.foveated() && !settings.smoothFoveation());
+        changed |=
+                smoothFoveation.prepare(
+                        gpu,
+                        width,
+                        height,
+                        settings.foveated() && settings.smoothFoveation(),
+                        settings.foveationQuality());
+        return changed;
+    }
+
+    private static int samplingMode(RenderSettings settings) {
+        if (!settings.foveated()) {
+            return 0;
+        }
+        if (settings.smoothFoveation()) {
+            return 3;
+        }
+        return Boolean.getBoolean("gpu.sparseFoveation") ? 2 : 1;
+    }
+
+    private void dispatchMain(RenderSettings settings) {
+        vkCmdBindPipeline(
+                gpu.command,
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+                settings.foveated()
+                        ? foveatedPipelines[lightingGrid ? 1 : 0]
+                        : fogDownsample == 1
+                                ? lightingVariant(pipeline, 0)
+                                : lightingVariant(fogReconstructPipeline, 3));
+        if (settings.foveated() && settings.smoothFoveation()) {
+            GpuDispatch.linear(gpu.command, smoothFoveation.count);
+        } else if (settings.foveated() && !Boolean.getBoolean("gpu.sparseFoveation")) {
+            GpuDispatch.linear(gpu.command, foveation.count);
+        } else {
+            vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
+        }
+        resolveSmoothFoveation(settings);
+    }
+
+    private void resolveSmoothFoveation(RenderSettings settings) {
+        if (!settings.foveated() || !settings.smoothFoveation()) {
+            return;
+        }
+        gpu.barrier(
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_ACCESS_SHADER_WRITE_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_ACCESS_SHADER_READ_BIT);
+        vkCmdBindPipeline(gpu.command, VK_PIPELINE_BIND_POINT_COMPUTE, smoothResolvePipeline);
+        vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
+    }
+
+    private void bindSmoothBuffers(VkWriteDescriptorSet.Buffer writes, MemoryStack stack) {
+        var buffers = new VulkanDevice.Buffer[] {smoothFoveation.layout, smoothFoveation.guides};
+        for (int i = 0; i < buffers.length; i++) {
+            var info =
+                    VkDescriptorBufferInfo.calloc(1, stack)
+                            .buffer(buffers[i].handle)
+                            .offset(0)
+                            .range(buffers[i].size);
+            writes.get(13 + i)
+                    .sType$Default()
+                    .dstSet(descriptorSet)
+                    .dstBinding(13 + i)
+                    .descriptorCount(1)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    .pBufferInfo(info);
+        }
     }
 
     private void transferOutput(Snapshot snapshot, int[] packed, MemoryStack stack) {
@@ -565,7 +648,11 @@ final class GpuKernel implements AutoCloseable {
         boolean changed = false;
         // Atmosphere alone uses the same edge-checked primary-segment reconstruction.
         // Fog still requires its conservative layout eligibility; lenses always integrate directly.
-        fogDownsample = view.camera().aperture() == 0 && eligibleAir ? settings.fogDownsample() : 1;
+        // Coarse spatial rays already integrate the complete segment for their footprint.
+        fogDownsample =
+                view.camera().aperture() == 0 && eligibleAir && !settings.foveated()
+                        ? settings.fogDownsample()
+                        : 1;
         long fogBytes =
                 fogDownsample == 1
                         ? 48
@@ -698,7 +785,7 @@ final class GpuKernel implements AutoCloseable {
 
     private void bind() {
         try (var stack = MemoryStack.stackPush()) {
-            var writes = VkWriteDescriptorSet.calloc(12, stack);
+            var writes = VkWriteDescriptorSet.calloc(15, stack);
             var acceleration =
                     VkWriteDescriptorSetAccelerationStructureKHR.calloc(stack)
                             .sType$Default()
@@ -759,6 +846,19 @@ final class GpuKernel implements AutoCloseable {
                     .descriptorCount(1)
                     .descriptorType(org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .pImageInfo(storage);
+            var locations =
+                    VkDescriptorBufferInfo.calloc(1, stack)
+                            .buffer(foveation.locations.handle)
+                            .offset(0)
+                            .range(foveation.locations.size);
+            writes.get(12)
+                    .sType$Default()
+                    .dstSet(descriptorSet)
+                    .dstBinding(12)
+                    .descriptorCount(1)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    .pBufferInfo(locations);
+            bindSmoothBuffers(writes, stack);
             vkUpdateDescriptorSets(gpu.device, writes, null);
         }
     }
@@ -783,6 +883,12 @@ final class GpuKernel implements AutoCloseable {
         parameters.mapped.putFloat(172, disc == null ? 2 : disc.cosineRadius());
         writeAtmosphere(world.sky().atmosphere());
         writeFog(world.sky().fog());
+        // fogMeta.z is reserved for the spatial sampling mode; fogMeta.y controls fog jitter.
+        parameters.mapped.putFloat(
+                (19 + engine.AtmosphereTable.FLOATS / 4) * 16 + 8, samplingMode(settings));
+        parameters.mapped.putFloat(
+                (19 + engine.AtmosphereTable.FLOATS / 4) * 16 + 12,
+                settings.smoothFoveation() ? smoothFoveation.count : foveation.count);
         long seed = cameraSeed(settings.seed(), camera);
         parameters
                 .mapped
@@ -917,6 +1023,10 @@ final class GpuKernel implements AutoCloseable {
             destroyPipeline(fogReconstructPipeline);
             destroyPipeline(fogResolvePipeline);
             destroyPipeline(lightingBuildPipeline);
+            destroyPipeline(smoothResolvePipeline);
+            for (long variant : foveatedPipelines) {
+                destroyPipeline(variant);
+            }
             for (long variant : lightingPipelines) {
                 destroyPipeline(variant);
             }

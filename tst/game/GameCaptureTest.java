@@ -37,9 +37,9 @@ public final class GameCaptureTest {
     }
 
     @Test
-    void fullHdNavigationRoundTripsAndRejectsOversizedEdits() throws Exception {
+    void fourKNavigationRoundTripsAndRejectsOversizedEdits() throws Exception {
         var navigation = new GameNavigation();
-        navigation.fixedResolution(1920, 1080);
+        navigation.fixedResolution(3840, 2160);
         var saved = navigation.snapshot();
         var file = root().resolve("navigation.properties.gz");
         CaptureCodec.save(file, saved);
@@ -47,9 +47,9 @@ public final class GameCaptureTest {
         assertEquals(saved, restored);
         var copy = new GameNavigation();
         copy.restore(restored);
-        assertEquals(1920, copy.view().width());
-        assertEquals(1080, copy.view().height());
-        for (int[] size : new int[][] {{1921, 1080}, {1920, 1921}, {63, 1080}}) {
+        assertEquals(3840, copy.view().width());
+        assertEquals(2160, copy.view().height());
+        for (int[] size : new int[][] {{3841, 2160}, {3840, 3841}, {63, 2160}}) {
             boolean rejected = false;
             try {
                 copy.fixedResolution(size[0], size[1]);
@@ -57,17 +57,20 @@ public final class GameCaptureTest {
                 rejected = true;
             }
             assertTrue(rejected);
-            assertEquals(1920, copy.view().width());
-            assertEquals(1080, copy.view().height());
+            assertEquals(3840, copy.view().width());
+            assertEquals(2160, copy.view().height());
         }
-        assertEquals(1920, engine.RenderCapabilities.GPU.maximumDimension());
-        assertEquals(1920, engine.RenderCapabilities.CPU.maximumDimension());
+        assertEquals(3840, engine.RenderCapabilities.GPU.maximumDimension());
+        assertEquals(3840, engine.RenderCapabilities.CPU.maximumDimension());
     }
 
     @Test
     void fogQualitySettingsSurviveEditsAndOlderCapturesUseFull() throws Exception {
         var settings =
                 engine.RenderSettings.defaults()
+                        .withFoveated(true)
+                        .withSmoothFoveation(true)
+                        .withFoveationQuality(new engine.FoveationQuality(.25, 12))
                         .withFogDownsample(4)
                         .withFogLightingGrid(true)
                         .withFogJitter(true)
@@ -83,6 +86,9 @@ public final class GameCaptureTest {
                         .withTemporal(false, 2)
                         .withInteractive(false, 20, 64, 64)
                         .withTemporalBudget(false, 2, .5);
+        assertTrue(settings.foveated());
+        assertTrue(settings.smoothFoveation());
+        assertEquals(new engine.FoveationQuality(.25, 12), settings.foveationQuality());
         assertEquals(4, settings.fogDownsample());
         assertTrue(settings.fogLightingGrid());
         assertTrue(settings.fogJitter());
@@ -93,10 +99,20 @@ public final class GameCaptureTest {
                 Files.readString(file)
                         .replace("data.fogDownsample=4", "")
                         .replace("data.fogLightingGrid=true", "")
-                        .replace("data.fogJitter=true", "");
+                        .replace("data.fogJitter=true", "")
+                        .replace("data.foveated=true", "")
+                        .replace("data.smoothFoveation=true", "")
+                        .replace("data.foveationQuality=record", "")
+                        .replace("data.foveationQuality.centerFraction=0.25", "")
+                        .replace("data.foveationQuality.edgeSpacing=12", "");
         Files.writeString(file, old);
         assertEquals(
-                settings.withFogDownsample(1).withFogLightingGrid(false).withFogJitter(false),
+                settings.withFogDownsample(1)
+                        .withFogLightingGrid(false)
+                        .withFogJitter(false)
+                        .withFoveated(false)
+                        .withSmoothFoveation(false)
+                        .withFoveationQuality(engine.FoveationQuality.defaults()),
                 CaptureCodec.load(file, engine.RenderSettings.class));
         Files.writeString(file, old + "\ndata.fogDownsample=3\n");
         boolean rejected = false;

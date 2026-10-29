@@ -14,6 +14,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.DoubleSupplier;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 import javax.swing.BorderFactory;
@@ -25,6 +27,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSlider;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.SpinnerNumberModel;
@@ -164,6 +167,8 @@ public final class GameSettingsPanel extends JPanel {
                     new ResolutionPreset("720p HD — 1280 × 720", 1280, 720),
                     new ResolutionPreset("900p — 1600 × 900", 1600, 900),
                     new ResolutionPreset("1080p — 1920 × 1080", 1920, 1080),
+                    new ResolutionPreset("1440p QHD — 2560 × 1440", 2560, 1440),
+                    new ResolutionPreset("4K UHD — 3840 × 2160", 3840, 2160),
                     new ResolutionPreset("Custom", 0, 0)
                 };
         var selector = new JComboBox<>(choices);
@@ -274,6 +279,7 @@ public final class GameSettingsPanel extends JPanel {
         heading(panel, "Image and transport");
         resolutionPresets(panel);
         frameBudget(panel);
+        centerDetailControls(panel);
         number(
                 panel,
                 "Width (pixels)",
@@ -1017,6 +1023,107 @@ public final class GameSettingsPanel extends JPanel {
 
     private engine.RenderCapabilities.Support support(engine.RenderCapabilities.Feature feature) {
         return renderer.capabilities().support(feature);
+    }
+
+    private void centerDetailControls(JPanel panel) {
+        check(
+                panel,
+                "Center detail (experimental)",
+                () -> renderer.settings().foveated(),
+                value -> renderer.configure(s -> s.withFoveated(value)),
+                renderer.capabilities().id().equals("gpu"));
+        check(
+                panel,
+                "Smooth center detail (experimental)",
+                () -> renderer.settings().smoothFoveation(),
+                value -> renderer.configure(s -> s.withSmoothFoveation(value)),
+                renderer.capabilities().id().equals("gpu"));
+        panel.add(new JLabel("Smooth requires Center detail; off restores coarse blocks."));
+        panel.add(new JLabel("Use Fixed resolution to retain full center detail."));
+        panel.add(new JLabel("Edges stay coarse when still; atmosphere uses Full."));
+        qualitySlider(
+                panel,
+                "Sharp center (%)",
+                10,
+                75,
+                () ->
+                        (int)
+                                Math.round(
+                                        renderer.settings().foveationQuality().centerFraction()
+                                                * 100),
+                value ->
+                        renderer.configure(
+                                s ->
+                                        s.withFoveationQuality(
+                                                new engine.FoveationQuality(
+                                                        value / 100.,
+                                                        s.foveationQuality().edgeSpacing()))));
+        qualitySlider(
+                panel,
+                "Edge spacing (pixels)",
+                2,
+                16,
+                () -> renderer.settings().foveationQuality().edgeSpacing(),
+                value ->
+                        renderer.configure(
+                                s ->
+                                        s.withFoveationQuality(
+                                                new engine.FoveationQuality(
+                                                        s.foveationQuality().centerFraction(),
+                                                        value))));
+        panel.add(
+                new JLabel(
+                        "Smooth mode: smaller center / larger spacing reduces peripheral detail."));
+        panel.add(new JLabel("Center % applies to each axis. Sliders apply when released."));
+        button(
+                        panel,
+                        "4K strong falloff",
+                        () -> {
+                            renderer.configure(
+                                    s ->
+                                            s.withFoveated(true)
+                                                    .withSmoothFoveation(true)
+                                                    .withFoveationQuality(
+                                                            new engine.FoveationQuality(.25, 12))
+                                                    .withInteractive(
+                                                            false,
+                                                            s.interactiveMillis(),
+                                                            s.minimumWidth(),
+                                                            s.minimumHeight()));
+                            navigation.fixedResolution(3840, 2160);
+                            customResolution = false;
+                        })
+                .setEnabled(renderer.capabilities().id().equals("gpu"));
+    }
+
+    private void qualitySlider(
+            JPanel panel,
+            String label,
+            int minimum,
+            int maximum,
+            IntSupplier read,
+            IntConsumer write) {
+        var slider = new JSlider(minimum, maximum, read.getAsInt());
+        slider.setName(label);
+        slider.setEnabled(renderer.capabilities().id().equals("gpu"));
+        var value = new JLabel(Integer.toString(slider.getValue()));
+        var controls = new JPanel(new BorderLayout());
+        controls.add(slider, BorderLayout.CENTER);
+        controls.add(value, BorderLayout.EAST);
+        row(panel, label, controls);
+        slider.addChangeListener(
+                event -> {
+                    value.setText(Integer.toString(slider.getValue()));
+                    if (!slider.getValueIsAdjusting()) {
+                        apply(() -> write.accept(slider.getValue()));
+                    }
+                });
+        refreshers.add(
+                () -> {
+                    if (!slider.getValueIsAdjusting()) {
+                        slider.setValue(read.getAsInt());
+                    }
+                });
     }
 
     private void number(
