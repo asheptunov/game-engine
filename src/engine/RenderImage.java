@@ -23,6 +23,11 @@ public interface RenderImage extends AutoCloseable {
         return null;
     }
 
+    /** Bloom mode baked into an optional packed display cache; raw radiance is unchanged. */
+    default Bloom displayBloom() {
+        return Bloom.OFF;
+    }
+
     int width();
 
     int height();

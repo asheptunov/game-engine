@@ -394,7 +394,7 @@ final class GpuKernel implements AutoCloseable {
             dispatchMain(settings);
             resolvePrimaryFog();
             if (packed != null) {
-                display.encode(output, width, height, exposure);
+                display.encode(output, width, height, exposure, settings.bloom());
             }
             gpu.barrier(
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,

@@ -9,6 +9,7 @@ import java.awt.image.DataBufferInt;
 final class GameFrameImage {
     private final DevicePixels device;
     private final float exposure;
+    private final engine.Bloom bloom;
     private BufferedImage image;
     private int owners = 1;
 
@@ -16,11 +17,21 @@ final class GameFrameImage {
         this.image = java.util.Objects.requireNonNull(image);
         device = null;
         exposure = 1;
+        bloom = engine.Bloom.OFF;
     }
 
     GameFrameImage(DevicePixels device, float exposure) {
+        this(device, exposure, engine.Bloom.OFF);
+    }
+
+    GameFrameImage(DevicePixels device, float exposure, engine.Bloom bloom) {
+        this.bloom = bloom;
         this.device = java.util.Objects.requireNonNull(device);
         this.exposure = exposure;
+    }
+
+    engine.Bloom bloom() {
+        return bloom;
     }
 
     int width() {
@@ -46,7 +57,9 @@ final class GameFrameImage {
             }
             var converted = new BufferedImage(width(), height(), BufferedImage.TYPE_INT_RGB);
             device.copyDisplayTo(
-                    ((DataBufferInt) converted.getRaster().getDataBuffer()).getData(), exposure);
+                    ((DataBufferInt) converted.getRaster().getDataBuffer()).getData(),
+                    exposure,
+                    bloom);
             image = converted;
         }
         return image;

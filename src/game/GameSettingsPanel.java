@@ -279,6 +279,7 @@ public final class GameSettingsPanel extends JPanel {
         heading(panel, "Image and transport");
         resolutionPresets(panel);
         frameBudget(panel);
+        bloomControls(panel);
         centerDetailControls(panel);
         number(
                 panel,
@@ -1023,6 +1024,25 @@ public final class GameSettingsPanel extends JPanel {
 
     private engine.RenderCapabilities.Support support(engine.RenderCapabilities.Feature feature) {
         return renderer.capabilities().support(feature);
+    }
+
+    private void bloomControls(JPanel panel) {
+        var selector = new JComboBox<>(engine.Bloom.values());
+        selector.setToolTipText(
+                "Optical spreads light; Simple adds halos around bright highlights. Both leave"
+                        + " tracing quality unchanged.");
+        row(panel, "Bloom", selector);
+        selector.addActionListener(
+                event ->
+                        apply(
+                                () ->
+                                        renderer.configure(
+                                                s ->
+                                                        s.withBloom(
+                                                                (engine.Bloom)
+                                                                        selector
+                                                                                .getSelectedItem()))));
+        refreshers.add(() -> selector.setSelectedItem(renderer.settings().bloom()));
     }
 
     private void centerDetailControls(JPanel panel) {

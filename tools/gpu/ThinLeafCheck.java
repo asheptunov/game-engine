@@ -91,6 +91,16 @@ public final class ThinLeafCheck {
             }
             System.out.printf("%s mean host frame %.2fms%n", name, (System.nanoTime()-start)/31e6);
             GpuCheck.image(pixels, 480, 300, name);
+            if (entry == world) {
+                var filter = new Bloom.Filter();
+                for (var mode : Bloom.values()) {
+                    var packed = new int[480 * 300];
+                    filter.copy(pixels, 480, 300, packed, 1, mode);
+                    var image = new java.awt.image.BufferedImage(480, 300, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                    image.setRGB(0, 0, 480, 300, packed, 0, 480);
+                    javax.imageio.ImageIO.write(image, "png", new java.io.File("out/gpu/forest-bloom-" + mode + ".png"));
+                }
+            }
         }
     }
 

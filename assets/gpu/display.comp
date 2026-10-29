@@ -4,8 +4,21 @@ layout(local_size_x=64) in;
 layout(std430,binding=0) readonly buffer Source { vec4 radiance[]; };
 layout(std430,binding=1) buffer Destination { uint packed[]; };
 layout(std430,binding=2) readonly buffer Encoding { uint srgb[]; };
-layout(push_constant) uniform Settings { uint width; uint height; float exposure; };
+layout(std430,binding=3) readonly buffer BloomSpread { vec4 spread[]; };
+layout(push_constant) uniform Settings { uint width; uint height; float exposure; uint bloomMode; };
 shared uint reused[64];
+vec3 presented(uint index) {
+    vec3 value=radiance[index].rgb;
+    if(bloomMode==0) return value;
+    ivec2 size=ivec2((width+3)/4,(height+3)/4);
+    vec2 p=clamp((vec2(index%width,index/width)+.5)/4-.5,vec2(0),vec2(size-1));
+    ivec2 a=ivec2(p), b=min(a+1,size-1);
+    vec2 f=fract(p);
+    vec3 light=mix(mix(spread[a.y*size.x+a.x].rgb,spread[a.y*size.x+b.x].rgb,f.x),
+                   mix(spread[b.y*size.x+a.x].rgb,spread[b.y*size.x+b.x].rgb,f.x),f.y);
+    return bloomMode==2 ? .94*value+.06*light : value+.12*light;
+}
+
 double widened(float value) {
     uint bits=floatBitsToUint(value);
     if((bits&0x7f800000u)==0) {
@@ -30,7 +43,7 @@ void main() {
     uint count=width*height;
     reused[lane]=0;
     if(index<count) {
-        vec4 value=radiance[index];
+        vec4 value=vec4(presented(index),radiance[index].a);
         uint target=(height-1-index/width)*width+index%width;
         packed[target]=(encode(value.r)<<16)|(encode(value.g)<<8)|encode(value.b);
         reused[lane]=value.a>0?1u:0u;

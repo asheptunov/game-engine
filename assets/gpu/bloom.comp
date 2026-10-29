@@ -1,0 +1,33 @@
+#version 460
+layout(local_size_x=64) in;
+layout(std430,binding=0) readonly buffer Source { vec4 radiance[]; };
+layout(std430,binding=1) buffer First { vec4 first[]; };
+layout(std430,binding=2) buffer Second { vec4 second[]; };
+layout(push_constant) uniform Settings { uint width; uint height; float exposure; uint mode; uint pass; };
+void main() {
+    uint index=(gl_WorkGroupID.y*gl_NumWorkGroups.x+gl_WorkGroupID.x)*64u+gl_LocalInvocationIndex;
+    uint w=(width+3)/4, h=(height+3)/4;
+    if(index>=w*h) return;
+    ivec2 p=ivec2(index%w,index/w);
+    vec3 sum=vec3(0); float total=0;
+    if(pass==0) {
+        for(uint y=uint(p.y)*4;y<min(height,uint(p.y)*4+4);y++) {
+            for(uint x=uint(p.x)*4;x<min(width,uint(p.x)*4+4);x++) {
+                vec3 value=max(vec3(0),radiance[y*width+x].rgb);
+                sum+=mode==1 ? max(vec3(0),value-1/exposure) : value;
+                total++;
+            }
+        }
+        first[index]=vec4(sum/total,0);
+        return;
+    }
+    // Five-sigma tails hide the square support even around HDR solar radiance.
+    for(int i=-16;i<=16;i++) {
+        ivec2 q=clamp(p+(pass==1?ivec2(i,0):ivec2(0,i)),ivec2(0),ivec2(w,h)-1);
+        float weight=exp(-float(i*i)/18);
+        sum+=(pass==1?first[q.y*w+q.x].rgb:second[q.y*w+q.x].rgb)*weight;
+        total+=weight;
+    }
+    if(pass==1) second[index]=vec4(sum/total,0);
+    else first[index]=vec4(sum/total,0);
+}

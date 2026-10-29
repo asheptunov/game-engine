@@ -70,6 +70,10 @@ final class GpuDevicePixels implements DevicePixels {
     }
 
     public void copyDisplayTo(int[] destination, float exposure) {
+        copyDisplayTo(destination, exposure, engine.Bloom.OFF);
+    }
+
+    public void copyDisplayTo(int[] destination, float exposure, engine.Bloom mode) {
         if (owners.get() <= 0) {
             throw new IllegalStateException("Released device frame");
         }
@@ -77,7 +81,7 @@ final class GpuDevicePixels implements DevicePixels {
         if (raw == null) {
             raw = session.readDeviceFrame(this);
         }
-        engine.DisplayCopy.interleaved(raw, destination, width, height, exposure);
+        new engine.Bloom.Filter().copy(raw, width, height, destination, exposure, mode);
     }
 
     public void close() {

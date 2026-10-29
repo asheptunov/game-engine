@@ -122,6 +122,16 @@ final class GpuSwapchain implements AutoCloseable {
             int requestedWidth,
             int requestedHeight,
             int[] overlay) {
+        return present(frame, exposure, requestedWidth, requestedHeight, overlay, engine.Bloom.OFF);
+    }
+
+    boolean present(
+            GpuDevicePixels frame,
+            float exposure,
+            int requestedWidth,
+            int requestedHeight,
+            int[] overlay,
+            engine.Bloom bloom) {
         if (requestedWidth <= 0 || requestedHeight <= 0 || surface == 0) {
             return false;
         }
@@ -169,7 +179,8 @@ final class GpuSwapchain implements AutoCloseable {
                     exposure,
                     width,
                     height,
-                    overlay);
+                    overlay,
+                    bloom);
             gpu.barrier(
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                     VK_ACCESS_SHADER_WRITE_BIT,

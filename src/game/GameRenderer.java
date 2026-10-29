@@ -42,6 +42,10 @@ public final class GameRenderer implements AutoCloseable {
             return storage.device();
         }
 
+        public engine.Bloom displayBloom() {
+            return storage.bloom();
+        }
+
         public float displayExposure() {
             return storage.exposure();
         }
@@ -85,6 +89,8 @@ public final class GameRenderer implements AutoCloseable {
                     new GameDiagnostics(), failure -> {}, RenderEngine::openSession);
         }
     }
+
+    private final engine.Bloom.Filter bloomFilter = new engine.Bloom.Filter();
 
     private final GameRecording recording = new GameRecording();
     private final java.util.LinkedHashMap<Long, FrameContext> frameContexts =
@@ -574,8 +580,11 @@ public final class GameRenderer implements AutoCloseable {
             var deviceImage = acquired.copyDevicePixels();
             pendingDisplay =
                     deviceImage == null
-                            ? new GameFrameImage(imageConverter.apply(acquired, capturedExposure))
-                            : new GameFrameImage(deviceImage, capturedExposure);
+                            ? new GameFrameImage(
+                                    convertImage(
+                                            acquired, capturedExposure, capturedSettings.bloom()))
+                            : new GameFrameImage(
+                                    deviceImage, capturedExposure, capturedSettings.bloom());
             long copied = System.nanoTime();
             synchronized (this) {
                 if (!canPublish(capturedWorld, capturedSettings, capturedExposure)) {
@@ -690,7 +699,10 @@ public final class GameRenderer implements AutoCloseable {
         var context = frameContexts.get(generation);
         return context == null
                 ? null
-                : new FrameContext(context.world(), context.settings(), capturedExposure);
+                : new FrameContext(
+                        context.world(),
+                        context.settings().withBloom(settings.bloom()),
+                        capturedExposure);
     }
 
     static engine.RenderFailure asFailure(String backend, String phase, Throwable failure) {
@@ -744,14 +756,35 @@ public final class GameRenderer implements AutoCloseable {
         }
     }
 
+    private BufferedImage convertImage(RenderImage image, float exposure, engine.Bloom mode) {
+        if (mode == engine.Bloom.OFF && image.displayBloom() == mode) {
+            return imageConverter.apply(image, exposure);
+        }
+        int[] packed = image.displayBloom() == mode ? image.takeDisplayPixels(exposure) : null;
+        if (packed != null) {
+            return wrapDisplayPixels(packed, image.width(), image.height());
+        }
+        var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
+        bloomFilter.copy(
+                image.presentationPixels(),
+                ((DataBufferInt) result.getRaster().getDataBuffer()).getData(),
+                exposure,
+                mode);
+        return result;
+    }
+
     /** Convert under the lease, flipping the engine's bottom-up rows to AWT's top-down rows. */
     public static BufferedImage copyImage(RenderImage image) {
         return copyImage(image, 1);
     }
 
     static BufferedImage copyImage(RenderImage image, float exposure) {
+        return copyImage(image, exposure, image.displayBloom());
+    }
+
+    static BufferedImage copyImage(RenderImage image, float exposure, engine.Bloom mode) {
         int[] owned =
-                Boolean.getBoolean("game.copyDisplayPixels")
+                (Boolean.getBoolean("game.copyDisplayPixels") || image.displayBloom() != mode)
                         ? null
                         : image.takeDisplayPixels(exposure);
         if (owned != null) {
@@ -759,7 +792,11 @@ public final class GameRenderer implements AutoCloseable {
         }
         var result = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_RGB);
         var pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
-        image.presentationPixels().copyDisplayTo(pixels, exposure);
+        if (mode == engine.Bloom.OFF && image.displayBloom() == mode) {
+            image.presentationPixels().copyDisplayTo(pixels, exposure);
+        } else {
+            new engine.Bloom.Filter().copy(image.presentationPixels(), pixels, exposure, mode);
+        }
         return result;
     }
 
@@ -864,6 +901,9 @@ public final class GameRenderer implements AutoCloseable {
                     "The physical scope requires path depth 8 or higher");
         }
         capabilities.validate(world, navigation.view(), next);
+        if (settings.bloom() != next.bloom()) {
+            converted = -1;
+        }
         settings = next;
         recordControls();
     }

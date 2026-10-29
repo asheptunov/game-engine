@@ -50,6 +50,7 @@ import java.nio.file.Path;
 /** Owner-thread display conversion. Raw snapshots stay on the device until explicitly read. */
 final class GpuDisplay implements AutoCloseable {
     private final VulkanDevice gpu;
+    private GpuBloom bloom;
     private long layout;
     private long pipelineLayout;
     private long pipeline;
@@ -79,8 +80,8 @@ final class GpuDisplay implements AutoCloseable {
     }
 
     private void createLayouts(MemoryStack stack) {
-        var bindings = VkDescriptorSetLayoutBinding.calloc(3, stack);
-        for (int i = 0; i < 3; i++) {
+        var bindings = VkDescriptorSetLayoutBinding.calloc(4, stack);
+        for (int i = 0; i < 4; i++) {
             bindings.get(i)
                     .binding(i)
                     .descriptorCount(1)
@@ -101,7 +102,7 @@ final class GpuDisplay implements AutoCloseable {
         var push =
                 VkPushConstantRange.calloc(1, stack)
                         .stageFlags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .size(12);
+                        .size(16);
         VulkanDevice.check(
                 vkCreatePipelineLayout(
                         gpu.device,
@@ -157,7 +158,7 @@ final class GpuDisplay implements AutoCloseable {
         var sizes =
                 VkDescriptorPoolSize.calloc(1, stack)
                         .type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-                        .descriptorCount(3);
+                        .descriptorCount(4);
         VulkanDevice.check(
                 vkCreateDescriptorPool(
                         gpu.device,
@@ -216,9 +217,21 @@ final class GpuDisplay implements AutoCloseable {
     }
 
     void encode(VulkanDevice.Buffer source, int width, int height, float exposure) {
+        encode(source, width, height, exposure, engine.Bloom.OFF);
+    }
+
+    void encode(
+            VulkanDevice.Buffer source, int width, int height, float exposure, engine.Bloom mode) {
+        var spread = source;
+        if (mode != engine.Bloom.OFF) {
+            if (bloom == null) {
+                bloom = new GpuBloom(gpu);
+            }
+            spread = bloom.filter(source, width, height, exposure, mode);
+        }
         try (var stack = MemoryStack.stackPush()) {
-            var writes = VkWriteDescriptorSet.calloc(3, stack);
-            var buffers = new VulkanDevice.Buffer[] {source, packed, table};
+            var writes = VkWriteDescriptorSet.calloc(4, stack);
+            var buffers = new VulkanDevice.Buffer[] {source, packed, table, spread};
             for (int i = 0; i < buffers.length; i++) {
                 var info =
                         VkDescriptorBufferInfo.calloc(1, stack)
@@ -247,7 +260,12 @@ final class GpuDisplay implements AutoCloseable {
                     0,
                     stack.longs(set),
                     null);
-            var push = stack.malloc(12).putInt(0, width).putInt(4, height).putFloat(8, exposure);
+            var push =
+                    stack.malloc(16)
+                            .putInt(0, width)
+                            .putInt(4, height)
+                            .putFloat(8, exposure)
+                            .putInt(12, mode.ordinal());
             vkCmdPushConstants(gpu.command, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, push);
             GpuDispatch.linear(gpu.command, width * height);
         }
@@ -271,6 +289,9 @@ final class GpuDisplay implements AutoCloseable {
 
     @Override
     public void close() {
+        if (bloom != null) {
+            bloom.close();
+        }
         if (packed != null) {
             packed.close();
         }

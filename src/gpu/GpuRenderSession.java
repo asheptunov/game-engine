@@ -34,6 +34,7 @@ public final class GpuRenderSession implements RenderSession {
         volatile float[] pixels;
         int[] packed;
         float exposure;
+        engine.Bloom bloom = engine.Bloom.OFF;
         boolean deviceOnly;
         GpuKernel.Snapshot snapshot;
         int readers;
@@ -265,6 +266,7 @@ public final class GpuRenderSession implements RenderSession {
 
     private void preparePresentation(Slot destination) {
         destination.deviceOnly = devicePresentation;
+        destination.bloom = settings.bloom();
         if (displayExposure != null || devicePresentation) {
             destination.exposure = displayExposure == null ? 1 : displayExposure;
             if (destination.snapshot == null) {
@@ -881,6 +883,12 @@ public final class GpuRenderSession implements RenderSession {
         }
 
         @Override
+        public engine.Bloom displayBloom() {
+            open();
+            return slot.bloom;
+        }
+
+        @Override
         public int[] takeDisplayPixels(float exposure) {
             synchronized (GpuRenderSession.this) {
                 open();
@@ -1042,7 +1050,9 @@ public final class GpuRenderSession implements RenderSession {
             if (destination.length != slot.view.width() * slot.view.height()) {
                 throw new IllegalArgumentException("Display destination size mismatch");
             }
-            if (slot.packed != null && exposureMultiplier == slot.exposure) {
+            if (slot.packed != null
+                    && slot.bloom == engine.Bloom.OFF
+                    && exposureMultiplier == slot.exposure) {
                 System.arraycopy(slot.packed, 0, destination, 0, destination.length);
                 return;
             }

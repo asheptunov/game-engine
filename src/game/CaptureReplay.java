@@ -126,7 +126,7 @@ public final class CaptureReplay {
                         .withTemporal(false, settings.temporalRevision());
         java.nio.file.Files.createDirectories(output.toAbsolutePath().getParent());
         try (var session = RenderEngine.openSession(world, view, settings, backend)) {
-            writeImage(session, output, exposure, samples);
+            writeImage(session, output, exposure, samples, settings.bloom());
             System.out.println(
                     "Rendered "
                             + (displayed ? "displayed" : "current")
@@ -140,7 +140,11 @@ public final class CaptureReplay {
     }
 
     private static void writeImage(
-            engine.RenderSession session, Path output, float exposure, int samples)
+            engine.RenderSession session,
+            Path output,
+            float exposure,
+            int samples,
+            engine.Bloom bloom)
             throws Exception {
         long deadline = System.nanoTime() + 120_000_000_000L;
         while (System.nanoTime() < deadline) {
@@ -153,7 +157,9 @@ public final class CaptureReplay {
                 try (image) {
                     if (image.samples() >= samples) {
                         ImageIO.write(
-                                GameRenderer.copyImage(image, exposure), "png", output.toFile());
+                                GameRenderer.copyImage(image, exposure, bloom),
+                                "png",
+                                output.toFile());
                         return;
                     }
                 }

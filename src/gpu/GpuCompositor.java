@@ -50,6 +50,7 @@ import java.nio.file.Path;
 /** Owner-thread display conversion. Raw snapshots stay on the device until explicitly read. */
 final class GpuCompositor implements AutoCloseable {
     private final VulkanDevice gpu;
+    private GpuBloom bloom;
     private long layout;
     private long pipelineLayout;
     private long pipeline;
@@ -81,8 +82,8 @@ final class GpuCompositor implements AutoCloseable {
     }
 
     private void createLayouts(MemoryStack stack) {
-        var bindings = VkDescriptorSetLayoutBinding.calloc(4, stack);
-        for (int i = 0; i < 4; i++) {
+        var bindings = VkDescriptorSetLayoutBinding.calloc(5, stack);
+        for (int i = 0; i < 5; i++) {
             bindings.get(i)
                     .binding(i)
                     .descriptorCount(1)
@@ -103,7 +104,7 @@ final class GpuCompositor implements AutoCloseable {
         var push =
                 VkPushConstantRange.calloc(1, stack)
                         .stageFlags(VK_SHADER_STAGE_COMPUTE_BIT)
-                        .size(24);
+                        .size(28);
         VulkanDevice.check(
                 vkCreatePipelineLayout(
                         gpu.device,
@@ -159,7 +160,7 @@ final class GpuCompositor implements AutoCloseable {
         var sizes =
                 VkDescriptorPoolSize.calloc(1, stack)
                         .type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-                        .descriptorCount(4);
+                        .descriptorCount(5);
         VulkanDevice.check(
                 vkCreateDescriptorPool(
                         gpu.device,
@@ -227,6 +228,33 @@ final class GpuCompositor implements AutoCloseable {
             int targetWidth,
             int targetHeight,
             int[] patches) {
+        encode(
+                source,
+                width,
+                height,
+                exposure,
+                targetWidth,
+                targetHeight,
+                patches,
+                engine.Bloom.OFF);
+    }
+
+    void encode(
+            VulkanDevice.Buffer source,
+            int width,
+            int height,
+            float exposure,
+            int targetWidth,
+            int targetHeight,
+            int[] patches,
+            engine.Bloom mode) {
+        var spread = source;
+        if (mode != engine.Bloom.OFF) {
+            if (bloom == null) {
+                bloom = new GpuBloom(gpu);
+            }
+            spread = bloom.filter(source, width, height, exposure, mode);
+        }
         prepare(targetWidth * targetHeight);
         if (overlay == null || overlay.size < patches.length * 4L) {
             if (overlay != null) {
@@ -247,8 +275,8 @@ final class GpuCompositor implements AutoCloseable {
                     overlayUpload.handle,
                     overlay.handle,
                     VkBufferCopy.calloc(1, stack).size(patches.length * 4L));
-            var writes = VkWriteDescriptorSet.calloc(4, stack);
-            var buffers = new VulkanDevice.Buffer[] {source, packed, table, overlay};
+            var writes = VkWriteDescriptorSet.calloc(5, stack);
+            var buffers = new VulkanDevice.Buffer[] {source, packed, table, overlay, spread};
             for (int i = 0; i < buffers.length; i++) {
                 var info =
                         VkDescriptorBufferInfo.calloc(1, stack)
@@ -284,13 +312,14 @@ final class GpuCompositor implements AutoCloseable {
                             ? targetWidth / width
                             : 0;
             var push =
-                    stack.malloc(24)
+                    stack.malloc(28)
                             .putInt(0, width)
                             .putInt(4, height)
                             .putFloat(8, exposure)
                             .putInt(12, targetWidth)
                             .putInt(16, targetHeight)
-                            .putInt(20, enlargement);
+                            .putInt(20, enlargement)
+                            .putInt(24, mode.ordinal());
             vkCmdPushConstants(gpu.command, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, push);
             vkCmdDispatch(
                     gpu.command,
@@ -325,6 +354,9 @@ final class GpuCompositor implements AutoCloseable {
 
     @Override
     public void close() {
+        if (bloom != null) {
+            bloom.close();
+        }
         if (overlay != null) {
             overlay.close();
             overlay = null;

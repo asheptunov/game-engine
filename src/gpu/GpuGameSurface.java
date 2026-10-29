@@ -197,7 +197,8 @@ public final class GpuGameSurface implements GameDisplay {
                             request.frame().displayExposure(),
                             request.width(),
                             request.height(),
-                            request.overlay());
+                            request.overlay(),
+                            request.frame().displayBloom());
                 });
     }
 
