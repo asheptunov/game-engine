@@ -1,0 +1,7 @@
+raw mean display-space MSE 0.00358745
+temporal mean display-space MSE 0.00203710
+half mean display-space MSE 0.00302292
+split mean display-space MSE 0.00210253
+nrd mean display-space MSE 0.00116724
+nrdhalf mean display-space MSE 0.00187125
+nrdsplit mean display-space MSE 0.00173652

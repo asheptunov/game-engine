@@ -1,0 +1,33 @@
+PASS column-major camera projection corner 0,0
+PASS column-major camera projection corner 1,0
+PASS column-major camera projection corner 0,1
+PASS column-major camera projection corner 1,1
+PASS column-major camera projection corner 0,0
+PASS column-major camera projection corner 1,0
+PASS column-major camera projection corner 0,1
+PASS column-major camera projection corner 1,1
+PASS fresh NRD samples change during stationary refinement
+PASS raw means equal independently accumulated fresh paths at six samples
+PASS object translation/rotation produces previous-minus-current world motion with top-down textures
+PASS captured raw image is independent of NRD visit/history order
+PASS restart clears NRD history and reproduces first image
+PASS unsupported combination restores raw and releases NRD
+PASS unsupported combination restores raw and releases NRD
+PASS unsupported combination restores raw and releases NRD
+PASS unsupported combination restores raw and releases NRD
+PASS finite aperture restores raw
+PASS sky is excluded from diffuse NRD and remains exact raw
+PASS surfaces beyond NRD range use raw instead of stale denoiser output
+PASS NRD composes odd native visibility dimensions
+PASS resize restarts NRD history
+PASS packed NRD pixels match native display dimensions
+PASS held NRD image survives moving publication
+PASS switching denoiser invalidates old presentation immediately
+PASS rapid denoiser off/on cannot revive old NRD presentation
+PASS resident NRD pixels match CPU display conversion
+PASS held NRD image survives moving publication
+PASS switching denoiser invalidates old presentation immediately
+PASS rapid denoiser off/on cannot revive old NRD presentation
+PASS resident NRD lease survives session close
+PASS CPU rejects NRD settings
+NRD checks passed.
