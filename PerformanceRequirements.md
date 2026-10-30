@@ -474,6 +474,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.4a | Explore with optional lower-resolution atmosphere while keeping geometry sharp | S1.1c; existing fog reconstruction | Implemented; GPU quality/lifecycle, game and completion checks passed; human visual/performance acceptance pending |
 | S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
 | S1.4c | Move and fight with less GPU scene-preparation overhead at unchanged image quality | S1.4b; cached per-mesh structures | Implemented; completion, GPU and exact-image reuse checks passed; controlled Swing-paint benchmark improves; human acceptance pending |
+| S1.4d | Submit retained moving-scene builds with tracing at unchanged image quality | S1.4c; explicit GPU build dependencies | Implemented; completion, GPU, exact-image, submission-count and memory checks passed; small native-visibility gain; visible-window human acceptance pending |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -1282,6 +1283,25 @@ Check fresh-paint rate, enemy motion, rifle alignment while turning, scope glass
 shadows. Stop to check refinement, open settings, change resolution, switch focus away and
 back, and close while rendering. Removing an enemy must not leave a stale visible object.
 Human visual and native-window smoothness acceptance remain pending.
+
+**S1.4d - Batch moving-scene builds with tracing (October 30).** `GpuScene` now records
+same-count top-level acceleration-structure rebuilds into the tracing command buffer,
+removing one GPU submission and its CPU fence wait. Explicit build-to-traversal barriers
+retain visibility and storage safety. Initial builds, object-count changes and new geometry
+retain their allocation/build path. Rendering quality and publication ownership are unchanged.
+The diagnostic JVM switch `-Dgame.separateGpuSceneSubmission=true` restores the separate
+submission. Exact-image, submission-count and memory checks are included in the GPU gate.
+
+Three paired offscreen 1080p combat runs show no consistent gain when enlarging a 960×540
+image. Native 1080p visibility with 960×540 lighting improves by about 1–3%, reaching
+71–72 fresh FPS, with 20–21 ms p95 image intervals. This does not meet the 120 FPS target.
+The matched hidden native presenter remains slower than offscreen Swing, so Swing stays
+the default. The audit also fixes native startup when JAWT initializes before Vulkan.
+Commands, settings, limits and raw evidence are in the
+[frame-delivery report](benchmarks/s1/frame-pipeline/README.md).
+Temporal upscaling is the next proposed major reconstruction increment; GPU-resident image
+ownership and native presentation scheduling remain separate redesign candidates. Visible
+window smoothness and final target acceptance remain human checks.
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain

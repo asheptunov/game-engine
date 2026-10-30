@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-30",
+  "baseline": "6ecdb68",
+  "gpu": "NVIDIA GeForce RTX 3080 12GB",
+  "driver": "616.92",
+  "java": "23.0.1",
+  "os": "Windows",
+  "paired_route": {
+    "rounds": 3,
+    "warmup_seconds": 2,
+    "measured_seconds": 12,
+    "modes": [
+      "roulette-nrd540",
+      "roulette-nrdsplit540"
+    ],
+    "endpoint": "swing-offscreen",
+    "order": "separate then batched in rounds 0 and 2; reverse in round 1"
+  },
+  "native": {
+    "rounds": 2,
+    "endpoint": "native-hidden",
+    "extra_jvm_property": "-Dorg.lwjgl.system.stackSize=512",
+    "note": "Bypasses pre-fix startup race; fixed startup tested separately without override."
+  },
+  "frozen": {
+    "rounds": 3,
+    "warmup_frames": 36,
+    "measured_frames": 180,
+    "states": 12
+  },
+  "excluded_exploratory_runs": "Initial before-route and after-route are not retained as final evidence. Formatting and a build overlapped part of the exploratory after-route. Final paired-route, native-hidden and frozen timings did not overlap builds or test suites.",
+  "source_sha256": {
+    "src/gpu/GpuScene.java": "f66abb6065ed42c725d3a4acfaeb960e82c4fa34df8da0107c2bd026498e6fd4",
+    "src/gpu/GpuKernel.java": "6c86b8d7d827f0c6b1a793d297c9e782d0f37854b310fa27c527feb090423e92",
+    "src/gpu/VulkanDevice.java": "41d9d59f9da5ca1e1290b445356d188d2853abac6e3f930afab7f0f911d3ed12",
+    "src/gpu/GpuGameSurface.java": "42aa925d73e88538bc64bdf0719133661f3459b1a10860684ef8f0c44b58001f",
+    "tools/gpu/LightingRouteBenchmark.java": "063aab3148c1e8f10fff8435c0ee9544d28f1528ff3d88910bdc99e547790f9c",
+    "tools/gpu/FramePipelineBenchmark.java": "a7c49684b9f61118aa845d4fb047b40774cdde7ec581f4740a4dd2a0d8e91aeb",
+    "tools/gpu/LightingQualityScene.java": "71bfd6c4a4e72c29eeab6525706c90e5ddba8c2ebf0be1a971b9765835a81a25",
+    "tools/gpu/SceneSubmissionCheck.java": "cb516b0a1d4bb5455d6dce5146c913cba3e0ce84cbfa45ee1d0ecf0284decb89"
+  },
+  "commands": [
+    "java --enable-preview --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -cp out/gpu/classes;out/game/classes;out/gpu/lib/* game.LightingRouteBenchmark out/pipeline/paired-route roulette-nrd540,roulette-nrdsplit540 swing-offscreen compare-submissions",
+    "java --enable-preview --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -cp out/gpu/classes;out/game/classes;out/gpu/lib/* gpu.FramePipelineBenchmark out/pipeline/frozen",
+    "java --enable-preview --enable-native-access=ALL-UNNAMED -Djava.awt.headless=false -Dorg.lwjgl.system.stackSize=512 -cp out/gpu/classes;out/game/classes;out/gpu/lib/* game.LightingRouteBenchmark out/pipeline/native-hidden roulette-nrd540,roulette-nrdsplit540 native-hidden"
+  ]
+}

@@ -1,0 +1,13 @@
+round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs
+0,roulette-nrd540,true,114.333,8.335,10.838,17.221,13.758,6.978,0.013
+0,roulette-nrd540,false,117.083,8.267,10.870,13.754,13.246,7.113,0.008
+0,roulette-nrdsplit540,true,70.583,13.204,21.288,24.327,24.437,11.087,0.008
+0,roulette-nrdsplit540,false,71.250,13.123,21.020,22.729,23.387,10.980,0.007
+1,roulette-nrdsplit540,false,71.083,13.037,20.410,21.894,22.556,11.006,0.003
+1,roulette-nrdsplit540,true,69.167,13.484,20.979,24.489,23.223,11.642,0.003
+1,roulette-nrd540,false,122.500,7.874,9.966,11.360,12.067,6.965,0.003
+1,roulette-nrd540,true,125.500,7.689,9.737,11.068,11.616,6.744,0.003
+2,roulette-nrd540,true,122.333,7.760,10.414,12.774,12.644,6.858,0.003
+2,roulette-nrd540,false,122.583,7.893,10.114,11.221,12.092,6.934,0.003
+2,roulette-nrdsplit540,true,71.167,13.073,20.508,25.005,22.467,11.262,0.003
+2,roulette-nrdsplit540,false,72.250,12.822,20.145,22.488,22.108,10.912,0.003
