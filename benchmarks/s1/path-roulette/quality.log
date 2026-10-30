@@ -1,0 +1,6 @@
+reference-native mean display-space MSE 0.00116724
+reference-half mean display-space MSE 0.00187125
+reference-split mean display-space MSE 0.00173652
+roulette-native mean display-space MSE 0.00124110
+roulette-half mean display-space MSE 0.00195649
+roulette-split mean display-space MSE 0.00190057

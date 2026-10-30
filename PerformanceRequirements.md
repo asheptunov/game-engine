@@ -392,6 +392,8 @@ Acceptance: use several seeds, presets, and spp levels to compare quality at equ
 
 ## P13 Russian roulette
 
+**GPU sample-game slice, October 30, 2026:** optional path roulette is implemented after two diffuse interactions, with IOR-corrected survival probabilities and a separate random domain. It retains the selected maximum depth and defaults off. Captures preserve the setting; older captures default off, and CPU rendering rejects it. [Cost, quality and gameplay measurements](benchmarks/s1/path-roulette/README.md) cover this slice. The broader CPU, rough-material, absorbing/nested-media and volume requirements below remain open. The two-interaction minimum is fixed in this GPU slice.
+
 After a configurable minimum continuation depth, probabilistically stop low-contribution paths and divide surviving throughput by the survival probability. Account for transmission IOR scaling so temporary radiance weights inside glass do not cause inappropriate termination. Apply consistent reasoning to volume events and retain the maximum-depth control.
 
 Acceptance: ensemble brightness agrees with roulette disabled at the same maximum depth; compare error per second as well as average path length. Exercise clear/absorbing/inside/nested glass, diffuse rooms, rough surfaces, and volumes. No benefit is expected at depth zero, and short or lossless paths may not benefit. Enable by default only where measured efficiency supports it.
