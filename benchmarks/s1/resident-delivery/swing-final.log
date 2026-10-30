@@ -1,0 +1,8 @@
+timerPolicy=honor
+round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs
+0,roulette-nrd540,false,102.333,9.111,13.891,27.163,17.699,7.590,0.014
+0,roulette-fsr540,false,76.583,12.464,17.168,20.809,21.294,9.982,0.008
+1,roulette-fsr540,false,73.667,12.573,20.281,23.155,24.975,10.179,0.009
+1,roulette-nrd540,false,118.583,8.011,10.038,12.535,12.215,7.016,0.008
+2,roulette-nrd540,false,126.083,7.552,10.108,12.077,12.226,6.614,0.003
+2,roulette-fsr540,false,79.000,12.104,17.076,21.352,20.380,9.822,0.003

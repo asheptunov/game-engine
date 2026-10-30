@@ -37,11 +37,20 @@ public final class LightingRouteBenchmark {
         System.out.println(
                 "round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs");
         boolean compare = args.length > 3 && args[3].equals("compare-submissions");
+        boolean compareStorage = args.length > 3 && args[3].equals("compare-storage");
         boolean threeRounds = args.length > 3 && args[3].equals("three-rounds");
-        for (int round = 0; round < (compare || threeRounds ? 3 : 2); round++) {
+        for (int round = 0; round < (compare || compareStorage || threeRounds ? 3 : 2); round++) {
             for (int i = 0; i < modes.length; i++) {
                 String mode = modes[round % 2 == 0 ? i : modes.length - 1 - i];
-                if (compare) {
+                if (compareStorage) {
+                    for (boolean copy : new boolean[] {round % 2 == 0, round % 2 != 0}) {
+                        System.setProperty("game.copyDeviceFrames", Boolean.toString(copy));
+                        Path variant = output.resolve(copy ? "copied" : "shared");
+                        Files.createDirectories(variant);
+                        System.out.println("deviceStorage=" + (copy ? "copied" : "shared"));
+                        measure(variant, round, mode);
+                    }
+                } else if (compare) {
                     for (boolean separate : new boolean[] {round % 2 == 0, round % 2 != 0}) {
                         System.setProperty(
                                 "game.separateGpuSceneSubmission", Boolean.toString(separate));
@@ -200,6 +209,8 @@ public final class LightingRouteBenchmark {
                             + (collector.nativeEndpoint ? "native-hidden" : "swing-offscreen")
                             + "\nseparateGpuSceneSubmission="
                             + Boolean.getBoolean("game.separateGpuSceneSubmission")
+                            + "\ncopyDeviceFrames="
+                            + Boolean.getBoolean("game.copyDeviceFrames")
                             + "\n");
             if (!collector.nativeEndpoint)
                 javax.imageio.ImageIO.write(

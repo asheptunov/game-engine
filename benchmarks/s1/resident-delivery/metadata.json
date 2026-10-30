@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-30",
+  "base_commit": "63353bef71f9922c860ea38162119282bff61076",
+  "pre_fsr_commit": "8307b6c50f4206261c40f2a151c9610e332329a3",
+  "gpu": "NVIDIA GeForce RTX 3080 12 GB",
+  "driver": "616.92",
+  "java": "23.0.1",
+  "os": "Windows 11",
+  "runtime_pins": {
+    "fsr": {
+      "cmake": "AD1C77484EB96BA147B9D88E39CF3D7856A35891F161FEDD0599E309BE4D98FB",
+      "revision": "c6efa6bf7f2027b3ec94f28578bb5965eabb9e55",
+      "headers": "bae9700cd9425541a0f6029957f005e5ad3ef660",
+      "files": {
+        "amd_fidelityfx_vk.dll": "A1624CC4238FEF046F30C4D80CE3F47BE63FC5F5373F49E3EE9EDB9960F54C78",
+        "rte_fsr.dll": "8E078FCE898A34084AE94E1707CA48400D2C2CE0A65ECF7404EE03B07540D54F"
+      },
+      "bridge": "773FA89FDCD30A696075877394B6DB6BED9BE4945938F097DD629EA716D415E7"
+    },
+    "nrd": {
+      "files": {
+        "rte_nrd.dll": "2147713E80ABEE5EC94FECEC27EBBFA25C86F3FFC681EA4BFE0D4376CA41E0DE",
+        "NRD.dll": "28A5FEBF6FBCADC01FDCEB79E9D88D8ADCAA0A6ED3075428E55EB14C71FF1EFC"
+      },
+      "revision": "e06852bd545973cb224eb28820b891205cfc1624",
+      "bridge": "2F7F55CCAB04C0117FB90AEA3B423E866426AC7CDDAA46CF93283BD07ABDCD94",
+      "cmake": "39CEC5DB0A8FDBBC1480401996B48881CBBBF450501EF2FFF89E6315AABA5D6C"
+    }
+  },
+  "final_route": {
+    "warmup_seconds": 2,
+    "measured_seconds": 12,
+    "rounds": 3,
+    "output": [
+      1920,
+      1080
+    ],
+    "timer_policy": "honor existing JVM requests; no supplemental timeBeginPeriod call",
+    "native_pairs": "copied/shared in rounds 0 and 2, shared/copied in round 1; mode order also reversed in round 1",
+    "swing": "separate run, not paired against native",
+    "depth": 8,
+    "fresh_samples": 1,
+    "roulette": true,
+    "denoiser": "NRD RELAX",
+    "aperture": 0,
+    "sampling": "uniform",
+    "atmosphere": "Full",
+    "fog": false,
+    "bloom": false,
+    "sun": "frozen 09:00",
+    "resolution": "fixed"
+  },
+  "conditions": {
+    "gpu_clocks_locked": false,
+    "desktop_apps_open": true,
+    "builds_tests_or_profiler_overlapped_final_timings": false,
+    "competing_game_seen_in_process_check": false
+  },
+  "excluded": [
+    "native-paired exploratory run: diagnostic JVM attach attempted",
+    "stalls JFR: diagnostic only, not final throughput evidence",
+    "supplemental application timer request: discarded experiment, not shipped"
+  ],
+  "limitations": [
+    "No monitor scanout, physical input latency or visible-window pacing measured.",
+    "Short runs; compare paired variants, not independent historical FPS.",
+    "Timer experiments preceded the shared-storage implementation.",
+    "summary.csv percentiles use recorded image rows, excluding the final hold appended only to console interval statistics."
+  ],
+  "source_sha256": {
+    "src/gpu/GpuDevicePixels.java": "af4dd2505fcfd2592c9599b03420cd1bf1cd91917630cfb082dc3ca094449d43",
+    "src/gpu/GpuKernel.java": "0d546ec6e7da0e1004d85bc3d38ca6c7255142ef02eae858dcf85391eb785d82",
+    "src/gpu/GpuRenderSession.java": "d843ba58fa4f0c5de63ded39ac219c128992305d6d3c4519e1517ee78a5d0e6c",
+    "tools/gpu/DeliveryRouteBenchmark.java": "8d3fec8c34b3e98a66b2ad2aed1a8fe859a08f8d640819ed6edc2899e7969599",
+    "tools/gpu/LightingRouteBenchmark.java": "6774d1cd53e8f00f2f582302e0c1e867170a3c711576bb8be632e315fbbd990e",
+    "tools/gpu/ResidentStorageCheck.java": "2e8e8c602aebec5a2c3208f18da478fa15a53a8b6aad220eb1b264c960611a84",
+    "src/game/GameRenderer.java": "da2ecf7614906a9a9298823900970515a72775bb8aac281423df68e369675517",
+    "src/game/GameSimulation.java": "3ae8b82bbee5b903ce460b31c48ed948222050828be37776257edc4c7ff5b699",
+    "assets/gpu/diffuse.comp": "2244a49e0725f17fe1f3598821db021f908629e2b119c3ac749a0b6281906851",
+    "assets/gpu/fsr.comp": "deaecc01277753046810e024581f29c1c63712fc22626eecaf364af8a3d3713c",
+    "assets/gpu/nrd.comp": "aa8c66d32d0f946577418928248623e0ab67493f8a1428f26b4bbd61064eba47",
+    "out/gpu/diffuse.spv": "a8986713dbd4ecea54395d99124912a677f14af3e5297d6d97f06048fa19063e",
+    "out/gpu/fsr.spv": "3e5753006002c480dc4f73cd57595f5bdf5aa6c14326479227c47aab70c10991",
+    "out/gpu/nrd.spv": "3df4feb2bad8c105632e07680c2830b44fd4964699da85a898943d9832955c96"
+  }
+}

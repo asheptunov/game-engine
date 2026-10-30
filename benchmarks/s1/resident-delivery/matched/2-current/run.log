@@ -1,0 +1,3 @@
+round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs
+0,roulette-nrd540,false,86.333,8.732,22.738,24.787,24.875,6.669,0.015
+1,roulette-nrd540,false,89.500,8.561,22.021,24.295,23.944,6.722,0.007

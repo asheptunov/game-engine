@@ -1,0 +1,110 @@
+{
+  "purpose": "Diagnostic park examples; profiler run excluded from final throughput results.",
+  "jfr_sha256": "179e4e2736672e625cc59efa33334021d8079661cd96b446b3242239f34dff0b",
+  "examples": [
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:21.306861800-05:00",
+      "requested_ms": 0.49089999999999995,
+      "actual_ms": 15.1189,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:21.337997400-05:00",
+      "requested_ms": 0.6785,
+      "actual_ms": 15.524700000000001,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:21.493364-05:00",
+      "requested_ms": 0.7398,
+      "actual_ms": 16.0565,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:21.635656900-05:00",
+      "requested_ms": 0.6593,
+      "actual_ms": 15.4988,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:21.781231800-05:00",
+      "requested_ms": 0.9366,
+      "actual_ms": 15.623099999999999,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:21.998231100-05:00",
+      "requested_ms": 0.6928000000000001,
+      "actual_ms": 15.6506,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:22.285990100-05:00",
+      "requested_ms": 0.6837,
+      "actual_ms": 15.1994,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    },
+    {
+      "thread": "sample-game-update",
+      "start": "2026-10-30T16:17:22.580609-05:00",
+      "requested_ms": 0.9311,
+      "actual_ms": 15.0011,
+      "stack": [
+        "jdk/internal/misc/Unsafe.park",
+        "java/util/concurrent/locks/LockSupport.parkNanos",
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionObject.awaitNanos",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take",
+        "java/util/concurrent/ScheduledThreadPoolExecutor$DelayedWorkQueue.take"
+      ]
+    }
+  ]
+}

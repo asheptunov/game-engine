@@ -1,0 +1,26 @@
+timerPolicy=honor coarseTimers=false
+round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs
+timerComparison=coarse
+0,roulette-nrd540,false,114.167,8.230,11.073,21.457,13.842,6.911,0.011
+timerComparison=precise
+0,roulette-nrd540,false,116.417,8.339,10.579,12.846,12.589,7.226,0.008
+timerComparison=coarse
+0,roulette-fsr540,false,79.250,12.039,17.202,21.316,22.100,9.652,0.007
+timerComparison=precise
+0,roulette-fsr540,false,78.667,12.288,15.511,19.208,18.330,9.799,0.007
+timerComparison=precise
+1,roulette-fsr540,false,80.000,11.960,16.752,20.228,20.126,9.546,0.003
+timerComparison=coarse
+1,roulette-fsr540,false,84.250,11.577,14.628,17.467,17.375,9.317,0.003
+timerComparison=precise
+1,roulette-nrd540,false,122.833,7.799,10.527,12.022,12.988,6.844,0.003
+timerComparison=coarse
+1,roulette-nrd540,false,119.000,7.937,11.295,13.631,13.526,7.034,0.003
+timerComparison=coarse
+2,roulette-nrd540,false,122.250,7.857,10.354,11.634,12.406,6.955,0.003
+timerComparison=precise
+2,roulette-nrd540,false,123.500,7.797,9.937,11.273,11.808,6.873,0.003
+timerComparison=coarse
+2,roulette-fsr540,false,74.583,12.701,18.248,21.952,22.162,10.195,0.003
+timerComparison=precise
+2,roulette-fsr540,false,82.667,11.667,14.922,19.717,17.536,9.411,0.003

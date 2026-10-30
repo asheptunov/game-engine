@@ -1,0 +1,7 @@
+PASS native surface initializes before Vulkan without a stack-size JVM override
+Native presentation supported=true
+PASS compositor exact integer grids; linear shrink/fractional/letterbox/4K; alpha overlays
+PASS hidden AWT/JAWT swapchain 640x360, submitted=12
+PASS hidden AWT/JAWT swapchain 800x500, submitted=12
+PASS hidden AWT/JAWT swapchain 640x360, submitted=12
+PASS resident frames, repeated slot reuse, explicit download and retained close

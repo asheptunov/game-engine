@@ -475,6 +475,8 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.4b | Move and fight without waiting for the render timer between completed combat frames | S1.1d; coherent combat snapshots | Implemented; completion, game, GPU and focused combat checks passed; native-window human acceptance pending |
 | S1.4c | Move and fight with less GPU scene-preparation overhead at unchanged image quality | S1.4b; cached per-mesh structures | Implemented; completion, GPU and exact-image reuse checks passed; controlled Swing-paint benchmark improves; human acceptance pending |
 | S1.4d | Submit retained moving-scene builds with tracing at unchanged image quality | S1.4c; explicit GPU build dependencies | Implemented; completion, GPU, exact-image, submission-count and memory checks passed; small native-visibility gain; visible-window human acceptance pending |
+| S1.4e | Try FSR temporal upscaling from reduced-resolution input | NRD reconstruction; motion/depth guides | Implemented and automatically verified; human visual acceptance and 120 FPS remain pending |
+| S1.4f | Retain native display images without a separate GPU copy | S1.2 resident presentation; immutable image ownership | Implemented; exact-image, submission-count, lifecycle and completion checks passed; controlled timing and human acceptance tracked below |
 
 **S1.1 — Play and compare the GPU landscape.** Extend the existing `./game.ps1` entry point with an explicit backend option; the command is `./game.ps1 -Backend gpu`. With no option it must retain CPU behavior; provide `-Backend cpu` for repeatable comparisons. Use `-Width 320 -Height 200` or `-Width 960 -Height 600` to select the fixed tracing grid independently of the window size. Runtime backend switching is not required; relaunching is sufficient.
 
@@ -1321,8 +1323,9 @@ Three matched offscreen 1080p combat rounds show Performance at 60–62 fresh FP
 faster at 81–88 FPS. Against 128-sample references at 512×288, Performance reduces combat
 image error by about 25% versus half enlargement; Quality reduces it by about 36% but is
 slower at 43–48 FPS on the 1080p route. Scope grain and fine-detail softness remain, and
-120 FPS is not achieved. The matched controls also run slower than the previous audit;
-that cross-run delivery difference is unresolved. See the [FSR report](benchmarks/s1/fsr/README.md)
+120 FPS is not achieved. These historical controls also run slower than the previous audit;
+S1.4f below identifies an invisible-process timer-policy confound and records new controlled
+measurements. The recovery is not an FSR rendering optimization. See the [FSR report](benchmarks/s1/fsr/README.md)
 for raw evidence, limitations, setup and verification. Human visual acceptance remains pending.
 At 1920×1080, compare Off, Performance and Quality while walking past thin foliage,
 turning quickly, revealing surfaces, aiming and firing. Then stop, resize, toggle modes,
@@ -1331,8 +1334,43 @@ no persistent old-view silhouettes after a cut, and no stale image after a mode 
 The game owner must separately judge whether fine-detail softness, scope grain and
 motion artifacts are acceptable; automated image-error results do not settle that decision.
 The 120 real FPS target also remains a separate, unmet acceptance condition.
-Further work should measure the remaining transport and presentation costs before choosing
-the next change; GPU-resident publication ownership remains a separate candidate.
+S1.4f below measures the remaining delivery costs and implements shared GPU image ownership.
+
+**S1.4f - Share retained GPU images and control benchmark timer policy (October 30).**
+`GpuDevicePixels` now retains the existing immutable GPU snapshot. Before reusing a publication
+slot, `GpuRenderSession` replaces storage still held by a display or capture. Detached storage
+is recycled only after its final reader releases it. This removes a GPU image-copy submission
+and fence wait while preserving the three publication slots, retained raw images and shutdown
+readback. `-Dgame.copyDeviceFrames=true` restores the old path for diagnosis. The default Swing
+presenter and simulation clock are unchanged; native presentation remains opt-in.
+
+Matched pre-FSR/current runs both reproduce slow offscreen delivery. Windows can ignore timer
+requests in invisible processes; honoring the JVM's existing requests recovers much of the
+earlier throughput. The Windows-only `DeliveryRouteBenchmark` wrapper controls this policy
+for its own process and restores it afterward. An additional application timer request showed
+no consistent gain and was discarded. This is a benchmark correction, not a shipped scheduler
+speedup or proof of the exact environmental change behind the earlier runs.
+
+Three paired hidden-native rounds reduce median retained-frame handoff time by 0.10–0.37 ms
+for half enlargement and 0.04–0.22 ms with FSR Performance. Native FSR throughput changes
+inconsistently: copied/shared pairs are 74.5/73.1, 75.3/74.7 and 76.6/80.8 fresh FPS. Separate
+controlled Swing rounds reach 102–126 FPS for half enlargement and 74–79 for FSR Performance.
+FSR's p95 capture-to-display age is 20–25 ms in Swing versus 38–41 ms with native sharing.
+These short runs exclude visible-window pacing and monitor scanout. Sharing removes the
+copy submission but still waits for the tracing owner; native scheduling remains unresolved.
+The next delivery investigation should remove retention/presentation waits on that owner
+and compare end-to-end latency before changing the default presenter.
+
+The completion, game and GPU gates passed. `ResidentStorageCheck` verifies exact retained
+images after moving resizes, sibling views, raw leases and shutdown, forcing fresh GPU reads
+to prevent CPU caches from hiding overwrites. Existing native checks cover normal-display
+readback avoidance and bounded allocation. Commands, settings, timing limits and raw evidence
+are in the [resident-delivery report](benchmarks/s1/resident-delivery/README.md).
+For human acceptance, launch the GPU game at 1920×1080 with `-NativePresentation`, move,
+aim and fire, retain/export captures, resize, toggle reconstruction/upscaling, switch focus
+and close during rendering. Captures must stay unchanged while play continues, and displayed
+frames must remain current. Compare visible pacing against the default Swing launch before
+considering a default-presenter change. The 120 real FPS target remains unmet with FSR.
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain
