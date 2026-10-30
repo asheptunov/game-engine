@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-30",
+  "baseline": "8307b6c50f4206261c40f2a151c9610e332329a3",
+  "gpu": "NVIDIA GeForce RTX 3080 12GB",
+  "driver": "616.92",
+  "java": "23.0.1",
+  "os": "Windows",
+  "fsr_runtime": {
+    "cmake": "AD1C77484EB96BA147B9D88E39CF3D7856A35891F161FEDD0599E309BE4D98FB",
+    "revision": "c6efa6bf7f2027b3ec94f28578bb5965eabb9e55",
+    "headers": "bae9700cd9425541a0f6029957f005e5ad3ef660",
+    "files": {
+      "amd_fidelityfx_vk.dll": "A1624CC4238FEF046F30C4D80CE3F47BE63FC5F5373F49E3EE9EDB9960F54C78",
+      "rte_fsr.dll": "8E078FCE898A34084AE94E1707CA48400D2C2CE0A65ECF7404EE03B07540D54F"
+    },
+    "bridge": "773FA89FDCD30A696075877394B6DB6BED9BE4945938F097DD629EA716D415E7"
+  },
+  "route": {
+    "rounds": 3,
+    "warmup_seconds": 2,
+    "measured_seconds": 12,
+    "output": [
+      1920,
+      1080
+    ],
+    "endpoint": "swing-offscreen",
+    "modes": [
+      "roulette-nrd540",
+      "roulette-nrdsplit540",
+      "roulette-fsr540",
+      "roulette-fsr720"
+    ],
+    "order": "listed order in rounds 0 and 2; reversed in round 1",
+    "images_retained": "one final-round PNG per mode; all raw CSVs and settings retained"
+  },
+  "frozen": {
+    "rounds": 3,
+    "warmup_frames": 36,
+    "measured_frames": 180,
+    "states": 12
+  },
+  "quality": {
+    "output": [
+      512,
+      288
+    ],
+    "reference_samples": 128,
+    "combat_states": 12,
+    "thin_motion_states": 48,
+    "thin_static_frames": 32
+  },
+  "conditions": {
+    "sun": "frozen 09:00",
+    "path_depth": 8,
+    "fresh_samples": 1,
+    "path_roulette": true,
+    "denoiser": "NRD RELAX",
+    "atmosphere": "Full",
+    "local_fog": false,
+    "bloom": false,
+    "sampling": "uniform",
+    "aperture": 0,
+    "resolution": "fixed",
+    "builds_or_tests_overlapped_timing": false
+  },
+  "limitations": [
+    "Visible-window pacing and monitor scanout are excluded.",
+    "Earlier runs with the wrong jitter sign are excluded.",
+    "Unchanged controls paint more slowly than the prior audit; the cross-run difference is unresolved.",
+    "Vulkan validation layers and human visual acceptance were not tested."
+  ],
+  "source_sha256": {
+    "assets/gpu/diffuse.comp": "2244a49e0725f17fe1f3598821db021f908629e2b119c3ac749a0b6281906851",
+    "assets/gpu/fsr.comp": "deaecc01277753046810e024581f29c1c63712fc22626eecaf364af8a3d3713c",
+    "assets/gpu/nrd.comp": "aa8c66d32d0f946577418928248623e0ab67493f8a1428f26b4bbd61064eba47",
+    "src/gpu/GpuFsr.java": "681dbf0d6f5821c92a3fafe5d66d48c6bc89a410752dc818b62d2a9a70c86b08",
+    "src/gpu/GpuFsrLibrary.java": "35c4b24c89d3f35d943b749fca3f422a157730163419c38004cad559c3706006",
+    "src/gpu/GpuKernel.java": "168e50462ee1ead970d529b88c3ecf0520d3b895c653eeece006b0eaf3a5c38a",
+    "src/gpu/GpuTemporal.java": "0b6052a582ac592b8496b9590a2831a9d0e048d602a53861ac9ff19038455b58",
+    "src/gpu/GpuNrd.java": "e4db59b537949ea1ea71df5f2f074158ca0a60a72caa398bb710e91b5d74dd20",
+    "src/gpu/VulkanDevice.java": "d6b75a7cc598e1fada93c7bcc4af6482b36b6a47f2e0ebe711db177aa088e096",
+    "tools/fsr/bridge.cpp": "773fa89fdcd30a696075877394b6db6bed9be4945938f097dd629ea716d415e7",
+    "tools/nrd/bridge.cpp": "2f7f55ccab04c0117fb90aea3b423e866426ac7cddaa46cf93283bd07abdcd94",
+    "tools/gpu/FsrBenchmark.java": "df1bc9a221ee7a779d22361f7e312c1ace02b2aab80f5bf5b11caca90b9d9cee",
+    "tools/gpu/FsrQualityBenchmark.java": "edbed0685d53c18afc6415a935592af5db75c8fd513e0eb1d40ce9bbf719851d",
+    "tools/gpu/LightingRouteBenchmark.java": "630abbcad370af6b409344c2281af84ed21696313c75aadfbddfabd2c401a4a7",
+    "tools/gpu/LightingQualityScene.java": "71bfd6c4a4e72c29eeab6525706c90e5ddba8c2ebf0be1a971b9765835a81a25"
+  },
+  "shader_sha256": {
+    "out/gpu/diffuse.spv": "a8986713dbd4ecea54395d99124912a677f14af3e5297d6d97f06048fa19063e",
+    "out/gpu/fsr.spv": "3e5753006002c480dc4f73cd57595f5bdf5aa6c14326479227c47aab70c10991",
+    "out/gpu/nrd.spv": "3df4feb2bad8c105632e07680c2830b44fd4964699da85a898943d9832955c96"
+  },
+  "source_hash_scope": "Final source files; post-measurement changes were formatting, UI test identifier, failure cleanup and added correctness assertions. No subsequent render-algorithm change.",
+  "commands": [
+    [
+      "java",
+      "--enable-preview",
+      "--enable-native-access=ALL-UNNAMED",
+      "-Djava.awt.headless=true",
+      "-cp",
+      "out/gpu/classes;out/game/classes;out/gpu/lib/*",
+      "gpu.FsrQualityBenchmark",
+      "out/fsr/quality-final"
+    ],
+    [
+      "java",
+      "--enable-preview",
+      "--enable-native-access=ALL-UNNAMED",
+      "-Djava.awt.headless=true",
+      "-cp",
+      "out/gpu/classes;out/game/classes;out/gpu/lib/*",
+      "gpu.FsrBenchmark",
+      "out/fsr/frozen-final"
+    ],
+    [
+      "java",
+      "--enable-preview",
+      "--enable-native-access=ALL-UNNAMED",
+      "-Djava.awt.headless=true",
+      "-cp",
+      "out/gpu/classes;out/game/classes;out/gpu/lib/*",
+      "game.LightingRouteBenchmark",
+      "out/fsr/route-final",
+      "roulette-nrd540,roulette-nrdsplit540,roulette-fsr540,roulette-fsr720",
+      "swing-offscreen",
+      "three-rounds"
+    ]
+  ],
+  "verification": {
+    "verify.ps1": 0,
+    "game-check.ps1": 0,
+    "gpu-check.ps1 -NoBuild": 0,
+    "PathRouletteCheck with pre-integration shader": 0
+  }
+}

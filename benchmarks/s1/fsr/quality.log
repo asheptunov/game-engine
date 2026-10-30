@@ -1,0 +1,12 @@
+combat,half,0.00195649
+combat,split,0.00190057
+combat,fsr-performance,0.00146755
+combat,fsr-quality,0.00124459
+thin-motion,half,0.00994447
+thin-motion,split,0.00661456
+thin-motion,fsr-performance,0.00108185
+thin-motion,fsr-quality,0.00077678
+thin-static,half,0.00991018
+thin-static,split,0.00638832
+thin-static,fsr-performance,0.00102972
+thin-static,fsr-quality,0.00075405

@@ -37,7 +37,8 @@ public final class LightingRouteBenchmark {
         System.out.println(
                 "round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs");
         boolean compare = args.length > 3 && args[3].equals("compare-submissions");
-        for (int round = 0; round < (compare ? 3 : 2); round++) {
+        boolean threeRounds = args.length > 3 && args[3].equals("three-rounds");
+        for (int round = 0; round < (compare || threeRounds ? 3 : 2); round++) {
             for (int i = 0; i < modes.length; i++) {
                 String mode = modes[round % 2 == 0 ? i : modes.length - 1 - i];
                 if (compare) {
@@ -72,11 +73,12 @@ public final class LightingRouteBenchmark {
                         "split720",
                         "nrd1080",
                         "nrd540",
-                        "nrdsplit540")
+                        "nrdsplit540", "fsr540", "fsr720")
                 .contains(baseMode))
             throw new IllegalArgumentException("Unknown lighting benchmark mode: " + mode);
+        boolean fsr = baseMode.startsWith("fsr");
         boolean split = baseMode.contains("split");
-        navigation.fixedResolution(split ? 1920 : height * 16 / 9, split ? 1080 : height);
+        navigation.fixedResolution(split || fsr ? 1920 : height * 16 / 9, split || fsr ? 1080 : height);
         navigation.pose(new Vec3(0, 2.4f, -6), 0, -.08);
         navigation.optics(0, 12);
         var session = new GpuRenderSession[1];
@@ -104,9 +106,11 @@ public final class LightingRouteBenchmark {
             renderer.configure(
                     s ->
                             s.withDenoiser(
-                                            baseMode.startsWith("nrd")
+                                            (baseMode.startsWith("nrd") || fsr)
                                                     ? engine.Denoiser.NRD_RELAX
                                                     : engine.Denoiser.BUILT_IN)
+                                    .withUpscaler(!fsr ? engine.Upscaler.OFF : height == 540
+                                            ? engine.Upscaler.FSR_PERFORMANCE : engine.Upscaler.FSR_QUALITY)
                                     .withPathRoulette(roulette)
                                     .withPathDepth(8)
                                     .withSamplesPerBatch(1)

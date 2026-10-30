@@ -1,0 +1,22 @@
+{
+  "roulette-nrd540": {
+    "frames": 3056,
+    "intervalsOver8_333msPercent": 55.46465968586387,
+    "maximumIntervalMs": 130.8939
+  },
+  "roulette-nrdsplit540": {
+    "frames": 1997,
+    "intervalsOver8_333msPercent": 99.899849774662,
+    "maximumIntervalMs": 190.1798
+  },
+  "roulette-fsr540": {
+    "frames": 2201,
+    "intervalsOver8_333msPercent": 99.90913221263062,
+    "maximumIntervalMs": 146.0151
+  },
+  "roulette-fsr720": {
+    "frames": 1645,
+    "intervalsOver8_333msPercent": 99.87841945288753,
+    "maximumIntervalMs": 187.4557
+  }
+}

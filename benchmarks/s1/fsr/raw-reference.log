@@ -1,0 +1,93 @@
+PASS reference path remains the default
+PASS withPathDepth preserves roulette
+PASS withTemporal preserves roulette
+PASS withDenoiser preserves roulette
+PASS withInteractive preserves roulette
+PASS withSampleTarget preserves roulette
+PASS withSeed preserves roulette
+PASS withSamplesPerBatch preserves roulette
+PASS withFogLightingGrid preserves roulette
+PASS withFoveationQuality preserves roulette
+PASS withRestartRevision preserves roulette
+PASS withSmoothFoveation preserves roulette
+PASS withFogJitter preserves roulette
+PASS withFogDownsample preserves roulette
+PASS withTileSize preserves roulette
+PASS withAcceleration preserves roulette
+PASS withWorkers preserves roulette
+PASS withTemporalBudget preserves roulette
+PASS withUpscaler preserves roulette
+PASS withLightingScale preserves roulette
+PASS withFoveated preserves roulette
+PASS withBloom preserves roulette
+PASS withPaused preserves roulette
+PASS default progressive pixels exactly match the pre-change shader
+PASS unchanged short path depth 0 sample 0
+PASS unchanged short path depth 0 sample 1
+PASS unchanged short path depth 0 sample 2
+PASS unchanged short path depth 0 sample 3
+PASS unchanged short path depth 0 sample 4
+PASS unchanged short path depth 0 sample 5
+PASS unchanged short path depth 0 sample 6
+PASS unchanged short path depth 0 sample 7
+PASS unchanged short path depth 0 sample 8
+PASS unchanged short path depth 0 sample 9
+PASS unchanged short path depth 0 sample 10
+PASS unchanged short path depth 0 sample 11
+PASS unchanged short path depth 0 sample 12
+PASS unchanged short path depth 0 sample 13
+PASS unchanged short path depth 0 sample 14
+PASS unchanged short path depth 0 sample 15
+PASS unchanged short path depth 1 sample 0
+PASS unchanged short path depth 1 sample 1
+PASS unchanged short path depth 1 sample 2
+PASS unchanged short path depth 1 sample 3
+PASS unchanged short path depth 1 sample 4
+PASS unchanged short path depth 1 sample 5
+PASS unchanged short path depth 1 sample 6
+PASS unchanged short path depth 1 sample 7
+PASS unchanged short path depth 1 sample 8
+PASS unchanged short path depth 1 sample 9
+PASS unchanged short path depth 1 sample 10
+PASS unchanged short path depth 1 sample 11
+PASS unchanged short path depth 1 sample 12
+PASS unchanged short path depth 1 sample 13
+PASS unchanged short path depth 1 sample 14
+PASS unchanged short path depth 1 sample 15
+PASS captured roulette samples reproduce after visiting another world
+PASS glass boundary crossings do not consume diffuse roulette events
+PASS roulette changes the estimator, glass=false seed=0
+PASS roulette changes the estimator, glass=false seed=1
+PASS roulette changes the estimator, glass=false seed=2
+PASS roulette changes the estimator, glass=false seed=3
+PASS roulette changes the estimator, glass=false seed=4
+PASS roulette changes the estimator, glass=false seed=5
+PASS roulette changes the estimator, glass=false seed=6
+PASS roulette changes the estimator, glass=false seed=7
+expectation glass=false channel=0 reference=0.3455689 difference=-0.0001261 tolerance=0.0010914
+PASS matched-seed expected radiance, glass=false channel=0
+expectation glass=false channel=1 reference=0.2604509 difference=-0.0001119 tolerance=0.0008802
+PASS matched-seed expected radiance, glass=false channel=1
+expectation glass=false channel=2 reference=0.1343485 difference=-0.0000613 tolerance=0.0004829
+PASS matched-seed expected radiance, glass=false channel=2
+PASS roulette changes the estimator, glass=true seed=0
+PASS roulette changes the estimator, glass=true seed=1
+PASS roulette changes the estimator, glass=true seed=2
+PASS roulette changes the estimator, glass=true seed=3
+PASS roulette changes the estimator, glass=true seed=4
+PASS roulette changes the estimator, glass=true seed=5
+PASS roulette changes the estimator, glass=true seed=6
+PASS roulette changes the estimator, glass=true seed=7
+expectation glass=true channel=0 reference=0.5523871 difference=-0.0000110 tolerance=0.0017493
+PASS matched-seed expected radiance, glass=true channel=0
+expectation glass=true channel=1 reference=0.5401779 difference=-0.0000356 tolerance=0.0016923
+PASS matched-seed expected radiance, glass=true channel=1
+expectation glass=true channel=2 reference=0.4247483 difference=-0.0000256 tolerance=0.0012714
+PASS matched-seed expected radiance, glass=true channel=2
+PASS roulette change discards incompatible BUILT_IN history
+PASS roulette change discards incompatible NRD_RELAX history
+PASS roulette edit replaces the progressive estimator
+PASS rapid off/on resets and reproduces without stale accumulation
+PASS held image remains immutable across roulette switches
+PASS CPU rejects unsupported roulette instead of silently ignoring it
+Path roulette checks passed.

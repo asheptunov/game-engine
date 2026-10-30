@@ -1299,9 +1299,40 @@ The matched hidden native presenter remains slower than offscreen Swing, so Swin
 the default. The audit also fixes native startup when JAWT initializes before Vulkan.
 Commands, settings, limits and raw evidence are in the
 [frame-delivery report](benchmarks/s1/frame-pipeline/README.md).
-Temporal upscaling is the next proposed major reconstruction increment; GPU-resident image
-ownership and native presentation scheduling remain separate redesign candidates. Visible
+Temporal upscaling was the next proposed major reconstruction increment at this audit; S1.4e
+below records its implementation. GPU-resident image ownership and native presentation
+scheduling remain separate redesign candidates. Visible
 window smoothness and final target acceptance remain human checks.
+
+**S1.4e - Optional FSR temporal upscaling (October 30).** The GPU sample game can now
+reconstruct 1920×1080 output from 960×540 (Performance) or 1280×720 (Quality) input
+using AMD FSR 3.1.4 after NRD RELAX. It supplies consistent subpixel sampling, depth,
+camera/object motion, conservative glass reactivity and reset/resize handling. Raw
+progressive means and the simulation clock remain independent. FSR is off by default;
+its settings control enables reconstruction and selects NRD, pinhole optics, uniform
+sampling, Full atmosphere, full lighting scale, positive path depth and Fixed resolution.
+Incompatible edits suspend FSR and report the reason; restoring the requirements resumes
+the selected mode. Selecting a reduced Lighting resolution explicitly turns FSR off to
+select the separate native-visibility method. Install both optional runtimes with
+`setup-fsr.ps1` and `setup-nrd.ps1`.
+
+Three matched offscreen 1080p combat rounds show Performance at 60–62 fresh FPS versus
+54–57 for half lighting with native visibility, an 8–12% gain. Half-image enlargement remains
+faster at 81–88 FPS. Against 128-sample references at 512×288, Performance reduces combat
+image error by about 25% versus half enlargement; Quality reduces it by about 36% but is
+slower at 43–48 FPS on the 1080p route. Scope grain and fine-detail softness remain, and
+120 FPS is not achieved. The matched controls also run slower than the previous audit;
+that cross-run delivery difference is unresolved. See the [FSR report](benchmarks/s1/fsr/README.md)
+for raw evidence, limitations, setup and verification. Human visual acceptance remains pending.
+At 1920×1080, compare Off, Performance and Quality while walking past thin foliage,
+turning quickly, revealing surfaces, aiming and firing. Then stop, resize, toggle modes,
+and switch focus away and back. Functional acceptance requires correctly sized images,
+no persistent old-view silhouettes after a cut, and no stale image after a mode change.
+The game owner must separately judge whether fine-detail softness, scope grain and
+motion artifacts are acceptable; automated image-error results do not settle that decision.
+The 120 real FPS target also remains a separate, unmet acceptance condition.
+Further work should measure the remaining transport and presentation costs before choosing
+the next change; GPU-resident publication ownership remains a separate candidate.
 
 **S1.4 user test and acceptance.** Repeat the exploration route with fog, a moving sun,
 and active combat. Confirm moving enemies, weapon animation, shadows and lighting remain
