@@ -98,6 +98,8 @@ public final class GpuRenderSession implements RenderSession {
                         return thread;
                     });
     private volatile boolean devicePresentation;
+    // Retain the old extra-copy path for paired performance and pixel comparisons.
+    private final boolean copyDeviceFrames = Boolean.getBoolean("game.copyDeviceFrames");
     private final java.util.ArrayDeque<GpuKernel.Snapshot> recycledDisplay =
             new java.util.ArrayDeque<>();
     private final java.util.Set<GpuDevicePixels> displayFrames = new java.util.HashSet<>();
@@ -593,7 +595,9 @@ public final class GpuRenderSession implements RenderSession {
                 : kernel.temporal.label;
     }
 
-    private static void prepareDestination(Slot destination, RenderView capturedView) {
+    private void prepareDestination(Slot destination, RenderView capturedView) {
+        destination.snapshot = writableStorage(destination.snapshot);
+        destination.presentation = writableStorage(destination.presentation);
         destination.shownPixels = null;
         int length = capturedView.width() * capturedView.height() * 3;
         int displayCount =
@@ -608,6 +612,20 @@ public final class GpuRenderSession implements RenderSession {
         } else if (destination.pixels == null || destination.pixels.length != length) {
             destination.pixels = new float[length];
         }
+    }
+
+    /** Called on the GPU owner after this slot has no image leases and is reserved for writing. */
+    private GpuKernel.Snapshot writableStorage(GpuKernel.Snapshot snapshot) {
+        if (snapshot == null) {
+            return null;
+        }
+        if (snapshot.displayReaders > 0) {
+            // Display/capture owners keep the old buffer; no GPU copy or slot lease is needed.
+            snapshot.publicationOwned = false;
+            snapshot = takeDisplayStorage();
+        }
+        snapshot.publicationOwned = true;
+        return snapshot;
     }
 
     private void recordFailure(Throwable error, Key capturedKey, long capturedGeneration) {
@@ -856,10 +874,14 @@ public final class GpuRenderSession implements RenderSession {
             owner.execute(
                     () -> {
                         displayFrames.remove(image);
-                        if (recycledDisplay.size() < 3) {
-                            recycledDisplay.addLast(image.snapshot);
-                        } else {
-                            image.destroyOnOwner();
+                        var storage = image.snapshot;
+                        storage.displayReaders--;
+                        if (storage.displayReaders == 0 && !storage.publicationOwned) {
+                            if (recycledDisplay.size() < 3) {
+                                recycledDisplay.addLast(storage);
+                            } else if (storage.source != null) {
+                                storage.source.close();
+                            }
                         }
                     });
         }
@@ -906,7 +928,8 @@ public final class GpuRenderSession implements RenderSession {
                                     kernel.gpu,
                                     reconstructed ? slot.presentation : slot.snapshot,
                                     copiedView.width(),
-                                    copiedView.height());
+                                    copiedView.height(),
+                                    copyDeviceFrames);
                     displayFrames.add(image);
                     return image;
                 });

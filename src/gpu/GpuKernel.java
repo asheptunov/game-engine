@@ -766,10 +766,13 @@ final class GpuKernel implements AutoCloseable {
         }
     }
 
-    /** Bounded by the session's three publication slots; accesses run on its GPU owner. */
+    /** Publication or retained display storage; accesses run on the session's GPU owner. */
     static final class Snapshot {
         VulkanDevice.Buffer source;
         private float[] pixels;
+        // Owner-thread metadata: retained display frames share immutable publication storage.
+        int displayReaders;
+        boolean publicationOwned;
 
         void prepare(VulkanDevice gpu, int count) {
             pixels = null;

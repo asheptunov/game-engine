@@ -10,7 +10,9 @@ import engine.DevicePixels;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VkBufferCopy;
 
-/** A retained immutable copy, independent of the three tracing publication slots. */
+/**
+ * Retained immutable storage; a publication replaces its storage before writing over this frame.
+ */
 final class GpuDevicePixels implements DevicePixels {
     final GpuRenderSession session;
     final VulkanDevice gpu;
@@ -26,12 +28,20 @@ final class GpuDevicePixels implements DevicePixels {
             VulkanDevice gpu,
             GpuKernel.Snapshot source,
             int width,
-            int height) {
+            int height,
+            boolean copy) {
         this.session = session;
         this.gpu = gpu;
         this.width = width;
         this.height = height;
-        snapshot = session.takeDisplayStorage();
+        snapshot = copy ? session.takeDisplayStorage() : source;
+        if (copy) {
+            copyStorage(source, width, height);
+        }
+        snapshot.displayReaders++;
+    }
+
+    private void copyStorage(GpuKernel.Snapshot source, int width, int height) {
         snapshot.prepare(gpu, width * height);
         try (var stack = MemoryStack.stackPush()) {
             gpu.begin();
@@ -98,12 +108,6 @@ final class GpuDevicePixels implements DevicePixels {
         if (owners.get() > 0) {
             retiredPixels = snapshot.read(gpu);
         }
-        destroyOnOwner();
-    }
-
-    void destroyOnOwner() {
-        if (snapshot.source != null) {
-            snapshot.source.close();
-        }
+        // VulkanDevice retires every buffer after retained CPU images have been materialized.
     }
 }
