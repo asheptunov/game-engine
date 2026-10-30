@@ -1,10 +1,25 @@
 # Renderer performance specification
 
-Status: P0 through P5, P5.1, P5.2, P7, P2.1, P8 and P9 implemented. P7, P2.1, P8 and P9 are automatically verified; native-window acceptance remains pending. P6, P10 through P16, P11.1, and S2 remain proposed. S1.1 GPU game rendering is implemented; verification and native-window acceptance status are tracked in its milestone table below. S1.2 direct GPU presentation is authorized; the October 27 GPU performance program below defines its incremental delivery and pending acceptance. The October 10 game profiling review set the delivery order below; the subsequent [P7 results](benchmarks/p7/README.md) record its implementation and measurements. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), [P5 results](benchmarks/p5/README.md), and [game profiling](benchmarks/game/PROFILE.md).
+Status: P0 through P5, P5.1, P5.2, P7, P2.1, P8 and P9 implemented. P7, P2.1, P8 and P9 are automatically verified; native-window acceptance remains pending. P6, P10 through P16, P11.1, and S2 remain proposed. S1.1 GPU game rendering is implemented. S1.2 direct GPU presentation has an opt-in implementation, but measured regressions keep Swing presentation as the default. The S1 milestone table and dated follow-up sections below track implementation, verification and pending human acceptance. The October 10 game profiling review set the original CPU delivery order below; the subsequent [P7 results](benchmarks/p7/README.md) record its implementation and measurements. Measurements and commands are in [P0/P1 results](benchmarks/p0-p1/README.md), [P2 results](benchmarks/p2/README.md), [P3 results](benchmarks/p3/README.md), [P4 results](benchmarks/p4/README.md), [P5 results](benchmarks/p5/README.md), and [game profiling](benchmarks/game/PROFILE.md).
 
 This specification follows the six implemented transport phases in [RenderingRequirements.md](RenderingRequirements.md). It defines how to improve rendering throughput, camera responsiveness, and image quality per second while preserving the existing renderer as a correctness reference. The aspiration is 60 or more useful updates per second at the window resolution. This is a measurement target, not a promised result for every scene or quality setting.
 
 The original first deliveries—measurement, tiled multicore tracing, responsive scheduling, and removal of display-buffer churn—are complete. Later phases must earn their place through measurements. Java remains the implementation language for the CPU work; native and GPU backends are separate strategic options.
+
+The phase identifiers describe three workstreams. **P0–P16**, including decimal follow-ups,
+cover the Java CPU renderer and its display pipeline. **S1** covers the sample game's Vulkan
+GPU renderer: hardware-assisted ray traversal, scene and lighting support, GPU image delivery,
+resolution budgets, denoising and upscaling. It does not promise parity with every CPU feature.
+**S2** is a proposed evaluation of a native CPU backend against optimized Java.
+
+The original priority tables are historical catalogs, not current completion checklists.
+For S1, use the milestone table and its dated follow-up sections as the current status record;
+a later dated entry supersedes earlier scope or status statements for the same feature.
+P6 remains a proposed CPU spatial-denoising experiment. The implemented NVIDIA Real-Time
+Denoisers (NRD) and AMD FidelityFX Super Resolution (FSR) integrations belong to S1's GPU
+reconstruction work and do not complete P6. The later GPU program also supersedes the original
+60 FPS aspiration with the user's target of 120 fresh frames per second at 1080p, allowing
+explicit quality tradeoffs; achieving that target remains unverified.
 
 ## Goals and terminology
 
@@ -465,7 +480,7 @@ The inventory above is completed investigation. The table distinguishes delivere
 | S1.1d | See fresh images painted without waiting for the UI timer, and inspect fresh paint rate | S1.1c | Implemented; game, GPU UI and completion checks passed; native-window acceptance pending |
 | S1.1e | Play the GPU game with less CPU display-copy overhead at identical image quality | S1.1c; Swing presentation | Implemented; ownership, GPU, game and completion checks passed; fixed-grid paired measurements improve; human check pending |
 | S1.1f | Play the Swing game with less 4K background-paint overhead at unchanged image quality | S1.1e; correlated frame profiling | Implemented; paint equivalence and GPU/game/completion gates passed; three adaptive pairs improve; human check pending |
-| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | Existing GPU rendering and presentation | In progress: S1.3a provides adaptive grids with existing spatial scaling; temporal reconstruction remains pending |
+| S1.3 | Explore demanding scenes with a selectable frame-budget mode that adjusts GPU internal resolution and reconstructs output | Existing GPU rendering and presentation | Adaptive grids and optional NRD denoising/FSR temporal upscaling are implemented; see S1.3a, S1.4e and dated reconstruction follow-ups; human quality acceptance and 120 FPS remain pending |
 | S1.3a | Select a 60/120 FPS movement budget, then recover the selected resolution when still | S1.1c; S1.4b | Implemented and automatically verified; player reports substantially smoother movement; detailed quality and minimum-FPS acceptance remain pending |
 | S1.3b | Try center-weighted GPU sampling to preserve aiming detail while reducing peripheral ray work | GPU game renderer; optional compatibility with S1.3a | Gradual transitions implemented and verified; player reports a substantial improvement, with residual stringy boundaries |
 | S1.3c | Compare continuous-spacing reconstruction against the existing Center detail mode | S1.3b GPU controls | Implemented and automatically verified; measured 8.65 ms GPU versus 6.92 ms for S1.3b and 13.02 ms uniform in the captured scene; human quality acceptance pending |
@@ -1189,8 +1204,15 @@ Native-window evaluation of both changes remains open.
    to stationary quality. It remains opt-in; no 120 FPS guarantee is inferred from fewer pixels.
 
 Re-measure after each delivery. These are ordered priorities, not predicted multipliers;
-large remaining bottlenecks may justify revisiting the order with new evidence. Combat's
-physical scope still requires depth 8 or higher; reducing it globally is not an accepted shortcut.
+large remaining bottlenecks may justify revisiting the order with new evidence. The original
+physical scope required depth 8 or higher. The player subsequently selected a clean gameplay
+scope over physical lens simulation. Combat now uses a deterministic 4× optical view transform,
+with physical housing and reticle, and no scope-specific minimum path depth. The default depth
+remains unchanged. Depth, normals and motion describe the magnified world for GPU denoising
+and upscaling; CPU temporal presentation falls back to raw pixels through the optic. Cover
+intersecting the short optical tube blocks the view. See the [scope comparison, verification
+and remaining human checks](benchmarks/s1/scope/README.md). This quality change makes no
+measured FPS claim: the player chose to finish without uncontended GPU performance numbers.
 
 **S1.4b - Submit the next coherent combat frame promptly.** `GameRenderer` previously
 requested another pass before acquiring a completed image. During combat, that could start
@@ -1281,7 +1303,7 @@ Commands, raw comparisons, source fingerprints and verification logs are in the
 
 User test: run `./game.ps1 -Backend gpu -Scene world -Width 1920 -Height 1080` normally;
 no new switch is needed. Enable Full atmosphere and repeat movement through the ruins.
-Check fresh-paint rate, enemy motion, rifle alignment while turning, scope glass, firing and
+Check fresh-paint rate, enemy motion, rifle alignment while turning, the scope view, firing and
 shadows. Stop to check refinement, open settings, change resolution, switch focus away and
 back, and close while rendering. Removing an enemy must not leave a stale visible object.
 Human visual and native-window smoothness acceptance remain pending.
