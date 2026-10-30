@@ -34,7 +34,8 @@ public final class GpuRenderSession implements RenderSession {
             long temporalEpoch,
             double lightingScale,
             RenderView presentationView,
-            engine.Denoiser denoiser) {}
+            engine.Denoiser denoiser,
+            boolean pathRoulette) {}
 
     private static final class Slot {
         volatile float[] pixels;
@@ -172,7 +173,8 @@ public final class GpuRenderSession implements RenderSession {
                             temporalEpoch,
                             nextSettings.lightingScale(),
                             nextView,
-                            nextSettings.denoiser());
+                            nextSettings.denoiser(),
+                            nextSettings.pathRoulette());
             resolution.observe(nextView, System.nanoTime());
             if (!nextKey.equals(key)) {
                 generation++;
@@ -191,7 +193,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextSettings.temporal() == settings.temporal()
                                 && nextSettings.temporalRevision() == settings.temporalRevision()
                                 && nextSettings.lightingScale() == settings.lightingScale()
-                                && nextSettings.denoiser() == settings.denoiser();
+                                && nextSettings.denoiser() == settings.denoiser()
+                                && nextSettings.pathRoulette() == settings.pathRoulette();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -200,6 +203,7 @@ public final class GpuRenderSession implements RenderSession {
             if (settings != null
                     && (settings.paused() != nextSettings.paused()
                             || settings.sampleTarget() != nextSettings.sampleTarget()
+                            || settings.pathRoulette() != nextSettings.pathRoulette()
                             || settings.denoiser() != nextSettings.denoiser()
                             || settings.interactive() != nextSettings.interactive()
                             || !sameSampling(settings, nextSettings))) {
@@ -233,6 +237,7 @@ public final class GpuRenderSession implements RenderSession {
                 && (settings.temporal() != nextSettings.temporal()
                         || settings.temporalRevision() != nextSettings.temporalRevision()
                         || settings.lightingScale() != nextSettings.lightingScale()
+                        || settings.pathRoulette() != nextSettings.pathRoulette()
                         || settings.denoiser() != nextSettings.denoiser()
                         || settings.interactive() != nextSettings.interactive()
                         || view.camera().aperture() != nextView.camera().aperture()
@@ -314,7 +319,8 @@ public final class GpuRenderSession implements RenderSession {
                         key.temporalEpoch(),
                         key.lightingScale(),
                         presentationView,
-                        key.denoiser());
+                        key.denoiser(),
+                        key.pathRoulette());
         var capturedSettings =
                 settings.interactive() && resolution.moving(now)
                         ? settings.withSamplesPerBatch(1)
@@ -511,6 +517,8 @@ public final class GpuRenderSession implements RenderSession {
                                                             ? "CPU RGB"
                                                             : "GPU packed",
                                             samplingLabel(capturedSettings))
+                                    + " | path roulette "
+                                    + capturedSettings.pathRoulette()
                                     + String.format(
                                             java.util.Locale.ROOT,
                                             " | %s | reconstruction %.2f ms | visibility %.2f ms |"

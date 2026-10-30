@@ -69,6 +69,9 @@ Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'gpu.BloomCheck') 'out/gpu/bloom-check.log' 'Bloom encoding and compositor checks failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','-Djava.awt.headless=true','-cp',$classPath,'game.BloomLifecycleCheck') 'out/gpu/bloom-lifecycle.log' 'Bloom lifecycle checks failed'
 
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/PathRouletteCheck.java') 'out/gpu/roulette-compile.log' 'Path roulette compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','--enable-native-access=ALL-UNNAMED','-Djava.awt.headless=true','-cp',$classPath,'gpu.PathRouletteCheck') 'out/gpu/roulette-check.log' 'Path roulette checks failed'
+
 if (Test-Path 'out/nrd/runtime/Release/rte_nrd.dll') {
     & (Join-Path $PSScriptRoot 'setup-nrd.ps1') -Offline
     Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/NrdCheck.java') 'out/gpu/nrd-compile.log' 'NRD check compilation failed'

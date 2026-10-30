@@ -37,7 +37,9 @@ public final class LightingRouteBenchmark {
     private static void measure(Path output, int round, String mode) throws Exception {
         var navigation = new GameNavigation();
         navigation.active(false);
-        int height = mode.endsWith("540") ? 540 : mode.endsWith("720") ? 720 : 1080;
+        boolean roulette = mode.startsWith("roulette-");
+        String baseMode = roulette ? mode.substring(9) : mode;
+        int height = baseMode.endsWith("540") ? 540 : baseMode.endsWith("720") ? 720 : 1080;
         if (!Set.of(
                         "raw1080",
                         "temporal1080",
@@ -48,9 +50,9 @@ public final class LightingRouteBenchmark {
                         "nrd1080",
                         "nrd540",
                         "nrdsplit540")
-                .contains(mode))
+                .contains(baseMode))
             throw new IllegalArgumentException("Unknown lighting benchmark mode: " + mode);
-        boolean split = mode.contains("split");
+        boolean split = baseMode.contains("split");
         navigation.fixedResolution(split ? 1920 : height * 16 / 9, split ? 1080 : height);
         navigation.pose(new Vec3(0, 2.4f, -6), 0, -.08);
         navigation.optics(0, 12);
@@ -76,16 +78,17 @@ public final class LightingRouteBenchmark {
             renderer.configure(
                     s ->
                             s.withDenoiser(
-                                            mode.startsWith("nrd")
+                                            baseMode.startsWith("nrd")
                                                     ? engine.Denoiser.NRD_RELAX
                                                     : engine.Denoiser.BUILT_IN)
+                                    .withPathRoulette(roulette)
                                     .withPathDepth(8)
                                     .withSamplesPerBatch(1)
                                     .withSampleTarget(0)
                                     .withInteractive(false, 1000. / 120, 0, 0)
                                     .withFoveated(false)
                                     .withFogDownsample(1)
-                                    .withTemporal(!mode.startsWith("raw"), 1)
+                                    .withTemporal(!baseMode.startsWith("raw"), 1)
                                     .withBloom(Bloom.OFF));
             if (split) {
                 renderer.configure(s -> s.withLightingScale(height / 1080.0));
@@ -142,6 +145,7 @@ public final class LightingRouteBenchmark {
                     });
             collector.intervals.add((start + DURATION - collector.last) / 1e6);
             Files.writeString(output.resolve(mode + "-" + round + ".csv"), collector.rows);
+            collector.writeProfile(output.resolve(mode + "-" + round + "-profile.csv"), session[0]);
             Files.writeString(
                     output.resolve(mode + "-" + round + "-settings.txt"),
                     renderer.settings()
@@ -198,8 +202,19 @@ public final class LightingRouteBenchmark {
         GameRenderer renderer;
         volatile boolean stopped;
         volatile long start;
+        volatile long queuedAt;
         long last, publication;
         int count;
+        final List<PaintTiming> paints = new ArrayList<>();
+
+        private record PaintTiming(
+                long capturedNanos,
+                long samples,
+                long publicationNanos,
+                GameRenderer.Metrics metrics,
+                long ended,
+                long queueNanos,
+                long paintNanos) {}
 
         Collector(GamePanel[] panel) {
             this.panel = panel;
@@ -210,11 +225,15 @@ public final class LightingRouteBenchmark {
                 super.addDirtyRegion(component, x, y, width, height);
                 return;
             }
-            if (!stopped && queued.compareAndSet(false, true))
+            if (!stopped && queued.compareAndSet(false, true)) {
+                queuedAt = System.nanoTime();
                 SwingUtilities.invokeLater(this::paint);
+            }
         }
 
         private void paint() {
+            long paintStart = System.nanoTime();
+            long queueNanos = paintStart - queuedAt;
             queued.set(false);
             if (stopped || panel[0] == null) return;
             var draw = surface.createGraphics();
@@ -229,6 +248,15 @@ public final class LightingRouteBenchmark {
                     || now - start >= DURATION
                     || frame == null
                     || frame.publicationNanos() == publication) return;
+            paints.add(
+                    new PaintTiming(
+                            frame.capturedNanos(),
+                            frame.samples(),
+                            frame.publicationNanos(),
+                            frame.metrics(),
+                            now,
+                            queueNanos,
+                            now - paintStart));
             publication = frame.publicationNanos();
             count++;
             double interval = (now - last) / 1e6;
@@ -252,6 +280,39 @@ public final class LightingRouteBenchmark {
                             frame.image().getHeight(),
                             status.health(),
                             status.rounds()));
+        }
+
+        private void writeProfile(Path output, GpuRenderSession session) throws Exception {
+            var timings = new HashMap<String, GpuRenderSession.FrameTiming>();
+            for (var timing : session.frameTimings()) {
+                timings.put(timing.capturedNanos() + ":" + timing.samples(), timing);
+            }
+            try (var writer = Files.newBufferedWriter(output)) {
+                writer.write(
+                        "seconds,queueMs,paintMs,pickupMs,copyMs,copyToPaintMs,hostMs,prepareMs,gpuMs,submitWaitMs,readbackMs\n");
+                for (var paint : paints) {
+                    var timing = timings.get(paint.capturedNanos() + ":" + paint.samples());
+                    if (timing == null || timing.hostNanos() != paint.metrics().traceNanos()) {
+                        throw new AssertionError(
+                                "Missing or inconsistent GPU timing for painted frame");
+                    }
+                    writer.write(
+                            String.format(
+                                    Locale.ROOT,
+                                    "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f%n",
+                                    (paint.ended() - start) / 1e9,
+                                    paint.queueNanos() / 1e6,
+                                    paint.paintNanos() / 1e6,
+                                    paint.metrics().pickupNanos() / 1e6,
+                                    paint.metrics().copyNanos() / 1e6,
+                                    (paint.ended() - paint.publicationNanos()) / 1e6,
+                                    timing.hostNanos() / 1e6,
+                                    timing.prepareNanos() / 1e6,
+                                    timing.executeNanos() / 1e6,
+                                    timing.submitWaitNanos() / 1e6,
+                                    timing.readbackNanos() / 1e6));
+                }
+            }
         }
     }
 }

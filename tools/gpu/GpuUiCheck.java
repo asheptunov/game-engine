@@ -153,6 +153,11 @@ public final class GpuUiCheck {
                 });
                 awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().denoiser()==engine.Denoiser.NRD_RELAX && frame.samples()>=4);
                 if(!renderer.backendStatus().contains("NRD RELAX")) throw new AssertionError("NRD did not run in the game");
+                SwingUtilities.invokeAndWait(()->((javax.swing.JCheckBox)find(holder[0],"Path roulette (experimental)")).doClick());
+                awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().pathRoulette() && frame.samples()>=4);
+                if(!renderer.backendStatus().contains("path roulette true")) throw new AssertionError("Roulette did not run in the game");
+                SwingUtilities.invokeAndWait(()->((javax.swing.JCheckBox)find(holder[0],"Path roulette (experimental)")).doClick());
+                awaitSamples(renderer,frame->frame.context()!=null && !frame.context().settings().pathRoulette());
                 SwingUtilities.invokeAndWait(()->((javax.swing.JComboBox<?>)find(holder[0],"denoiser")).setSelectedIndex(0));
                 awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().denoiser()==engine.Denoiser.BUILT_IN);
             }

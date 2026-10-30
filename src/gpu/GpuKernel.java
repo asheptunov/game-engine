@@ -135,6 +135,11 @@ final class GpuKernel implements AutoCloseable {
     }
 
     GpuKernel(Runnable beforeDispatch) {
+        this(beforeDispatch, Path.of("out/gpu/diffuse.spv"));
+    }
+
+    /** Package-local benchmark seam; diagnostic shaders never replace the installed shader. */
+    GpuKernel(Runnable beforeDispatch, Path shaderPath) {
         long started = System.nanoTime();
         this.beforeDispatch = beforeDispatch;
         gpu = new VulkanDevice();
@@ -151,7 +156,7 @@ final class GpuKernel implements AutoCloseable {
                             false);
             temporal = new GpuTemporal(gpu);
             lighting = new GpuLighting(gpu);
-            createPipeline();
+            createPipeline(shaderPath);
             initializationNanos = System.nanoTime() - started;
         } catch (RuntimeException | Error failure) {
             var reported =
@@ -173,7 +178,7 @@ final class GpuKernel implements AutoCloseable {
         engine.RenderCapabilities.GPU.validate(world, view, settings);
     }
 
-    private void createPipeline() {
+    private void createPipeline(Path shaderPath) {
         try (var stack = MemoryStack.stackPush()) {
             var bindings = VkDescriptorSetLayoutBinding.calloc(23, stack);
             for (int i = 0; i < 23; i++) {
@@ -223,7 +228,7 @@ final class GpuKernel implements AutoCloseable {
             pipelineLayout = handle.get(0);
             byte[] source;
             try {
-                source = Files.readAllBytes(Path.of("out/gpu/diffuse.spv"));
+                source = Files.readAllBytes(shaderPath);
             } catch (IOException failure) {
                 throw new IllegalStateException(
                         "Run ./gpu-build.ps1 to build GPU shaders", failure);
@@ -1091,6 +1096,8 @@ final class GpuKernel implements AutoCloseable {
         put(11, disc == null ? Vec3.ZERO : disc.radiance());
         parameters.mapped.putFloat(172, disc == null ? 2 : disc.cosineRadius());
         writeAtmosphere(world.sky().atmosphere());
+        // Reserved airHeights.w carries the independent transport flag even without atmosphere.
+        parameters.mapped.putFloat(220, settings.pathRoulette() ? 1 : 0);
         writeFog(world.sky().fog());
         // fogMeta.z is reserved for the spatial sampling mode; fogMeta.y controls fog jitter.
         parameters.mapped.putFloat(

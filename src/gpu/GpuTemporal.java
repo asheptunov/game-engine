@@ -260,6 +260,7 @@ final class GpuTemporal implements AutoCloseable {
                 && world.sky().equals(nextWorld.sky())
                 && world.lights().equals(nextWorld.lights())
                 && settings.denoiser() == next.denoiser()
+                && settings.pathRoulette() == next.pathRoulette()
                 && settings.seed() == next.seed()
                 && settings.pathDepth() == next.pathDepth()
                 && settings.restartRevision() == next.restartRevision()

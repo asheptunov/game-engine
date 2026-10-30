@@ -13,7 +13,7 @@ layout(std430,set=0,binding=4) readonly buffer Parameters {
     uvec4 sampling; // seed high, sample index, primary fog divisor, primary fog columns
     vec4 discDirection, discRadiance; // direction.w = cosine of angular radius; 2 disables disc
     vec4 airMapping; // metres/unit, ground Y, radius km, extent km; x=0 disables
-    vec4 airHeights; // molecular/aerosol scale heights km, anisotropy
+    vec4 airHeights; // molecular/aerosol scale heights km, anisotropy; w: path roulette
     vec4 airMolecular, airAerosol, airAbsorption, solarDirection, solarIrradiance;
     vec2 airColumns[18432];
     vec4 fogMeta;
@@ -45,6 +45,17 @@ uint64_t mix64(uint64_t n) {
 float randomValue() {
     randomState += 0x9e3779b97f4a7c15UL;
     return float(mix64(randomState) >> 40) * (1.0 / 16777216.0);
+}
+// Keep roulette independent of the material/light random stream. Reweight only future light;
+// etaScale removes the temporary radiance IOR factor when judging path importance.
+bool surviveDiffuse(inout vec3 weight, float etaScale, int events, uint depth, uint64_t key) {
+    if(airHeights.w==0 || events<2) return true;
+    vec3 importance=weight*etaScale;
+    float probability=clamp(max(max(importance.x,importance.y),importance.z),.05,1.0);
+    float random=float(mix64(key ^ mix64(uint64_t(depth)+0xd1b54a32d192ed03UL)) >> 40)*(1.0/16777216.0);
+    if(random>=probability) return false;
+    weight/=probability;
+    return true;
 }
 struct Hit { float t; int instanceIndex; int triangleIndex; int face; vec3 normal; vec3 localPoint; vec3 localNormal; };
 bool nearest(vec3 o, vec3 d, int skipInstance, int skipFace, bool shadow, out Hit hit) {
@@ -724,6 +735,7 @@ void main() {
     bool nrd = temporalGuides && temporalMotion[6].x > 0;
     uint64_t seed = (uint64_t(sampling.x)<<32) | uint64_t(grid.w);
     randomState = mix64(seed) ^ mix64(uint64_t(pixel)+0x632be59bd9b4e019UL) ^ mix64(uint64_t(sampling.y)+0x8cb92baa3f3d8dd7UL);
+    uint64_t rouletteKey=randomState;
     float u = grid.z == 0 ? 0.5 : randomValue();
     float v = grid.z == 0 ? 0.5 : randomValue();
     vec3 o = eye.xyz;
@@ -749,6 +761,8 @@ void main() {
     }
     vec3 radiance = vec3(0), weight = vec3(1);
     float firstBounceDistance=65504;
+    float etaScale=1;
+    int diffuseEvents=0;
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
@@ -813,6 +827,7 @@ void main() {
             } else {
                 d=normalize(eta*d+(eta*ci-ct)*n);
                 weight*=eta*eta;
+                etaScale/=eta*eta;
                 o=p-n*BIAS;
             }
             continue;
@@ -847,17 +862,20 @@ void main() {
                     radiance += weight*(glassIor == -2 ? leafResponse(hit.instanceIndex,d,solarDirection.xyz,n,color,responsePdf) : color*(solarCosine/PI))*sunlight*fogTransmission(p,solarDirection.xyz);
             }
         }
+        diffuseEvents++;
         if (depth == grid.z) break;
         if (glassIor == -2) {
             vec3 outgoing;
             weight *= sampleLeaf(hit.instanceIndex,d,n,color,outgoing);
             if(all(equal(weight,vec3(0)))) break;
+            if(!surviveDiffuse(weight,etaScale,diffuseEvents,depth,rouletteKey)) break;
             o=p+n*(dot(n,outgoing)<0 ? -BIAS : BIAS);
             d=outgoing;
             continue;
         }
         weight *= color;
         if (all(equal(weight,vec3(0)))) break;
+        if(!surviveDiffuse(weight,etaScale,diffuseEvents,depth,rouletteKey)) break;
         if (leaf && randomValue()<.5) n=-n;
         o = p+n*BIAS;
         d = cosineDirection(n);

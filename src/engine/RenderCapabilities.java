@@ -28,6 +28,7 @@ public enum RenderCapabilities {
         TEMPORAL_BUDGET,
         LIGHTING_RECONSTRUCTION,
         NRD_DENOISING,
+        PATH_ROULETTE,
         WORKER_CONTROL,
         TILE_CONTROL,
         OPTIONAL_ACCELERATION,
@@ -96,6 +97,9 @@ public enum RenderCapabilities {
     public Support support(Feature feature) {
         Objects.requireNonNull(feature);
         if (this == CPU) {
+            if (feature == Feature.PATH_ROULETTE) {
+                return new Support(false, "Path roulette requires GPU rendering");
+            }
             if (feature == Feature.NRD_DENOISING) {
                 return new Support(false, "NRD requires GPU rendering");
             }
@@ -119,6 +123,7 @@ public enum RenderCapabilities {
                                     DEPTH_OF_FIELD,
                                     TEMPORAL_RECONSTRUCTION,
                                     NRD_DENOISING,
+                                    PATH_ROULETTE,
                                     LIGHTING_RECONSTRUCTION ->
                             null;
                     case TEMPORAL_BUDGET -> "GPU does not implement CPU temporal batch budgets";
@@ -166,6 +171,7 @@ public enum RenderCapabilities {
     }
 
     public void validateSettings(RenderSettings settings) {
+        require(Feature.PATH_ROULETTE, settings.pathRoulette(), "settings.pathRoulette");
         Objects.requireNonNull(settings);
         if (settings.pathDepth() > maximumDepth) {
             throw new UnsupportedInput(

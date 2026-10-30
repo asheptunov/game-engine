@@ -923,7 +923,8 @@ public final class GameRenderer implements AutoCloseable {
                 || settings.temporal() != next.temporal()
                 || settings.temporalRevision() != next.temporalRevision()
                 || settings.lightingScale() != next.lightingScale()
-                || settings.denoiser() != next.denoiser()) {
+                || settings.denoiser() != next.denoiser()
+                || settings.pathRoulette() != next.pathRoulette()) {
             converted = -1;
         }
         settings = next;

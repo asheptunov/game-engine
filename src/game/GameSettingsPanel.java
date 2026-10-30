@@ -394,6 +394,15 @@ public final class GameSettingsPanel extends JPanel {
         bloomControls(panel);
         centerDetailControls(panel);
         temporalControls(panel);
+        check(
+                panel,
+                "Path roulette (experimental)",
+                () -> renderer.settings().pathRoulette(),
+                value -> renderer.configure(s -> s.withPathRoulette(value)),
+                renderer.capabilities()
+                        .support(engine.RenderCapabilities.Feature.PATH_ROULETTE)
+                        .supported());
+        panel.add(new JLabel("Stops low-contribution lighting paths; faster, with more noise."));
         number(
                 panel,
                 "Width (pixels)",
