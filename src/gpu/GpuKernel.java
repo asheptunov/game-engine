@@ -79,6 +79,8 @@ final class GpuKernel implements AutoCloseable {
     GpuScene scene;
     GpuTemporal temporal;
     GpuLighting lighting;
+    GpuFsr fsr;
+    long upscalingNanos;
     long visibilityNanos;
     private final long[] reconstructionPipelines = new long[2];
     private final long[] visibilityPipelines = new long[2];
@@ -156,6 +158,7 @@ final class GpuKernel implements AutoCloseable {
                             false);
             temporal = new GpuTemporal(gpu);
             lighting = new GpuLighting(gpu);
+            fsr = new GpuFsr(gpu);
             createPipeline(shaderPath);
             initializationNanos = System.nanoTime() - started;
         } catch (RuntimeException | Error failure) {
@@ -432,8 +435,7 @@ final class GpuKernel implements AutoCloseable {
         boolean changed = prepareScene(world);
         changed |= prepareImages(view);
         changed |= prepareSampling(settings);
-        changed |= temporal.prepare(world, view, settings, sample);
-        changed |= lighting.prepare(view, outputView, temporal.nrd != null);
+        changed |= prepareReconstruction(world, view, outputView, settings, sample);
         if (presentation != null) {
             presentation.prepare(gpu, outputView.width() * outputView.height());
         }
@@ -512,6 +514,21 @@ final class GpuKernel implements AutoCloseable {
         hostNanos = System.nanoTime() - start;
     }
 
+    private boolean prepareReconstruction(
+            WorldSnapshot world,
+            RenderView view,
+            RenderView outputView,
+            RenderSettings settings,
+            long sample) {
+        fsr.prepare(view, outputView, settings);
+        temporal.jitterX = fsr.jitterX;
+        temporal.jitterY = fsr.jitterY;
+        temporal.upscaling = fsr.active;
+        boolean changed = temporal.prepare(world, view, settings, sample);
+        changed |= lighting.prepare(view, outputView, temporal.nrd != null, fsr.active);
+        return changed;
+    }
+
     private void finishSample(
             Destination destination,
             long sample,
@@ -525,7 +542,9 @@ final class GpuKernel implements AutoCloseable {
         var shown = temporal.record(output, lighting.albedo, width, height, sample);
         vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 7);
         vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, gpu.queries, 8);
-        if (lighting.active) {
+        if (fsr.active) {
+            shown = fsr.record(shown, temporal);
+        } else if (lighting.active) {
             recordVisibility(sample, stack);
             shown = lighting.output;
         }
@@ -574,7 +593,9 @@ final class GpuKernel implements AutoCloseable {
                 "read timestamps");
         recordTimings(rebuildFog, times);
         reconstructionNanos = (long) ((times.get(7) - times.get(6)) * gpu.timestampPeriod);
-        visibilityNanos = (long) ((times.get(9) - times.get(8)) * gpu.timestampPeriod);
+        long outputNanos = (long) ((times.get(9) - times.get(8)) * gpu.timestampPeriod);
+        upscalingNanos = fsr.active ? outputNanos : 0;
+        visibilityNanos = fsr.active ? 0 : outputNanos;
     }
 
     private void recordVisibility(long sample, MemoryStack stack) {
@@ -1308,6 +1329,9 @@ final class GpuKernel implements AutoCloseable {
         }
         if (temporal != null) {
             temporal.close();
+        }
+        if (fsr != null) {
+            fsr.close();
         }
         if (lighting != null) {
             lighting.close();

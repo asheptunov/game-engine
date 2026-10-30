@@ -40,7 +40,7 @@ final class GpuNrdLibrary implements AutoCloseable {
                         FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT));
         static final MethodHandle FRAME =
                 function(
-                        "rteNrdFrame",
+                        "rteNrdFrameJittered",
                         FunctionDescriptor.of(
                                 JAVA_INT,
                                 ADDRESS,
@@ -70,7 +70,7 @@ final class GpuNrdLibrary implements AutoCloseable {
     private final Arena arena = Arena.ofConfined();
     private MemorySegment instance;
     private final MemorySegment scratch = arena.allocate(512, 8);
-    private final MemorySegment matrices = arena.allocate(64 * 4, 8);
+    private final MemorySegment matrices = arena.allocate(68 * 4, 8);
     final int[] info;
 
     GpuNrdLibrary() {
@@ -115,7 +115,8 @@ final class GpuNrdLibrary implements AutoCloseable {
     }
 
     int frame(float[] values, int width, int height, int frame, boolean reset, float millis) {
-        matrices.copyFrom(MemorySegment.ofArray(values));
+        matrices.fill((byte) 0);
+        matrices.asSlice(0, values.length * 4L).copyFrom(MemorySegment.ofArray(values));
         try {
             int count =
                     (int)

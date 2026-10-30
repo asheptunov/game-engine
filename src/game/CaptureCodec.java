@@ -168,6 +168,7 @@ final class CaptureCodec {
         p.putIfAbsent(key + ".lightingScale", "1.0");
         p.putIfAbsent(key + ".denoiser", "BUILT_IN");
         p.putIfAbsent(key + ".pathRoulette", "false");
+        p.putIfAbsent(key + ".upscaler", "OFF");
         p.putIfAbsent(key + ".fogDownsample", "1");
         p.putIfAbsent(key + ".fogLightingGrid", "false");
         p.putIfAbsent(key + ".fogJitter", "false");

@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.30)
+project(RayTracingFsrBridge LANGUAGES CXX)
+if(NOT FSR_SOURCE_DIR OR NOT VULKAN_HEADERS_DIR)
+    message(FATAL_ERROR "FSR_SOURCE_DIR and VULKAN_HEADERS_DIR must name the pinned checkouts")
+endif()
+add_library(rte_fsr SHARED bridge.cpp)
+target_compile_features(rte_fsr PRIVATE cxx_std_17)
+target_include_directories(rte_fsr PRIVATE "${FSR_SOURCE_DIR}/ffx-api/include" "${VULKAN_HEADERS_DIR}/include")
+set_target_properties(rte_fsr PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../out/fsr/runtime")
+add_custom_command(TARGET rte_fsr POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FSR_SOURCE_DIR}/PrebuiltSignedDLL/amd_fidelityfx_vk.dll" "$<TARGET_FILE_DIR:rte_fsr>/amd_fidelityfx_vk.dll")

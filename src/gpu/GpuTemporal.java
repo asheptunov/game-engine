@@ -42,6 +42,9 @@ final class GpuTemporal implements AutoCloseable {
     private boolean valid;
     float lightingConfidence = 1;
     boolean active;
+    boolean upscaling;
+    float jitterX;
+    float jitterY;
     String label = "raw GPU";
 
     GpuTemporal(VulkanDevice gpu) {
@@ -96,6 +99,7 @@ final class GpuTemporal implements AutoCloseable {
         if (!active) {
             motion.mapped.putFloat(0, 0);
             motion.mapped.putFloat(96, 0);
+            motion.mapped.putFloat(120, 0);
             if (nrd != null) {
                 nrd.close();
                 nrd = null;
@@ -117,11 +121,18 @@ final class GpuTemporal implements AutoCloseable {
         valid &= now - priorFrame < 500_000_000L;
         writeMotion(nextWorld, nextView);
         motion.mapped.putFloat(96, useNrd ? 1 : 0);
+        motion.mapped
+                .putFloat(112, jitterX)
+                .putFloat(116, -jitterY)
+                .putFloat(120, upscaling ? 1 : 0);
         if (useNrd) {
             if (nrd == null) {
                 nrd = new GpuNrd(gpu);
                 valid = false;
             }
+            nrd.upscaling = upscaling;
+            nrd.jitterX = jitterX;
+            nrd.jitterY = jitterY;
             nrd.prepare(nextView, priorView, valid, lightingConfidence);
             motion.mapped.putInt(100, nrd.frameIndex);
         }
@@ -262,6 +273,7 @@ final class GpuTemporal implements AutoCloseable {
                 && view.height() == nextView.height()
                 && lightingConfidence > 0
                 && settings.denoiser() == next.denoiser()
+                && settings.upscaler() == next.upscaler()
                 && settings.pathRoulette() == next.pathRoulette()
                 && settings.seed() == next.seed()
                 && settings.pathDepth() == next.pathDepth()

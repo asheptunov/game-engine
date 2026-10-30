@@ -35,7 +35,8 @@ public final class GpuRenderSession implements RenderSession {
             double lightingScale,
             RenderView presentationView,
             engine.Denoiser denoiser,
-            boolean pathRoulette) {}
+            boolean pathRoulette,
+            engine.Upscaler upscaler) {}
 
     private static final class Slot {
         volatile float[] pixels;
@@ -152,6 +153,9 @@ public final class GpuRenderSession implements RenderSession {
             throw new IllegalStateException(
                     "NRD runtime is missing; run ./setup-nrd.ps1 or choose Built-in diffuse");
         }
+        if (!upscalerSupport(nextSettings.upscaler()).supported()) {
+            throw new IllegalStateException(upscalerSupport(nextSettings.upscaler()).reason());
+        }
         synchronized (this) {
             checkOpen();
             updateTemporalEpoch(nextView, nextSettings);
@@ -174,7 +178,8 @@ public final class GpuRenderSession implements RenderSession {
                             nextSettings.lightingScale(),
                             nextView,
                             nextSettings.denoiser(),
-                            nextSettings.pathRoulette());
+                            nextSettings.pathRoulette(),
+                            nextSettings.upscaler());
             resolution.observe(nextView, System.nanoTime());
             if (!nextKey.equals(key)) {
                 generation++;
@@ -194,7 +199,8 @@ public final class GpuRenderSession implements RenderSession {
                                 && nextSettings.temporalRevision() == settings.temporalRevision()
                                 && nextSettings.lightingScale() == settings.lightingScale()
                                 && nextSettings.denoiser() == settings.denoiser()
-                                && nextSettings.pathRoulette() == settings.pathRoulette();
+                                && nextSettings.pathRoulette() == settings.pathRoulette()
+                                && nextSettings.upscaler() == settings.upscaler();
                 if (!cameraOnly) {
                     epoch++;
                 }
@@ -203,6 +209,7 @@ public final class GpuRenderSession implements RenderSession {
             if (settings != null
                     && (settings.paused() != nextSettings.paused()
                             || settings.sampleTarget() != nextSettings.sampleTarget()
+                            || settings.upscaler() != nextSettings.upscaler()
                             || settings.pathRoulette() != nextSettings.pathRoulette()
                             || settings.denoiser() != nextSettings.denoiser()
                             || settings.interactive() != nextSettings.interactive()
@@ -228,6 +235,19 @@ public final class GpuRenderSession implements RenderSession {
     }
 
     @Override
+    public engine.RenderCapabilities.Support upscalerSupport(engine.Upscaler upscaler) {
+        boolean available =
+                upscaler == engine.Upscaler.OFF
+                        || GpuFsrLibrary.available() && GpuNrdLibrary.available();
+        return new engine.RenderCapabilities.Support(
+                available,
+                available
+                        ? "FSR runtime available"
+                        : "Run ./setup-fsr.ps1 and ./setup-nrd.ps1 to install the optional"
+                                + " runtimes");
+    }
+
+    @Override
     public synchronized void invalidate() {
         checkOpen();
     }
@@ -237,6 +257,7 @@ public final class GpuRenderSession implements RenderSession {
                 && (settings.temporal() != nextSettings.temporal()
                         || settings.temporalRevision() != nextSettings.temporalRevision()
                         || settings.lightingScale() != nextSettings.lightingScale()
+                        || settings.upscaler() != nextSettings.upscaler()
                         || settings.pathRoulette() != nextSettings.pathRoulette()
                         || settings.denoiser() != nextSettings.denoiser()
                         || settings.interactive() != nextSettings.interactive()
@@ -320,7 +341,8 @@ public final class GpuRenderSession implements RenderSession {
                         key.lightingScale(),
                         presentationView,
                         key.denoiser(),
-                        key.pathRoulette());
+                        key.pathRoulette(),
+                        key.upscaler());
         var capturedSettings =
                 settings.interactive() && resolution.moving(now)
                         ? settings.withSamplesPerBatch(1)
@@ -554,6 +576,18 @@ public final class GpuRenderSession implements RenderSession {
     }
 
     private String lightingLabel(RenderSettings capturedSettings) {
+        if (capturedSettings.upscaler() != engine.Upscaler.OFF) {
+            var reason = GpuFsr.fallback(view, capturedSettings);
+            return kernel.temporal.label
+                    + (kernel.fsr.active
+                            ? "; "
+                                    + capturedSettings.upscaler()
+                                    + String.format(
+                                            java.util.Locale.ROOT,
+                                            " %.2f ms",
+                                            kernel.upscalingNanos / 1e6)
+                            : "; suspended: " + reason);
+        }
         return capturedSettings.lightingScale() < 1 && capturedSettings.interactive()
                 ? kernel.temporal.label + "; lighting scale inactive: fixed resolution required"
                 : kernel.temporal.label;

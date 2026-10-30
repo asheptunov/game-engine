@@ -162,21 +162,29 @@ final class VulkanDevice implements AutoCloseable {
             var presentFeatures =
                     org.lwjgl.vulkan.VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT.calloc(stack)
                             .sType$Default();
+            var halfFeatures =
+                    org.lwjgl.vulkan.VkPhysicalDeviceShaderFloat16Int8Features.calloc(stack)
+                            .sType$Default()
+                            .pNext(presentFeatures.address());
             var query =
                     VkPhysicalDeviceFeatures2.calloc(stack)
                             .sType$Default()
-                            .pNext(presentFeatures.address());
+                            .pNext(halfFeatures.address());
             vkGetPhysicalDeviceFeatures2(physical, query);
             presentation &= presentFeatures.swapchainMaintenance1();
-            if (presentation) {
-                ray.pNext(presentFeatures.address());
-            }
+            // FSR selects shader precision from physical-device support. Enable the same float16
+            // feature on the logical device; integer arithmetic remains unchanged.
+            halfFeatures.shaderInt8(false).pNext(presentation ? presentFeatures.address() : 0);
+            ray.pNext(halfFeatures.address());
             var extensions =
                     new java.util.ArrayList<String>(
                             java.util.List.of(
                                     VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
                                     VK_KHR_RAY_QUERY_EXTENSION_NAME,
-                                    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME));
+                                    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+                                    // The FFX Vulkan backend resolves the promoted KHR entry point.
+                                    "VK_KHR_get_memory_requirements2",
+                                    "VK_KHR_dedicated_allocation"));
             if (presentation) {
                 extensions.add("VK_KHR_swapchain");
                 extensions.add("VK_EXT_swapchain_maintenance1");

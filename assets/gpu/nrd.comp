@@ -39,7 +39,7 @@ void main() {
         imageStore(radianceImage,texel,vec4(min(signal,vec3(65504)),min(fresh[index].w,65504)));
         imageStore(confidenceImage,texel,vec4(eligible?guide[g+2].w*forward.w:0));
     } else {
-        vec3 result=raw[index].xyz;
+        vec3 result=sizeAndMode.z==2?fresh[index].xyz:raw[index].xyz;
         if(eligible) result=guide[g+4].xyz+imageLoad(denoisedImage,texel).xyz*albedo[index].xyz;
         presented[index]=vec4(result,0);
     }

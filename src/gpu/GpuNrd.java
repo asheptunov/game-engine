@@ -16,6 +16,12 @@ final class GpuNrd implements AutoCloseable {
     private int height;
     private long lastFrame;
     int frameIndex;
+    boolean resetHistory;
+    boolean upscaling;
+    float jitterX;
+    float jitterY;
+    private float previousJitterX;
+    private float previousJitterY;
 
     GpuNrd(VulkanDevice gpu) {
         this.gpu = gpu;
@@ -61,13 +67,19 @@ final class GpuNrd implements AutoCloseable {
         if (reset) {
             frameIndex = 0;
         }
-        pass.prepare(
-                GpuNrdCamera.matrices(next.camera(), reset ? next.camera() : previous.camera()),
-                width,
-                height,
-                frameIndex,
-                reset,
-                millis);
+        resetHistory = reset;
+        var matrices =
+                java.util.Arrays.copyOf(
+                        GpuNrdCamera.matrices(
+                                next.camera(), reset ? next.camera() : previous.camera()),
+                        68);
+        matrices[64] = jitterX;
+        matrices[65] = jitterY;
+        matrices[66] = reset ? jitterX : previousJitterX;
+        matrices[67] = reset ? jitterY : previousJitterY;
+        previousJitterX = jitterX;
+        previousJitterY = jitterY;
+        pass.prepare(matrices, width, height, frameIndex, reset, millis);
         view = next;
         lastFrame = now;
     }
@@ -80,9 +92,9 @@ final class GpuNrd implements AutoCloseable {
         pass.initializeImages();
         conversion.bind(
                 new VulkanDevice.Buffer[] {raw, guides, albedo, fresh, presented}, pass.signals);
-        conversion.record(width, height, view.camera(), false, lightingConfidence);
+        conversion.record(width, height, view.camera(), 0, lightingConfidence);
         pass.record();
-        conversion.record(width, height, view.camera(), true, lightingConfidence);
+        conversion.record(width, height, view.camera(), upscaling ? 2 : 1, lightingConfidence);
         frameIndex++;
     }
 

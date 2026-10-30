@@ -281,6 +281,7 @@ public final class GameSettingsPanel extends JPanel {
                     });
             denoiser(panel);
             lightingResolution(panel);
+            upscaling(panel);
         } else {
             panel.add(new JLabel("Finite aperture disables temporal reuse."));
         }
@@ -338,7 +339,8 @@ public final class GameSettingsPanel extends JPanel {
                             navigation.optics(0, navigation.focus());
                             renderer.configure(
                                     s ->
-                                            s.withLightingScale(scale)
+                                            s.withUpscaler(engine.Upscaler.OFF)
+                                                    .withLightingScale(scale)
                                                     .withFoveated(false)
                                                     .withFogDownsample(1)
                                                     .withPathDepth(Math.max(1, s.pathDepth()))
@@ -364,6 +366,53 @@ public final class GameSettingsPanel extends JPanel {
                                 + "<br>Sets Movement frame budget to Fixed resolution."
                                 + "<br>Changing those settings suspends the selected"
                                 + " lighting scale.</html>"));
+    }
+
+    private void upscaling(JPanel panel) {
+        var selector =
+                new JComboBox<>(
+                        new String[] {"Off", "FSR Quality (two thirds)", "FSR Performance (half)"});
+        row(panel, "Temporal upscaling (experimental)", selector);
+        selector.setName("upscaler");
+        selector.addActionListener(
+                event -> {
+                    if (refreshing) {
+                        return;
+                    }
+                    var mode = engine.Upscaler.values()[selector.getSelectedIndex()];
+                    if (mode == engine.Upscaler.OFF) {
+                        renderer.configure(s -> s.withUpscaler(mode));
+                        return;
+                    }
+                    navigation.optics(0, navigation.focus());
+                    renderer.configure(
+                            s ->
+                                    s.withUpscaler(mode)
+                                            .withLightingScale(1)
+                                            .withDenoiser(engine.Denoiser.NRD_RELAX)
+                                            .withFoveated(false)
+                                            .withFogDownsample(1)
+                                            .withPathDepth(Math.max(1, s.pathDepth()))
+                                            .withTemporal(true, s.temporalRevision() + 1)
+                                            .withInteractive(
+                                                    false,
+                                                    s.interactiveMillis(),
+                                                    s.minimumWidth(),
+                                                    s.minimumHeight()));
+                });
+        refreshers.add(
+                () -> {
+                    selector.setSelectedIndex(renderer.settings().upscaler().ordinal());
+                    var support = renderer.upscalerSupport(engine.Upscaler.FSR_QUALITY);
+                    selector.setEnabled(support.supported() || selector.getSelectedIndex() != 0);
+                    selector.setToolTipText(support.reason());
+                });
+        panel.add(
+                new JLabel(
+                        "<html>Reconstructs the output from lower-resolution frames.<br>Enables"
+                            + " NRD, pinhole, uniform sampling, Full atmosphere and Fixed"
+                            + " resolution.<br>Changing those requirements suspends upscaling. No"
+                            + " frame generation.</html>"));
     }
 
     private JPanel renderControls() {

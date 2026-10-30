@@ -43,8 +43,8 @@ import org.lwjgl.vulkan.VkMemoryAllocateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
 
-/** One 2D denoiser texture in GENERAL layout; barriers are recorded by the pass scheduler. */
-final class GpuNrdImage implements AutoCloseable {
+/** One 2D compute texture in GENERAL layout; barriers are recorded by the pass scheduler. */
+final class GpuImage implements AutoCloseable {
     private final VulkanDevice gpu;
     final int width;
     final int height;
@@ -55,7 +55,7 @@ final class GpuNrdImage implements AutoCloseable {
     private long bytes;
     private boolean initialized;
 
-    GpuNrdImage(VulkanDevice gpu, int width, int height, int format) {
+    GpuImage(VulkanDevice gpu, int width, int height, int format) {
         this.gpu = gpu;
         this.width = width;
         this.height = height;
@@ -66,7 +66,7 @@ final class GpuNrdImage implements AutoCloseable {
             int required =
                     VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
             if ((properties.optimalTilingFeatures() & required) != required) {
-                throw new UnsupportedOperationException("NRD texture format " + format);
+                throw new UnsupportedOperationException("GPU texture format " + format);
             }
             create(stack);
             gpu.resources.add(this);
@@ -95,7 +95,7 @@ final class GpuNrdImage implements AutoCloseable {
                         .sharingMode(VK_SHARING_MODE_EXCLUSIVE)
                         .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED);
         create.extent().set(width, height, 1);
-        VulkanDevice.check(vkCreateImage(gpu.device, create, null, handle), "NRD image");
+        VulkanDevice.check(vkCreateImage(gpu.device, create, null, handle), "GPU image");
         image = handle.get(0);
         var requirements = VkMemoryRequirements.calloc(stack);
         vkGetImageMemoryRequirements(gpu.device, image, requirements);
@@ -123,12 +123,12 @@ final class GpuNrdImage implements AutoCloseable {
                                 .memoryTypeIndex(type),
                         null,
                         handle),
-                "NRD image allocation");
+                "GPU image allocation");
         memory = handle.get(0);
         bytes = requirements.size();
         gpu.allocatedBytes += bytes;
         gpu.peakBytes = Math.max(gpu.peakBytes, gpu.allocatedBytes);
-        VulkanDevice.check(vkBindImageMemory(gpu.device, image, memory, 0), "NRD image bind");
+        VulkanDevice.check(vkBindImageMemory(gpu.device, image, memory, 0), "GPU image bind");
         var viewCreate =
                 VkImageViewCreateInfo.calloc(stack)
                         .sType$Default()
@@ -141,7 +141,7 @@ final class GpuNrdImage implements AutoCloseable {
                 .levelCount(1)
                 .layerCount(1);
         VulkanDevice.check(
-                vkCreateImageView(gpu.device, viewCreate, null, handle), "NRD image view");
+                vkCreateImageView(gpu.device, viewCreate, null, handle), "GPU image view");
         view = handle.get(0);
     }
 

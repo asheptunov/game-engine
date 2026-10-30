@@ -29,7 +29,71 @@ public record RenderSettings(
         Bloom bloom,
         double lightingScale,
         Denoiser denoiser,
-        boolean pathRoulette) {
+        boolean pathRoulette,
+        Upscaler upscaler) {
+    /** Source compatibility for callers predating temporal upscaling. */
+    @SuppressWarnings("PMD.ExcessiveParameterList")
+    public RenderSettings(
+            int pathDepth,
+            long seed,
+            long restartRevision,
+            int samplesPerBatch,
+            long sampleTarget,
+            boolean paused,
+            boolean acceleration,
+            int workers,
+            int tileSize,
+            boolean temporal,
+            long temporalRevision,
+            boolean interactive,
+            double interactiveMillis,
+            int minimumWidth,
+            int minimumHeight,
+            boolean temporalBudget,
+            int motionSamples,
+            double motionScale,
+            int fogDownsample,
+            boolean fogLightingGrid,
+            boolean fogJitter,
+            boolean foveated,
+            boolean smoothFoveation,
+            FoveationQuality foveationQuality,
+            Bloom bloom,
+            double lightingScale,
+            Denoiser denoiser,
+            boolean pathRoulette) {
+        this(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom,
+                lightingScale,
+                denoiser,
+                pathRoulette,
+                Upscaler.OFF);
+    }
+
     /** Source compatibility for callers predating optional path roulette. */
     @SuppressWarnings("PMD.ExcessiveParameterList")
     public RenderSettings(
@@ -237,7 +301,8 @@ public record RenderSettings(
                 bloom,
                 value,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** Source compatibility for callers predating presentation bloom. */
@@ -325,7 +390,8 @@ public record RenderSettings(
                 value,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withDenoiser(Denoiser value) {
@@ -357,7 +423,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 value,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** GPU throughput-based termination after two diffuse events; reference mode is false. */
@@ -390,10 +457,45 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
+                value,
+                upscaler);
+    }
+
+    public RenderSettings withUpscaler(Upscaler value) {
+        return new RenderSettings(
+                pathDepth,
+                seed,
+                restartRevision,
+                samplesPerBatch,
+                sampleTarget,
+                paused,
+                acceleration,
+                workers,
+                tileSize,
+                temporal,
+                temporalRevision,
+                interactive,
+                interactiveMillis,
+                minimumWidth,
+                minimumHeight,
+                temporalBudget,
+                motionSamples,
+                motionScale,
+                fogDownsample,
+                fogLightingGrid,
+                fogJitter,
+                foveated,
+                smoothFoveation,
+                foveationQuality,
+                bloom,
+                lightingScale,
+                denoiser,
+                pathRoulette,
                 value);
     }
 
     public RenderSettings {
+        java.util.Objects.requireNonNull(upscaler, "Upscaler");
         java.util.Objects.requireNonNull(denoiser, "Denoiser");
         if (!Double.isFinite(lightingScale) || lightingScale < .5 || lightingScale > 1) {
             throw new IllegalArgumentException("Lighting scale must be 0.5..1");
@@ -496,7 +598,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withSeed(long value) {
@@ -528,7 +631,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withRestartRevision(long value) {
@@ -560,7 +664,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withSamplesPerBatch(int value) {
@@ -592,7 +697,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withSampleTarget(long value) {
@@ -624,7 +730,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withPaused(boolean value) {
@@ -656,7 +763,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withWorkers(int value) {
@@ -688,7 +796,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withTileSize(int value) {
@@ -720,7 +829,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withAcceleration(boolean value) {
@@ -752,7 +862,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withTemporal(boolean value, long revision) {
@@ -784,7 +895,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withInteractive(
@@ -817,7 +929,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     public RenderSettings withTemporalBudget(boolean value, int samples, double scale) {
@@ -849,7 +962,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** GPU primary-ray fog quality; CPU and unsupported views retain direct integration. */
@@ -882,7 +996,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** Optional GPU world-space lighting coefficients; CPU retains direct evaluation. */
@@ -915,7 +1030,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** GPU stratified fog sampling; CPU retains its reference integration. */
@@ -948,7 +1064,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** GPU center-weighted spatial sampling; CPU retains uniform sampling. */
@@ -981,7 +1098,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** Smooth GPU reconstruction, active only when center detail is enabled. */
@@ -1014,7 +1132,8 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 
     /** Live smooth sampling controls; ignored by uniform and discrete sampling. */
@@ -1047,6 +1166,7 @@ public record RenderSettings(
                 bloom,
                 lightingScale,
                 denoiser,
-                pathRoulette);
+                pathRoulette,
+                upscaler);
     }
 }

@@ -20,6 +20,13 @@ public interface RenderSession extends AutoCloseable {
                         : "NRD requires GPU rendering");
     }
 
+    /** Runtime availability without creating a device. */
+    default RenderCapabilities.Support upscalerSupport(Upscaler upscaler) {
+        return new RenderCapabilities.Support(
+                upscaler == Upscaler.OFF,
+                upscaler == Upscaler.OFF ? "Upscaling off" : "FSR requires GPU rendering");
+    }
+
     /** Prefer device-resident publications; unsupported backends reject enabling it. */
     default void devicePresentation(boolean enabled) {
         if (enabled) {

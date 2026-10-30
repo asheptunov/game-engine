@@ -650,16 +650,17 @@ void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 li
     if(reconstructLighting) lightingAlbedo[pixel]=vec4(1);
     if(!found) {
         if(reconstructLighting) {
-            temporalGuide[g].w=-1;
+            temporalGuide[g]=vec4(temporalMotion[7].z>0?d:vec3(0),-1);
             temporalGuide[g+3]=vec4(transmission,0);
             temporalGuide[g+4]=vec4(light,0);
         }
         return;
     }
     uint m=8u+uint(hit.instanceIndex)*4u;
-    if(temporalMotion[m+3].x==0) return;
+    bool upscale=temporalMotion[7].z>0;
+    if(temporalMotion[m+3].x==0 && !upscale) return;
     float material=instances[hit.instanceIndex*4+1].w;
-    if(material>0) return;
+    if(material>0 && !upscale) return;
     vec3 point=o+d*hit.t;
     vec4 local=vec4(hit.localPoint,1);
     vec3 previous=vec3(dot(temporalMotion[m],local),dot(temporalMotion[m+1],local),dot(temporalMotion[m+2],local));
@@ -671,9 +672,9 @@ void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 li
     vec3 color=material==-2?vec3(1):reflectance(hit);
     if(reconstructLighting) lightingAlbedo[pixel]=vec4(color,1);
     temporalGuide[g]=vec4(point,temporalMotion[m+3].x);
-    temporalGuide[g+1]=vec4(localNormal,1);
+    temporalGuide[g+1]=vec4(localNormal,material>0?0:1);
     temporalGuide[g+2]=vec4(previous,temporalMotion[m+3].y);
-    temporalGuide[g+3]=vec4(transmission*color,0);
+    temporalGuide[g+3]=vec4(transmission*color,material>0?1:0);
     temporalGuide[g+4]=vec4(light,0);
     temporalGuide[g+5]=vec4(normal,footprint);
 }
@@ -742,6 +743,7 @@ void main() {
     vec2 samplePosition=continuousSampling ? smoothCenter-.5*smoothSize+vec2(u,v)*smoothSize
                                  : vec2(xy)+vec2(u,v)*vec2(footprint);
     if(dispatchMode==7 || dispatchMode==8 || nrd) samplePosition=vec2(xy)+.5;
+    if(nrd && temporalMotion[7].z>0) samplePosition+=temporalMotion[7].xy;
     vec3 d = normalize(origin.xyz + edge1.xyz*(samplePosition.x/float(imageSize.x)) + edge2.xyz*(samplePosition.y/float(imageSize.y))-o);
     if (eye.w > 0) {
         // Independent aperture domain preserves the transport stream, including depth zero.

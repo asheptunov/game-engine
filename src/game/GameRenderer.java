@@ -818,6 +818,10 @@ public final class GameRenderer implements AutoCloseable {
         return capabilities;
     }
 
+    public engine.RenderCapabilities.Support upscalerSupport(engine.Upscaler upscaler) {
+        return session.upscalerSupport(upscaler);
+    }
+
     public engine.RenderCapabilities.Support denoiserSupport(engine.Denoiser denoiser) {
         return session.denoiserSupport(denoiser);
     }
@@ -906,7 +910,12 @@ public final class GameRenderer implements AutoCloseable {
         if (next.temporal() && !denoiser.supported()) {
             throw new IllegalArgumentException(denoiser.reason());
         }
-        if (settings.bloom() != next.bloom()
+        var upscaler = upscalerSupport(next.upscaler());
+        if (!upscaler.supported()) {
+            throw new IllegalArgumentException(upscaler.reason());
+        }
+        if (settings.upscaler() != next.upscaler()
+                || settings.bloom() != next.bloom()
                 || settings.temporal() != next.temporal()
                 || settings.temporalRevision() != next.temporalRevision()
                 || settings.lightingScale() != next.lightingScale()

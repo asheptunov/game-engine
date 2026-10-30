@@ -246,7 +246,7 @@ public final class PathRouletteCheck {
     }
 
     private static void settingsCopies() throws Exception {
-        var selected = SETTINGS.withPathRoulette(true);
+        var selected = SETTINGS.withPathRoulette(true).withUpscaler(Upscaler.FSR_QUALITY);
         require(!RenderSettings.defaults().pathRoulette(), "reference path remains the default");
         for (var method : RenderSettings.class.getMethods()) {
             if (!method.getName().startsWith("with") || method.getName().equals("withPathRoulette"))
@@ -263,15 +263,20 @@ public final class PathRouletteCheck {
                                                 ? 1L
                                                 : type == double.class
                                                         ? 1d
-                                                        : type == Denoiser.class
+                                                        : type == Upscaler.class ? Upscaler.OFF : type == Denoiser.class
                                                                 ? Denoiser.BUILT_IN
                                                                 : type == Bloom.class
                                                                         ? Bloom.OFF
                                                                         : FoveationQuality
                                                                                 .defaults();
             }
+            var copied = (RenderSettings) method.invoke(selected, values);
+            if (!method.getName().equals("withUpscaler")) {
+                require(copied.upscaler() == Upscaler.FSR_QUALITY,
+                        method.getName() + " preserves upscaler");
+            }
             require(
-                    ((RenderSettings) method.invoke(selected, values)).pathRoulette(),
+                    copied.pathRoulette(),
                     method.getName() + " preserves roulette");
         }
     }

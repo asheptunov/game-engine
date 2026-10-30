@@ -161,6 +161,23 @@ public final class GpuUiCheck {
                 SwingUtilities.invokeAndWait(()->((javax.swing.JComboBox<?>)find(holder[0],"denoiser")).setSelectedIndex(0));
                 awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().denoiser()==engine.Denoiser.BUILT_IN);
             }
+            if(java.nio.file.Files.isRegularFile(java.nio.file.Path.of("out/fsr/runtime/Release/rte_fsr.dll"))) {
+                SwingUtilities.invokeAndWait(()->{
+                    var upscale=(javax.swing.JComboBox<?>)find(holder[0],"upscaler");
+                    if(upscale==null || !upscale.isEnabled()) throw new AssertionError("FSR selector unavailable");
+                    upscale.setSelectedIndex(2);
+                    var selected=renderer.settings();
+                    if(selected.upscaler()!=engine.Upscaler.FSR_PERFORMANCE || selected.lightingScale()!=1
+                            || selected.denoiser()!=engine.Denoiser.NRD_RELAX || selected.interactive()
+                            || !selected.temporal() || selected.foveated() || selected.fogDownsample()!=1 || navigation.aperture()!=0)
+                        throw new AssertionError("FSR prerequisites not configured");
+                });
+                awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().upscaler()==engine.Upscaler.FSR_PERFORMANCE && frame.samples()>=4);
+                if(renderer.frame().image().getWidth()!=960 || !renderer.backendStatus().contains("FSR_PERFORMANCE"))
+                    throw new AssertionError("Game FSR output or diagnostics missing");
+                SwingUtilities.invokeAndWait(()->((javax.swing.JComboBox<?>)find(holder[0],"upscaler")).setSelectedIndex(0));
+                awaitSamples(renderer,frame->frame.context()!=null && frame.context().settings().upscaler()==engine.Upscaler.OFF);
+            }
             SwingUtilities.invokeAndWait(()->((javax.swing.JCheckBox)find(holder[0],"Temporal reconstruction")).doClick());
             awaitSamples(renderer,frame->frame.context()!=null && !frame.context().settings().temporal());
             SwingUtilities.invokeAndWait(()->{

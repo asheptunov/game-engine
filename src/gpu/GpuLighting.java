@@ -36,29 +36,30 @@ final class GpuLighting implements AutoCloseable {
     }
 
     static boolean enabled(RenderView view, RenderSettings settings) {
-        return settings.lightingScale() < 1
-                && !settings.interactive()
-                && GpuTemporal.fallback(view, settings) == null;
+        return GpuFsr.fallback(view, settings) == null
+                || settings.lightingScale() < 1
+                        && !settings.interactive()
+                        && GpuTemporal.fallback(view, settings) == null;
     }
 
     static RenderView sampled(RenderView output, RenderSettings settings) {
         if (!enabled(output, settings)) {
             return output;
         }
+        double scale =
+                GpuFsr.fallback(output, settings) == null
+                        ? settings.upscaler().scale()
+                        : settings.lightingScale();
         return new RenderView(
                 output.camera(),
-                Math.max(
-                        RenderView.MIN_DIMENSION,
-                        (int) Math.round(output.width() * settings.lightingScale())),
-                Math.max(
-                        RenderView.MIN_DIMENSION,
-                        (int) Math.round(output.height() * settings.lightingScale())));
+                Math.max(RenderView.MIN_DIMENSION, (int) Math.round(output.width() * scale)),
+                Math.max(RenderView.MIN_DIMENSION, (int) Math.round(output.height() * scale)));
     }
 
-    boolean prepare(RenderView input, RenderView presentation, boolean nrd) {
+    boolean prepare(RenderView input, RenderView presentation, boolean nrd, boolean upscale) {
         width = presentation.width();
         height = presentation.height();
-        active = input.width() != width || input.height() != height;
+        active = !upscale && (input.width() != width || input.height() != height);
         long colorBytes = active || nrd ? (long) input.width() * input.height() * 16 : 16;
         long outputBytes = active ? (long) width * height * 16 : 16;
         boolean changed = albedo.size != colorBytes || output.size != outputBytes;

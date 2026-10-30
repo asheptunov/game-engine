@@ -229,7 +229,7 @@ public final class NrdCheck {
         shown.source.close();
     }
 
-    private static float[] readBuffer(VulkanDevice gpu, VulkanDevice.Buffer source) {
+    static float[] readBuffer(VulkanDevice gpu, VulkanDevice.Buffer source) {
         try (var target = gpu.buffer(source.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true);
                 var stack = MemoryStack.stackPush()) {
             gpu.begin();
@@ -244,7 +244,7 @@ public final class NrdCheck {
         }
     }
 
-    private static float[] readImage(VulkanDevice gpu, GpuNrdImage source, int channels) {
+    private static float[] readImage(VulkanDevice gpu, GpuImage source, int channels) {
         try (var target =
                         gpu.buffer(
                                 (long) source.width * source.height * channels * 4,
@@ -283,9 +283,11 @@ public final class NrdCheck {
                 throw new AssertionError("Invalid radiance: " + value);
     }
 
-    private static void leases(boolean resident) throws Exception {
+    private static void leases(boolean resident) throws Exception { leases(resident, Upscaler.OFF); }
+
+    static void leases(boolean resident, Upscaler upscaler) throws Exception {
         var world = ReconstructionCheck.world(0, false, false);
-        var settings = SETTINGS.withLightingScale(.5);
+        var settings = SETTINGS.withLightingScale(upscaler == Upscaler.OFF ? .5 : 1).withUpscaler(upscaler);
         var view = new RenderView(CAMERA, 192, 160);
         var session = new GpuRenderSession(world, view, settings);
         session.displayExposure(1);
@@ -311,7 +313,7 @@ public final class NrdCheck {
                     Arrays.equals(shown, copy(first.presentationPixels())),
                     "held NRD image survives moving publication");
         }
-        session.update(world, view, settings.withDenoiser(Denoiser.BUILT_IN));
+        session.update(world, view, upscaler == Upscaler.OFF ? settings.withDenoiser(Denoiser.BUILT_IN) : settings.withUpscaler(Upscaler.OFF));
         require(
                 !first.reconstructed(),
                 "switching denoiser invalidates old presentation immediately");

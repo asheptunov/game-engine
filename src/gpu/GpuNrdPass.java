@@ -53,9 +53,9 @@ final class GpuNrdPass implements AutoCloseable {
     private final VulkanDevice gpu;
     private final GpuNrdLibrary library;
     private final GpuNrdPipeline[] pipelines;
-    private final GpuNrdImage[] permanent;
-    private final GpuNrdImage[] transientImages;
-    final GpuNrdImage[] signals = new GpuNrdImage[6];
+    private final GpuImage[] permanent;
+    private final GpuImage[] transientImages;
+    final GpuImage[] signals = new GpuImage[6];
     private VulkanDevice.Buffer constants;
     private final long[] samplers = new long[2];
     private long descriptorPool;
@@ -68,8 +68,8 @@ final class GpuNrdPass implements AutoCloseable {
         this.gpu = gpu;
         library = new GpuNrdLibrary();
         pipelines = new GpuNrdPipeline[library.info[0]];
-        permanent = new GpuNrdImage[library.info[1]];
-        transientImages = new GpuNrdImage[library.info[2]];
+        permanent = new GpuImage[library.info[1]];
+        transientImages = new GpuImage[library.info[2]];
         try (var stack = MemoryStack.stackPush()) {
             var properties = VkPhysicalDeviceProperties.calloc(stack);
             vkGetPhysicalDeviceProperties(gpu.physical, properties);
@@ -89,7 +89,7 @@ final class GpuNrdPass implements AutoCloseable {
                 VK_FORMAT_R16G16B16A16_SFLOAT
             };
             for (int i = 0; i < signals.length; i++) {
-                signals[i] = new GpuNrdImage(gpu, width, height, formats[i]);
+                signals[i] = new GpuImage(gpu, width, height, formats[i]);
             }
             createTextures(permanent, true, width, height);
             createTextures(transientImages, false, width, height);
@@ -103,7 +103,7 @@ final class GpuNrdPass implements AutoCloseable {
         }
     }
 
-    private void createTextures(GpuNrdImage[] images, boolean persistent, int width, int height) {
+    private void createTextures(GpuImage[] images, boolean persistent, int width, int height) {
         for (int i = 0; i < images.length; i++) {
             int encoded = library.texture(persistent, i);
             int downsample = encoded >>> 16;
@@ -118,7 +118,7 @@ final class GpuNrdPass implements AutoCloseable {
                                         "Unexpected NRD texture format: " + encoded);
                     };
             images[i] =
-                    new GpuNrdImage(
+                    new GpuImage(
                             gpu,
                             (width + downsample - 1) / downsample,
                             (height + downsample - 1) / downsample,
@@ -262,7 +262,7 @@ final class GpuNrdPass implements AutoCloseable {
         barrier();
     }
 
-    private GpuNrdImage resource(int semantic, int index) {
+    private GpuImage resource(int semantic, int index) {
         return switch (semantic) {
             case 6 -> transientImages[index];
             case 7 -> permanent[index];
@@ -311,7 +311,7 @@ final class GpuNrdPass implements AutoCloseable {
         library.close();
     }
 
-    private static void closeImages(GpuNrdImage[] images) {
+    private static void closeImages(GpuImage[] images) {
         for (var image : images) {
             if (image != null) {
                 image.close();

@@ -68,7 +68,7 @@ API uint32_t rteNrdTexture(Context* context, uint32_t permanent, uint32_t index)
     return static_cast<uint32_t>(texture.format) | (uint32_t(texture.downsampleFactor) << 16);
 }
 
-API int rteNrdFrame(Context* context, const float* matrices, uint32_t width, uint32_t height,
+API int rteNrdFrameJittered(Context* context, const float* matrices, uint32_t width, uint32_t height,
                    uint32_t frame, uint32_t reset, float milliseconds) {
     nrd::CommonSettings common{};
     std::memcpy(common.viewToClipMatrix, matrices, 16*sizeof(float));
@@ -79,6 +79,8 @@ API int rteNrdFrame(Context* context, const float* matrices, uint32_t width, uin
     common.resourceSize[1] = common.resourceSizePrev[1] = common.rectSize[1] = common.rectSizePrev[1] = uint16_t(height);
     common.frameIndex = frame;
     common.timeDeltaBetweenFrames = milliseconds;
+    std::memcpy(common.cameraJitter, matrices + 64, 2 * sizeof(float));
+    std::memcpy(common.cameraJitterPrev, matrices + 66, 2 * sizeof(float));
     common.isMotionVectorInWorldSpace = true;
     common.motionVectorScale[2] = 1.0f;
     common.isHistoryConfidenceAvailable = true;

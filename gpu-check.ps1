@@ -85,3 +85,12 @@ if (Test-Path 'out/nrd/runtime/Release/rte_nrd.dll') {
 
 Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/TlasReuseCheck.java','tools/gpu/SceneSubmissionCheck.java') 'out/gpu/scene-submission-compile.log' 'Scene submission checks compilation failed'
 Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','--enable-native-access=ALL-UNNAMED','-Djava.awt.headless=true','-cp',$classPath,'gpu.SceneSubmissionCheck') 'out/gpu/scene-submission-check.log' 'Scene submission checks failed'
+
+if (Test-Path 'out/fsr/runtime/Release/rte_fsr.dll') {
+    & (Join-Path $PSScriptRoot 'setup-fsr.ps1') -Offline
+    & (Join-Path $PSScriptRoot 'setup-nrd.ps1') -Offline
+    Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/LightingQualityScene.java','tools/gpu/FsrCheck.java','tools/gpu/FsrContextCheck.java','tools/gpu/NrdCheck.java') 'out/gpu/fsr-compile.log' 'FSR compilation failed'
+    Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','--enable-native-access=ALL-UNNAMED','-Djava.awt.headless=true','-cp',$classPath,'gpu.FsrCheck') 'out/gpu/fsr-check.log' 'FSR checks failed'
+} else {
+    Write-Output 'Optional FSR checks skipped: run ./setup-fsr.ps1 and ./setup-nrd.ps1 to install the pinned runtimes.'
+}
