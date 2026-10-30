@@ -128,6 +128,7 @@ final class CaptureCodec {
         }
         if (clazz == engine.Material.class) {
             p.putIfAbsent(key + ".leaf", "null");
+            p.putIfAbsent(key + ".viewRelay", "null");
         }
         defaultLightingContinuity(p, key, clazz);
         var components = clazz.getRecordComponents();

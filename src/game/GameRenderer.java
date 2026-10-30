@@ -901,10 +901,6 @@ public final class GameRenderer implements AutoCloseable {
 
     public synchronized void configure(java.util.function.UnaryOperator<RenderSettings> edit) {
         var next = edit.apply(settings);
-        if (shooter != null && next.pathDepth() < 8) {
-            throw new IllegalArgumentException(
-                    "The physical scope requires path depth 8 or higher");
-        }
         capabilities.validate(world, navigation.view(), next);
         var denoiser = denoiserSupport(next.denoiser());
         if (next.temporal() && !denoiser.supported()) {

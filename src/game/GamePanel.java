@@ -90,12 +90,6 @@ public final class GamePanel extends JPanel implements AutoCloseable {
                 };
         addMouseListener(mouse);
         addMouseMotionListener(mouse);
-        addMouseWheelListener(
-                event -> {
-                    if (navigation.scoped()) {
-                        navigation.scopeFocus(event.getWheelRotation());
-                    }
-                });
         addComponentListener(
                 new ComponentAdapter() {
                     @Override
@@ -127,12 +121,6 @@ public final class GamePanel extends JPanel implements AutoCloseable {
             setComponentZOrder(settingsPanel, 0);
             surface.addMouseListener(mouse);
             surface.addMouseMotionListener(mouse);
-            surface.addMouseWheelListener(
-                    event -> {
-                        if (navigation.scoped()) {
-                            navigation.scopeFocus(event.getWheelRotation());
-                        }
-                    });
             renderer.devicePresentation();
         }
         stallMonitor = new DisplayStallMonitor(this::latestPublication, renderer::displayStalls);
@@ -214,7 +202,7 @@ public final class GamePanel extends JPanel implements AutoCloseable {
 
     private String movementHelp() {
         if (renderer.shooter() != null) {
-            return "WASD: move | C: crouch | Z: prone | LMB: fire | RMB: scope | Wheel: focus | R:"
+            return "WASD: move | C: crouch | Z: prone | LMB: fire | RMB: scope | R:"
                     + " reload | Enter: restart";
         }
         return navigation.walking()

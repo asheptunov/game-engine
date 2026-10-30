@@ -21,7 +21,8 @@ public record MaterialAsset(MaterialId id, String label, long revision, Material
                         material.scattering(),
                         material.anisotropy(),
                         material.textures(),
-                        material.leaf());
+                        material.leaf(),
+                        material.viewRelay());
     }
 
     MaterialAsset withRevision(long value) {

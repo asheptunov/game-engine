@@ -83,20 +83,49 @@ public final class ScopeOpticsTest {
     }
 
     @Test
-    void lensesBendRaysAndMagnifyWithoutCameraZoom() {
+    void entranceIsOneFlatOpticWithoutGlassFacets() {
         var parts =
                 ScopeMesh.instances("scope/", Transform.IDENTITY).stream()
-                        .filter(p -> p.material().clearGlass())
+                        .filter(p -> p.material().viewRelay() != null)
                         .toList();
+        assertEquals(1, parts.size());
+        assertEquals(4f, parts.getFirst().material().viewRelay().magnification());
+        assertEquals(128, ((engine.PolygonMesh) parts.getFirst().geometry()).faces().size());
         var query = query(parts);
         for (float slope : new float[] {.025f, .05f, .075f}) {
             var direction = new Vec3(slope, .013f, 1).normalized();
             var origin = new Vec3(0, ScopeMesh.AXIS_Y, ScopeMesh.EYEPIECE_Z - ScopeMesh.EYE_RELIEF);
-            var output = transmit(query, origin, direction);
-            float magnification = slope / (output.x() / output.z());
-            System.out.println("Scope angular magnification: " + magnification);
-            assertTrue(magnification > 3 && magnification < 6);
+            var hit = query.nearest(new RayQuery(origin, direction)).orElseThrow();
+            assertTrue(hit.frontFace());
+            assertTrue(hit.worldNormal().sub(new Vec3(0, 0, -1)).length() < .000001f);
         }
+    }
+
+    @Test
+    void relayMaterialSurvivesScenePersistenceAndRejectsInvalidGeometry() throws Exception {
+        var optic = ScopeMesh.instances("scope/", Transform.IDENTITY).getFirst();
+        var document = new SceneDocument();
+        document.transact(
+                edit ->
+                        edit.assignGeometry(
+                                edit.createNode("optic", null, Transform.IDENTITY),
+                                edit.createGeometry("entrance", optic.geometry()),
+                                edit.createMaterial("optic", optic.material())));
+        var path = Path.of("out/game/view-relay.scene.xml");
+        java.nio.file.Files.createDirectories(path.getParent());
+        engine.SceneFiles.save(path, document.snapshot());
+        var restored = engine.SceneFiles.load(path).toWorldSnapshot().instances().getFirst();
+        assertEquals(optic.material().viewRelay(), restored.material().viewRelay());
+        assertEquals(
+                optic.material().viewRelay(),
+                optic.material().withColor(new Vec3(.1f, .1f, .1f)).viewRelay());
+        boolean rejected = false;
+        try {
+            new SceneInstance("invalid", SceneInstance.box(), Transform.IDENTITY, optic.material());
+        } catch (IllegalArgumentException expected) {
+            rejected = true;
+        }
+        assertTrue(rejected);
     }
 
     private static SpatialQuery query(List<SceneInstance> parts) {
@@ -116,27 +145,23 @@ public final class ScopeOpticsTest {
                                 }));
     }
 
-    private static Vec3 transmit(SpatialQuery query, Vec3 origin, Vec3 direction) {
-        for (int i = 0; i < 6; i++) {
-            var hit = query.nearest(new RayQuery(origin, direction)).orElseThrow();
-            var normal = hit.frontFace() ? hit.worldNormal() : hit.worldNormal().scale(-1);
-            float eta = hit.frontFace() ? 1 / 1.5f : 1.5f;
-            float cosine = -normal.dot(direction);
-            float discriminant = 1 - eta * eta * (1 - cosine * cosine);
-            assertTrue(discriminant > 0);
-            direction =
-                    direction
-                            .scale(eta)
-                            .add(normal.scale(eta * cosine - (float) Math.sqrt(discriminant)))
-                            .normalized();
-            origin = hit.worldPosition().sub(normal.scale(.001f));
+    @Test
+    void rifleSupportsDoNotObstructTheClearOpticalTube() {
+        var query = query(RifleMesh.instances("rifle/", Transform.IDENTITY, 0));
+        for (int i = 0; i < 32; i++) {
+            double angle = i * Math.PI / 16;
+            var origin =
+                    new Vec3(
+                            (float) Math.cos(angle) * .0239f,
+                            ScopeMesh.AXIS_Y + (float) Math.sin(angle) * .0239f,
+                            ScopeMesh.EYEPIECE_Z + .001f);
+            var hit = query.nearest(new RayQuery(origin, new Vec3(0, 0, 1)));
+            assertTrue(hit.isEmpty() || hit.orElseThrow().distance() > .385f);
         }
-        assertTrue(query.nearest(new RayQuery(origin, direction)).isEmpty());
-        return direction;
     }
 
     @Test
-    void physicalScopeRendersWithWorldOnBothSides() throws Exception {
+    void gameplayScopeRendersWithWorldOnBothSidesAtLowDepth() throws Exception {
         var navigation = new GameNavigation();
         navigation.pose(new Vec3(0, 1.7f, 0), 0, 0);
         navigation.capture();
@@ -165,7 +190,7 @@ public final class ScopeOpticsTest {
         var settings =
                 RenderSettings.defaults()
                         .withInteractive(false, 16.67, 0, 0)
-                        .withPathDepth(8)
+                        .withPathDepth(2)
                         .withSampleTarget(16)
                         .withSamplesPerBatch(8);
         try (var session =
@@ -206,7 +231,7 @@ public final class ScopeOpticsTest {
         var settings = RenderSettings.defaults().withPathDepth(8);
         var view = new RenderView(camera, 64, 64);
         assertTrue(
-                !RenderCapabilities.GPU
+                RenderCapabilities.GPU
                         .issues(
                                 new WorldSnapshot(0, overlapping, List.of(), List.of()),
                                 view,
@@ -215,8 +240,10 @@ public final class ScopeOpticsTest {
         var safe = new ArrayList<>(player);
         var patrol = RifleMesh.patrolInstances("patrol/0/rifle/", pose, 0);
         safe.addAll(patrol);
-        assertTrue(patrol.stream().noneMatch(part -> part.material().clearGlass()));
-        assertEquals(3L, player.stream().filter(part -> part.material().clearGlass()).count());
+        assertTrue(patrol.stream().noneMatch(part -> part.material().viewRelay() != null));
+        assertEquals(
+                1L, player.stream().filter(part -> part.material().viewRelay() != null).count());
+        assertTrue(player.stream().noneMatch(part -> part.material().clearGlass()));
         assertTrue(
                 RenderCapabilities.GPU
                         .issues(new WorldSnapshot(1, safe, List.of(), List.of()), view, settings)
@@ -234,12 +261,16 @@ public final class ScopeOpticsTest {
                 RenderCapabilities.GPU
                         .issues(world, new RenderView(camera, 64, 64), settings)
                         .isEmpty());
-        var nested = new ArrayList<>(parts);
+        var glass =
+                new SceneInstance(
+                        "glass",
+                        SceneInstance.box(),
+                        Transform.IDENTITY,
+                        new Material("glass", Vec3.ZERO, Material.Kind.DIELECTRIC));
+        var nested = new ArrayList<>(List.of(glass));
         nested.add(
-                parts.getFirst()
-                        .withTransform(
-                                new Transform(
-                                        new Vec3(.001f, 0, 0), Vec3.ZERO, new Vec3(1, 1, 1))));
+                glass.withTransform(
+                        new Transform(new Vec3(.001f, 0, 0), Vec3.ZERO, new Vec3(1, 1, 1))));
         assertEquals(
                 1,
                 RenderCapabilities.GPU

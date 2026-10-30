@@ -223,8 +223,7 @@ public final class ShooterGameTest {
         assertTrue(
                 Math.abs(before.sensor().edge2().length() / scoped.sensor().edge2().length() - 1.5)
                         < .0001);
-        navigation.scopeFocus(2);
-        assertTrue(navigation.view().camera().focus() > 25);
+        assertEquals(before.focus(), scoped.focus());
         navigation.release();
         assertEquals(before, navigation.view().camera());
     }
@@ -315,7 +314,6 @@ public final class ShooterGameTest {
             renderer.enableShooter();
             navigation.capture();
             navigation.scoped(true);
-            navigation.scopeFocus(-8);
             long deadline = System.nanoTime() + 15_000_000_000L;
             GameRenderer.Frame frame = null;
             while (System.nanoTime() < deadline) {

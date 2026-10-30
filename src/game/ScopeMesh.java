@@ -10,17 +10,16 @@ import math.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 
-/** An upright three-lens sight: eyepiece, image-erecting relay and objective. Units are metres. */
+/** An ideal 4x gameplay sight with a planar view relay, physical housing and reticle. */
 final class ScopeMesh {
     static final float EYEPIECE_Z = -.10f;
     static final float OBJECTIVE_Z = .270762f;
     static final float EYE_RELIEF = .072537f;
     static final float AXIS_Y = .115f;
     private static final int SIDES = 128;
-    private static final int RINGS = 128;
-    private static final Material GLASS =
-            new Material(
-                    "Scope glass", new Vec3(1, 1, 1), Material.Kind.DIELECTRIC, 1.5f, Vec3.ZERO);
+    private static final Material OPTIC =
+            new Material("Scope view relay", Vec3.ZERO)
+                    .withViewRelay(new engine.ViewRelay(4, OBJECTIVE_Z + .014f - EYEPIECE_Z));
     private static final Material BLACK =
             new Material("Scope interior", new Vec3(.015f, .018f, .02f));
     private static final List<SceneInstance> PARTS = build();
@@ -28,47 +27,21 @@ final class ScopeMesh {
     private ScopeMesh() {}
 
     static List<SceneInstance> instances(String prefix, Transform pose) {
-        return instances(prefix, pose, 25);
-    }
-
-    static List<SceneInstance> instances(String prefix, Transform pose, float focus) {
         return PARTS.stream()
                 .map(
                         part ->
                                 new SceneInstance(
                                         prefix + part.name(),
                                         part.geometry(),
-                                        Transform.compose(pose, focused(part, focus)),
+                                        pose,
                                         part.material()))
                 .toList();
     }
 
-    private static Transform focused(SceneInstance part, float focus) {
-        // Thin-lens finite-object correction: move the objective forward at nearer focus.
-        float shift = part.name().equals("objective") ? .16f * .16f / focus : 0;
-        return new Transform(new Vec3(0, 0, shift), Vec3.ZERO, new Vec3(1, 1, 1));
-    }
-
     private static List<SceneInstance> build() {
         var result = new ArrayList<SceneInstance>();
-        result.add(
-                new SceneInstance(
-                        "eyepiece",
-                        lens(EYEPIECE_Z, .024f, curvature(.04f, .022f), .022f),
-                        Transform.IDENTITY,
-                        GLASS));
-        result.add(
-                new SceneInstance(
-                        "objective",
-                        lens(OBJECTIVE_Z, .042f, curvature(.16f, .014f), .014f),
-                        Transform.IDENTITY,
-                        GLASS));
-        result.add(
-                new SceneInstance(
-                        "relay",
-                        lens(EYEPIECE_Z + .125666f, .024f, curvature(.04f, .022f), .022f),
-                        Transform.IDENTITY,
-                        GLASS));
+        result.add(new SceneInstance("view", entrance(), Transform.IDENTITY, OPTIC));
+        result.add(new SceneInstance("baffle", baffle(), Transform.IDENTITY, BLACK));
         var vertices = new ArrayList<PolygonMesh.Vertex>();
         var faces = new ArrayList<PolygonMesh.Face>();
         // Four circular stations form an open bore, not an opaque capped cylinder.
@@ -88,7 +61,7 @@ final class ScopeMesh {
                         PolygonMesh.surface(vertices, faces, vertices.size(), faces.size()),
                         Transform.IDENTITY,
                         BLACK));
-        // Physical reticle wires at the intermediate image plane, between eyepiece and relay.
+        // Opaque reticle wires sit just in front of the deterministic optical entrance.
         for (int axis = 0; axis < 2; axis++) {
             var half =
                     axis == 0
@@ -105,7 +78,7 @@ final class ScopeMesh {
                                                             v.position().x() * half.x(),
                                                             AXIS_Y + v.position().y() * half.y(),
                                                             EYEPIECE_Z
-                                                                    + .04f
+                                                                    - .002f
                                                                     + v.position().z() * half.z())))
                             .toList();
             result.add(
@@ -119,43 +92,22 @@ final class ScopeMesh {
         return List.copyOf(result);
     }
 
-    private static float curvature(float focalLength, float thickness) {
-        return (focalLength
-                        + (float)
-                                Math.sqrt(
-                                        focalLength * focalLength
-                                                - 2 * focalLength * thickness / 3))
-                / 2;
-    }
-
-    private static PolygonMesh lens(float z, float aperture, float curvature, float thickness) {
+    private static PolygonMesh entrance() {
         var vertices = new ArrayList<PolygonMesh.Vertex>();
         var faces = new ArrayList<PolygonMesh.Face>();
-        // Each spherical face has its own centre and concentric rings, joined at the rim.
-        for (int side = 0; side < 2; side++) {
-            int base = vertices.size();
-            float sign = side == 0 ? -1 : 1;
-            vertices.add(
-                    new PolygonMesh.Vertex(base, new Vec3(0, AXIS_Y, z + sign * thickness / 2)));
-            for (int r = 1; r <= RINGS; r++) {
-                float radius = aperture * r / RINGS;
-                float sag = curvature - (float) Math.sqrt(curvature * curvature - radius * radius);
-                ring(vertices, radius, z + sign * (thickness / 2 - sag));
-            }
-            cap(faces, base, side == 0);
-            for (int r = 0; r < RINGS - 1; r++) {
-                for (int i = 0; i < SIDES; i++) {
-                    long a = base + 1 + r * SIDES + i;
-                    long b = base + 1 + r * SIDES + (i + 1) % SIDES;
-                    face(faces, side == 0, a, a + SIDES, b + SIDES);
-                    face(faces, side == 0, a, b + SIDES, b);
-                }
-            }
-        }
-        int lastBack = 1 + (RINGS - 1) * SIDES;
-        int lastFront = 1 + RINGS * SIDES + lastBack;
-        join(faces, lastBack, lastFront);
-        return PolygonMesh.closedSolid(vertices, faces, vertices.size(), faces.size());
+        vertices.add(new PolygonMesh.Vertex(0, new Vec3(0, AXIS_Y, EYEPIECE_Z)));
+        ring(vertices, .024f, EYEPIECE_Z);
+        cap(faces, 0, true);
+        return PolygonMesh.surface(vertices, faces, vertices.size(), faces.size());
+    }
+
+    private static PolygonMesh baffle() {
+        var vertices = new ArrayList<PolygonMesh.Vertex>();
+        var faces = new ArrayList<PolygonMesh.Face>();
+        ring(vertices, .024f, EYEPIECE_Z);
+        ring(vertices, .032f, EYEPIECE_Z);
+        join(faces, 0, SIDES);
+        return PolygonMesh.surface(vertices, faces, vertices.size(), faces.size());
     }
 
     private static void cap(List<PolygonMesh.Face> faces, int base, boolean reverse) {

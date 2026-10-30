@@ -28,22 +28,20 @@ final class RifleMesh {
 
     private RifleMesh() {}
 
-    static List<SceneInstance> instances(String prefix, Transform pose, double cycle) {
-        return instances(prefix, pose, cycle, 25);
-    }
-
     /**
-     * Only the player's sight needs optical transport. Patrol lenses can cross the player's rifle
-     * during close encounters, which the GPU's disjoint glass model cannot represent.
+     * Only the player's sight needs a camera view relay. Patrol sights use an opaque lens coating.
      */
     static List<SceneInstance> patrolInstances(String prefix, Transform pose, double cycle) {
         return instances(prefix, pose, cycle).stream()
-                .map(part -> part.material().clearGlass() ? part.withMaterial(PATROL_LENS) : part)
+                .map(
+                        part ->
+                                part.material().viewRelay() != null
+                                        ? part.withMaterial(PATROL_LENS)
+                                        : part)
                 .toList();
     }
 
-    private static List<SceneInstance> instances(
-            String prefix, Transform pose, double cycle, float focus) {
+    static List<SceneInstance> instances(String prefix, Transform pose, double cycle) {
         var result = new ArrayList<SceneInstance>();
         for (var part : BODY) {
             result.add(
@@ -59,7 +57,7 @@ final class RifleMesh {
                     new SceneInstance(
                             prefix + part.name(), part.geometry(), boltPose, part.material()));
         }
-        result.addAll(ScopeMesh.instances(prefix + "scope/", pose, focus));
+        result.addAll(ScopeMesh.instances(prefix + "scope/", pose));
         return List.copyOf(result);
     }
 
@@ -95,12 +93,7 @@ final class RifleMesh {
 
     static List<SceneInstance> firstPerson(engine.Camera camera, double cooldown, float aim) {
         var result =
-                new ArrayList<>(
-                        instances(
-                                "player/rifle/",
-                                firstPersonPose(camera, aim),
-                                cooldown,
-                                aim > 0 ? camera.focus() : 25));
+                new ArrayList<>(instances("player/rifle/", firstPersonPose(camera, aim), cooldown));
         var pose = firstPersonPose(camera, aim);
         for (var part : HANDS) {
             result.add(
@@ -143,7 +136,8 @@ final class RifleMesh {
         model.box(RUBBER, new Vec3(.035f, .006f, -.035f), new Vec3(.002f, .014f, .055f));
         model.box(EDGE, new Vec3(0, .052f, -.01f), new Vec3(.026f, .008f, .145f));
         for (float z : new float[] {-.07f, .0f}) {
-            model.box(METAL, new Vec3(0, .075f, z), new Vec3(.022f, .022f, .012f));
+            // Support the outer housing without protruding into the enlarged optical entrance.
+            model.box(METAL, new Vec3(0, .071f, z), new Vec3(.022f, .016f, .012f));
         }
         model.box(METAL, new Vec3(0, .16f, -.02f), new Vec3(.02f, .012f, .02f));
         for (int index = 0; index < 8; index++) {

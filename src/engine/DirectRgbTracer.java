@@ -750,6 +750,9 @@ public final class DirectRgbTracer implements AutoCloseable {
         private long guideRays, guideTests;
         private final Hit visibilityHit = new Hit();
         private final Hit guideHit = new Hit();
+        private final Hit relayObstruction = new Hit();
+        // Worker-owned origin/direction scratch for the one permitted primary view relay.
+        private final float[] relayRay = new float[6];
         // Two rolling rows of exact pixel corners, shared only within this worker's current tile.
         private PreparedPrimitive[] cornerSurface;
         private float[] cornerNx, cornerNy, cornerNz;
@@ -992,7 +995,11 @@ public final class DirectRgbTracer implements AutoCloseable {
             if (!snapshot.camera().camera.variableOrigin() && initialMediumCount > 0) return;
             if (!guideRay((x + .5f) / w, (y + .5f) / h)) return;
             var p = guideHit.primitive;
-            if (p.material.kind() != Material.Kind.DIFFUSE || p.material.emissive()) return;
+            if (p.material.kind() != Material.Kind.DIFFUSE
+                    || p.material.emissive()
+                    || p.material.viewRelay() != null) {
+                return;
+            }
             float depth = guideHit.distance, nx = guideHit.nx, ny = guideHit.ny, nz = guideHit.nz;
             boolean front = guideHit.frontFace;
             // Conservative corner guard; silhouettes, face seams and subpixel mixtures fall back to
@@ -1063,6 +1070,61 @@ public final class DirectRgbTracer implements AutoCloseable {
             return found;
         }
 
+        private boolean crossViewRelay(
+                int depth, int mediumCount, boolean alreadyRelayed, float dx, float dy, float dz) {
+            var relay = hit.primitive.material.viewRelay();
+            if (depth != 0
+                    || mediumCount != 0
+                    || alreadyRelayed
+                    || relay == null
+                    || !hit.frontFace) {
+                return false;
+            }
+            // The inward normal is the optical axis. No scattering event or random sample is used.
+            float axial = -(dx * hit.nx + dy * hit.ny + dz * hit.nz);
+            float inverse = 1 / relay.magnification();
+            dx = dx * inverse - hit.nx * axial * (1 - inverse);
+            dy = dy * inverse - hit.ny * axial * (1 - inverse);
+            dz = dz * inverse - hit.nz * axial * (1 - inverse);
+            float normalize = 1 / (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+            float distance = relay.exitDistance() + .001f;
+            relayRay[0] = hit.x - hit.nx * distance;
+            relayRay[1] = hit.y - hit.ny * distance;
+            relayRay[2] = hit.z - hit.nz * distance;
+            relayRay[3] = dx * normalize;
+            relayRay[4] = dy * normalize;
+            relayRay[5] = dz * normalize;
+            // A scope pushed through cover must not reveal the scene on the far side of it.
+            return !nearestHit(
+                    hit.x - hit.nx * .001f,
+                    hit.y - hit.ny * .001f,
+                    hit.z - hit.nz * .001f,
+                    -hit.nx,
+                    -hit.ny,
+                    -hit.nz,
+                    relayObstruction,
+                    relay.exitDistance(),
+                    null,
+                    null,
+                    false);
+        }
+
+        private float volumeDistance(Material medium, float travel, Sampler sampler) {
+            if (medium == null) {
+                return travel;
+            }
+            if (medium.scattering() > 0) {
+                volumeSegments++;
+                travel = Math.min(travel, Volume.distance(medium.scattering(), sampler.next()));
+                // Sampling cancels sigma_s transmittance; RGB absorption remains deterministic.
+            }
+            absorptionSegments++;
+            pathWeight[0] *= (float) Math.exp(-medium.absorption().x() * travel);
+            pathWeight[1] *= (float) Math.exp(-medium.absorption().y() * travel);
+            pathWeight[2] *= (float) Math.exp(-medium.absorption().z() * travel);
+            return travel;
+        }
+
         private void path(
                 float ox,
                 float oy,
@@ -1120,6 +1182,7 @@ public final class DirectRgbTracer implements AutoCloseable {
             float previousPdf = 0, previousX = 0, previousY = 0, previousZ = 0;
             boolean previousDelta = true;
             boolean volumeNee = false;
+            boolean viewRelayed = false;
             System.arraycopy(initialMedia, 0, media, 0, mediumCount);
             for (int depth = 0; depth <= snapshot.depth(); depth++) {
                 continuation = depth != 0;
@@ -1128,28 +1191,25 @@ public final class DirectRgbTracer implements AutoCloseable {
                     addLighting(rgb, lighting, pathWeight[0], pathWeight[1], pathWeight[2]);
                     break;
                 }
+                if (crossViewRelay(depth, mediumCount, viewRelayed, dx, dy, dz)) {
+                    ox = relayRay[0];
+                    oy = relayRay[1];
+                    oz = relayRay[2];
+                    dx = relayRay[3];
+                    dy = relayRay[4];
+                    dz = relayRay[5];
+                    viewRelayed = true;
+                    depth--;
+                    continue;
+                }
                 if (depth == 0) {
                     primaryHits++;
                     primarySurface = hit.primitive;
                 }
                 Material medium =
                         mediumCount == 0 ? null : media[mediumCount - 1].primitives[0].material;
-                float travel = hit.distance;
-                boolean volumeEvent = false;
-                if (medium != null && medium.scattering() > 0) {
-                    volumeSegments++;
-                    float freeFlight = Volume.distance(medium.scattering(), sampler.next());
-                    volumeEvent = freeFlight < travel;
-                    if (volumeEvent) travel = freeFlight;
-                    // The sampled survival/collision probabilities cancel sigma_s transmittance.
-                    // RGB absorption remains a deterministic weight; do not apply sigma_s twice.
-                }
-                if (medium != null) {
-                    absorptionSegments++;
-                    pathWeight[0] *= (float) Math.exp(-medium.absorption().x() * travel);
-                    pathWeight[1] *= (float) Math.exp(-medium.absorption().y() * travel);
-                    pathWeight[2] *= (float) Math.exp(-medium.absorption().z() * travel);
-                }
+                float travel = volumeDistance(medium, hit.distance, sampler);
+                boolean volumeEvent = travel < hit.distance;
                 if (volumeEvent) {
                     volumeEvents++;
                     float x = ox + dx * travel, y = oy + dy * travel, z = oz + dz * travel;

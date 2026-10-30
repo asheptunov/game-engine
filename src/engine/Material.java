@@ -14,7 +14,53 @@ public record Material(
         float scattering,
         float anisotropy,
         CubeTextures textures,
-        LeafOptics leaf) {
+        LeafOptics leaf,
+        ViewRelay viewRelay) {
+    /** Preserve materials created before camera-only view relays were introduced. */
+    @SuppressWarnings("PMD.ExcessiveParameterList") // Preserve the existing material constructor.
+    public Material(
+            String name,
+            Vec3 color,
+            Kind kind,
+            float ior,
+            Vec3 absorption,
+            float roughness,
+            Vec3 emission,
+            float scattering,
+            float anisotropy,
+            CubeTextures textures,
+            LeafOptics leaf) {
+        this(
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                textures,
+                leaf,
+                null);
+    }
+
+    public Material withViewRelay(ViewRelay value) {
+        return new Material(
+                name,
+                color,
+                kind,
+                ior,
+                absorption,
+                roughness,
+                emission,
+                scattering,
+                anisotropy,
+                textures,
+                leaf,
+                value);
+    }
+
     /** Compatibility constructor: existing diffuse sheets keep their original half/half model. */
     @SuppressWarnings("PMD.ExcessiveParameterList") // Preserve the existing material constructor.
     public Material(
@@ -93,7 +139,8 @@ public record Material(
                 scattering,
                 anisotropy,
                 value,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material(
@@ -128,6 +175,16 @@ public record Material(
     }
 
     public Material {
+        if (viewRelay != null
+                && (kind != Kind.DIFFUSE
+                        || textures != null
+                        || leaf != null
+                        || roughness != 0
+                        || scattering != 0
+                        || !Vec3.ZERO.equals(emission))) {
+            throw new IllegalArgumentException(
+                    "View relays require plain, nonemissive diffuse material");
+        }
         if (leaf != null && kind != Kind.THIN_LEAF) {
             throw new IllegalArgumentException("Leaf optics require thin-leaf material");
         }
@@ -171,7 +228,8 @@ public record Material(
                 next == Kind.DIELECTRIC ? scattering : 0,
                 anisotropy,
                 textures,
-                next == Kind.THIN_LEAF ? leaf : null);
+                next == Kind.THIN_LEAF ? leaf : null,
+                next == Kind.DIFFUSE ? viewRelay : null);
     }
 
     public Material withColor(Vec3 next) {
@@ -186,7 +244,8 @@ public record Material(
                 scattering,
                 anisotropy,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material withIor(float next) {
@@ -201,7 +260,8 @@ public record Material(
                 scattering,
                 anisotropy,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material withAbsorption(Vec3 next) {
@@ -216,7 +276,8 @@ public record Material(
                 scattering,
                 anisotropy,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material withRoughness(float next) {
@@ -231,7 +292,8 @@ public record Material(
                 scattering,
                 anisotropy,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material withEmission(Vec3 next) {
@@ -246,7 +308,8 @@ public record Material(
                 scattering,
                 anisotropy,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material withScattering(float next) {
@@ -261,7 +324,8 @@ public record Material(
                 next,
                 anisotropy,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public Material withAnisotropy(float next) {
@@ -276,7 +340,8 @@ public record Material(
                 scattering,
                 next,
                 textures,
-                leaf);
+                leaf,
+                viewRelay);
     }
 
     public boolean emissive() {

@@ -394,6 +394,10 @@ public final class SceneFiles {
                 f(m.scattering()),
                 "anisotropy",
                 f(m.anisotropy()));
+        if (m.viewRelay() != null) {
+            w.writeAttribute("view-magnification", f(m.viewRelay().magnification()));
+            w.writeAttribute("view-exit-distance", f(m.viewRelay().exitDistance()));
+        }
         if (m.leaf() != null) {
             var leaf = m.leaf();
             w.writeAttribute("leaf-transmission", f(leaf.transmission()));
@@ -734,7 +738,9 @@ public final class SceneFiles {
                     "leaf-blue",
                     "leaf-thickness-mm",
                     "leaf-forward",
-                    "leaf-exponent");
+                    "leaf-exponent",
+                    "view-magnification",
+                    "view-exit-distance");
             empty(e);
             var id = materialId(e);
             var label = label(e);
@@ -776,6 +782,13 @@ public final class SceneFiles {
                                         number(e, "leaf-thickness-mm"),
                                         number(e, "leaf-forward"),
                                         number(e, "leaf-exponent")));
+            }
+            if (e.hasAttribute("view-magnification") || e.hasAttribute("view-exit-distance")) {
+                m =
+                        m.withViewRelay(
+                                new ViewRelay(
+                                        number(e, "view-magnification"),
+                                        number(e, "view-exit-distance")));
             }
             result.add(new MaterialAsset(id, label, 0, m));
         }

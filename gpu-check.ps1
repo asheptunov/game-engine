@@ -81,6 +81,8 @@ if (Test-Path 'out/nrd/runtime/Release/rte_nrd.dll') {
     & (Join-Path $PSScriptRoot 'setup-nrd.ps1') -Offline
     Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/NrdCheck.java') 'out/gpu/nrd-compile.log' 'NRD check compilation failed'
     Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','--enable-native-access=ALL-UNNAMED','-Djava.awt.headless=true','-cp',$classPath,'gpu.NrdCheck') 'out/gpu/nrd-check.log' 'NRD checks failed'
+    Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/ViewRelayCheck.java') 'out/gpu/view-relay-compile.log' 'View relay check compilation failed'
+    Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','--enable-native-access=ALL-UNNAMED','-Djava.awt.headless=true','-cp',$classPath,'gpu.ViewRelayCheck') 'out/gpu/view-relay-check.log' 'View relay checks failed'
 } else {
     Write-Output 'Optional NRD checks skipped: run ./setup-nrd.ps1 to install the pinned runtime.'
 }

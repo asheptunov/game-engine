@@ -28,6 +28,16 @@ public final class GameCaptureTest {
     }
 
     @Test
+    void scopeRelayRoundTripsThroughCaptureArchive() throws Exception {
+        var parts = ScopeMesh.instances("scope/", engine.Transform.IDENTITY);
+        var directory = root();
+        CaptureScenes.save(directory, java.util.List.of(parts), new CaptureCodec.Budget());
+        var restored = CaptureScenes.load(directory, 1, new CaptureCodec.Budget()).getFirst();
+        assertEquals(parts.getFirst().material(), restored.getFirst().material());
+        assertEquals(parts.size(), restored.size());
+    }
+
+    @Test
     void displayWatchdogCapturesBlockedEventThreadWithoutWaitingForIt() throws Exception {
         var started = new java.util.concurrent.CountDownLatch(1);
         var release = new java.util.concurrent.CountDownLatch(1);

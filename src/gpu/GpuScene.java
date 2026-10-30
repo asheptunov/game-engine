@@ -147,6 +147,13 @@ final class GpuScene implements AutoCloseable {
                     object.material().color(),
                     meshes.get(object.geometry()).firstTriangle());
             var leaf = object.material().leaf();
+            var relay = object.material().viewRelay();
+            if (relay != null) {
+                append(materials, new Vec3(-1, 0, 0), -3);
+                append(materials, new Vec3(relay.magnification(), relay.exitDistance(), 0), 0);
+                append(materials, Vec3.ZERO, 0);
+                continue;
+            }
             if (leaf != null) {
                 append(materials, new Vec3(-1, 0, 0), -2);
                 append(materials, leaf.tint(), leaf.thicknessMm());

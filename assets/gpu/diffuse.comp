@@ -96,7 +96,7 @@ bool nearest(vec3 o, vec3 d, int skipInstance, int skipFace, bool shadow, out Hi
 }
 vec3 reflectance(Hit hit) {
     int base = hit.instanceIndex * 4;
-    if (instances[base+1].w == -2) return instances[base].xyz;
+    if (instances[base+1].w == -2 || instances[base+1].w == -3) return instances[base].xyz;
     vec3 n = hit.localNormal, p = hit.localPoint;
     vec2 uv;
     int faceTexture;
@@ -509,9 +509,14 @@ void resolvePrimaryFog(uvec2 xy) {
     vec4 guide=fogGuides[pixel*2];
     Hit hit;hit.t=guide.w;hit.normal=guide.xyz;hit.instanceIndex=int(fogGuides[pixel*2+1].x);
     bool found=hit.instanceIndex>=0;
-    vec3 light,transmission;
-    bool reused=reconstructedFog(vec2(xy)+vec2(u,v),d,found,hit,light,transmission);
-    if(!reused) fogSegment(eye.xyz,d,found?hit.t:1e30,!found,light,transmission);
+    vec3 light=vec3(0),transmission=vec3(1);
+    // Relayed rays already integrated their two disjoint air segments in the path pass.
+    bool relayed=fogGuides[pixel*2+1].y>0;
+    bool reused=false;
+    if(!relayed) {
+        reused=reconstructedFog(vec2(xy)+vec2(u,v),d,found,hit,light,transmission);
+        if(!reused) fogSegment(eye.xyz,d,found?hit.t:1e30,!found,light,transmission);
+    }
     vec3 radiance=light+transmission*pixels[pixel].xyz;
     dvec3 mean=sampling.y==0?dvec3(radiance):means[pixel].xyz+(dvec3(radiance)-means[pixel].xyz)/double(sampling.y+1);
     means[pixel]=dvec4(mean,0);pixels[pixel]=vec4(vec3(mean),reused?1:0);
@@ -587,6 +592,62 @@ layout(set=0,binding=21,std430) buffer FallbackQueue { uint fallbackQueue[]; };
 // One unaccumulated path per pixel for NRD; raw progressive means remain separate.
 layout(set=0,binding=22,std430) writeonly buffer NrdFresh { vec4 nrdFresh[]; };
 
+// A camera-only view relay compresses angular slopes without stochastic glass crossings.
+// Reconstruction sees the corresponding virtual scene, including the previous relay pose.
+bool viewRelayed=false;
+vec3 relayPoint, relayAxis, previousRelayPoint, previousRelayAxis;
+float relayMagnification, relayDistance, relayConfidence;
+
+vec3 relayPosition(vec3 point, bool previous) {
+    if(!viewRelayed) return point;
+    vec3 axis=previous?previousRelayAxis:relayAxis;
+    vec3 entrance=previous?previousRelayPoint:relayPoint;
+    return point-axis*((1-1/relayMagnification)*dot(point-entrance,axis)+relayDistance/relayMagnification);
+}
+
+vec3 relayNormal(vec3 normal) {
+    if(!viewRelayed) return normal;
+    return normalize(normal+relayAxis*((relayMagnification-1)*dot(normal,relayAxis)));
+}
+
+vec3 relaySky(vec3 direction, bool previous) {
+    if(!viewRelayed) return direction;
+    vec3 axis=previous?previousRelayAxis:relayAxis;
+    return normalize(direction-axis*((1-1/relayMagnification)*dot(direction,axis)));
+}
+
+bool relayExitClear(Hit hit, vec3 o, vec3 d) {
+    vec3 point=o+d*hit.t;
+    // Do not expose geometry through cover intersecting the tube between its two endpoints.
+    float distance=instances[hit.instanceIndex*4+2].y;
+    if(distance<=.0001) return true;
+    rayQueryEXT query;
+    rayQueryInitializeEXT(query,scene,0,255,point-hit.normal*BIAS,.0001,-hit.normal,distance);
+    while(rayQueryProceedEXT(query)) {
+        if(rayQueryGetIntersectionTypeEXT(query,false)==gl_RayQueryCandidateIntersectionTriangleEXT
+            && rayQueryGetIntersectionTEXT(query,false)>.0001) return false;
+    }
+    return true;
+}
+
+void crossViewRelay(Hit hit, inout vec3 o, inout vec3 d) {
+    relayPoint=o+d*hit.t;
+    relayAxis=-hit.normal;
+    vec2 optics=instances[hit.instanceIndex*4+2].xy;
+    relayMagnification=optics.x;
+    relayDistance=optics.y+BIAS;
+    if(temporalGuides) {
+        uint m=8u+uint(hit.instanceIndex)*4u;
+        vec4 local=vec4(hit.localPoint,1);
+        previousRelayPoint=vec3(dot(temporalMotion[m],local),dot(temporalMotion[m+1],local),dot(temporalMotion[m+2],local));
+        previousRelayAxis=normalize(vec3(temporalMotion[m].z,temporalMotion[m+1].z,temporalMotion[m+2].z));
+        relayConfidence=temporalMotion[m+3].y;
+    }
+    o=relayPoint+relayAxis*relayDistance;
+    d=normalize(d/relayMagnification+relayAxis*(dot(d,relayAxis)*(1-1/relayMagnification)));
+    viewRelayed=true;
+}
+
 // A primary miss still needs native visibility, but atmospheric radiance varies slowly within
 // a lighting pixel. Reuse only other misses and evaluate the visible sun disc at the native ray.
 bool reconstructSky(vec3 direction, vec2 position, out vec3 result) {
@@ -617,6 +678,8 @@ bool reconstructSurface(Hit hit, vec3 direction, vec3 point, vec2 position, out 
     float identity=temporalMotion[8u+uint(hit.instanceIndex)*4u+3u].x;
     if(identity==0) return false;
     vec3 normal=dot(hit.normal,direction)<0?hit.normal:-hit.normal;
+    normal=relayNormal(normal);
+    point=relayPosition(point,false);
     vec3 color=instances[hit.instanceIndex*4+1].w==-2?vec3(1):reflectance(hit);
     vec2 low=position*vec2(grid.xy)/vec2(nativeWidth,nativeHeight)-.5;
     ivec2 base=ivec2(floor(low));
@@ -650,7 +713,8 @@ void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 li
     if(reconstructLighting) lightingAlbedo[pixel]=vec4(1);
     if(!found) {
         if(reconstructLighting) {
-            temporalGuide[g]=vec4(temporalMotion[7].z>0?d:vec3(0),-1);
+            temporalGuide[g]=vec4(relaySky(d,false),-1);
+            temporalGuide[g+2]=vec4(relaySky(d,true),viewRelayed?relayConfidence:1);
             temporalGuide[g+3]=vec4(transmission,0);
             temporalGuide[g+4]=vec4(light,0);
         }
@@ -666,14 +730,18 @@ void writeTemporalGuide(uint pixel, bool found, Hit hit, vec3 o, vec3 d, vec3 li
     vec3 previous=vec3(dot(temporalMotion[m],local),dot(temporalMotion[m+1],local),dot(temporalMotion[m+2],local));
     vec3 normal=dot(hit.normal,d)<0?hit.normal:-hit.normal;
     vec3 localNormal=dot(hit.normal,d)<0?hit.localNormal:-hit.localNormal;
+    point=relayPosition(point,false);
+    previous=relayPosition(previous,true);
+    normal=relayNormal(normal);
     float planeDistance=abs(dot(origin.xyz-eye.xyz,normalize(cross(edge1.xyz,edge2.xyz))));
-    float footprint=hit.t*max(length(edge1.xyz)/float(grid.x),length(edge2.xyz)/float(grid.y))/planeDistance;
+    float distance=viewRelayed?length(point-eye.xyz):hit.t;
+    float footprint=distance*max(length(edge1.xyz)/float(grid.x),length(edge2.xyz)/float(grid.y))/planeDistance;
     // Directional leaves do not factor into color times lighting; retain unit demodulation.
     vec3 color=material==-2?vec3(1):reflectance(hit);
     if(reconstructLighting) lightingAlbedo[pixel]=vec4(color,1);
     temporalGuide[g]=vec4(point,temporalMotion[m+3].x);
     temporalGuide[g+1]=vec4(localNormal,material>0?0:1);
-    temporalGuide[g+2]=vec4(previous,temporalMotion[m+3].y);
+    temporalGuide[g+2]=vec4(previous,temporalMotion[m+3].y*(viewRelayed?relayConfidence:1));
     temporalGuide[g+3]=vec4(transmission*color,material>0?1:0);
     temporalGuide[g+4]=vec4(light,0);
     temporalGuide[g+5]=vec4(normal,footprint);
@@ -768,6 +836,18 @@ void main() {
     for (uint depth=0; depth<=grid.z; depth++) {
         Hit hit;
         bool found=nearest(o,d,-1,-1,false,hit);
+        if(depth==0 && found && instances[hit.instanceIndex*4+1].w==-3 && dot(hit.normal,d)<0 && relayExitClear(hit,o,d)) {
+            vec3 light, transmission;
+            if(fogMeta.x>0) {
+                fogSegment(o,d,hit.t,false,light,transmission);
+                radiance+=weight*light; weight*=transmission;
+            } else if(airMapping.x>0) {
+                airSegment(o.y,d,hit.t,false,32,light,transmission);
+                radiance+=weight*light; weight*=transmission;
+            }
+            crossViewRelay(hit,o,d);
+            found=nearest(o,d,-1,-1,false,hit);
+        }
         if(nrd && depth==1) firstBounceDistance=found?min(hit.t,65504):65504;
         if(dispatchMode==7 && depth==0) {
             vec3 reconstructed;
@@ -781,18 +861,19 @@ void main() {
             return;
         }
         if (continuousSampling && depth==0) {
-            smoothGuides[smoothIndex*2u]=vec4(found?hit.normal:vec3(0),found?hit.t:0);
+            float distance=found?(viewRelayed?length(relayPosition(o+d*hit.t,false)-eye.xyz):hit.t):0;
+            smoothGuides[smoothIndex*2u]=vec4(found?relayNormal(hit.normal):vec3(0),distance);
             smoothGuides[smoothIndex*2u+1u]=vec4(float(hit.instanceIndex),0,0,0);
         }
         if(dispatchMode==3 && depth==0) {
             fogGuides[pixel*2]=vec4(found?hit.normal:vec3(0),found?hit.t:0);
-            fogGuides[pixel*2+1]=vec4(float(hit.instanceIndex),0,0,0);
+            fogGuides[pixel*2+1]=vec4(float(hit.instanceIndex),viewRelayed?1:0,0,0);
         }
-        if (fogMeta.x>0 && !(dispatchMode==3 && depth==0)) {
+        if (fogMeta.x>0 && (viewRelayed || !(dispatchMode==3 && depth==0))) {
             vec3 light, transmission;
             fogSegment(o,d,found ? hit.t : 1e30,!found && depth==0,light,transmission);
             radiance+=weight*light; weight*=transmission;
-        } else if (airMapping.x>0 && !(dispatchMode==3 && depth==0)) {
+        } else if (airMapping.x>0 && (viewRelayed || !(dispatchMode==3 && depth==0))) {
             vec3 light, transmission;
             airSegment(o.y,d,found ? hit.t : 1e30,!found && depth==0,32,light,transmission);
             radiance += weight*light;
@@ -835,8 +916,8 @@ void main() {
             continue;
         }
         vec3 color = reflectance(hit);
-        // Negative material tag denotes a thin diffuse leaf, not a glass volume.
-        bool leaf = glassIor < 0;
+        // View relays on secondary/back-facing rays retain ordinary diffuse shading.
+        bool leaf = glassIor == -1 || glassIor == -2;
         float responsePdf;
         vec3 response=glassIor == -2 ? leafResponse(hit.instanceIndex,d,sunDirection.xyz,n,color,responsePdf) : vec3(0);
         float cosine = dot(n,sunDirection.xyz);

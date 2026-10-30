@@ -202,22 +202,12 @@ public final class GameNavigation {
         return aimMotion.amount();
     }
 
-    private float scopeFocus = 25;
-
     public synchronized void scoped(boolean value) {
         scoped = value && captured;
     }
 
     public synchronized boolean scoped() {
         return scoped;
-    }
-
-    public synchronized void scopeFocus(int clicks) {
-        scopeFocus = Math.clamp(scopeFocus * (float) Math.pow(1.12, clicks), 2, 250);
-    }
-
-    public synchronized float scopeFocus() {
-        return scopeFocus;
     }
 
     private long focusRevision;
@@ -557,8 +547,8 @@ public final class GameNavigation {
         var right = new Vec3((float) Math.cos(viewYaw), 0, (float) -Math.sin(viewYaw));
         var up = forward.cross(right);
         // Sensor one unit ahead; field of view is vertical.
-        // Aim framing gives the physical scope 50% more pixels across at full aim.
-        // The glass still supplies its own optical magnification; hip-fire FOV is unchanged.
+        // Aim framing gives the scope 50% more pixels across at full aim.
+        // Its view relay supplies 4x optical magnification; hip-fire FOV is unchanged.
         float sensorHeight =
                 (float) (2 * Math.tan(Math.toRadians(fov / 2))) * (1 - aimMotion.amount() / 3);
         var horizontal = right.scale(sensorHeight * aspect);
@@ -566,7 +556,7 @@ public final class GameNavigation {
         var origin = position.add(forward).sub(horizontal.scale(.5f)).sub(vertical.scale(.5f));
         var camera =
                 new Camera(position, new Rect(origin, horizontal, vertical))
-                        .withFocus(focus + (scopeFocus - focus) * aimMotion.amount())
+                        .withFocus(focus)
                         .withAperture(aperture * (1 - aimMotion.amount()))
                         .validated();
         int traceWidth = Math.clamp(Math.round(200 * aspect), 64, 1600);
