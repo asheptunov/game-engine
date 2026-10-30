@@ -1,0 +1,22 @@
+PASS continuous sun admitted
+PASS untagged edits remain strict
+PASS manual jump epoch rejects even tiny edits
+PASS stale simulation history rejects
+PASS large direction change rejects despite a continuity tag
+PASS atmospheric parameter edits reject
+PASS BUILT_IN keeps geometry correspondence across sun motion
+PASS BUILT_IN reduces history inertia while lighting changes
+PASS BUILT_IN history never changes raw lighting samples
+PASS BUILT_IN gradual lighting actually reuses history
+PASS BUILT_IN manual jump produces fresh history
+PASS BUILT_IN captured simulation samples replay exactly
+PASS BUILT_IN random stream does not depend on process timeline IDs
+PASS NRD_RELAX keeps geometry correspondence across sun motion
+PASS NRD_RELAX reduces history inertia while lighting changes
+PASS NRD does not restart for a gradual change
+PASS NRD_RELAX history never changes raw lighting samples
+PASS NRD_RELAX gradual lighting actually reuses history
+PASS NRD_RELAX manual jump produces fresh history
+PASS NRD_RELAX captured simulation samples replay exactly
+PASS NRD_RELAX random stream does not depend on process timeline IDs
+Sun history checks passed.

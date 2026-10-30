@@ -1,0 +1,5 @@
+round,mode,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs
+0,fog-roulette-nrd540,98.500,9.626,13.680,17.299,16.737,8.456,0.013
+0,fog-sun-roulette-nrd540,99.500,9.580,13.250,15.245,15.158,8.402,0.006
+1,fog-sun-roulette-nrd540,99.667,9.484,13.229,16.480,15.363,8.484,0.008
+1,fog-roulette-nrd540,101.583,9.346,13.053,15.002,15.049,8.324,0.008

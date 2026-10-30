@@ -1,0 +1,3 @@
+BUILT_IN,stepped,daySeconds=600.0,meanMse=0.00025242,meanResidualChange=0.00028416
+BUILT_IN,smooth-reset,daySeconds=600.0,meanMse=0.00052567,meanResidualChange=0.00085919
+BUILT_IN,smooth-history,daySeconds=600.0,meanMse=0.00040494,meanResidualChange=0.00060825

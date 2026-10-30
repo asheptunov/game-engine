@@ -1,0 +1,6 @@
+2026-10-30T13:13:47.257731800  [INFO] harness.SuiteRunner: ======Test Results======
+2026-10-30T13:13:47.260236700  [INFO] harness.SuiteRunner: ? Suite game.GameSimulationTest [PT0.8584588S]
+2026-10-30T13:13:47.262239500  [INFO] harness.SuiteRunner: ? Test game.GameSimulationTest#stalledImageConversionCannotStopSunAndInactiveGameExcludesElapsedTime [PT0.8010933S]
+2026-10-30T13:13:47.262239500  [INFO] harness.SuiteRunner: ? Test game.GameSimulationTest#capturedLightingTimelineRoundTripsAndOlderCapturesDefaultToNone [PT0.0498143S]
+2026-10-30T13:13:47.262239500  [INFO] harness.SuiteRunner: ? Test game.GameSimulationTest#elapsedTimeIsIndependentOfStepCountAndSnapshotReads [PT0.0075512S]
+2026-10-30T13:13:47.262765400  [INFO] harness.SuiteRunner: ========================

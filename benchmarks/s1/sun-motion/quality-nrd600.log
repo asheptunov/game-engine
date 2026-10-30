@@ -1,0 +1,3 @@
+NRD_RELAX,stepped,daySeconds=600.0,meanMse=0.00216218,meanResidualChange=0.00002262
+NRD_RELAX,smooth-reset,daySeconds=600.0,meanMse=0.00227633,meanResidualChange=0.00002043
+NRD_RELAX,smooth-history,daySeconds=600.0,meanMse=0.00199294,meanResidualChange=0.00001906
