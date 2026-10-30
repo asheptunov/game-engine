@@ -51,7 +51,16 @@ public final class GameCapture {
         }
     }
 
-    public record World(int scene, long revision, Sky sky, List<LightValue> lights) {}
+    public record World(
+            int scene,
+            long revision,
+            Sky sky,
+            List<LightValue> lights,
+            engine.LightingContinuity lightingContinuity) {
+        public World(int scene, long revision, Sky sky, List<LightValue> lights) {
+            this(scene, revision, sky, lights, engine.LightingContinuity.NONE);
+        }
+    }
 
     public record State(
             long nanos, World world, Controls controls, GameNavigation.State navigation) {}
@@ -98,7 +107,8 @@ public final class GameCapture {
                     scenes.get(value.scene()),
                     List.of(),
                     value.lights().stream().map(LightValue::restore).toList(),
-                    value.sky());
+                    value.sky(),
+                    value.lightingContinuity());
         }
     }
 
@@ -243,7 +253,12 @@ public final class GameCapture {
                                             point.intensity());
                                 })
                         .toList();
-        return new World(scene(scenes, world.instances()), world.revision(), world.sky(), lights);
+        return new World(
+                scene(scenes, world.instances()),
+                world.revision(),
+                world.sky(),
+                lights,
+                world.lightingContinuity());
     }
 
     private static int scene(SceneTable scenes, List<SceneInstance> value) {

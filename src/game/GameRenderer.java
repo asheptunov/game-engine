@@ -159,10 +159,16 @@ public final class GameRenderer implements AutoCloseable {
         synchronized (this) {
             synchronized (navigation) {
                 long now = System.nanoTime();
+                var clock = simulation.state();
+                var currentWorld =
+                        clock.running()
+                                ? lightingWorld(
+                                        clock.lighting(), atmosphereEnabled, atmosphere, clock)
+                                : world;
                 pending =
                         new GameCapture.Pending(
-                                world,
-                                captureControls(),
+                                currentWorld,
+                                captureControls(clock),
                                 navigation.snapshot(),
                                 displayedFrame == null ? null : displayedFrame.retain(),
                                 recording.freeze(now, history),
@@ -210,13 +216,17 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     synchronized GameCapture.Controls captureControls() {
+        return captureControls(simulation.state());
+    }
+
+    private GameCapture.Controls captureControls(GameSimulation.State clock) {
         return new GameCapture.Controls(
                 settings,
-                lighting,
+                clock.running() ? clock.lighting() : lighting,
                 exposure,
-                cycle.hour(),
-                cycle.duration(),
-                cycle.running(),
+                clock.hour(),
+                clock.duration(),
+                clock.running(),
                 refinementTarget,
                 atmosphereEnabled,
                 atmosphere,
@@ -257,9 +267,9 @@ public final class GameRenderer implements AutoCloseable {
         settings = controls.settings().withPaused(false);
         lighting = controls.lighting();
         exposure = controls.exposure();
-        cycle.hour(controls.hour());
-        cycle.duration(controls.duration());
-        cycle.running(false);
+        simulation.hour(controls.hour());
+        simulation.duration(controls.duration());
+        simulation.running(false);
         refinementTarget = controls.refinementTarget();
         atmosphereEnabled = controls.atmosphereEnabled();
         atmosphere = controls.atmosphere();
@@ -274,7 +284,7 @@ public final class GameRenderer implements AutoCloseable {
         navigation.restore(state.navigation());
         navigation.release();
         navigation.autofocus(false);
-        lastTick = System.nanoTime();
+        lightingFrameComplete = true;
         recordControls();
     }
 
@@ -327,7 +337,8 @@ public final class GameRenderer implements AutoCloseable {
                             instances,
                             world.legacyObjects(),
                             world.lights(),
-                            world.sky());
+                            world.sky(),
+                            world.lightingContinuity());
         }
     }
 
@@ -335,8 +346,7 @@ public final class GameRenderer implements AutoCloseable {
     private final engine.RenderCapabilities capabilities;
     private engine.WorldSnapshot world;
     private GameLighting lighting = GameLighting.defaults();
-    private final DayNightCycle cycle = new DayNightCycle();
-    private long lastLightingUpdate;
+    private boolean lightingFrameComplete = true;
     private boolean fogEnabled;
     private boolean fogOverlap;
     private boolean fogReverse;
@@ -357,7 +367,7 @@ public final class GameRenderer implements AutoCloseable {
     private final GameAutofocus autofocus;
     private final java.util.function.BiFunction<RenderImage, Float, BufferedImage> imageConverter;
     private final ScheduledExecutorService executor;
-    private final ScheduledExecutorService simulation;
+    private final GameSimulation simulation;
     private java.util.List<engine.SceneInstance> collisionInstances;
     private final AtomicBoolean completionQueued = new AtomicBoolean();
     private volatile Frame frame;
@@ -370,7 +380,6 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     private String cachedBackendStatus = "session initialized; no completed image";
-    private long lastTick = System.nanoTime();
     private long converted = -1;
     private float exposure = 1;
     private long refinementTarget;
@@ -419,6 +428,11 @@ public final class GameRenderer implements AutoCloseable {
         navigation.recording(recording);
         this.backend = backend;
         capabilities = RenderEngine.capabilities(backend);
+        simulation =
+                new GameSimulation(
+                        navigation,
+                        () -> shooter,
+                        failure -> failed(asFailure(backend, "physics", failure)));
         if (!adaptiveSupported() || backend.equals("gpu") || navigation.fixedResolution()) {
             settings = settings.withInteractive(false, settings.interactiveMillis(), 0, 0);
         }
@@ -444,41 +458,8 @@ public final class GameRenderer implements AutoCloseable {
         session.onImageAvailable(this::imageAvailable);
         session.onFailure(this::failed);
         hooks.diagnostics().event("session created: " + backend);
-        simulation =
-                Executors.newSingleThreadScheduledExecutor(
-                        runnable -> {
-                            var thread = new Thread(runnable, "sample-game-physics");
-                            thread.setDaemon(true);
-                            return thread;
-                        });
         executor.scheduleWithFixedDelay(this::tick, 0, 16, TimeUnit.MILLISECONDS);
-        final long[] previousTick = {System.nanoTime()};
-        simulation.scheduleWithFixedDelay(
-                () -> {
-                    try {
-                        long now = System.nanoTime();
-                        var combat = shooter;
-                        if (combat == null || combat.alive()) {
-                            navigation.advance((now - previousTick[0]) / 1e9);
-                        } else {
-                            navigation.advanceAim((now - previousTick[0]) / 1e9);
-                        }
-                        if (combat != null) {
-                            combat.playerHeight(navigation.bodyHeight());
-                            combat.advance(
-                                    (now - previousTick[0]) / 1e9,
-                                    navigation.view().camera(),
-                                    navigation.active() && navigation.captured());
-                        }
-                        previousTick[0] = now;
-                    } catch (Throwable failure) {
-                        navigation.active(false);
-                        failed(asFailure(backend, "physics", failure));
-                    }
-                },
-                0,
-                4,
-                TimeUnit.MILLISECONDS);
+        simulation.start();
     }
 
     private void updateCollision(engine.WorldSnapshot value) {
@@ -558,7 +539,6 @@ public final class GameRenderer implements AutoCloseable {
                 if (closed || fatal.get() != null) {
                     return;
                 }
-                advanceClock();
                 captureDiagnostics(navigation.view(), session.progress(null), cachedBackendStatus);
                 if (!navigation.active()) {
                     if (!suspended) {
@@ -567,8 +547,7 @@ public final class GameRenderer implements AutoCloseable {
                     }
                     return;
                 }
-                suspended = false;
-                view = captureCombatView();
+                view = captureFrameView();
                 capturedWorld = world;
                 capturedSettings = settings;
                 capturedExposure = exposure;
@@ -605,9 +584,9 @@ public final class GameRenderer implements AutoCloseable {
                 cachedBackendStatus = session.status();
                 captureDiagnostics(view, session.progress(acquired), cachedBackendStatus);
                 converted = acquired.publicationNanos();
-                publishClock(copied);
+                lightingFrameComplete = true;
                 combatFrameComplete = true;
-                advanceCombat = shooter != null && !timerCombatSubmission;
+                advanceCombat = advancesOnPublication();
                 if (publicationObserver != null) {
                     publicationObserver.accept(frame);
                 }
@@ -684,7 +663,7 @@ public final class GameRenderer implements AutoCloseable {
 
     /** Return a fresh owned lease, or request work without resubmitting a completed combat view. */
     private RenderImage acquireOrRequestImage(engine.RenderView view) {
-        boolean advanceOnPublication = shooter != null && !timerCombatSubmission;
+        boolean advanceOnPublication = advancesOnPublication();
         if (!advanceOnPublication) {
             session.request();
         }
@@ -730,6 +709,7 @@ public final class GameRenderer implements AutoCloseable {
     private void captureDiagnostics(
             engine.RenderView view, engine.RenderProgress progress, String status) {
         recordControls(false);
+        var clock = simulation.state();
         hooks.diagnostics()
                 .capture(
                         new GameDiagnostics.State(
@@ -737,9 +717,9 @@ public final class GameRenderer implements AutoCloseable {
                                 view,
                                 settings,
                                 lighting,
-                                cycle.hour(),
-                                cycle.duration(),
-                                cycle.running(),
+                                clock.hour(),
+                                clock.duration(),
+                                clock.running(),
                                 exposure,
                                 navigation.active(),
                                 progress,
@@ -747,21 +727,27 @@ public final class GameRenderer implements AutoCloseable {
                                 status));
     }
 
-    private void advanceClock() {
-        long now = System.nanoTime();
-        double elapsed = (now - lastTick) / 1e9;
-        if (navigation.active() && !suspended) {
-            cycle.advance(elapsed);
-        }
-        lastTick = now;
+    private boolean advancesOnPublication() {
+        return (shooter != null && !timerCombatSubmission) || simulation.state().running();
     }
 
-    private void publishClock(long copied) {
-        // Change transport after presenting a complete image so slow passes are not starved.
-        if (cycle.running() && copied - lastLightingUpdate >= 250_000_000L) {
-            applyLighting(cycle.lighting());
-            lastLightingUpdate = copied;
+    private engine.RenderView captureFrameView() {
+        if (suspended) {
+            lightingFrameComplete = true;
         }
+        suspended = false;
+        captureSunlight();
+        return captureCombatView();
+    }
+
+    /** Sample simulation-owned lighting only when the previous captured frame has completed. */
+    private void captureSunlight() {
+        var state = simulation.state();
+        if (!lightingFrameComplete || !state.running()) {
+            return;
+        }
+        applyLighting(state.lighting(), state);
+        lightingFrameComplete = false;
     }
 
     private BufferedImage convertImage(RenderImage image, float exposure, engine.Bloom mode) {
@@ -824,7 +810,8 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     public synchronized GameLighting lighting() {
-        return lighting;
+        var clock = simulation.state();
+        return clock.running() ? clock.lighting() : lighting;
     }
 
     public engine.RenderCapabilities capabilities() {
@@ -927,6 +914,9 @@ public final class GameRenderer implements AutoCloseable {
                 || settings.pathRoulette() != next.pathRoulette()) {
             converted = -1;
         }
+        if (settings.paused() != next.paused()) {
+            lightingFrameComplete = true;
+        }
         settings = next;
         recordControls();
     }
@@ -963,19 +953,19 @@ public final class GameRenderer implements AutoCloseable {
 
     /** Replace immutable input once per effective edit; reset/undo must not revive old images. */
     public synchronized void lighting(GameLighting value) {
-        cycle.running(false);
+        simulation.running(false);
         applyLighting(value);
         recordControls();
     }
 
-    public synchronized double timeOfDay() {
-        return cycle.hour();
+    public double timeOfDay() {
+        return simulation.state().hour();
     }
 
     /** Presets select the same clock time regardless of the sky rendering mode. */
     public synchronized void lightingPreset(GameLighting.Preset preset) {
         java.util.Objects.requireNonNull(preset);
-        cycle.running(false);
+        simulation.running(false);
         timeOfDay(
                 switch (preset) {
                     case MORNING -> 7;
@@ -985,30 +975,34 @@ public final class GameRenderer implements AutoCloseable {
         recordControls();
     }
 
-    public synchronized double dayDuration() {
-        return cycle.duration();
+    public double dayDuration() {
+        return simulation.state().duration();
     }
 
-    public synchronized boolean dayCycle() {
-        return cycle.running();
+    public boolean dayCycle() {
+        return simulation.state().running();
     }
 
     public synchronized void dayCycle(boolean value) {
-        cycle.running(value);
-        if (value) {
-            applyLighting(cycle.lighting());
+        if (simulation.state().running() == value) {
+            return;
         }
+        simulation.running(value);
+        lightingFrameComplete = true;
+        var clock = simulation.state();
+        applyLighting(clock.lighting(), clock);
         recordControls();
     }
 
     public synchronized void timeOfDay(double value) {
-        cycle.hour(value);
-        applyLighting(cycle.lighting());
+        simulation.hour(value);
+        var clock = simulation.state();
+        applyLighting(clock.lighting(), clock);
         recordControls();
     }
 
     public synchronized void dayDuration(double value) {
-        cycle.duration(value);
+        simulation.duration(value);
         recordControls();
     }
 
@@ -1099,7 +1093,7 @@ public final class GameRenderer implements AutoCloseable {
                 false,
                 0,
                 java.util.List.of(RuinsMist.region(0), RuinsMist.region(1)));
-        cycle.running(false);
+        simulation.running(false);
         timeOfDay(7.5);
         recordControls();
     }
@@ -1189,22 +1183,41 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     private void applyLighting(GameLighting value) {
-        var replacement = lightingWorld(value, atmosphereEnabled, atmosphere);
+        applyLighting(value, simulation.state());
+    }
+
+    private void applyLighting(GameLighting value, GameSimulation.State state) {
+        var replacement = lightingWorld(value, atmosphereEnabled, atmosphere, state);
         lighting = value;
         world = replacement;
     }
 
     private engine.WorldSnapshot lightingWorld(
             GameLighting value, boolean enabled, engine.Atmosphere.Parameters parameters) {
-        var effective = enabled ? cycle.atmosphericLighting(parameters) : value;
+        return lightingWorld(value, enabled, parameters, simulation.state());
+    }
+
+    private engine.WorldSnapshot lightingWorld(
+            GameLighting value,
+            boolean enabled,
+            engine.Atmosphere.Parameters parameters,
+            GameSimulation.State state) {
+        var effective = enabled ? state.atmosphericLighting(parameters) : value;
         var sky =
                 effective.sky().withFog(activeFog(fogEnabled, fogOverlap, fogReverse, fogRegions));
         var lights = java.util.List.<engine.lights.Light>of(effective.sun());
-        if (world.sky().equals(sky) && world.lights().equals(lights)) {
+        if (world.sky().equals(sky)
+                && world.lights().equals(lights)
+                && world.lightingContinuity().equals(state.continuity())) {
             return world;
         }
         return new engine.WorldSnapshot(
-                world.revision() + 1, world.instances(), world.legacyObjects(), lights, sky);
+                world.revision() + 1,
+                world.instances(),
+                world.legacyObjects(),
+                lights,
+                sky,
+                state.continuity());
     }
 
     public String backendStatus() {
@@ -1220,7 +1233,7 @@ public final class GameRenderer implements AutoCloseable {
     }
 
     public synchronized boolean closed() {
-        return closed && session.closed() && executor.isShutdown() && simulation.isShutdown();
+        return closed && session.closed() && executor.isShutdown() && simulation.closed();
     }
 
     @Override
@@ -1233,7 +1246,7 @@ public final class GameRenderer implements AutoCloseable {
             session.onImageAvailable(null);
             navigation.recording(null);
             captureWriter.shutdown();
-            simulation.shutdownNow();
+            simulation.close();
             executor.shutdownNow();
             recording.close();
             if (frame != null) {

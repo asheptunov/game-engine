@@ -13,7 +13,17 @@ public record WorldSnapshot(
         List<SceneInstance> instances,
         List<RenderPrimitive> legacyObjects,
         List<Light> lights,
-        Sky sky) {
+        Sky sky,
+        LightingContinuity lightingContinuity) {
+    public WorldSnapshot(
+            long revision,
+            List<SceneInstance> instances,
+            List<RenderPrimitive> legacyObjects,
+            List<Light> lights,
+            Sky sky) {
+        this(revision, instances, legacyObjects, lights, sky, LightingContinuity.NONE);
+    }
+
     public WorldSnapshot(
             long revision,
             List<SceneInstance> instances,
@@ -23,6 +33,7 @@ public record WorldSnapshot(
     }
 
     public WorldSnapshot {
+        java.util.Objects.requireNonNull(lightingContinuity);
         if (revision < 0) throw new IllegalArgumentException("World revision must be nonnegative");
         instances = List.copyOf(instances);
         legacyObjects = List.copyOf(legacyObjects);

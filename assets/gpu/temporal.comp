@@ -66,9 +66,10 @@ void main() {
             }
             if(accepted && old.w>0) {
                 vec3 clamped=clamp(old.xyz,lo,hi);
-                float fresh=max(.2,float(samples)/(float(samples)+min(8.,old.w)));
+                float retained=min(8.,old.w)*motion[6].z;
+                float fresh=max(.2,float(samples)/(float(samples)+retained));
                 current=mix(clamped,current,fresh);
-                count=min(8.,old.w+float(samples));
+                count=min(8.,retained+float(samples));
             }
         }
     }

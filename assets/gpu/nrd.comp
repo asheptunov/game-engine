@@ -37,7 +37,7 @@ void main() {
         imageStore(normalImage,texel,packNormal(normal));
         imageStore(depthImage,texel,vec4(depth));
         imageStore(radianceImage,texel,vec4(min(signal,vec3(65504)),min(fresh[index].w,65504)));
-        imageStore(confidenceImage,texel,vec4(eligible?guide[g+2].w:0));
+        imageStore(confidenceImage,texel,vec4(eligible?guide[g+2].w*forward.w:0));
     } else {
         vec3 result=raw[index].xyz;
         if(eligible) result=guide[g+4].xyz+imageLoad(denoisedImage,texel).xyz*albedo[index].xyz;

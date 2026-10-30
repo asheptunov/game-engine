@@ -82,7 +82,10 @@ public final class DayNightCycle {
 
     /** The signed solar direction survives night; the explicit directional light is moonlight. */
     public GameLighting atmosphericLighting(engine.Atmosphere.Parameters parameters) {
-        var solar = solarDirection();
+        return atmosphericLighting(solarDirection(), parameters);
+    }
+
+    static GameLighting atmosphericLighting(Vec3 solar, engine.Atmosphere.Parameters parameters) {
         var air = new engine.Atmosphere(parameters, solar, new Vec3(3, 3, 3));
         float night = Math.clamp(-air.solarDirection().y() / .2f, 0, 1);
         var moon = air.solarDirection().scale(-1);

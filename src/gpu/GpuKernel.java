@@ -1106,6 +1106,11 @@ final class GpuKernel implements AutoCloseable {
                 (19 + engine.AtmosphereTable.FLOATS / 4) * 16 + 12,
                 settings.smoothFoveation() ? smoothFoveation.count : foveation.count);
         long seed = cameraSeed(settings.seed(), camera);
+        if (world.lightingContinuity().timeline() != 0) {
+            // A moving light supplies fresh paths even with a stationary camera. Use captured
+            // simulation time, not frame count or timeline identity, so capture replay is exact.
+            seed ^= mix(Double.doubleToLongBits(world.lightingContinuity().seconds()));
+        }
         if (temporal.nrd != null) {
             // Scene motion decorrelates noise even with a fixed camera. The key is captured world
             // data, never job order or denoiser history, so captures and revisited views reproduce.

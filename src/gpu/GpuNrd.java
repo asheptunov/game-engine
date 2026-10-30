@@ -26,7 +26,10 @@ final class GpuNrd implements AutoCloseable {
                         false);
     }
 
-    void prepare(RenderView next, RenderView previous, boolean valid) {
+    private float lightingConfidence = 1;
+
+    void prepare(RenderView next, RenderView previous, boolean valid, float confidence) {
+        lightingConfidence = confidence;
         boolean resize = width != next.width() || height != next.height();
         if (resize) {
             if (pass != null) {
@@ -77,9 +80,9 @@ final class GpuNrd implements AutoCloseable {
         pass.initializeImages();
         conversion.bind(
                 new VulkanDevice.Buffer[] {raw, guides, albedo, fresh, presented}, pass.signals);
-        conversion.record(width, height, view.camera(), false);
+        conversion.record(width, height, view.camera(), false, lightingConfidence);
         pass.record();
-        conversion.record(width, height, view.camera(), true);
+        conversion.record(width, height, view.camera(), true, lightingConfidence);
         frameIndex++;
     }
 

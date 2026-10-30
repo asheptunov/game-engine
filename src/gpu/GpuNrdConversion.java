@@ -172,7 +172,7 @@ final class GpuNrdConversion implements AutoCloseable {
         }
     }
 
-    void record(int width, int height, Camera camera, boolean compose) {
+    void record(int width, int height, Camera camera, boolean compose, float confidence) {
         try (var stack = MemoryStack.stackPush()) {
             gpu.barrier(
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -193,6 +193,7 @@ final class GpuNrdConversion implements AutoCloseable {
             var forward = GpuNrdCamera.forward(camera);
             push.putFloat(16, eye.x()).putFloat(20, eye.y()).putFloat(24, eye.z());
             push.putFloat(32, forward.x()).putFloat(36, forward.y()).putFloat(40, forward.z());
+            push.putFloat(44, confidence);
             vkCmdPushConstants(gpu.command, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, push);
             vkCmdDispatch(gpu.command, (width + 7) / 8, (height + 7) / 8, 1);
         }

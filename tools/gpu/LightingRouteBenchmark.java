@@ -37,8 +37,12 @@ public final class LightingRouteBenchmark {
     private static void measure(Path output, int round, String mode) throws Exception {
         var navigation = new GameNavigation();
         navigation.active(false);
-        boolean roulette = mode.startsWith("roulette-");
-        String baseMode = roulette ? mode.substring(9) : mode;
+        boolean fog = mode.startsWith("fog-");
+        String skyMode = fog ? mode.substring(4) : mode;
+        boolean sun = skyMode.startsWith("sun-");
+        String transportMode = sun ? skyMode.substring(4) : skyMode;
+        boolean roulette = transportMode.startsWith("roulette-");
+        String baseMode = roulette ? transportMode.substring(9) : transportMode;
         int height = baseMode.endsWith("540") ? 540 : baseMode.endsWith("720") ? 720 : 1080;
         if (!Set.of(
                         "raw1080",
@@ -75,6 +79,7 @@ public final class LightingRouteBenchmark {
                         hooks)) {
             renderer.enableShooter();
             renderer.atmosphereEnabled(true);
+            renderer.fogEnabled(fog);
             renderer.configure(
                     s ->
                             s.withDenoiser(
@@ -111,6 +116,10 @@ public final class LightingRouteBenchmark {
                 Thread.sleep(5);
             }
             renderer.shooter().reset();
+            renderer.timeOfDay(9);
+            renderer.dayDuration(
+                    Double.parseDouble(System.getProperty("game.benchmarkDaySeconds", "600")));
+            renderer.dayCycle(sun);
             SwingUtilities.invokeAndWait(
                     () -> {
                         collector.start = System.nanoTime();
@@ -198,7 +207,7 @@ public final class LightingRouteBenchmark {
                 copies = new ArrayList<>();
         final StringBuilder rows =
                 new StringBuilder(
-                        "seconds,intervalMs,ageMs,traceMs,copyMs,width,height,health,rounds\n");
+                        "seconds,intervalMs,ageMs,traceMs,copyMs,width,height,health,rounds,solarX,solarY,solarZ\n");
         GameRenderer renderer;
         volatile boolean stopped;
         volatile long start;
@@ -267,10 +276,11 @@ public final class LightingRouteBenchmark {
             traces.add(frame.metrics().traceNanos() / 1e6);
             copies.add(frame.metrics().copyNanos() / 1e6);
             var status = renderer.shooter().status();
+            var solar = frame.context().world().sky().atmosphere().solarDirection();
             rows.append(
                     String.format(
                             Locale.ROOT,
-                            "%.6f,%.6f,%.6f,%.6f,%.6f,%d,%d,%d,%d%n",
+                            "%.6f,%.6f,%.6f,%.6f,%.6f,%d,%d,%d,%d,%.9f,%.9f,%.9f%n",
                             (now - start) / 1e9,
                             interval,
                             age,
@@ -279,7 +289,10 @@ public final class LightingRouteBenchmark {
                             frame.image().getWidth(),
                             frame.image().getHeight(),
                             status.health(),
-                            status.rounds()));
+                            status.rounds(),
+                            solar.x(),
+                            solar.y(),
+                            solar.z()));
         }
 
         private void writeProfile(Path output, GpuRenderSession session) throws Exception {

@@ -40,6 +40,7 @@ final class GpuTemporal implements AutoCloseable {
     private int[] uploadedIdentities = new int[0];
     private boolean[] uploadedValidity = new boolean[0];
     private boolean valid;
+    float lightingConfidence = 1;
     boolean active;
     String label = "raw GPU";
 
@@ -121,7 +122,7 @@ final class GpuTemporal implements AutoCloseable {
                 nrd = new GpuNrd(gpu);
                 valid = false;
             }
-            nrd.prepare(nextView, priorView, valid);
+            nrd.prepare(nextView, priorView, valid, lightingConfidence);
             motion.mapped.putInt(100, nrd.frameIndex);
         }
         return true; // The trace descriptor must follow the guide ping-pong and motion buffer.
@@ -163,6 +164,7 @@ final class GpuTemporal implements AutoCloseable {
             reset();
             nextIdentity = 1;
         }
+        lightingConfidence = world == null ? 0 : GpuLightingHistory.confidence(world, nextWorld);
         valid =
                 world != null
                         && compatible(nextWorld, nextView, next)
@@ -223,6 +225,7 @@ final class GpuTemporal implements AutoCloseable {
         put(data, 48, previous.sensor().edge1(), 0);
         put(data, 64, previous.sensor().edge2(), 0);
         data.putFloat(80, pixelAngle(previous, nextView));
+        data.putFloat(104, lightingConfidence);
         for (int i = 0; i < nextWorld.instances().size(); i++) {
             var object = nextWorld.instances().get(i);
             var old = priorSurfaces.get(object.name());
@@ -257,8 +260,7 @@ final class GpuTemporal implements AutoCloseable {
     private boolean compatible(WorldSnapshot nextWorld, RenderView nextView, RenderSettings next) {
         return view.width() == nextView.width()
                 && view.height() == nextView.height()
-                && world.sky().equals(nextWorld.sky())
-                && world.lights().equals(nextWorld.lights())
+                && lightingConfidence > 0
                 && settings.denoiser() == next.denoiser()
                 && settings.pathRoulette() == next.pathRoulette()
                 && settings.seed() == next.seed()

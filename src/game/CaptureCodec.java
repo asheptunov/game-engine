@@ -129,6 +129,7 @@ final class CaptureCodec {
         if (clazz == engine.Material.class) {
             p.putIfAbsent(key + ".leaf", "null");
         }
+        defaultLightingContinuity(p, key, clazz);
         var components = clazz.getRecordComponents();
         var types = new Class<?>[components.length];
         var values = new Object[components.length];
@@ -138,6 +139,15 @@ final class CaptureCodec {
                     read(p, key + "." + components[i].getName(), components[i].getGenericType());
         }
         return clazz.getDeclaredConstructor(types).newInstance(values);
+    }
+
+    private static void defaultLightingContinuity(Properties p, String key, Class<?> clazz) {
+        if (clazz == GameCapture.World.class && !p.containsKey(key + ".lightingContinuity")) {
+            p.setProperty(key + ".lightingContinuity", "record");
+            p.setProperty(key + ".lightingContinuity.timeline", "0");
+            p.setProperty(key + ".lightingContinuity.epoch", "0");
+            p.setProperty(key + ".lightingContinuity.seconds", "0.0");
+        }
     }
 
     private static void defaultCharacterState(Properties p, String key, Class<?> clazz) {
