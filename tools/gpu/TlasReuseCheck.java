@@ -66,7 +66,7 @@ public final class TlasReuseCheck {
         }
     }
 
-    private static WorldSnapshot world(int frame) {
+    static WorldSnapshot world(int frame) {
         var objects = new ArrayList<SceneInstance>();
         int count = frame >= 12 && frame < 20 ? 3 : 4;
         for (int i = 0; i < count; i++) {

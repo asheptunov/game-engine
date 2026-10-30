@@ -466,6 +466,7 @@ final class GpuKernel implements AutoCloseable {
                 (19 + engine.AtmosphereTable.FLOATS / 4) * 16 + 4, settings.fogJitter() ? 1 : 0);
         beforeDispatch.run();
         gpu.begin();
+        boolean builtScene = scene.recordPendingBuild();
         lightingTexture.prepare();
         vkCmdResetQueryPool(gpu.command, gpu.queries, 0, 10);
         gpu.barrier(
@@ -473,7 +474,15 @@ final class GpuKernel implements AutoCloseable {
                 VK_ACCESS_SHADER_WRITE_BIT,
                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                 VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-        vkCmdWriteTimestamp(gpu.command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, gpu.queries, 0);
+        // Keep the trace timer independent of scene-build work when both share a submission.
+        vkCmdWriteTimestamp(
+                gpu.command,
+                builtScene
+                        ? org.lwjgl.vulkan.KHRAccelerationStructure
+                                .VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+                        : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                gpu.queries,
+                0);
         vkCmdBindPipeline(gpu.command, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
         try (var stack = MemoryStack.stackPush()) {
             vkCmdBindDescriptorSets(

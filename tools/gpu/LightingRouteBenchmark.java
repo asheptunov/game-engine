@@ -13,12 +13,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.*;
 
-/** Real combat simulation and 1080p Swing painting, offscreen; excludes scanout and real input. */
+/**
+ * Real combat simulation and 1080p delivery; offscreen Swing or hidden native, excluding scanout.
+ */
 public final class LightingRouteBenchmark {
     private static final long DURATION = 12_000_000_000L;
 
     public static void main(String[] args) throws Exception {
-        System.setProperty("game.nativePresentation", "false");
+        String endpoint = args.length > 2 ? args[2] : "swing-offscreen";
+        if (!Set.of("swing-offscreen", "native-hidden").contains(endpoint))
+            throw new IllegalArgumentException("Unknown endpoint: " + endpoint);
+        System.setProperty(
+                "game.nativePresentation", Boolean.toString(endpoint.equals("native-hidden")));
+        System.setProperty("game.swingPresentation", "false");
+        System.setProperty("game.timerPresentation", "false");
         System.setProperty("game.profileFrames", "true");
         Path output = Path.of(args[0]);
         Files.createDirectories(output);
@@ -27,10 +35,21 @@ public final class LightingRouteBenchmark {
                         ? args[1].split(",")
                         : new String[] {"raw1080", "temporal1080", "temporal720", "temporal540"};
         System.out.println(
-                "round,mode,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs");
-        for (int round = 0; round < 2; round++) {
-            for (int i = 0; i < modes.length; i++)
-                measure(output, round, modes[round == 0 ? i : modes.length - 1 - i]);
+                "round,mode,separateSceneSubmission,freshPaintsPerSecond,medianMs,p95Ms,p99Ms,p95AgeMs,medianTraceMs,medianCopyMs");
+        boolean compare = args.length > 3 && args[3].equals("compare-submissions");
+        for (int round = 0; round < (compare ? 3 : 2); round++) {
+            for (int i = 0; i < modes.length; i++) {
+                String mode = modes[round % 2 == 0 ? i : modes.length - 1 - i];
+                if (compare) {
+                    for (boolean separate : new boolean[] {round % 2 == 0, round % 2 != 0}) {
+                        System.setProperty(
+                                "game.separateGpuSceneSubmission", Boolean.toString(separate));
+                        Path variant = output.resolve(separate ? "separate" : "batched");
+                        Files.createDirectories(variant);
+                        measure(variant, round, mode);
+                    }
+                } else measure(output, round, mode);
+            }
         }
     }
 
@@ -69,6 +88,8 @@ public final class LightingRouteBenchmark {
                                 session[0] = new GpuRenderSession(world, view, settings));
         var panel = new GamePanel[1];
         var collector = new Collector(panel);
+        collector.nativeEndpoint = Boolean.getBoolean("game.nativePresentation");
+        var window = collector.nativeEndpoint ? new java.awt.Frame() : null;
         var previous = RepaintManager.currentManager(null);
         try (var renderer =
                 new GameRenderer(
@@ -104,6 +125,15 @@ public final class LightingRouteBenchmark {
                         RepaintManager.setCurrentManager(collector);
                         panel[0] = new GamePanel(navigation, renderer);
                         panel[0].setSize(1920, 1080);
+                        if (window != null) {
+                            window.setUndecorated(true);
+                            window.add(panel[0]);
+                            window.setSize(1920, 1080);
+                            window.addNotify();
+                            window.validate();
+                            if (window.isVisible())
+                                throw new AssertionError("Window must stay hidden");
+                        }
                         panel[0].doLayout();
                     });
             navigation.active(true);
@@ -162,14 +192,22 @@ public final class LightingRouteBenchmark {
                             + renderer.backendStatus()
                             + "\n"
                             + renderer.shooter().status()
+                            + "\nendpoint="
+                            + (collector.nativeEndpoint ? "native-hidden" : "swing-offscreen")
+                            + "\nseparateGpuSceneSubmission="
+                            + Boolean.getBoolean("game.separateGpuSceneSubmission")
                             + "\n");
-            javax.imageio.ImageIO.write(
-                    collector.surface, "png", output.resolve(mode + "-" + round + ".png").toFile());
+            if (!collector.nativeEndpoint)
+                javax.imageio.ImageIO.write(
+                        collector.surface,
+                        "png",
+                        output.resolve(mode + "-" + round + ".png").toFile());
             System.out.printf(
                     Locale.ROOT,
-                    "%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f%n",
+                    "%d,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f%n",
                     round,
                     mode,
+                    Boolean.getBoolean("game.separateGpuSceneSubmission"),
                     collector.count / (DURATION / 1e9),
                     q(collector.intervals, .5),
                     q(collector.intervals, .95),
@@ -182,6 +220,7 @@ public final class LightingRouteBenchmark {
                     () -> {
                         collector.stopped = true;
                         if (panel[0] != null) panel[0].close();
+                        if (window != null) window.dispose();
                         RepaintManager.setCurrentManager(previous);
                     });
             if (session[0] != null && !session[0].awaitClosed(30))
@@ -209,6 +248,7 @@ public final class LightingRouteBenchmark {
                 new StringBuilder(
                         "seconds,intervalMs,ageMs,traceMs,copyMs,width,height,health,rounds,solarX,solarY,solarZ\n");
         GameRenderer renderer;
+        boolean nativeEndpoint;
         volatile boolean stopped;
         volatile long start;
         volatile long queuedAt;
@@ -245,15 +285,79 @@ public final class LightingRouteBenchmark {
             long queueNanos = paintStart - queuedAt;
             queued.set(false);
             if (stopped || panel[0] == null) return;
+            if (nativeEndpoint) {
+                presentNative(paintStart, queueNanos);
+                return;
+            }
             var draw = surface.createGraphics();
             try {
                 panel[0].paint(draw);
             } finally {
                 draw.dispose();
             }
-            long now = System.nanoTime();
-            var frame = renderer.displayedFrame();
-            if (start == 0
+            record(renderer.displayedFrame(), System.nanoTime(), paintStart, queueNanos);
+        }
+
+        private void presentNative(long paintStart, long queueNanos) {
+            var frame = renderer.acquireFrame();
+            if (frame == null) return;
+            try {
+                if (frame.devicePixels() == null) return;
+                var field = GamePanel.class.getDeclaredField("nativeDisplay");
+                field.setAccessible(true);
+                var display = (GameDisplay) field.get(panel[0]);
+                var paint =
+                        GamePanel.class.getDeclaredMethod(
+                                "drawFrameOverlay",
+                                java.awt.Graphics2D.class,
+                                GameRenderer.Frame.class);
+                paint.setAccessible(true);
+                boolean full =
+                        renderer.shooter().status().hurtTime() > 0
+                                || !renderer.shooter().tracers().isEmpty();
+                int[] overlay =
+                        GameOverlay.capture(
+                                1920,
+                                1080,
+                                1,
+                                full,
+                                draw -> {
+                                    try {
+                                        paint.invoke(panel[0], draw, frame);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                });
+                display.submit(
+                        frame,
+                        1920,
+                        1080,
+                        overlay,
+                        shown -> {
+                            renderer.displayed(shown);
+                            long ended = System.nanoTime();
+                            // All collector state stays on the EDT; preserve the actual submission
+                            // time.
+                            shown.retain();
+                            SwingUtilities.invokeLater(
+                                    () -> {
+                                        try {
+                                            record(shown, ended, paintStart, queueNanos);
+                                        } finally {
+                                            shown.release();
+                                        }
+                                    });
+                        });
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                frame.release();
+            }
+        }
+
+        private void record(GameRenderer.Frame frame, long now, long paintStart, long queueNanos) {
+            if (stopped
+                    || start == 0
                     || now - start >= DURATION
                     || frame == null
                     || frame.publicationNanos() == publication) return;
@@ -286,8 +390,8 @@ public final class LightingRouteBenchmark {
                             age,
                             frame.metrics().traceNanos() / 1e6,
                             frame.metrics().copyNanos() / 1e6,
-                            frame.image().getWidth(),
-                            frame.image().getHeight(),
+                            frame.width(),
+                            frame.height(),
                             status.health(),
                             status.rounds(),
                             solar.x(),

@@ -82,3 +82,6 @@ if (Test-Path 'out/nrd/runtime/Release/rte_nrd.dll') {
 } else {
     Write-Output 'Optional NRD checks skipped: run ./setup-nrd.ps1 to install the pinned runtime.'
 }
+
+Invoke-NativeLogged (Join-Path $jdk 'javac.exe') @('--enable-preview','--release','23','-cp',$classPath,'-d','out/gpu/classes','tools/gpu/TlasReuseCheck.java','tools/gpu/SceneSubmissionCheck.java') 'out/gpu/scene-submission-compile.log' 'Scene submission checks compilation failed'
+Invoke-NativeLogged (Join-Path $jdk 'java.exe') @('--enable-preview','--enable-native-access=ALL-UNNAMED','-Djava.awt.headless=true','-cp',$classPath,'gpu.SceneSubmissionCheck') 'out/gpu/scene-submission-check.log' 'Scene submission checks failed'

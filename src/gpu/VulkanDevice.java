@@ -105,6 +105,8 @@ final class VulkanDevice implements AutoCloseable {
     long allocatedBytes;
     long imageReadbackBytes;
     long peakBytes;
+    long completedSubmissions;
+    long submissionWaitNanos;
     final List<AutoCloseable> resources = new ArrayList<>();
 
     VulkanDevice() {
@@ -489,6 +491,7 @@ final class VulkanDevice implements AutoCloseable {
     }
 
     void submit(long signalSemaphore) {
+        long start = System.nanoTime();
         check(vkEndCommandBuffer(command), "end command");
         try (var stack = MemoryStack.stackPush()) {
             check(vkResetFences(device, fence), "reset fence");
@@ -503,6 +506,8 @@ final class VulkanDevice implements AutoCloseable {
             // Only the GPU owner waits. Input and display never call this method.
             check(vkWaitForFences(device, fence, true, 30_000_000_000L), "wait for completion");
         }
+        completedSubmissions++;
+        submissionWaitNanos += System.nanoTime() - start;
     }
 
     void barrier(int sourceStage, int sourceAccess, int destinationStage, int destinationAccess) {
