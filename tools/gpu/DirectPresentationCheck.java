@@ -13,8 +13,31 @@ import java.util.concurrent.TimeUnit;
 /** Real-device resident ownership, compositor and invisible native-window checks. */
 public final class DirectPresentationCheck {
     public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("native")) nativeStartup();
         compositor();
         resident(args.length > 0 && args[0].equals("native"));
+    }
+
+    /** JAWT must be allowed to initialize before the render owner's first Vulkan call. */
+    private static void nativeStartup() throws Exception {
+        var window = new java.awt.Frame();
+        try {
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                var surface = new GpuGameSurface(() -> {}, error -> { throw new AssertionError(error); });
+                window.setUndecorated(true);
+                window.add(surface.component());
+                window.setSize(64, 64);
+                window.addNotify();
+                window.validate();
+                if (window.isVisible()) throw new AssertionError("Startup check must stay hidden");
+            });
+            try (var kernel = new GpuKernel()) {
+                require(kernel.gpu.presentation, "native device after JAWT initialization");
+            }
+        } finally {
+            javax.swing.SwingUtilities.invokeAndWait(window::dispose);
+        }
+        System.out.println("PASS native surface initializes before Vulkan without a stack-size JVM override");
     }
 
     private static void compositor() {

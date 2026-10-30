@@ -47,6 +47,8 @@ public final class GpuGameSurface implements GameDisplay {
     private GpuRenderSession session;
 
     public GpuGameSurface(Runnable repaint, java.util.function.Consumer<Throwable> failure) {
+        // JAWT can initialize MemoryStack before the GPU owner constructs VulkanDevice.
+        org.lwjgl.system.Configuration.STACK_SIZE.set(512);
         this.failure = failure;
         canvas =
                 new Canvas() {
